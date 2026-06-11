@@ -15,12 +15,10 @@ function  CSActor:ReceiveBeginPlay()
 end 
 
 function CSActor:Box_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
-        local playerController=OtherActor:GetPlayerControllerSafety()
-        if playerController then
-                    L_Event:SendEvent("OnStartPoint",  self.CSPoint)
-ugcprint("[CSActor] Overlap! CSPoint=" .. tostring(self.CSPoint))
-
-        end
+    local pc = OtherActor:GetPlayerControllerSafety()
+      if pc then
+          pc:Server_TeleportToSpawn(self.CSPoint)
+      end
 end
 
 
