@@ -3,7 +3,7 @@ ProjectDisplayName=Douluo
 ProjectDescription=Douluo
 DataTableRootDir=
 ProjectName=Douluo
-ProjectTrueName=B1F9CFE00DDE109E0F84F6DF04E7C948FDB890DB514D4C3DCAD3599A1454237A
+ProjectTrueName=BF84F3FA66F1EDD186FE86150A71B83287CC07D886A09CCC1257CD154CE96F32
 ProjectShortPath=/Douluo/
 StartMapName=/Douluo/UGCmap
 MapMode=0
@@ -86,6 +86,6 @@ TargetPlatform=LinuxServer+WindowsNoEditor+Android_ETC2+IOS+OpenHarmony_ETC2
 
 [DebugSettings]
 bRoomOB=0
-TeamPlayers=1,0;
+TeamPlayers=2,0;
 
 
