@@ -17,7 +17,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
     UGCTimerUtility.CreateLuaTimer(1, function()
         if PC.Pawn then
             UGCBackPackSystem.AddItem(PC.Pawn, 831602104, 1)
-            --UGCBackPackSystem.AddItem(PC.Pawn, 301001, 90)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310000, 1)
         end
     end, false)
 end
