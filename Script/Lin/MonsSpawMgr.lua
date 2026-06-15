@@ -42,4 +42,51 @@ function MonsterSpawnMgr.SpawnMonsters(
     return spawnedMonsters
 end
 
+
+function MonsterSpawnMgr.SpawnAtLevelPoints(
+    WorldContext,
+    MonsterPath,
+    SpawnPointPath,
+    Level,
+    Owner
+)
+    local monsterClass = UE.LoadClass(MonsterPath)
+    local spawnPointClass = UE.LoadClass(SpawnPointPath)
+    local allPoints = UGCActorComponentUtility.GetAllActorsOfClass(
+        WorldContext,
+        spawnPointClass
+    )
+
+    local matchedPoints = {}
+
+    for _, point in ipairs(allPoints or {}) do
+        if point and point.BigLevel == Level then
+            table.insert(matchedPoints, point)
+        end
+    end
+
+    -- 按出生点编号排序，方便调试
+    table.sort(matchedPoints, function(a, b)
+        return (a.StartPoint or 0) < (b.StartPoint or 0)
+    end)
+
+    local monsters = {}
+
+    for _, point in ipairs(matchedPoints) do
+        local monster = UGCActorComponentUtility.SpawnActor(
+            WorldContext,
+            monsterClass,
+            point:K2_GetActorLocation(),
+            point:K2_GetActorRotation(),
+            Vector.New(1, 1, 1),
+            Owner
+        )
+
+        if monster then
+            table.insert(monsters, monster)
+        end
+    end
+    return monsters
+end
+
 return MonsterSpawnMgr

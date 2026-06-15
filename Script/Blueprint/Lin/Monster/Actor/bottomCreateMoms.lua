@@ -14,7 +14,6 @@ function bottomCreateMoms:ReceiveBeginPlay()
 end
 
 function bottomCreateMoms:ReceiveEndPlay()
-    L_Event:RemoveListener(L_Enum_Event.Enum.Test_01,self.OnhandleTest,self)
     bottomCreateMoms.SuperClass.ReceiveEndPlay(self)
 end
 
@@ -38,15 +37,25 @@ end
 
 --[[---------------------怪物出生-------------------------]]--
 
- self.HasTriggered = true
-MonsterSpawnMgr.SpawnMonsters(
-        self,
-        PathMgr.Monster_Level_01,
-        self:K2_GetActorLocation(),
-        self:K2_GetActorRotation(),
-        4,
-        self
-    )
+--  self.HasTriggered = true
+-- MonsterSpawnMgr.SpawnMonsters(
+--         self,
+--         PathMgr.Monster_Level_01,
+--         self:K2_GetActorLocation(),
+--         self:K2_GetActorRotation(),
+--         4,
+--         self
+--     )
+
+--[[-----------------------怪物定点生成-----------------------]]--
+
+local monsters = MonsterSpawnMgr.SpawnAtLevelPoints(
+    UGCGameSystem.GameMode,
+    PathMgr.Monster_Level_01,
+    PathMgr.MonsStartPoint_C,
+    self.Level,
+    nil
+)
 
 
 
