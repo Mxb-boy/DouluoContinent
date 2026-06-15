@@ -3,9 +3,8 @@
 UGCGameSystem.UGCRequire('Script.Common.ue_enum_custom')
  local PathMgr = UGCGameSystem.UGCRequire('Script.Lin.PathMgr')
  local L_Enum_Event = UGCGameSystem.UGCRequire('Script.Lin.L_Enum_Event')
-
+local MonsterSpawnMgr =UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 local UGCGameState = {}; 
-
 
 function UGCGameState:ReceiveBeginPlay()
 if self:HasAuthority()==false then

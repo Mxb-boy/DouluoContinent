@@ -3,10 +3,13 @@
 ---@field Sphere UStaticMeshComponent
 ---@field DefaultSceneRoot USceneComponent
 ---@field Level int32
+---@field NewVar_0 bool
 --Edit Below--
 local bottomCreateMoms = {}
 function bottomCreateMoms:ReceiveBeginPlay()
     bottomCreateMoms.SuperClass.ReceiveBeginPlay(self)
+
+        self.HasTriggered = false
 	self.Box.OnComponentBeginOverlap:Add(self.Box_OnComponentBeginOverlap, self);
 end
 
@@ -16,6 +19,11 @@ function bottomCreateMoms:ReceiveEndPlay()
 end
 
 function bottomCreateMoms:Box_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
+   
+    if not self:HasAuthority() or self.HasTriggered then
+        return
+    end
+   
     local PlayerController=OtherActor:GetPlayerControllerSafety()
 
     --[[----------------------我现在想要实现碰撞通知谁碰撞了第几关卡------------------------]]--
@@ -27,6 +35,20 @@ for _, pc in ipairs(allPlayerControllers) do
         UnrealNetwork.CallUnrealRPC(pc,pc,"Client_BroadcastPlantMessage",uid,self.Level)
     end
 end
+
+--[[---------------------怪物出生-------------------------]]--
+
+ self.HasTriggered = true
+MonsterSpawnMgr.SpawnMonsters(
+        self,
+        PathMgr.Monster_Level_01,
+        self:K2_GetActorLocation(),
+        self:K2_GetActorRotation(),
+        4,
+        self
+    )
+
+
 
 --[[----------------------摧毁-----------------------]]--
     self:K2_DestroyActor()
