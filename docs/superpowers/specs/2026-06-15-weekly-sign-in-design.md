@@ -1,147 +1,120 @@
-# Weekly Sign-In Design
+# 七日循环签到功能设计
 
-## Goal
+## 目标
 
-Add a seven-day weekly sign-in feature in two stages. First, run the official
-SignInEvent template unchanged with its official UI and TestButton. After the
-complete sign-in and reward flow is verified, replace the official main panel
-with the existing `UI04` art panel and add a separate persistent entry button.
+签到功能分两个阶段接入：第一阶段保持官方 `SignInEvent` 模板不变，使用官方界面和 `TestButton` 跑通完整签到与发奖流程；验证通过后，第二阶段再使用现有的 `UI04` 美术界面替换官方主面板，并新建一个常驻签到入口按钮。
 
-## Scope
+## 功能范围
 
-### Stage 1: Official template verification
+### 第一阶段：验证官方模板
 
-- Keep all files under `ExtendResource/SignInEvent/OfficialPackage` unchanged.
-- Configure one weekly sign-in event with seven reward days.
-- Use the same temporary item ID and quantity for all seven days.
-- Use the official `TestButton` to open the panel, clear test data, add or
-  remove items, and query the temporary item count.
-- Use the official `SignInEvent_Main_UIBP` as the sign-in panel.
-- Persist player sign-in state through `UGCPlayerStateSystem`.
-- Grant rewards through `VirtualItemManager`.
+- 不修改 `ExtendResource/SignInEvent/OfficialPackage` 下的任何文件。
+- 配置一个包含 7 天奖励的每周循环签到活动。
+- 7 天暂时使用相同的测试物品 ID 和数量。
+- 使用官方 `TestButton` 打开签到界面、清除测试数据、增减测试物品以及查询物品数量。
+- 使用官方 `SignInEvent_Main_UIBP` 作为签到面板。
+- 通过 `UGCPlayerStateSystem` 保存玩家签到进度。
+- 通过 `VirtualItemManager` 发放签到奖励。
 
-### Stage 2: Project UI integration
+### 第二阶段：接入项目美术界面
 
-- Create a new persistent sign-in entry widget.
-- Open `UI04` from the entry widget.
-- Adapt `UI04` to the verified SignInEvent APIs and data.
-- Replace generic widget names such as `Button_620` with role-based names
-  before binding behavior.
-- Remove or hide the official TestButton in production.
+- 新建一个常驻的签到入口控件。
+- 点击入口后打开 `UI04`。
+- 将 `UI04` 接入第一阶段已经验证通过的官方签到接口和数据。
+- 在绑定逻辑前，将 `Button_620` 等默认控件名修改为表达实际用途的名称。
+- 正式版本中关闭或隐藏官方 `TestButton`。
 
-Stage 2 starts only after Stage 1 passes all acceptance checks.
+只有第一阶段全部验收通过后，才开始第二阶段。
 
-## Architecture
+## 系统结构
 
-The official `SignInEventComponent` is attached to each player's controller.
-It reads the event configuration and reward table, owns the local sign-in UI,
-validates requests on the server, and saves each player's progress.
+官方 `SignInEventComponent` 挂载到每个玩家的 `PlayerController`。该组件负责读取活动配置与奖励表、管理签到界面、在服务端校验签到请求，并保存每个玩家的签到进度。
 
 ```text
-Official TestButton
-        |
-        v
+官方 TestButton
+       |
+       v
 SignInEventManager
-        |
-        v
-SignInEventComponent on PlayerController
-   |          |                 |
-   v          v                 v
-Config     Player archive   VirtualItemManager
-tables     sign-in data     temporary reward
-   |
+       |
+       v
+PlayerController 上的 SignInEventComponent
+   |             |                  |
+   v             v                  v
+签到配置表    玩家存档中的签到数据    VirtualItemManager
+   |                                测试奖励
    v
-Official SignInEvent UI
+官方签到界面
 ```
 
-The client requests a sign-in through `SignInEventManager`. The component
-checks event time, current day, duplicate claims, and client/server data
-consistency. Only the server updates archive data and grants the reward.
+客户端通过 `SignInEventManager` 发起签到请求。组件负责检查活动时间、当天是否已经签到，以及客户端与服务端的进度是否一致。只有服务端可以更新存档并发放奖励。
 
-## Required Configuration
+## 必要配置
 
-### Virtual item system
+### 虚拟物品系统
 
-The project must provide a `VirtualItemManager` game-part actor discoverable by
-this exact name. The temporary reward item must exist in the project's item
-table and mapping table before the sign-in test.
+项目必须提供一个可通过准确名称 `VirtualItemManager` 找到的游戏功能组件。开始签到测试前，测试奖励物品必须已经配置到项目的物品表及物品映射表中。
 
-### Sign-in component
+### 签到组件
 
-The official `SignInEventComponent` must be added to the active player
-controller and configured with:
+将官方 `SignInEventComponent` 添加到当前使用的玩家控制器，并配置以下属性：
 
-- `ConfigTablePath`: the sign-in event configuration table.
-- `MainUIPath`: official `SignInEvent_Main_UIBP`.
-- `TestButtonPath`: official `TestButton`.
-- `ShowTestButton`: enabled for Stage 1.
+- `ConfigTablePath`：签到活动配置表。
+- `MainUIPath`：官方 `SignInEvent_Main_UIBP`。
+- `TestButtonPath`：官方 `TestButton`。
+- `ShowTestButton`：第一阶段设为启用。
 
-The component registers its class with `SignInEventManager`, loads the tables,
-and creates the official UI and test controls for the local player.
+组件启动后会向 `SignInEventManager` 注册自身类型，加载配置表，并为本地玩家创建官方签到界面和测试按钮。
 
-### Weekly event table
+### 每周签到活动表
 
-Create or duplicate a project-owned configuration table rather than editing an
-official package asset. Configure one row with:
+新建项目自己的配置表，或者复制官方配置表示例。不要直接修改官方资源包中的数据表。表中配置一条活动记录：
 
-- A unique `EventID` used consistently by the UI tab and config row.
-- Type set to `Weekly`.
-- A valid start and end time covering the test period.
-- An award table path pointing to the seven-day test table.
-- Supplement fields disabled or configured with harmless test values for the
-  first pass.
-- A short test event name and description.
+- 使用唯一的 `EventID`，并确保界面标签与配置行使用相同 ID。
+- `Type` 设置为 `Weekly`。
+- 开始和结束时间必须覆盖当前测试时间。
+- 奖励表路径指向项目自己的 7 日测试奖励表。
+- 第一轮测试暂不使用补签；相关字段设为禁用值或无影响的测试值。
+- 设置简短的测试活动名称和说明。
 
-### Seven-day award table
+### 七日奖励表
 
-Create a project-owned award table containing seven rows. Every row uses the
-same temporary item ID and a small quantity. Row ordering must be verified in
-the editor because the template converts table rows into the displayed day
-sequence.
+新建项目自己的奖励表，并配置 7 行奖励。每一行使用相同的测试物品 ID 和较小的测试数量。
 
-## Error Handling
+模板会将数据表中的记录转换为界面中的签到天数，因此需要在编辑器内确认最终显示顺序确实为第 1 天至第 7 天。
 
-- Missing `VirtualItemManager`: the UI may open, but reward delivery cannot be
-  considered successful.
-- Missing or invalid table paths: the component logs a path or config loading
-  error and must not be worked around by editing official Lua.
-- Duplicate daily claim: the server rejects it without granting another item.
-- Client/server progress mismatch: the server rejects the request.
-- Invalid event dates: the event is hidden or the claim is rejected.
-- Failed archive write or virtual item grant: record the log and fix the
-  underlying project configuration before UI04 integration.
+## 异常处理
 
-## Verification
+- 找不到 `VirtualItemManager`：界面可能可以打开，但不能认为签到功能已经跑通，因为奖励无法正常发放。
+- 配置表路径无效：组件会输出路径或配置加载错误。应修正项目配置，不直接修改官方 Lua 绕过问题。
+- 同一天重复签到：服务端拒绝请求，不重复发奖。
+- 客户端与服务端进度不一致：服务端拒绝请求。
+- 活动时间无效：活动不会显示，或者签到请求被拒绝。
+- 存档写入或虚拟物品发放失败：记录日志并修复项目底层配置，通过后才能进入 `UI04` 对接阶段。
 
-Stage 1 is complete only when all of the following pass in a multiplayer test
-session where server behavior is active:
+## 第一阶段验收标准
 
-1. The official TestButton appears.
-2. The Open action displays the official weekly sign-in UI.
-3. The weekly event displays exactly seven rewards in the expected order.
-4. The first claim grants the configured temporary item quantity.
-5. Querying the item through TestButton reports the increased count.
-6. A second claim on the same day grants nothing.
-7. Clearing test data resets sign-in progress for another test run.
-8. Re-entering the game preserves progress when data has not been cleared.
-9. No missing asset, invalid soft path, component, archive, or virtual item
-   errors appear in the relevant logs.
+需要在服务端逻辑正常运行的多人测试环境中完成以下检查：
 
-## UI04 Integration Boundary
+1. 官方 `TestButton` 正常显示。
+2. 点击 Open 可以打开官方每周签到界面。
+3. 界面按照正确顺序显示 7 天奖励。
+4. 第一次签到可以获得配置的测试物品和数量。
+5. 使用 `TestButton` 查询物品数量时，可以看到数量已经增加。
+6. 当天再次签到不会重复获得奖励。
+7. 清除测试数据后，签到进度可以重新开始测试。
+8. 不清除数据时，退出并重新进入游戏后签到进度仍然保留。
+9. 日志中没有资源缺失、软路径无效、组件缺失、存档失败或虚拟物品错误。
 
-`UI04` is currently an art-complete but behavior-free widget with fourteen
-buttons and generic control names. Stage 2 will treat it as a view over the
-already verified SignInEvent system. It will call manager APIs for opening,
-claiming, and reading state; it will not duplicate archive or reward logic.
+## UI04 接入边界
 
-The separate persistent entry widget will own only entry visibility and the
-open action. Sign-in state, duplicate-claim protection, persistence, and reward
-delivery remain owned by the official component and server flow.
+`UI04` 当前是美术已经完成但没有业务逻辑的界面，包含 14 个按钮，并且控件仍使用默认名称。第二阶段会把它作为官方签到系统的显示层，调用官方管理器接口读取状态和领取奖励，不在 `UI04` 中重复实现存档及发奖逻辑。
 
-## Non-Goals
+新建的常驻入口控件只负责显示入口和打开 `UI04`。签到进度、重复领取校验、数据保存和奖励发放仍由官方组件及服务端流程负责。
 
-- Editing files inside the official SignInEvent package.
-- Implementing monthly, one-off, or supplementary sign-in in Stage 1.
-- Final reward balancing or production item selection.
-- Rebuilding the official persistence and server validation logic.
-- Binding UI04 before the official template passes verification.
+## 暂不包含的内容
+
+- 修改官方 `SignInEvent` 资源包内的文件。
+- 在第一阶段实现月度签到、一次性累计签到或补签功能。
+- 确定正式奖励及最终数值平衡。
+- 重写官方存档和服务端校验逻辑。
+- 在官方模板通过验收之前绑定 `UI04`。
