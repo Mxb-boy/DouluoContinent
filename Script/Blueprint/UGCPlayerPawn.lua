@@ -1,28 +1,11 @@
 local UGCPlayerPawn = {}
  
---[[
 function UGCPlayerPawn:ReceiveBeginPlay()
     UGCPlayerPawn.SuperClass.ReceiveBeginPlay(self)
-end
---]]
+    UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.Test_01) 
 
---[[
-function UGCPlayerPawn:ReceiveTick(DeltaTime)
-    UGCPlayerPawn.SuperClass.ReceiveTick(self, DeltaTime)
 end
---]]
 
---[[
-function UGCPlayerPawn:ReceiveEndPlay()
-    UGCPlayerPawn.SuperClass.ReceiveEndPlay(self) 
-end
---]]
-
---[[
-function UGCPlayerPawn:GetAvailableServerRPCs()
-    return
-end
---]]
 
 function UGCPlayerPawn:GetReplicatedProperties()
     return {"__SubObjectRepList", "Lazy"}
