@@ -5,7 +5,6 @@
 ---@field CSPoint int32
 --Edit Below--
 local CSActor = {}
-local L_Event = UGCGameSystem.UGCRequire('Script.Lin.L_Event')
 function  CSActor:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self);
     if self:HasAuthority() then

@@ -1,10 +1,9 @@
 local UGCPlayerController = {}
- local L_Event = UGCGameSystem.UGCRequire('Script.Lin.L_Event')
 
   function UGCPlayerController:ReceiveBeginPlay()
 	  end
 	  function UGCPlayerController:GetAvailableServerRPCs()
-	      return "Server_TeleportToSpawn"
+	      return "Server_TeleportToSpawn", "Client_BroadcastPlantMessage"
 	  end
 
 	  local function TeleportToSpawn(self, bornPointID)
@@ -35,7 +34,10 @@ local UGCPlayerController = {}
 	      TeleportToSpawn(self, bornPointID)
 	  end
 
-
+function UGCPlayerController:Client_BroadcastPlantMessage(UID,level)
+--[[------------------客户端收到全服通知----------------------------]]--
+    UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.Test_01,UID,level)
+end
 
 
 return UGCPlayerController
