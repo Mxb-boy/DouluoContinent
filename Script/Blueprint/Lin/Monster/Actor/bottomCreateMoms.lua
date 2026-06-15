@@ -3,7 +3,6 @@
 ---@field Sphere UStaticMeshComponent
 ---@field DefaultSceneRoot USceneComponent
 ---@field Level int32
----@field NewVar_0 bool
 --Edit Below--
 local bottomCreateMoms = {}
 function bottomCreateMoms:ReceiveBeginPlay()
