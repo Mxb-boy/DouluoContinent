@@ -18,6 +18,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
         if PC.Pawn then
             UGCBackPackSystem.AddItem(PC.Pawn, 831602104, 1)
             UGCBackPackSystem.AddItem(PC.Pawn, 8310000, 1)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310002, 1)
         end
     end, false)
 end
