@@ -33,4 +33,4 @@ end
 function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageType)
     UGCPlayerPawnSystem.RespawnPlayer(VictimPlayerKey, 2, true)
 end
-return UGCGameMode;
+return UGCGameMode; 
