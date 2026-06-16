@@ -1,6 +1,6 @@
 ---@class MainUI_C:UUserWidget
 ---@field Button_0 UButton
----@field TextBlock_74 UTextBlock
+---@field TextBlock_1 UTextBlock
 --Edit Below--
 local MainUI = { bInitDoOnce = false }
 function MainUI:Construct()
@@ -30,7 +30,7 @@ end
 
 function MainUI:OnhandleTest(UID,level)
 
-    self.TextBlock_74:SetText(tostring(UID).."开启关卡"..tostring(level))
+    self.TextBlock_1:SetText(tostring(UID).."开启关卡"..tostring(level))
 end
 
 -- [Editor Generated Lua] function define End;
