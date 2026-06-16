@@ -1,2 +1,0 @@
-Douluo/Asset/Blueprint/Actor/CreateMonsWall.uasset
-Douluo/Asset/Blueprint/Lin/Monster/Actor/bottomCreateMoms.uasset
