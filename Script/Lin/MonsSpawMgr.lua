@@ -45,24 +45,27 @@ end
 
 function MonsterSpawnMgr.SpawnAtLevelPoints(
     WorldContext,
-    MonsterPath,
-    SpawnPointPath,
-    Level,
+    Scene,
+    BigLevel,
+    LittleLevel,
     Owner
 )
-    local monsterClass = UE.LoadClass(MonsterPath)
-    local spawnPointClass = UE.LoadClass(SpawnPointPath)
-    local allPoints = UGCActorComponentUtility.GetAllActorsOfClass(
-        WorldContext,
-        spawnPointClass
-    )
+local sceneName = "MainScene"
+
+    local monsterClass = UE.LoadClass(MonsterSpawnMgr.PatchPath(sceneName, BigLevel, LittleLevel))
+    local spawnPointClass = UE.LoadClass(PathMgr.MonsStartPoint_C)
+    local allPoints = UGCActorComponentUtility.GetAllActorsOfClass(WorldContext,spawnPointClass)
 
     local matchedPoints = {}
 
     for _, point in ipairs(allPoints or {}) do
-        if point and point.BigLevel == Level then
-            table.insert(matchedPoints, point)
-        end
+       if point
+    and point.Scene == Scene
+    and point.BigLevel == BigLevel
+    and point.LittleLevel == LittleLevel
+then
+    table.insert(matchedPoints, point)
+end
     end
 
     -- 按出生点编号排序，方便调试
@@ -71,7 +74,6 @@ function MonsterSpawnMgr.SpawnAtLevelPoints(
     end)
 
     local monsters = {}
-
     for _, point in ipairs(matchedPoints) do
         local monster = UGCActorComponentUtility.SpawnActor(
             WorldContext,
@@ -87,6 +89,16 @@ function MonsterSpawnMgr.SpawnAtLevelPoints(
         end
     end
     return monsters
+end
+
+function MonsterSpawnMgr.PatchPath(Scene, BigLevel, LittleLevel)
+    return string.format(
+        "%sAsset/Blueprint/Prefabs/Monsters/%s/BigLevel_%02d/LittleLevel_%02d/BaseMons.BaseMons_C",
+        UGCMapInfoLib.GetRootLongPackagePath(),
+        Scene,
+        BigLevel,
+        LittleLevel
+    )
 end
 
 return MonsterSpawnMgr

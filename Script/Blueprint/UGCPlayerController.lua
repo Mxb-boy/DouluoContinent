@@ -1,3 +1,10 @@
+---@class UGCPlayerController_C:BP_UGCPlayerController_C
+---@field GiftPackComponent GiftPackComponent_C
+---@field RankingListComponent RankingListComponent_C
+---@field LotteryComponent LotteryComponent_C
+---@field ShopV2Component ShopV2Component_C
+---@field SignInEventComponent SignInEventComponent_C
+--Edit Below--
 local UGCPlayerController = {}
 
   function UGCPlayerController:ReceiveBeginPlay()

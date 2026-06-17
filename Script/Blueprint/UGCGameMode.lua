@@ -16,8 +16,10 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
     local PC = PlayerController
     UGCTimerUtility.CreateLuaTimer(1, function()
         if PC.Pawn then
-            UGCBackPackSystem.AddItem(PC.Pawn, 831602104, 1)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 831602104, 1)
             UGCBackPackSystem.AddItem(PC.Pawn, 8310000, 1)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310002, 1)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310003, 1)
         end
     end, false)
 end
@@ -33,4 +35,4 @@ end
 function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageType)
     UGCPlayerPawnSystem.RespawnPlayer(VictimPlayerKey, 2, true)
 end
-return UGCGameMode;
+return UGCGameMode; 

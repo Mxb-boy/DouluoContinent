@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -d \"d:\\\\WeGameApps\\\\rail_apps\\\\OasisEraEditor\\(2001776\\)\\\\ShadowTrackerExtra\"/*/  2>/dev/null | head -40)",
+      "Read(//d/WeGameApps/rail_apps/OasisEraEditor\\(2001776\\)/ShadowTrackerExtra/**)",
+      "Bash(Get-ChildItem -Path 'd:\\\\WeGameApps\\\\rail_apps\\\\OasisEraEditor\\(2001776\\)\\\\ShadowTrackerExtra\\\\UGCProjects\\\\Douluo' -Recurse -Filter '*SignIn*' -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -First 30 FullName)",
+      "Bash(git -C \"d:/WeGameApps/rail_apps/OasisEraEditor\\(2001776\\)/ShadowTrackerExtra/UGCProjects/Douluo\" diff --stat HEAD)",
+      "Bash(git -C \"d:/WeGameApps/rail_apps/OasisEraEditor\\(2001776\\)/ShadowTrackerExtra/UGCProjects/Douluo\" status -- Script/Blueprint/UI/SignInUI.lua)",
+      "Bash(git -C \"d:/WeGameApps/rail_apps/OasisEraEditor\\(2001776\\)/ShadowTrackerExtra/UGCProjects/Douluo\" diff -- Script/Blueprint/UGCPlayerController.lua)"
+    ]
+  }
+}
