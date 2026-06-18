@@ -1,4 +1,4 @@
----@class HTC_01_C:PESkillTemplate_Base_C
+---@class LCSL_01_C:PESkillTemplate_Base_C
 --Edit Below--
 local HWSCJ_01 = {}
  

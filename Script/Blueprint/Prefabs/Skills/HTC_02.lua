@@ -1,4 +1,4 @@
----@class HTC_01_C:PESkillTemplate_Base_C
+---@class HTC_02_C:PESkillTemplate_Base_C
 --Edit Below--
 local HTC_02 = {}
  
