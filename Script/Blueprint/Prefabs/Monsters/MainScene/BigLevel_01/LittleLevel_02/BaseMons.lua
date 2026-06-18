@@ -1,4 +1,5 @@
----@class BaseMons_C:BP_UGC_GenericMobPawn_Base_C
+---@class BaseMons_9_C:BP_UGC_GenericStaticMeshMob_C
+---@field StaticMesh UStaticMeshComponent
 ---@field HitBox UCapsuleComponent
 --Edit Below--
 local BaseMons = {}

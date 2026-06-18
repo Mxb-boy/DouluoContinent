@@ -1,4 +1,0 @@
-Douluo/Asset/Blueprint/Prefabs/Items/TSSJ_B_2.uasset
-Douluo/Asset/cs/XLSJ/LCSJ.uasset
-Douluo/Asset/cs/LSSL/M00663_objscythe.uasset
-Douluo/Script/Blueprint/Prefabs/Items/TSSJ_B_2.lua
