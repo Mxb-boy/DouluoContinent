@@ -2,7 +2,7 @@
 
 --[[------------------------UI路径----------------------]]--
 
-  PathMgr.MainUI=UGCGameSystem.GetUGCResourcesFullPath('Asset/Blueprint/UI/MainUI.MainUI_C')
+  PathMgr.MainUI=UGCGameSystem.GetUGCResourcesFullPath('Asset/Blueprint/UI/UI02.UI02_C')
 
 
 

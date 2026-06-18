@@ -7,7 +7,11 @@
       "Bash(Select-Object -First 30 FullName)",
       "Bash(git -C \"d:/WeGameApps/rail_apps/OasisEraEditor\\(2001776\\)/ShadowTrackerExtra/UGCProjects/Douluo\" diff --stat HEAD)",
       "Bash(git -C \"d:/WeGameApps/rail_apps/OasisEraEditor\\(2001776\\)/ShadowTrackerExtra/UGCProjects/Douluo\" status -- Script/Blueprint/UI/SignInUI.lua)",
-      "Bash(git -C \"d:/WeGameApps/rail_apps/OasisEraEditor\\(2001776\\)/ShadowTrackerExtra/UGCProjects/Douluo\" diff -- Script/Blueprint/UGCPlayerController.lua)"
+      "Bash(git -C \"d:/WeGameApps/rail_apps/OasisEraEditor\\(2001776\\)/ShadowTrackerExtra/UGCProjects/Douluo\" diff -- Script/Blueprint/UGCPlayerController.lua)",
+      "Bash(Get-ChildItem -Path \"d:\\\\WeGameApps\\\\rail_apps\\\\OasisEraEditor\\(2001776\\)\\\\ShadowTrackerExtra\\\\UGCProjects\\\\Douluo\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\WeGameApps\\\\rail_apps\\\\OasisEraEditor\\(2001776\\)\\\\ShadowTrackerExtra\\\\UGCProjects\\\\Douluo\\\\ExtendResource\" -Directory | ForEach-Object { $_.Name })",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\WeGameApps\\\\rail_apps\\\\OasisEraEditor\\(2001776\\)\\\\ShadowTrackerExtra\\\\UGCProjects\\\\Douluo\" | ForEach-Object { \"{0}: {1}\" -f \\('Directory','File   '\\)[$_.PSIsContainer -eq $false], $_.Name })"
     ]
   }
 }

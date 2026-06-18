@@ -10,7 +10,10 @@ local UGCPlayerController = {}
   function UGCPlayerController:ReceiveBeginPlay()
 	  end
 	  function UGCPlayerController:GetAvailableServerRPCs()
-	      return "Server_TeleportToSpawn", "Client_BroadcastPlantMessage"
+	      return "Server_TeleportToSpawn",
+              "Server_UpdateRankingListScore",
+              "Server_ClearAllRankingListData",
+              "Client_BroadcastPlantMessage"
 	  end
 
 	  local function TeleportToSpawn(self, bornPointID)
@@ -40,6 +43,29 @@ local UGCPlayerController = {}
 	  function UGCPlayerController:Server_TeleportToSpawn(bornPointID)
 	      TeleportToSpawn(self, bornPointID)
 	  end
+
+-- WBP_RankingListBtn 更新排行榜服务端
+function UGCPlayerController:Server_UpdateRankingListScore(UID, RankID, Score, IsIncremental)
+    local RankingListGlobalActor = UGCGamePartSystem.GetGamePartGlobalActor("RankingListManager")
+    if RankingListGlobalActor == nil then
+        ugcprint("[UGCPlayerController:Server_UpdateRankingListScore] RankingListManager global actor is nil")
+        return
+    end
+
+    local bIncremental = tonumber(IsIncremental) == 1
+    RankingListGlobalActor:UpdateScore(self, tonumber(UID), tonumber(RankID), tonumber(Score), bIncremental)
+end
+
+-- 排行榜清除数据请求服务端
+function UGCPlayerController:Server_ClearAllRankingListData()
+    local RankingListGlobalActor = UGCGamePartSystem.GetGamePartGlobalActor("RankingListManager")
+    if RankingListGlobalActor == nil then
+        ugcprint("[UGCPlayerController:Server_ClearAllRankingListData] RankingListManager global actor is nil")
+        return
+    end
+
+    RankingListGlobalActor:PIEClearAllRankListData()
+end
 
 function UGCPlayerController:Client_BroadcastPlantMessage(UID,level)
 --[[------------------客户端收到全服通知----------------------------]]--

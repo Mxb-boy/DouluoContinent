@@ -11,7 +11,11 @@ end
 function WBP_GiftPackBtn:ApplyGiftPack()
     print("WBP_GiftPackBtn:ApplyGiftPack");
     local GiftPackID = math.modf(self.GiftPackInput:GetValue());
-    GiftPackManager:OpenGiftPack(GiftPackID);
+    --点击“使用礼包”且礼包成功打开后，测试 UI 会自动隐藏
+    local bOpened = GiftPackManager:OpenGiftPack(GiftPackID);
+    if bOpened then
+        self:SetVisibility(ESlateVisibility.Collapsed);
+    end
 end
 
 -- function WBP_GiftPackBtn:Tick(MyGeometry, InDeltaTime)

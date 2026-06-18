@@ -415,7 +415,9 @@ function GiftPackComponent:RemoveVirtualItem(ItemID, Num, Callback)
         return;
     end
     if UE.IsValid(self:GetVirtualItemManager()) then
+        
         self:GetVirtualItemManager():RemoveVirtualItem(PlayerController, ItemID, Num, Callback);
+        
     end
 end
 

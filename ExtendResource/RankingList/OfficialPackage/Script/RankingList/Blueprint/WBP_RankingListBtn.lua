@@ -24,22 +24,18 @@ function WBP_RankingListBtn:UpdateRankListScore()
     local UID = tonumber(self.UID.Text);
     local IsIncremental = tonumber(self.IsIncremental.Text);
 
-    local RankingListGlobalActor = UGCGamePartSystem.GetGamePartGlobalActor("RankingListManager");
-    if RankingListGlobalActor then
-        local PC = STExtraGameplayStatics.GetFirstPlayerController(self);
-        if IsIncremental == 0 then
-            RankingListGlobalActor:UpdateScore(PC, UID, RankID, Score, false);
-        else
-            RankingListGlobalActor:UpdateScore(PC, UID, RankID, Score, true);
-        end
+    -- RankingList test patch: forward score updates to server.
+    local PC = STExtraGameplayStatics.GetFirstPlayerController(self);
+    if PC ~= nil then
+        UnrealNetwork.CallUnrealRPC(PC, PC, "Server_UpdateRankingListScore", UID, RankID, Score, IsIncremental);
     end
-    -- RankingListManager:UpdatePlayerRankingScore(PlayerController, UID, RankID, Score);
 end
 
 function WBP_RankingListBtn:ClearAllRankData()
-    local RankingListGlobalActor = UGCGamePartSystem.GetGamePartGlobalActor("RankingListManager");
-    if RankingListGlobalActor then
-        RankingListGlobalActor:PIEClearAllRankListData();
+    -- RankingList test patch: forward clear action to server.
+    local PC = STExtraGameplayStatics.GetFirstPlayerController(self);
+    if PC ~= nil then
+        UnrealNetwork.CallUnrealRPC(PC, PC, "Server_ClearAllRankingListData");
     end
 end
 
