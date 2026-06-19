@@ -1,4 +1,5 @@
 ---@class UGCPlayerController_C:BP_UGCPlayerController_C
+---@field TaskTemplateComponent TaskTemplateComponent_C
 ---@field GiftPackComponent GiftPackComponent_C
 ---@field RankingListComponent RankingListComponent_C
 ---@field LotteryComponent LotteryComponent_C
@@ -7,8 +8,39 @@
 --Edit Below--
 local UGCPlayerController = {}
 
-  function UGCPlayerController:ReceiveBeginPlay()
-	  end
+function UGCPlayerController:ReceiveBeginPlay()
+    self.SuperClass.ReceiveBeginPlay(self)
+
+    -- Create UI only on the client.
+    if self:HasAuthority() then
+        return
+    end
+
+    -- Prevent duplicate MainUI instances.
+    if self.MainUIInstance ~= nil then
+        return
+    end
+
+    local MainUIPath =
+        UGCMapInfoLib.GetRootLongPackagePath()
+        .. "Asset/Blueprint/UI/UI02.UI02_C"
+    local MainUIClass = UE.LoadClass(MainUIPath)
+
+    if MainUIClass == nil then
+        ugcprint("[UGCPlayerController] MainUI class load failed: " .. MainUIPath)
+        return
+    end
+
+    self.MainUIInstance = UserWidget.NewWidgetObjectBP(self, MainUIClass)
+    if self.MainUIInstance == nil then
+        ugcprint("[UGCPlayerController] MainUI create failed")
+        return
+    end
+
+    self.MainUIInstance:AddToViewport()
+    ugcprint("[UGCPlayerController] MainUI created")
+end
+
 	  function UGCPlayerController:GetAvailableServerRPCs()
 	      return "Server_TeleportToSpawn",
               "Server_UpdateRankingListScore",
@@ -44,7 +76,7 @@ local UGCPlayerController = {}
 	      TeleportToSpawn(self, bornPointID)
 	  end
 
--- WBP_RankingListBtn 更新排行榜服务端
+-- WBP_RankingListBtn 更新排行榜服务端--要走官方测试按钮暂时没开
 function UGCPlayerController:Server_UpdateRankingListScore(UID, RankID, Score, IsIncremental)
     local RankingListGlobalActor = UGCGamePartSystem.GetGamePartGlobalActor("RankingListManager")
     if RankingListGlobalActor == nil then
@@ -56,7 +88,7 @@ function UGCPlayerController:Server_UpdateRankingListScore(UID, RankID, Score, I
     RankingListGlobalActor:UpdateScore(self, tonumber(UID), tonumber(RankID), tonumber(Score), bIncremental)
 end
 
--- 排行榜清除数据请求服务端
+-- 排行榜清除数据请求服务端--要走官方测试按钮暂时没开
 function UGCPlayerController:Server_ClearAllRankingListData()
     local RankingListGlobalActor = UGCGamePartSystem.GetGamePartGlobalActor("RankingListManager")
     if RankingListGlobalActor == nil then

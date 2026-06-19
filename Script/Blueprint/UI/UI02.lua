@@ -37,6 +37,9 @@ UGCGameSystem.UGCRequire("ExtendResource.SignInEvent.OfficialPackage." .. "Scrip
 UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.ShopV2.ShopV2Manager")
 UGCGameSystem.UGCRequire("ExtendResource.RankingList.OfficialPackage." .. "Script.RankingList.RankingListManager")
 UGCGameSystem.UGCRequire("ExtendResource.GiftPack.OfficialPackage.Script.GiftPack.GiftPackManager")
+local TaskManager = UGCGameSystem.UGCRequire(
+    "ExtendResource.TaskTemplate.OfficialPackage.Script.Task.TaskManager"
+)
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 
 local UI02 = { bInitDoOnce = false }
@@ -68,6 +71,7 @@ function UI02:LuaInit()
     
 
     self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
+    self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
 
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
 end
@@ -100,6 +104,23 @@ end
 --回城
 function UI02:Button_157_OnClicked()
     self:TeleportToHome()
+end
+--任务
+function UI02:Button_152_OnClicked()
+    ugcprint("[UI02:Button_152_OnClicked] Open official task UI")
+
+    if TaskManager == nil then
+        ugcprint("[UI02:Button_152_OnClicked] TaskManager is nil")
+        return
+    end
+
+    local TaskComponent = TaskManager:GetTaskTemplateComponent()
+    if TaskComponent == nil then
+        ugcprint("[UI02:Button_152_OnClicked] TaskTemplateComponent is nil")
+        return
+    end
+
+    TaskManager:OpenTaskMainUI()
 end
 
 function UI02:TeleportToHome()
