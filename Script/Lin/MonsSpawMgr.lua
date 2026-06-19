@@ -1,4 +1,76 @@
- MonsterSpawnMgr = {}
+MonsterSpawnMgr = MonsterSpawnMgr or {}
+
+MonsterSpawnMgr.ClassCache = MonsterSpawnMgr.ClassCache or {}
+MonsterSpawnMgr.LevelPointCache = MonsterSpawnMgr.LevelPointCache or {}
+
+function MonsterSpawnMgr.GetCachedClass(ClassPath)
+    if ClassPath == nil or ClassPath == "" then
+        return nil
+    end
+
+    if MonsterSpawnMgr.ClassCache[ClassPath] == nil then
+        MonsterSpawnMgr.ClassCache[ClassPath] = UE.LoadClass(ClassPath)
+    end
+
+    return MonsterSpawnMgr.ClassCache[ClassPath]
+end
+
+function MonsterSpawnMgr.MakeLevelPointCacheKey(Scene, BigLevel, LittleLevel)
+    return string.format("%s_%s_%s", tostring(Scene), tostring(BigLevel), tostring(LittleLevel))
+end
+
+function MonsterSpawnMgr.IsActorListValid(ActorList)
+    if ActorList == nil or #ActorList <= 0 then
+        return false
+    end
+
+    for _, actor in ipairs(ActorList) do
+        if actor == nil or UE.IsValid(actor) == false then
+            return false
+        end
+    end
+
+    return true
+end
+
+function MonsterSpawnMgr.GetCachedLevelPoints(WorldContext, Scene, BigLevel, LittleLevel)
+    local cacheKey = MonsterSpawnMgr.MakeLevelPointCacheKey(Scene, BigLevel, LittleLevel)
+    local cachedPoints = MonsterSpawnMgr.LevelPointCache[cacheKey]
+
+    if MonsterSpawnMgr.IsActorListValid(cachedPoints) then
+        return cachedPoints
+    end
+
+    local spawnPointClass = MonsterSpawnMgr.GetCachedClass(PathMgr.MonsStartPoint_C)
+    if spawnPointClass == nil then
+        return {}
+    end
+
+    local allPoints = UGCActorComponentUtility.GetAllActorsOfClass(WorldContext, spawnPointClass)
+    local matchedPoints = {}
+
+    for _, point in ipairs(allPoints or {}) do
+        if point
+            and point.Scene == Scene
+            and point.BigLevel == BigLevel
+            and point.LittleLevel == LittleLevel
+        then
+            table.insert(matchedPoints, point)
+        end
+    end
+
+    table.sort(matchedPoints, function(a, b)
+        return (a.StartPoint or 0) < (b.StartPoint or 0)
+    end)
+
+    MonsterSpawnMgr.LevelPointCache[cacheKey] = matchedPoints
+    return matchedPoints
+end
+
+function MonsterSpawnMgr.ClearCache()
+    MonsterSpawnMgr.ClassCache = {}
+    MonsterSpawnMgr.LevelPointCache = {}
+end
 
 function MonsterSpawnMgr.SpawnMonsters(
     WorldContext,
@@ -8,7 +80,11 @@ function MonsterSpawnMgr.SpawnMonsters(
     Count,
     Owner
 )
-    local MonsterClass = UE.LoadClass(MonsterPath)
+    local MonsterClass = MonsterSpawnMgr.GetCachedClass(MonsterPath)
+    if MonsterClass == nil then
+        return {}
+    end
+
     Count = math.max(1, math.floor(Count or 1))
     Rotation = Rotation or Rotator.New(0, 0, 0)
 
@@ -42,7 +118,6 @@ function MonsterSpawnMgr.SpawnMonsters(
     return spawnedMonsters
 end
 
-
 function MonsterSpawnMgr.SpawnAtLevelPoints(
     WorldContext,
     Scene,
@@ -50,31 +125,16 @@ function MonsterSpawnMgr.SpawnAtLevelPoints(
     LittleLevel,
     Owner
 )
-local sceneName = "MainScene"
-
-    local monsterClass = UE.LoadClass(MonsterSpawnMgr.PatchPath(sceneName, BigLevel, LittleLevel))
-    local spawnPointClass = UE.LoadClass(PathMgr.MonsStartPoint_C)
-    local allPoints = UGCActorComponentUtility.GetAllActorsOfClass(WorldContext,spawnPointClass)
-
-    local matchedPoints = {}
-
-    for _, point in ipairs(allPoints or {}) do
-       if point
-    and point.Scene == Scene
-    and point.BigLevel == BigLevel
-    and point.LittleLevel == LittleLevel
-then
-    table.insert(matchedPoints, point)
-end
+    local sceneName = "MainScene"
+    local monsterClass = MonsterSpawnMgr.GetCachedClass(MonsterSpawnMgr.PatchPath(sceneName, BigLevel, LittleLevel))
+    if monsterClass == nil then
+        return {}
     end
 
-    -- 按出生点编号排序，方便调试
-    table.sort(matchedPoints, function(a, b)
-        return (a.StartPoint or 0) < (b.StartPoint or 0)
-    end)
+    local matchedPoints = MonsterSpawnMgr.GetCachedLevelPoints(WorldContext, Scene, BigLevel, LittleLevel)
 
     local monsters = {}
-    for _, point in ipairs(matchedPoints) do
+    for _, point in ipairs(matchedPoints or {}) do
         local monster = UGCActorComponentUtility.SpawnActor(
             WorldContext,
             monsterClass,
@@ -88,6 +148,7 @@ end
             table.insert(monsters, monster)
         end
     end
+
     return monsters
 end
 
