@@ -1,6 +1,4 @@
----@class LSSL_4_C:PESkillProjectileBase
----@field StaticMesh3 UStaticMeshComponent
----@field StaticMesh2 UStaticMeshComponent
+---@class XSWQ_1_C:PESkillProjectileBase
 ---@field StaticMesh1 UStaticMeshComponent
 ---@field StaticMesh UStaticMeshComponent
 ---@field Play_UGC_Skill_ChargedPunch_Throw UAkComponent
