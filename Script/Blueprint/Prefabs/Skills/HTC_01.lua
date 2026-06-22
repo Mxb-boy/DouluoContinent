@@ -1,4 +1,7 @@
 ---@class HTC_01_C:PESkillTemplate_Base_C
+---@field ValueB float
+---@field ValueB_1 float
+---@field ValueB_2 float
 --Edit Below--
 local HWSCJ_01 = {}
  

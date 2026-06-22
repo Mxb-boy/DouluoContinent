@@ -255,8 +255,11 @@ UGCNativeGameAttributeTypeCommentMap = {
 
 ---@enum UGCCustomGameAttributeType
 UGCCustomGameAttributeType = { 
+	--Character [攻击力-AttackPower],
+	UGCAttributeGroup_Character_AttackPower = 'AttackPower',
 }; 
 
 UGCCustomGameAttributeTypeCommentMap = { 
+	['AttackPower'] = 'Character [攻击力-AttackPower]', 
 }; 
 
