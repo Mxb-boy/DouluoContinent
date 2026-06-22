@@ -37,6 +37,8 @@
 ---@field Image_99 UImage
 ---@field Image_123 UImage
 ---@field Image_132 UImage
+---@field Image_143 UImage
+---@field Image_144 UImage
 --Edit Below--
 local UI06 = { bInitDoOnce = false } 
 
