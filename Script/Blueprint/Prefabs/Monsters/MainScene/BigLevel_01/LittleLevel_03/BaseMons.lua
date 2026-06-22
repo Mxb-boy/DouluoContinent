@@ -1,4 +1,4 @@
----@class BaseMons_8_C:BP_UGC_GenericStaticMeshMob_C
+---@class BaseMons_C:BP_UGC_GenericStaticMeshMob_C
 ---@field StaticMesh UStaticMeshComponent
 ---@field HitBox UCapsuleComponent
 --Edit Below--
