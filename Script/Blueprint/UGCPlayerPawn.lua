@@ -2,7 +2,7 @@ local UGCPlayerPawn = {}
 
 local SOUL_MESH_PATH = "Asset/Blueprint/Lin/Monster/Model/NewModel/"
 local SOUL_SOCKET = "Root"
-local SOUL_SCALE = Vector.New(50, 50, 50)
+local SOUL_SCALE = Vector.New(300, 300, 300)
 local SOUL_OFFSET = Vector.New(0, 0, 0)
 local SOUL_ROTATION = Rotator.New(90, 0, 0)
 

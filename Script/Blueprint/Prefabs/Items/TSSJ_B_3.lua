@@ -1,4 +1,4 @@
----@class TSSJ_B_2_C:Template_Melee_TangDao_Handle_C
+---@class TSSJ_B_3_C:Template_Melee_TangDao_Handle_C
 --Edit Below--
 local HWSCJ_B = {} 
 

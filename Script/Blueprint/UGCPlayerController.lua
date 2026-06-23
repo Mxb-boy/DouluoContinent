@@ -7,6 +7,12 @@
 ---@field SignInEventComponent SignInEventComponent_C
 --Edit Below--
 local UGCPlayerController = {}
+local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
+
+local ForgeMaterialItemIDs = {
+    HGRJ = 8310035,
+    QNHH = 8310036,
+}
 
 function UGCPlayerController:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
@@ -45,7 +51,8 @@ end
 	      return "Server_TeleportToSpawn",
               "Server_UpdateRankingListScore",
               "Server_ClearAllRankingListData",
-              "Client_BroadcastPlantMessage"
+              "Client_BroadcastPlantMessage",
+              "Server_ForgeWeapon"
 	  end
 
 	  local function TeleportToSpawn(self, bornPointID)
@@ -77,6 +84,182 @@ end
 	  end
 
 -- WBP_RankingListBtn 更新排行榜服务端--要走官方测试按钮暂时没开
+local function GetVirtualItemManager()
+    if UGCGamePartSystem ~= nil
+        and UGCGamePartSystem.IsGamePartLoaded ~= nil
+        and UGCGamePartSystem.IsGamePartLoaded("VirtualItemManager")
+    then
+        return UGCGamePartSystem.GetGamePartGlobalActor("VirtualItemManager")
+    end
+
+    if UGCBlueprintFunctionLibrary ~= nil and UGCGameSystem.GameState ~= nil then
+        return UGCBlueprintFunctionLibrary.GetGamePartGlobalActor(UGCGameSystem.GameState, "VirtualItemManager")
+    end
+
+    return nil
+end
+
+local function GetPlayerPawn(PlayerController)
+    if PlayerController.Pawn ~= nil then
+        return PlayerController.Pawn
+    end
+    if PlayerController.K2_GetPawn ~= nil then
+        return PlayerController:K2_GetPawn()
+    end
+    return nil
+end
+
+local function GetItemCount(PlayerController, ItemID)
+    local BackpackCount = 0
+    local Pawn = GetPlayerPawn(PlayerController)
+    if Pawn ~= nil and UGCBackPackSystem ~= nil and UGCBackPackSystem.GetItemCount ~= nil then
+        BackpackCount = tonumber(UGCBackPackSystem.GetItemCount(Pawn, ItemID)) or 0
+    end
+
+    local VirtualCount = 0
+    local VirtualItemManager = GetVirtualItemManager()
+    if VirtualItemManager ~= nil and VirtualItemManager.GetItemNum ~= nil then
+        local Success, Result = pcall(VirtualItemManager.GetItemNum, VirtualItemManager, ItemID, PlayerController)
+        if Success and Result ~= nil then
+            VirtualCount = tonumber(Result) or 0
+        end
+    end
+
+    if BackpackCount > VirtualCount then
+        return BackpackCount
+    end
+
+    return VirtualCount
+end
+
+local function AddItem(PlayerController, ItemID, Count)
+    Count = tonumber(Count) or 0
+    if Count <= 0 then
+        return true
+    end
+
+    local Pawn = GetPlayerPawn(PlayerController)
+    if Pawn ~= nil and UGCBackPackSystem ~= nil and UGCBackPackSystem.AddItem ~= nil then
+        local Success, Result = pcall(UGCBackPackSystem.AddItem, Pawn, ItemID, Count)
+        if Success and Result ~= false then
+            return true
+        end
+    end
+
+    local VirtualItemManager = GetVirtualItemManager()
+    if VirtualItemManager ~= nil and VirtualItemManager.AddVirtualItem ~= nil then
+        local Success, Result = pcall(VirtualItemManager.AddVirtualItem, VirtualItemManager, PlayerController, ItemID, Count)
+        if Success and Result ~= false then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function RemoveItem(PlayerController, ItemID, Count)
+    Count = tonumber(Count) or 0
+    if Count <= 0 then
+        return true
+    end
+
+    local Pawn = GetPlayerPawn(PlayerController)
+    if Pawn ~= nil and UGCBackPackSystem ~= nil then
+        local FunctionNames = { "RemoveItem", "RemoveItemByItemID", "DeleteItem", "SubItem" }
+        for _, FunctionName in ipairs(FunctionNames) do
+            local Func = UGCBackPackSystem[FunctionName]
+            if Func ~= nil then
+                local Success, Result = pcall(Func, Pawn, ItemID, Count)
+                if Success and Result ~= false then
+                    return true
+                end
+            end
+        end
+
+        if UGCBackPackSystem.AddItem ~= nil then
+            local Success = pcall(UGCBackPackSystem.AddItem, Pawn, ItemID, -Count)
+            if Success then
+                return true
+            end
+        end
+    end
+
+    local VirtualItemManager = GetVirtualItemManager()
+    if VirtualItemManager ~= nil then
+        local VirtualCount = 0
+        if VirtualItemManager.GetItemNum ~= nil then
+            local CountSuccess, CountResult =
+                pcall(VirtualItemManager.GetItemNum, VirtualItemManager, ItemID, PlayerController)
+            if CountSuccess then
+                VirtualCount = tonumber(CountResult) or 0
+            end
+        end
+
+        local Func = VirtualItemManager.RemoveVirtualItem or VirtualItemManager.RemoveItem
+        if Func ~= nil and VirtualCount >= Count then
+            local Success, Result = pcall(Func, VirtualItemManager, PlayerController, ItemID, Count)
+            if Success and Result ~= false then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+function UGCPlayerController:Server_ForgeWeapon(ItemID)
+    ItemID = tonumber(ItemID)
+    local Cost = WeaponLevelConfig.GetForgeCost(ItemID)
+    if ItemID == nil or Cost == nil then
+        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Invalid item: " .. tostring(ItemID))
+        return
+    end
+
+    if GetItemCount(self, ItemID) <= 0 then
+        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Weapon not found: " .. tostring(ItemID))
+        return
+    end
+
+    if GetItemCount(self, ForgeMaterialItemIDs.HGRJ) < (Cost.HGRJ or 0)
+        or GetItemCount(self, ForgeMaterialItemIDs.QNHH) < (Cost.QNHH or 0)
+    then
+        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Material not enough")
+        return
+    end
+
+    local ResultType = WeaponLevelConfig.RollForgeResult(ItemID)
+    local ResultItemID = WeaponLevelConfig.GetResultItemID(ItemID, ResultType)
+
+    if not RemoveItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0) then
+        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove HGRJ failed")
+        return
+    end
+    if not RemoveItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0) then
+        AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
+        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove QNHH failed")
+        return
+    end
+
+    if ResultItemID ~= ItemID then
+        if not RemoveItem(self, ItemID, 1) then
+            AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
+            AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
+            ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove old weapon failed")
+            return
+        end
+        if not AddItem(self, ResultItemID, 1) then
+            AddItem(self, ItemID, 1)
+            AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
+            AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
+            ugcprint("[UGCPlayerController:Server_ForgeWeapon] Add new weapon failed")
+            return
+        end
+    end
+
+    ugcprint("[UGCPlayerController:Server_ForgeWeapon] result=" .. tostring(ResultType)
+        .. ", from=" .. tostring(ItemID) .. ", to=" .. tostring(ResultItemID))
+end
+
 function UGCPlayerController:Server_UpdateRankingListScore(UID, RankID, Score, IsIncremental)
     local RankingListGlobalActor = UGCGamePartSystem.GetGamePartGlobalActor("RankingListManager")
     if RankingListGlobalActor == nil then

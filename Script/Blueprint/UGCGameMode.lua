@@ -1,6 +1,7 @@
 ---@class UGCGameMode_C:BP_UGCGameBase_C
 --Edit Below--
 local UGCGameMode = {};
+local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 
 -- 保存玩家死亡前的背包快照，键为 PlayerKey。
 local PlayerBackpackSnapshots = {};
@@ -60,12 +61,21 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
     local PC = PlayerController
     UGCTimerUtility.CreateLuaTimer(1, function()
         if PC.Pawn then
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310000, 1)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310002, 1)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310003, 1)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310004, 1)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310005, 1)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310006, 1)
+            local HTCLv1ItemID = WeaponLevelConfig.GetItemID("HTC", 1)
+            local HTCLv2ItemID = WeaponLevelConfig.GetItemID("HTC", 2)
+
+            for _, ItemID in ipairs(WeaponLevelConfig.GetAllBaseItemIDs()) do
+                if ItemID ~= HTCLv1ItemID then
+                    UGCBackPackSystem.AddItem(PC.Pawn, ItemID, 1)
+                end
+            end
+
+            if HTCLv2ItemID ~= nil then
+                UGCBackPackSystem.AddItem(PC.Pawn, HTCLv2ItemID, 1)
+            end
+
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310035, 1000)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310036, 1000)
         end
     end, false)
 end
