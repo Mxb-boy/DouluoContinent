@@ -1,5 +1,4 @@
 ---@class NewUGCWidgetBlueprint1_C:UUserWidget
----@field Button_49 UButton
 ---@field Image_31 UImage
 ---@field Image_32 UImage
 ---@field Image_34 UImage

@@ -1,5 +1,7 @@
 ---@class UI02_C:UUserWidget
 ---@field Button_0 UButton
+---@field Button_93 UButton
+---@field Button_94 UButton
 ---@field Button_144 UButton
 ---@field Button_145 UButton
 ---@field Button_147 UButton
@@ -14,6 +16,7 @@
 ---@field Button_157 UButton
 ---@field Button_158 UButton
 ---@field Image_0 UImage
+---@field Image_70 UImage
 ---@field Image_225 UImage
 ---@field Image_246 UImage
 ---@field Image_302 UImage
