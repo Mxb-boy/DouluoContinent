@@ -52,6 +52,7 @@ end
               "Server_UpdateRankingListScore",
               "Server_ClearAllRankingListData",
               "Client_BroadcastPlantMessage",
+              "Client_ForgeWeaponResult",
               "Server_ForgeWeapon"
 	  end
 
@@ -256,8 +257,22 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
         end
     end
 
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", ResultType, ItemID, ResultItemID)
+
     ugcprint("[UGCPlayerController:Server_ForgeWeapon] result=" .. tostring(ResultType)
         .. ", from=" .. tostring(ItemID) .. ", to=" .. tostring(ResultItemID))
+end
+
+function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, ResultItemID)
+    if self.MainUIInstance == nil or self.MainUIInstance.UI10Instance == nil then
+        ugcprint("[UGCPlayerController:Client_ForgeWeaponResult] UI10 instance is nil")
+        return
+    end
+
+    local UI10Instance = self.MainUIInstance.UI10Instance
+    if UI10Instance.OnForgeWeaponResult ~= nil then
+        UI10Instance:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID)
+    end
 end
 
 function UGCPlayerController:Server_UpdateRankingListScore(UID, RankID, Score, IsIncremental)

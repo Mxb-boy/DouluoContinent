@@ -359,6 +359,59 @@ function UI10:RefreshForgeInfo()
     end
 end
 
+function UI10:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID)
+    OldItemID = tonumber(OldItemID)
+    ResultItemID = tonumber(ResultItemID) or OldItemID
+
+    local ResultInfo = WeaponLevelConfig.GetWeaponInfo(ResultItemID)
+    local SeriesKey = nil
+    if ResultInfo ~= nil then
+        SeriesKey = ResultInfo.SeriesKey
+    end
+
+    local IconPath = self:GetWeaponIconPathByItemID(ResultItemID) or self.SelectedWeaponIconPath
+    self:ShowForgeResultPopup(ResultType, IconPath)
+
+    UGCTimerUtility.CreateLuaTimer(0.2, function()
+        if self ~= nil then
+            self:InitWeaponWidgets()
+            if SeriesKey ~= nil then
+                self:SelectWeaponBySeriesKey(SeriesKey)
+            elseif ResultItemID ~= nil then
+                self:SelectWeaponByItemID(ResultItemID)
+            end
+        end
+    end, false)
+end
+
+function UI10:ShowForgeResultPopup(ResultType, IconPath)
+    if self.NewUGCWidgetBlueprint == nil then
+        ugcprint("[UI10:ShowForgeResultPopup] Result widget is nil")
+        return
+    end
+
+    if self.NewUGCWidgetBlueprint.ShowForgeResult ~= nil then
+        self.NewUGCWidgetBlueprint:ShowForgeResult(ResultType, IconPath)
+        return
+    end
+
+    self.NewUGCWidgetBlueprint:SetVisibility(ESlateVisibility.SelfHitTestInvisible)
+end
+
+function UI10:GetWeaponIconPathByItemID(ItemID)
+    local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+    if WeaponInfo == nil then
+        return nil
+    end
+
+    local UIConfig = WeaponUIConfig[WeaponInfo.SeriesKey]
+    if UIConfig == nil then
+        return nil
+    end
+
+    return UIConfig.IconPath
+end
+
 function UI10:Button_dz_OnClicked()
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
     local ItemID = tonumber(self.SelectedWeaponItemID)
