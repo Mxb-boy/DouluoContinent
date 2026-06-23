@@ -12,6 +12,7 @@
 ---@field Image_985 UImage
 ---@field Image_986 UImage
 ---@field left_cl UImage
+---@field NewUGCWidgetBlueprint NewUGCWidgetBlueprint_C
 ---@field NewUGCWidgetBlueprint_C_0 NewUGCWidgetBlueprint_C
 ---@field NewUGCWidgetBlueprint_C_1 NewUGCWidgetBlueprint_C
 ---@field NewUGCWidgetBlueprint_C_2 NewUGCWidgetBlueprint_C
