@@ -32,6 +32,7 @@
 ---@field ProgressBar_0 UProgressBar
 ---@field ProgressBar_1 UProgressBar
 ---@field ProgressBar_122 UProgressBar
+---@field TextBlock_303 UTextBlock
 --Edit Below--
 UGCGameSystem.UGCRequire("ExtendResource.SignInEvent.OfficialPackage." .. "Script.SignInEvent.SignInEventManager")
 UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.ShopV2.ShopV2Manager")
@@ -73,7 +74,17 @@ function UI02:LuaInit()
     self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
 
+    UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.Test_01)
+    UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi)
+    
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
+    local playerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    if playerPawn ~= nil then
+        UGCGenericMessageSystem.ListenObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi, self, self.OnHandleReFreshZHanli)
+        if playerPawn.ShowZhanLi ~= nil then
+            playerPawn:ShowZhanLi()
+        end
+    end
 end
 
 --签到
@@ -151,6 +162,15 @@ function UI02:Button_0_OnClicked()
             GiftPackUI:AddToViewport(12000)
         end
     end
+
+--[[----------------------LJP测试------------------------]]--
+local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
+if playerPawn ~= nil and playerPawn.PlayerState ~= nil then
+    local playerState=playerPawn.PlayerState
+    local HunHuan=playerState:GetHunHuan()
+    playerState:SetHunHuan(HunHuan + 1)
+end
+
 end
 
 function UI02:OnhandleTest(UID, level)
@@ -160,6 +180,10 @@ function UI02:OnhandleTest(UID, level)
     else
         ugcprint("[UI02:OnhandleTest] " .. Text)
     end
+end
+
+function UI02:OnHandleReFreshZHanli(str)
+        self.TextBlock_303:SetText(tostring(str))
 end
 
 return UI02
