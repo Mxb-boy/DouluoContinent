@@ -23,6 +23,9 @@ function CreateMonsWall:ReceiveBeginPlay()
     self.InsidePlayerOverlapCounts = {}
     self.ActorToPlayerUIDs = {}
     self.InsidePlayerCount = 0
+    self.RespawnTimerToken = 0
+    self.SpawnPointRespawnTokens = {}
+    self.MonsterSpawnPoints = {}
 
     	self.Capsule.OnComponentBeginOverlap:Add(self.Capsule_OnComponentBeginOverlap, self);
 	self.Capsule.OnComponentEndOverlap:Add(self.Capsule_OnComponentEndOverlap, self);
@@ -30,14 +33,6 @@ end
 
 function CreateMonsWall:ReceiveEndPlay()
     CreateMonsWall.SuperClass.ReceiveEndPlay(self)
-end
-
-function CreateMonsWall:Box_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
- 
-end
-
-function CreateMonsWall:Box_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
-  
 end
 
 function CreateMonsWall:HasPlayerInside()
@@ -55,7 +50,7 @@ function CreateMonsWall:ResumeWaveLoop()
     end
 
     if #(self.AliveMonsters or {}) <= 0 then
-        self:StartRespawnTimer()
+        self:SpawnWave()
         return
     end
 
@@ -73,6 +68,8 @@ function CreateMonsWall:SpawnWave()
     end
 
     self.IsWaitingRespawn = false
+    self.SpawnPointRespawnTokens = {}
+    self.MonsterSpawnPoints = {}
 
     self.AliveMonsters = MonsterSpawnMgr.SpawnAtLevelPoints(
         UGCGameSystem.GameMode,
@@ -85,6 +82,7 @@ function CreateMonsWall:SpawnWave()
     for _, monster in ipairs(self.AliveMonsters) do
         if monster then
             monster.SpawnWall = self
+            self.MonsterSpawnPoints[monster] = monster.SpawnPoint
         end
     end
 
@@ -103,14 +101,10 @@ function CreateMonsWall:CheckWaveCleared()
     for index = #self.AliveMonsters, 1, -1 do
         local monster = self.AliveMonsters[index]
         if self:IsMonsterAlive(monster) == false then
+            self:ScheduleMonsterRespawn(monster)
+            self.MonsterSpawnPoints[monster] = nil
             table.remove(self.AliveMonsters, index)
         end
-    end
-
-    if #self.AliveMonsters <= 0 then
-        self.IsCheckingWave = false
-        self:StartRespawnTimer()
-        return
     end
 
     if self.IsCheckingWave then
@@ -120,7 +114,7 @@ function CreateMonsWall:CheckWaveCleared()
     self.IsCheckingWave = true
 
     local wall = self
-    UGCTimerUtility.CreateLuaTimer(1, function()
+    UGCTimerUtility.CreateLuaTimer(0.1, function()
         if wall ~= nil and UE.IsValid(wall) then
             wall.IsCheckingWave = false
         end
@@ -139,6 +133,94 @@ function CreateMonsWall:IsMonsterAlive(monster)
     return true
 end
 
+function CreateMonsWall:DestroyAliveMonsters()
+    if self:HasAuthority() == false then
+        return
+    end
+
+    self.RespawnTimerToken = (self.RespawnTimerToken or 0) + 1
+
+    for index = #self.AliveMonsters, 1, -1 do
+        local monster = self.AliveMonsters[index]
+        if monster ~= nil and UE.IsValid(monster) then
+            UGCActorComponentUtility.DestroyActor(monster)
+        end
+        self.MonsterSpawnPoints[monster] = nil
+        table.remove(self.AliveMonsters, index)
+    end
+
+    self.IsWaitingRespawn = false
+    self.IsCheckingWave = false
+    self.SpawnPointRespawnTokens = {}
+    self.MonsterSpawnPoints = {}
+end
+
+function CreateMonsWall:AddAliveMonster(monster)
+    if monster == nil then
+        return
+    end
+
+    monster.SpawnWall = self
+    self.MonsterSpawnPoints = self.MonsterSpawnPoints or {}
+    self.MonsterSpawnPoints[monster] = monster.SpawnPoint
+    table.insert(self.AliveMonsters, monster)
+end
+
+function CreateMonsWall:ScheduleMonsterRespawn(monster)
+    if self:HasAuthority() == false or self:HasPlayerInside() == false then
+        return
+    end
+
+    if monster == nil then
+        return
+    end
+
+    local spawnPoint = nil
+    if self.MonsterSpawnPoints ~= nil then
+        spawnPoint = self.MonsterSpawnPoints[monster]
+    end
+    if spawnPoint == nil and UE.IsValid(monster) then
+        spawnPoint = monster.SpawnPoint
+    end
+    if spawnPoint == nil or UE.IsValid(spawnPoint) == false then
+        return
+    end
+
+    self.SpawnPointRespawnTokens = self.SpawnPointRespawnTokens or {}
+    local token = (self.SpawnPointRespawnTokens[spawnPoint] or 0) + 1
+    self.SpawnPointRespawnTokens[spawnPoint] = token
+
+    local wall = self
+    UGCTimerUtility.CreateLuaTimer(0.3, function()
+        if wall == nil or UE.IsValid(wall) == false then
+            return
+        end
+
+        if wall:HasPlayerInside() == false then
+            return
+        end
+
+        if wall.SpawnPointRespawnTokens == nil or wall.SpawnPointRespawnTokens[spawnPoint] ~= token then
+            return
+        end
+
+        wall.SpawnPointRespawnTokens[spawnPoint] = nil
+        local newMonster = MonsterSpawnMgr.SpawnAtPoint(
+            UGCGameSystem.GameMode,
+            wall.Scene,
+            wall.BigLevel,
+            wall.LittleLevel,
+            spawnPoint,
+            nil
+        )
+
+        if newMonster then
+            wall:AddAliveMonster(newMonster)
+            wall:CheckWaveCleared()
+        end
+    end, false)
+end
+
 function CreateMonsWall:StartRespawnTimer()
     if self.IsWaitingRespawn or self:HasPlayerInside() == false then
         return
@@ -146,12 +228,22 @@ function CreateMonsWall:StartRespawnTimer()
 
     self.IsWaitingRespawn = true
     self.IsCheckingWave = false
+    self.RespawnTimerToken = (self.RespawnTimerToken or 0) + 1
+    local timerToken = self.RespawnTimerToken
 
     local wall = self
     UGCTimerUtility.CreateLuaTimer(3, function()
         if wall ~= nil and UE.IsValid(wall) then
+            if wall.RespawnTimerToken ~= timerToken then
+                return
+            end
+
+            if wall.IsWaitingRespawn == false then
+                return
+            end
+
             wall.IsWaitingRespawn = false
-            if wall:HasPlayerInside() then
+            if wall:HasPlayerInside() and #(wall.AliveMonsters or {}) <= 0 then
                 wall:SpawnWave()
             end
         end
@@ -170,8 +262,9 @@ function CreateMonsWall:OnMonsterDied(monster)
         end
     end
 
-    if #self.AliveMonsters <= 0 and self:HasPlayerInside() then
-        self:StartRespawnTimer()
+    self:ScheduleMonsterRespawn(monster)
+    if self.MonsterSpawnPoints ~= nil then
+        self.MonsterSpawnPoints[monster] = nil
     end
 end
 
@@ -190,12 +283,16 @@ function CreateMonsWall:LuaInit()
 end
 
 function CreateMonsWall:Capsule_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
-   if self:HasAuthority() == false then
+    local uid = self:GetPlayerUID(OtherActor)
+    if uid == nil then
         return
     end
 
-    local uid = self:GetPlayerUID(OtherActor)
-    if uid == nil then
+    self.InPeo=(self.InPeo or 0)+1
+local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
+    UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi, tostring( self.InPeo))
+
+    if self:HasAuthority() == false then
         return
     end
 
@@ -209,7 +306,13 @@ function CreateMonsWall:Capsule_OnComponentBeginOverlap(OverlappedComponent, Oth
     end
 
     if self.HasStarted then
-        self:ResumeWaveLoop()
+        if #(self.AliveMonsters or {}) <= 0 then
+            self.IsWaitingRespawn = false
+            self.RespawnTimerToken = (self.RespawnTimerToken or 0) + 1
+            self:SpawnWave()
+        else
+            self:ResumeWaveLoop()
+        end
         return
     end
 
@@ -227,20 +330,29 @@ function CreateMonsWall:Capsule_OnComponentBeginOverlap(OverlappedComponent, Oth
 end
 
 function CreateMonsWall:Capsule_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
-  if self:HasAuthority() == false then
-        return
-    end
-
     local uid = self:GetPlayerUID(OtherActor)
     if uid == nil then
         return
     end
 
+  self.InPeo=math.max(0, (self.InPeo or 0)-1)
+  local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
+    UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi, tostring( self.InPeo))
+
+    if self:HasAuthority() == false then
+        return
+    end
+
     local overlapCount = self.InsidePlayerOverlapCounts[uid] or 0
+
     if overlapCount <= 1 then
         self.InsidePlayerOverlapCounts[uid] = nil
         self.ActorToPlayerUIDs[OtherActor] = nil
         self.InsidePlayerCount = math.max(0, self.InsidePlayerCount - 1)
+
+        if self.InsidePlayerCount <= 0 then
+            self:DestroyAliveMonsters()
+        end
     else
         self.InsidePlayerOverlapCounts[uid] = overlapCount - 1
     end

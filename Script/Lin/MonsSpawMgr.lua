@@ -135,14 +135,7 @@ function MonsterSpawnMgr.SpawnAtLevelPoints(
 
     local monsters = {}
     for _, point in ipairs(matchedPoints or {}) do
-        local monster = UGCActorComponentUtility.SpawnActor(
-            WorldContext,
-            monsterClass,
-            point:K2_GetActorLocation(),
-            point:K2_GetActorRotation(),
-            Vector.New(1, 1, 1),
-            Owner
-        )
+        local monster = MonsterSpawnMgr.SpawnAtPointWithClass(WorldContext, monsterClass, point, Owner)
 
         if monster then
             table.insert(monsters, monster)
@@ -150,6 +143,40 @@ function MonsterSpawnMgr.SpawnAtLevelPoints(
     end
 
     return monsters
+end
+
+function MonsterSpawnMgr.SpawnAtPointWithClass(WorldContext, MonsterClass, Point, Owner)
+    if MonsterClass == nil or Point == nil or UE.IsValid(Point) == false then
+        return nil
+    end
+
+    local monster = UGCActorComponentUtility.SpawnActor(
+        WorldContext,
+        MonsterClass,
+        Point:K2_GetActorLocation(),
+        Point:K2_GetActorRotation(),
+        Vector.New(1, 1, 1),
+        Owner
+    )
+
+    if monster then
+        monster.SpawnPoint = Point
+    end
+
+    return monster
+end
+
+function MonsterSpawnMgr.SpawnAtPoint(
+    WorldContext,
+    Scene,
+    BigLevel,
+    LittleLevel,
+    Point,
+    Owner
+)
+    local sceneName = "MainScene"
+    local monsterClass = MonsterSpawnMgr.GetCachedClass(MonsterSpawnMgr.PatchPath(sceneName, BigLevel, LittleLevel))
+    return MonsterSpawnMgr.SpawnAtPointWithClass(WorldContext, monsterClass, Point, Owner)
 end
 
 function MonsterSpawnMgr.PatchPath(Scene, BigLevel, LittleLevel)
