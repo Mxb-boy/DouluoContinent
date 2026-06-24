@@ -74,3 +74,9 @@ Plugins/**/Intermediate/*
 # Cache files for the editor to use
 DerivedDataCache/*
 Thumbnail.png
+
+# ========================
+# 绿洲启元 AI 开发环境（本地工具，不提交）
+# ========================
+Doc/
+bridge_helper.py
