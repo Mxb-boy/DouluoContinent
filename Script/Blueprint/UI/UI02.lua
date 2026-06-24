@@ -16,6 +16,7 @@
 ---@field Button_157 UButton
 ---@field Button_158 UButton
 ---@field Image_0 UImage
+---@field Image_1 UImage
 ---@field Image_70 UImage
 ---@field Image_225 UImage
 ---@field Image_246 UImage
