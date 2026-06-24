@@ -190,8 +190,13 @@ function CreateMonsWall:ScheduleMonsterRespawn(monster)
     local token = (self.SpawnPointRespawnTokens[spawnPoint] or 0) + 1
     self.SpawnPointRespawnTokens[spawnPoint] = token
 
+    local respawnDelay = 2
+    if self.LittleLevel == 10 then
+        respawnDelay = 5
+    end
+
     local wall = self
-    UGCTimerUtility.CreateLuaTimer(0.3, function()
+    UGCTimerUtility.CreateLuaTimer(respawnDelay, function()
         if wall == nil or UE.IsValid(wall) == false then
             return
         end
