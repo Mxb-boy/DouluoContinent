@@ -8,6 +8,7 @@
 --Edit Below--
 local UGCPlayerController = {}
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
+local TitleSystem = UGCGameSystem.UGCRequire("Script.Blueprint.Title.TitleSystem")
 
 local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
@@ -56,7 +57,8 @@ end
               "Server_ClearAllRankingListData",
               "Client_BroadcastPlantMessage",
               "Client_ForgeWeaponResult",
-              "Server_ForgeWeapon"
+              "Server_ForgeWeapon",
+              "Server_EquipTitle"
 	  end
 
 	  local function TeleportToSpawn(self, bornPointID)
@@ -278,6 +280,43 @@ function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, Res
     end
 end
 
+--装备相关
+function UGCPlayerController:Server_EquipTitle(titleID)
+    titleID = tonumber(titleID) or 0
+
+    if titleID < 1 or titleID > 15 then
+        return
+    end
+
+    local pawn = self:K2_GetPawn()
+    if pawn == nil then
+        return
+    end
+
+    local oldTitleID = pawn.EquippedTitleID or 0
+
+    if oldTitleID == titleID then
+        return
+    end
+
+    pawn.EquippedTitleID = titleID
+
+    -- 刷新头顶称号
+    local titleActor = pawn.PlayerTitleActor
+    if (titleActor == nil or not UE.IsValid(titleActor))
+        and pawn.EnsurePlayerTitleActor ~= nil then
+        titleActor = pawn:EnsurePlayerTitleActor()
+    end
+
+    if titleActor and UE.IsValid(titleActor) and titleActor.SetTitle then
+        titleActor:SetTitle(titleID)
+    end
+
+    -- 预留属性
+    TitleSystem:ApplyTitleBonus(self, oldTitleID, titleID)
+end
+
+-- WBP_RankingListBtn 更新排行榜服务端--要走官方测试按钮暂时没开
 function UGCPlayerController:Server_UpdateRankingListScore(UID, RankID, Score, IsIncremental)
     local RankingListGlobalActor = UGCGamePartSystem.GetGamePartGlobalActor("RankingListManager")
     if RankingListGlobalActor == nil then

@@ -72,7 +72,6 @@ function UI02:LuaInit()
 
     self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
-    self.Button_149.OnClicked:Add(self.Button_149_OnClicked, self)
 
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
 end
@@ -122,36 +121,6 @@ function UI02:Button_152_OnClicked()
     end
 
     TaskManager:OpenTaskMainUI()
-end
-
--- 称号
-function UI02:Button_149_OnClicked()
-    if self.TitleUIInstance ~= nil then
-        self.TitleUIInstance:Open()
-        return
-    end
-
-    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
-    local TitleUIPath =
-        UGCMapInfoLib.GetRootLongPackagePath()
-        .. "Asset/Blueprint/UI/UI06.UI06_C"
-    local TitleUIClass = UE.LoadClass(TitleUIPath)
-
-    if PlayerController == nil or TitleUIClass == nil then
-        ugcprint("[UI02] Failed to load title UI: " .. TitleUIPath)
-        return
-    end
-
-    self.TitleUIInstance =
-        UserWidget.NewWidgetObjectBP(PlayerController, TitleUIClass)
-
-    if self.TitleUIInstance == nil then
-        ugcprint("[UI02] Failed to create title UI")
-        return
-    end
-
-    self.TitleUIInstance:AddToViewport(1000)
-    self.TitleUIInstance:Open()
 end
 
 function UI02:TeleportToHome()
