@@ -4,6 +4,15 @@
 --Edit Below--
 local BaseMons = {}
 
+local function DisableMonsterCollision(monster)
+    if monster.HitBox ~= nil then
+        monster.HitBox:SetCollisionEnabled(ECollisionEnabled.NoCollision)
+    end
+
+    if monster.StaticMesh ~= nil then
+        monster.StaticMesh:SetCollisionEnabled(ECollisionEnabled.NoCollision)
+    end
+end
 -- function BaseMons:ReceiveBeginPlay()
 --     BaseMons.SuperClass.ReceiveBeginPlay(self)
 -- end
@@ -70,6 +79,8 @@ local BaseMons = {}
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
 function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
+    DisableMonsterCollision(self)
+
     if self:HasAuthority() then
         -- 只有服务端才可以掉落
         self.UGCPresetCommonDropItemComponent:StartDrop(self, EventInstigator, {})
