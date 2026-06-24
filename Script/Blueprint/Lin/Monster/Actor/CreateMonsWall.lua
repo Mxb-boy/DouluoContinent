@@ -7,7 +7,6 @@
 ---@field InPeo int32
 --Edit Below--
 ---@class CreateMonsWall_C:AActor
----@field Box UBoxComponent
 ---@field StaticMesh UStaticMeshComponent
 ---@field DefaultSceneRoot USceneComponent
 ---@field Scene TEnumAsByte<Scene_Enum>
@@ -24,13 +23,6 @@ function CreateMonsWall:ReceiveBeginPlay()
     self.InsidePlayerOverlapCounts = {}
     self.ActorToPlayerUIDs = {}
     self.InsidePlayerCount = 0
-
-    self.Box.OnComponentBeginOverlap:Add(self.Box_OnComponentBeginOverlap, self)
-    if self.Box.OnComponentEndOverlap then
-        self.Box.OnComponentEndOverlap:Add(self.Box_OnComponentEndOverlap, self)
-    else
-        ugcprint("CreateMonsWall: OnComponentEndOverlap is nil")
-    end
 
     	self.Capsule.OnComponentBeginOverlap:Add(self.Capsule_OnComponentBeginOverlap, self);
 	self.Capsule.OnComponentEndOverlap:Add(self.Capsule_OnComponentEndOverlap, self);
