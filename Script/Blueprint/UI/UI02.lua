@@ -72,6 +72,7 @@ function UI02:LuaInit()
 
     self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
+    self.Button_153.OnClicked:Add(self.Button_153_OnClicked, self)
     self.Button_149.OnClicked:Add(self.Button_149_OnClicked, self)
 
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
@@ -154,6 +155,39 @@ function UI02:Button_149_OnClicked()
     self.TitleUIInstance:Open()
 end
 
+function UI02:Button_153_OnClicked()
+    ugcprint("[UI02:Button_153_OnClicked] Open UI10")
+
+    if self.UI10Instance ~= nil then
+        if self.UI10Instance.InitWeaponWidgets ~= nil then
+            self.UI10Instance:InitWeaponWidgets()
+        end
+        self.UI10Instance:SetVisibility(ESlateVisibility.Visible)
+        return
+    end
+
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        ugcprint("[UI02:Button_153_OnClicked] PlayerController is nil")
+        return
+    end
+
+    local UI10Path = UGCGameSystem.GetUGCResourcesFullPath("Asset/Blueprint/UI/UI10.UI10_C")
+    local UI10Class = UE.LoadClass(UI10Path)
+    if UI10Class == nil then
+        ugcprint("[UI02:Button_153_OnClicked] UI10 class load failed: " .. UI10Path)
+        return
+    end
+
+    self.UI10Instance = UserWidget.NewWidgetObjectBP(PlayerController, UI10Class)
+    if self.UI10Instance == nil then
+        ugcprint("[UI02:Button_153_OnClicked] UI10 create failed")
+        return
+    end
+
+    self.UI10Instance:AddToViewport(11000)
+end
+
 function UI02:TeleportToHome()
     local pc = GameplayStatics.GetPlayerController(self, 0)
     if pc then
@@ -182,6 +216,14 @@ function UI02:Button_0_OnClicked()
             GiftPackUI:AddToViewport(12000)
         end
     end
+
+--[[----------------------LJP测试------------------------]]--
+local playerPawn = UGCGameSystem.GetLocalPlayerPawn()
+if playerPawn ~= nil and playerPawn.PlayerState ~= nil then
+    local playerState = playerPawn.PlayerState
+    local HunHuan = playerState:GetHunHuan()
+    playerState:SetHunHuan(HunHuan + 1)
+end
 end
 
 function UI02:OnhandleTest(UID, level)
