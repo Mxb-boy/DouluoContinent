@@ -16,16 +16,19 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     self:InitPlayerState()
 end
 
-local function CreateSoulMesh(player, HunHuan)
-
-   if player == nil then
-        return
-    end
-
-    if player.SoulMeshActor ~= nil then
+local function DestroySoulMesh(player)
+    if player ~= nil and player.SoulMeshActor ~= nil then
         UGCActorComponentUtility.DestroyActor(player.SoulMeshActor)
         player.SoulMeshActor = nil
     end
+end
+
+local function CreateSoulMesh(player, HunHuan)
+    if player == nil then
+        return
+    end
+
+    DestroySoulMesh(player)
 
     local SoulPath=SOUL_MESH_PATH.."M_"..tostring(HunHuan)..".M_"..tostring(HunHuan)
     local meshPath = UGCGameSystem.GetUGCResourcesFullPath(SoulPath)
@@ -65,6 +68,15 @@ local function CreateSoulMesh(player, HunHuan)
     )
     meshComponent:K2_SetRelativeLocation(SOUL_OFFSET, false, {}, false)
     meshComponent:K2_SetRelativeRotation(SOUL_ROTATION, false, {}, false)
+end
+
+function UGCPlayerPawn:UGC_PlayerDeadEvent(Killer, DamageType)
+    DestroySoulMesh(self)
+end
+
+function UGCPlayerPawn:ReceiveEndPlay()
+    DestroySoulMesh(self)
+    UGCPlayerPawn.SuperClass.ReceiveEndPlay(self)
 end
 
 
