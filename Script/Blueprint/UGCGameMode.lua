@@ -74,7 +74,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                 UGCBackPackSystem.AddItem(PC.Pawn, HTCLv2ItemID, 1)
             end
 
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310035, 1000)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310035, 10000)
             UGCBackPackSystem.AddItem(PC.Pawn, 8310036, 1000)
         end
     end, false)
