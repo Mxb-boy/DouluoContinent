@@ -1,10 +1,10 @@
 ---@class CreateMonsWall_C:AActor
----@field Box UBoxComponent
+---@field Capsule UCapsuleComponent
 ---@field DefaultSceneRoot USceneComponent
 ---@field Scene TEnumAsByte<Scene_Enum>
 ---@field BigLevel int32
 ---@field LittleLevel int32
----@field HasCleared bool
+---@field InPeo int32
 --Edit Below--
 ---@class CreateMonsWall_C:AActor
 ---@field Box UBoxComponent
@@ -31,6 +31,9 @@ function CreateMonsWall:ReceiveBeginPlay()
     else
         ugcprint("CreateMonsWall: OnComponentEndOverlap is nil")
     end
+
+    	self.Capsule.OnComponentBeginOverlap:Add(self.Capsule_OnComponentBeginOverlap, self);
+	self.Capsule.OnComponentEndOverlap:Add(self.Capsule_OnComponentEndOverlap, self);
 end
 
 function CreateMonsWall:ReceiveEndPlay()
@@ -38,73 +41,11 @@ function CreateMonsWall:ReceiveEndPlay()
 end
 
 function CreateMonsWall:Box_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
-    if self:HasAuthority() == false then
-        return
-    end
-
-    local uid = self:GetPlayerUID(OtherActor)
-    if uid == nil then
-        return
-    end
-
-    self.ActorToPlayerUIDs[OtherActor] = uid
-
-    local overlapCount = self.InsidePlayerOverlapCounts[uid] or 0
-    self.InsidePlayerOverlapCounts[uid] = overlapCount + 1
-
-    if overlapCount <= 0 then
-        self.InsidePlayerCount = self.InsidePlayerCount + 1
-    end
-
-    if self.HasStarted then
-        self:ResumeWaveLoop()
-        return
-    end
-
-    self.HasStarted = true
-
-    local allPlayerControllers = UGCGameSystem.GetAllPlayerController()
-
-    for _, pc in ipairs(allPlayerControllers or {}) do
-        if pc then
-            UnrealNetwork.CallUnrealRPC(pc, pc, "Client_BroadcastPlantMessage", uid, self.LittleLevel)
-        end
-    end
-
-    self:SpawnWave()
+ 
 end
 
 function CreateMonsWall:Box_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
-    if self:HasAuthority() == false then
-        return
-    end
-
-    local uid = self:GetPlayerUID(OtherActor)
-    if uid == nil then
-        return
-    end
-
-    local overlapCount = self.InsidePlayerOverlapCounts[uid] or 0
-    if overlapCount <= 1 then
-        self.InsidePlayerOverlapCounts[uid] = nil
-        self.ActorToPlayerUIDs[OtherActor] = nil
-        self.InsidePlayerCount = math.max(0, self.InsidePlayerCount - 1)
-    else
-        self.InsidePlayerOverlapCounts[uid] = overlapCount - 1
-    end
-end
-
-function CreateMonsWall:GetPlayerUID(OtherActor)
-    if OtherActor == nil then
-        return nil
-    end
-
-    local uid = UGCGameSystem.GetUIDByPlayerPawn(OtherActor)
-    if uid ~= nil then
-        return uid
-    end
-
-    return self.ActorToPlayerUIDs[OtherActor]
+  
 end
 
 function CreateMonsWall:HasPlayerInside()
@@ -241,5 +182,91 @@ function CreateMonsWall:OnMonsterDied(monster)
         self:StartRespawnTimer()
     end
 end
+
+-- [Editor Generated Lua] function define Begin:
+function CreateMonsWall:LuaInit()
+	if self.bInitDoOnce then
+		return;
+	end
+	self.bInitDoOnce = true;
+	-- [Editor Generated Lua] BindingProperty Begin:
+	-- [Editor Generated Lua] BindingProperty End;
+	
+	-- [Editor Generated Lua] BindingEvent Begin:
+
+	-- [Editor Generated Lua] BindingEvent End;
+end
+
+function CreateMonsWall:Capsule_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
+   if self:HasAuthority() == false then
+        return
+    end
+
+    local uid = self:GetPlayerUID(OtherActor)
+    if uid == nil then
+        return
+    end
+
+    self.ActorToPlayerUIDs[OtherActor] = uid
+
+    local overlapCount = self.InsidePlayerOverlapCounts[uid] or 0
+    self.InsidePlayerOverlapCounts[uid] = overlapCount + 1
+
+    if overlapCount <= 0 then
+        self.InsidePlayerCount = self.InsidePlayerCount + 1
+    end
+
+    if self.HasStarted then
+        self:ResumeWaveLoop()
+        return
+    end
+
+    self.HasStarted = true
+
+    local allPlayerControllers = UGCGameSystem.GetAllPlayerController()
+
+    for _, pc in ipairs(allPlayerControllers or {}) do
+        if pc then
+            UnrealNetwork.CallUnrealRPC(pc, pc, "Client_BroadcastPlantMessage", uid, self.LittleLevel)
+        end
+    end
+
+    self:SpawnWave()
+end
+
+function CreateMonsWall:Capsule_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
+  if self:HasAuthority() == false then
+        return
+    end
+
+    local uid = self:GetPlayerUID(OtherActor)
+    if uid == nil then
+        return
+    end
+
+    local overlapCount = self.InsidePlayerOverlapCounts[uid] or 0
+    if overlapCount <= 1 then
+        self.InsidePlayerOverlapCounts[uid] = nil
+        self.ActorToPlayerUIDs[OtherActor] = nil
+        self.InsidePlayerCount = math.max(0, self.InsidePlayerCount - 1)
+    else
+        self.InsidePlayerOverlapCounts[uid] = overlapCount - 1
+    end
+end
+
+function CreateMonsWall:GetPlayerUID(OtherActor)
+    if OtherActor == nil then
+        return nil
+    end
+
+    local uid = UGCGameSystem.GetUIDByPlayerPawn(OtherActor)
+    if uid ~= nil then
+        return uid
+    end
+
+    return self.ActorToPlayerUIDs[OtherActor]
+end
+
+-- [Editor Generated Lua] function define End;
 
 return CreateMonsWall
