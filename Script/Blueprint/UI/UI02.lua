@@ -193,7 +193,7 @@ function UI02:Button_153_OnClicked()
         return
     end
 
-    local UI10Path = UGCGameSystem.GetUGCResourcesFullPath("Asset/Blueprint/UI/UI10.UI10_C")
+    local UI10Path = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI10.UI10_C"
     local UI10Class = UE.LoadClass(UI10Path)
     if UI10Class == nil then
         ugcprint("[UI02:Button_153_OnClicked] UI10 class load failed: " .. UI10Path)

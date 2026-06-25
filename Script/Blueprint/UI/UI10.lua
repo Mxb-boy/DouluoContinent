@@ -63,23 +63,23 @@ local WeaponNameLabels = {
 local WeaponUIConfig = {
     XJWQ = {
         DefaultName = "XJWQ",
-        IconPath = UGCGameSystem.GetUGCResourcesFullPath("Asset/cs/XJWQ/XSWQ_B.XSWQ_B"),
+        IconPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/cs/XJWQ/XSWQ_B.XSWQ_B",
     },
     HWSCJ = {
         DefaultName = "HWSCJ",
-        IconPath = UGCGameSystem.GetUGCResourcesFullPath("Asset/cs/HWSCJ_B.HWSCJ_B"),
+        IconPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/cs/HWSCJ_B.HWSCJ_B",
     },
     HTC = {
         DefaultName = "HTC",
-        IconPath = UGCGameSystem.GetUGCResourcesFullPath("Asset/cs/HTC/HTC_T1.HTC_T1"),
+        IconPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/cs/HTC/HTC_T1.HTC_T1",
     },
     LCSL = {
         DefaultName = "LCSL",
-        IconPath = UGCGameSystem.GetUGCResourcesFullPath("Asset/cs/LCSL/LCSL_T.LCSL_T"),
+        IconPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/cs/LCSL/LCSL_T.LCSL_T",
     },
     TSSJ = {
         DefaultName = "TSSJ",
-        IconPath = UGCGameSystem.GetUGCResourcesFullPath("Asset/cs/TSSJ/TSSJ_B.TSSJ_B"),
+        IconPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/cs/TSSJ/TSSJ_B.TSSJ_B",
     },
 }
 

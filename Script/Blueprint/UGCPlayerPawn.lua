@@ -20,11 +20,10 @@ local function CreateSoulMesh(player, HunHuan)
 
     DestroySoulMesh(player)
 
-    local SoulPath = SOUL_MESH_PATH .. "M_" .. tostring(HunHuan) .. ".M_" .. tostring(HunHuan)
-    local meshPath = UGCGameSystem.GetUGCResourcesFullPath(SoulPath)
-    local soulMesh = UE.LoadObject(meshPath)
+    local SoulPath = UGCMapInfoLib.GetRootLongPackagePath() .. SOUL_MESH_PATH .. "M_" .. tostring(HunHuan) .. ".M_" .. tostring(HunHuan)
+    local soulMesh = UE.LoadObject(SoulPath)
     if soulMesh == nil then
-        print("CreateSoulMesh load failed:", meshPath)
+        print("CreateSoulMesh load failed:", SoulPath)
         return
     end
 
