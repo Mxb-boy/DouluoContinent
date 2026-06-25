@@ -41,11 +41,17 @@ local TaskManager = UGCGameSystem.UGCRequire(
     "ExtendResource.TaskTemplate.OfficialPackage.Script.Task.TaskManager"
 )
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
+local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 
 local UI02 = { bInitDoOnce = false }
 
 function UI02:Construct()
     self:LuaInit()
+end
+
+function UI02:ApplyButtonEffect(Button)
+    UIEffectUtil.SetButtonStateBrushSameAsNormal(Button)
+    UIEffectUtil.BindPressScale(self, Button, Button, 1.06, 1.0)
 end
 
 function UI02:LuaInit()
@@ -74,6 +80,21 @@ function UI02:LuaInit()
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
     self.Button_153.OnClicked:Add(self.Button_153_OnClicked, self)
     self.Button_149.OnClicked:Add(self.Button_149_OnClicked, self)
+
+    self:ApplyButtonEffect(self.Button_0)
+    self:ApplyButtonEffect(self.Button_144)
+    self:ApplyButtonEffect(self.Button_145)
+    self:ApplyButtonEffect(self.Button_147)
+    self:ApplyButtonEffect(self.Button_149)
+    self:ApplyButtonEffect(self.Button_150)
+    self:ApplyButtonEffect(self.Button_151)
+    self:ApplyButtonEffect(self.Button_152)
+    self:ApplyButtonEffect(self.Button_153)
+    self:ApplyButtonEffect(self.Button_154)
+    self:ApplyButtonEffect(self.Button_155)
+    self:ApplyButtonEffect(self.Button_156)
+    self:ApplyButtonEffect(self.Button_157)
+    self:ApplyButtonEffect(self.Button_158)
 
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
 end

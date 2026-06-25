@@ -31,4 +31,35 @@ function UIEffectUtil.SetRenderScale(Widget, Scale)
     return Success
 end
 
+function UIEffectUtil.SetButtonStateBrushSameAsNormal(Button)
+    if Button == nil or Button.WidgetStyle == nil then
+        return false
+    end
+
+    UIEffectUtil.CopyBrush(Button.WidgetStyle.Normal, Button.WidgetStyle.Hovered)
+    UIEffectUtil.CopyBrush(Button.WidgetStyle.Normal, Button.WidgetStyle.Pressed)
+
+    if Button.SetStyle ~= nil then
+        Button:SetStyle(Button.WidgetStyle)
+    end
+
+    return true
+end
+
+function UIEffectUtil.CopyBrush(SourceBrush, TargetBrush)
+    if SourceBrush == nil or TargetBrush == nil then
+        return false
+    end
+
+    TargetBrush.ResourceObject = SourceBrush.ResourceObject
+    TargetBrush.ImageSize = SourceBrush.ImageSize
+    TargetBrush.DrawAs = SourceBrush.DrawAs
+    TargetBrush.Tiling = SourceBrush.Tiling
+    TargetBrush.Mirroring = SourceBrush.Mirroring
+    TargetBrush.Margin = SourceBrush.Margin
+    TargetBrush.TintColor = SourceBrush.TintColor
+
+    return true
+end
+
 return UIEffectUtil

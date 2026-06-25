@@ -42,9 +42,15 @@
 ---@field TextAdd UTextBlock
 ---@field TextToGet UTextBlock
 --Edit Below--
+local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
+
 local UI06 = { bInitDoOnce = false }
 function UI06:Construct()
     self:LuaInit()
+end
+function UI06:ApplyButtonEffect(Button)
+    UIEffectUtil.SetButtonStateBrushSameAsNormal(Button)
+    UIEffectUtil.BindPressScale(self, Button, Button, 1.06, 1.0)
 end
 function UI06:SetBattleUIVisible(isVisible)
     if isVisible then
@@ -140,6 +146,24 @@ function UI06:LuaInit()
         self.EquipButton.OnClicked:Add(self.Btn_Equip_OnClicked, self)
     end
     self.Btn_Close.OnClicked:Add(self.Btn_Close_OnClicked, self)
+
+    self:ApplyButtonEffect(self.Btn_Title_01)
+    self:ApplyButtonEffect(self.Btn_Title_02)
+    self:ApplyButtonEffect(self.Btn_Title_03)
+    self:ApplyButtonEffect(self.Btn_Title_04)
+    self:ApplyButtonEffect(self.Btn_Title_05)
+    self:ApplyButtonEffect(self.Btn_Title_06)
+    self:ApplyButtonEffect(self.Btn_Title_07)
+    self:ApplyButtonEffect(self.Btn_Title_08)
+    self:ApplyButtonEffect(self.Btn_Title_09)
+    self:ApplyButtonEffect(self.Btn_Title_10)
+    self:ApplyButtonEffect(self.Btn_Title_11)
+    self:ApplyButtonEffect(self.Btn_Title_12)
+    self:ApplyButtonEffect(self.Btn_Title_13)
+    self:ApplyButtonEffect(self.Btn_Title_14)
+    self:ApplyButtonEffect(self.Btn_Title_15)
+    self:ApplyButtonEffect(self.Btn_Equip)
+    self:ApplyButtonEffect(self.Btn_Close)
     --测试解锁称号1、2
     self:UnlockTitle(1)
     self:UnlockTitle(2)
