@@ -81,7 +81,9 @@ end
               "Server_BeginFlyState",
               "Server_EndFlyState",
               "Server_FlyMove",
-              "Server_StopFlyMove"
+              "Server_StopFlyMove",
+	       "Server_AddProbabilityBonus",
+              "Client_ProbabilityBonusChanged"
 	  end
 
 	  local function TeleportToSpawn(self, bornPointID)
@@ -458,7 +460,28 @@ end
 
 function UGCPlayerController:Client_BroadcastPlantMessage(UID,level)
 --[[------------------客户端收到全服通知----------------------------]]--
-    UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.Test_01,UID,level)
+    -- UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.Test_01,UID,level)
+end
+
+--[[---------------------增加概率-------------------------]]--
+function UGCPlayerController:Server_AddProbabilityBonus(value)
+    value = tonumber(value) or 0
+    if value == 0 then
+        return
+    end
+    if self.PlayerState == nil or self.PlayerState.AddProbability_Bonus == nil then
+        return
+    end
+    self.PlayerState:AddProbability_Bonus(value)
+
+    local str = "增加" .. tostring(value) .. "%概率，是" .. tostring(self.PlayerState.Probability_Bonus) .. "%"
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_ProbabilityBonusChanged", str)
+end
+
+function UGCPlayerController:Client_ProbabilityBonusChanged(str)
+    if self.MainUIInstance ~= nil and self.MainUIInstance.OnhandleTest ~= nil then
+        self.MainUIInstance:OnhandleTest(str)
+    end
 end
 
 

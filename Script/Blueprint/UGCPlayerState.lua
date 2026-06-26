@@ -1,9 +1,8 @@
 --[[-------------------这里放角色状态，重连后可以恢复数据---------------------------]]--
 local UGCPlayerState = {
     HunHuan=1,--大魂环
-    HunHuan_Little=1,--小等级
-
-    -- 跨对局存档: 被 SaveToArchive 消费
+    Probability_Bonus=0,--掉落加成，比如本来掉落概率是20%,这个值是20，那就是20*1.2
+ -- 跨对局存档: 被 SaveToArchive 消费
     ArchiveUID=nil,
 }
 
@@ -21,7 +20,7 @@ local ARCHIVE_KEYS = {
 function UGCPlayerState:GetReplicatedProperties()
     return {
         "HunHuan",
-        "HunHuan_Little",
+        "Probability_Bonus",
     }
 end
 
@@ -76,21 +75,22 @@ function UGCPlayerState:GetHunHuan()
     return self.HunHuan
 end
 
-function UGCPlayerState:GetHunHuan_Little()
-    return self.HunHuan_Little
-end
-
 function UGCPlayerState:SetHunHuan(value)
      self.HunHuan=value
     self:CallRefreshZhanli()
     self:SaveToArchive()
 end
 
-function UGCPlayerState:SetHunHuan_Little(value)
-     self.HunHuan_Little=value
-    self:CallRefreshZhanli()
-    self:SaveToArchive()
+
+function UGCPlayerState:GetProbability_Bonus()
+    return self.Probability_Bonus
 end
+
+function UGCPlayerState:AddProbability_Bonus(value)
+     self.Probability_Bonus=math.min((self.Probability_Bonus or 0)+(value or 0),100)
+
+end
+
 
 function  UGCPlayerState:CallRefreshZhanli()
     local playerPawn = UGCGameSystem.GetLocalPlayerPawn()

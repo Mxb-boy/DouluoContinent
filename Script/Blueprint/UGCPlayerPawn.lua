@@ -258,10 +258,10 @@ end
 function UGCPlayerPawn:ShowZhanLi()
     local playerState = self.PlayerState
     local HunHuan = playerState:GetHunHuan()
-    local HunHuan_Little = playerState:GetHunHuan_Little()
     --战力在这里设定,现在是魂环等级加小等级
-    local dengji = HunHuan * 10 + HunHuan_Little
-    UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(self, L_Enum_Event.Enum.ReFreshZhanLi, tostring(dengji))
+    local dengji = HunHuan * 10 
+    --[[-------------------这边是测试通知的---------------------------]]--
+    -- UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(self, L_Enum_Event.Enum.ReFreshZhanLi, tostring(dengji))
 end
 
 function UGCPlayerPawn:GetReplicatedProperties()

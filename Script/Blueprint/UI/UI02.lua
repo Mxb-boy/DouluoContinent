@@ -68,22 +68,10 @@ function UI02:LuaInit()
     end
     self.bInitDoOnce = true
 
-    
     self.Button_145.OnClicked:Add(self.Button_145_OnClicked, self)
-    
-
-    
     self.Button_157.OnClicked:Add(self.Button_157_OnClicked, self)
-    
-
-    
     self.Button_144.OnClicked:Add(self.Button_144_OnClicked,self)
-    
-
-   
     self.Button_150.OnClicked:Add(self.Button_150_OnClicked, self)
-    
-
     self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
     self.Button_153.OnClicked:Add(self.Button_153_OnClicked, self)
@@ -103,7 +91,6 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_156)
     self:ApplyButtonEffect(self.Button_157)
     self:ApplyButtonEffect(self.Button_158)
-
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
     self.PropertyRefreshElapsed = 0
     Property.RefreshUI(self)
@@ -121,14 +108,11 @@ end
 
 --签到
 function UI02:Button_145_OnClicked()
-    ugcprint("[UI02:Button_145_OnClicked] Open official sign in UI")
     SignInEventManager:OpenMainUI()
 end
 --商城
 function UI02:Button_144_OnClicked()
-    ugcprint("[UI02:Button_144_OnClicked] Open official shop UI")
     if ShopV2Manager == nil then
-        ugcprint("[UI02:Button_144_OnClicked] ShopV2Manager is nil")
         return
     end
 
@@ -136,9 +120,7 @@ function UI02:Button_144_OnClicked()
 end
 --排行榜
 function UI02:Button_150_OnClicked()
-    ugcprint("[UI02:Button_150_OnClicked] Open official ranking list UI")
     if RankingListManager == nil then
-        ugcprint("[UI02:Button_150_OnClicked] RankingListManager is nil")
         return
     end
 
@@ -150,16 +132,12 @@ function UI02:Button_157_OnClicked()
 end
 --任务
 function UI02:Button_152_OnClicked()
-    ugcprint("[UI02:Button_152_OnClicked] Open official task UI")
-
     if TaskManager == nil then
-        ugcprint("[UI02:Button_152_OnClicked] TaskManager is nil")
         return
     end
 
     local TaskComponent = TaskManager:GetTaskTemplateComponent()
     if TaskComponent == nil then
-        ugcprint("[UI02:Button_152_OnClicked] TaskTemplateComponent is nil")
         return
     end
 
@@ -180,7 +158,6 @@ function UI02:Button_149_OnClicked()
     local TitleUIClass = UE.LoadClass(TitleUIPath)
 
     if PlayerController == nil or TitleUIClass == nil then
-        ugcprint("[UI02] Failed to load title UI: " .. TitleUIPath)
         return
     end
 
@@ -188,7 +165,6 @@ function UI02:Button_149_OnClicked()
         UserWidget.NewWidgetObjectBP(PlayerController, TitleUIClass)
 
     if self.TitleUIInstance == nil then
-        ugcprint("[UI02] Failed to create title UI")
         return
     end
 
@@ -197,8 +173,6 @@ function UI02:Button_149_OnClicked()
 end
 
 function UI02:Button_153_OnClicked()
-    ugcprint("[UI02:Button_153_OnClicked] Open UI10")
-
     if self.UI10Instance ~= nil then
         if self.UI10Instance.InitWeaponWidgets ~= nil then
             self.UI10Instance:InitWeaponWidgets()
@@ -209,20 +183,17 @@ function UI02:Button_153_OnClicked()
 
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
     if PlayerController == nil then
-        ugcprint("[UI02:Button_153_OnClicked] PlayerController is nil")
         return
     end
 
     local UI10Path = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI10.UI10_C"
     local UI10Class = UE.LoadClass(UI10Path)
     if UI10Class == nil then
-        ugcprint("[UI02:Button_153_OnClicked] UI10 class load failed: " .. UI10Path)
         return
     end
 
     self.UI10Instance = UserWidget.NewWidgetObjectBP(PlayerController, UI10Class)
     if self.UI10Instance == nil then
-        ugcprint("[UI02:Button_153_OnClicked] UI10 create failed")
         return
     end
 
@@ -235,8 +206,8 @@ function UI02:TeleportToHome()
         UnrealNetwork.CallUnrealRPC(pc, pc, "Server_TeleportToSpawn", 1)
     end
 
-    local playerPawn = UGCGameSystem.GetLocalPlayerPawn()
-    UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.Test_01, 66)
+    -- local playerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    -- UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.Test_01, 66)
 end
 
 --礼包
@@ -263,16 +234,21 @@ local playerPawn = UGCGameSystem.GetLocalPlayerPawn()
 if playerPawn ~= nil and playerPawn.PlayerState ~= nil then
     local playerState = playerPawn.PlayerState
     local HunHuan = playerState:GetHunHuan()
+    if HunHuan == 10 then
+        HunHuan = 0
+    end
     playerState:SetHunHuan(HunHuan + 1)
+
+end
+ --[[----------------------测试发送事件-----------------------]]--
+if PlayerController ~= nil then
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_AddProbabilityBonus", 10)
 end
 end
 
-function UI02:OnhandleTest(UID, level)
-    local Text = tostring(UID) .. " open level " .. tostring(level)
-    if self.TextBlock_1 ~= nil then
-        self.TextBlock_1:SetText(Text)
-    else
-        ugcprint("[UI02:OnhandleTest] " .. Text)
+function UI02:OnhandleTest(str)
+    if self.TextBlock_303 ~= nil then
+        self.TextBlock_303:SetText(tostring(str))
     end
 end
 
