@@ -13,6 +13,8 @@
 ---@field BigLevel int32
 local CreateMonsWall = {}
 
+local RegenSystem = require("Script.Common.RegenSystem")
+
 function CreateMonsWall:ReceiveBeginPlay()
     CreateMonsWall.SuperClass.ReceiveBeginPlay(self)
 
@@ -298,6 +300,9 @@ function CreateMonsWall:Capsule_OnComponentBeginOverlap(OverlappedComponent, Oth
 -- local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
 --     UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi, tostring( self.InPeo))
 
+    -- 战场区域回血：进入即取消倒计时和回血
+    RegenSystem.OnEnterBattlefield(OtherActor)
+
     if self:HasAuthority() == false then
         return
     end
@@ -347,6 +352,9 @@ function CreateMonsWall:Capsule_OnComponentEndOverlap(OverlappedComponent, Other
 --   local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
 --     UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi, tostring( self.InPeo))
 
+    -- 战场区域回血：离开后 3 秒开始回血
+    RegenSystem.OnExitBattlefield(OtherActor)
+
     if self:HasAuthority() == false then
         return
     end
@@ -371,8 +379,8 @@ function CreateMonsWall:GetPlayerUID(OtherActor)
         return nil
     end
 
-    local uid = UGCGameSystem.GetUIDByPlayerPawn(OtherActor)
-    if uid ~= nil then
+    local ok, uid = pcall(UGCGameSystem.GetUIDByPlayerPawn, OtherActor)
+    if ok and uid ~= nil then
         return uid
     end
 

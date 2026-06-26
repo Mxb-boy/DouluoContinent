@@ -66,6 +66,10 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             if PlayerState and PlayerState.LoadFromArchive then
                 local UID = UGCPawnAttrSystem.GetPlayerUID(PC.Pawn)
                 PlayerState:LoadFromArchive(tonumber(UID))
+                -- 恢复上次存档的血量
+                if PlayerState.RestoreHP then
+                    PlayerState:RestoreHP(PC.Pawn)
+                end
             end
 
             -- 2. 发初始武器
@@ -88,10 +92,15 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
     end, false)
 end
 
--- 此事件提供死亡前的旧 Pawn，必须在这里读取背包。
+-- 此事件提供死亡前的旧 Pawn，必须在这里读取背包和血量。
 function UGCGameMode:UGC_PlayerKilledEvent(Killer, VictimPlayer, VictimPawn, DamageType)
     if VictimPlayer and VictimPawn then
         SaveBackpackSnapshot(VictimPlayer.PlayerKey, VictimPawn)
+        -- 保存死亡前的血量到跨对局存档
+        local PS = VictimPlayer.PlayerState
+        if PS and PS.SaveCurrentHP then
+            PS:SaveCurrentHP(VictimPawn)
+        end
     end
 end
 
@@ -114,6 +123,11 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
         local VictimController = UGCGameSystem.GetPlayerControllerByPlayerKey(VictimPlayerKey)
         if VictimController and VictimController.Pawn then
             SaveBackpackSnapshot(VictimPlayerKey, VictimController.Pawn)
+            -- 保存死亡前的血量
+            local PS = VictimController.PlayerState
+            if PS and PS.SaveCurrentHP then
+                PS:SaveCurrentHP(VictimController.Pawn)
+            end
         end
     end
 

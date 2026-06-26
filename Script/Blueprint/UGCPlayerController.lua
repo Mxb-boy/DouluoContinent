@@ -18,8 +18,11 @@ local ForgeMaterialItemIDs = {
 function UGCPlayerController:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
     --删去风向标
-    UGCWidgetManagerSystem.GetMainControlUI().NavigatorPanel:SetVisibility(ESlateVisibility.Collapsed)
-    UGCWidgetManagerSystem.GetMainControlUI().Image_0:SetVisibility(ESlateVisibility.Collapsed)
+    local MainUI = UGCWidgetManagerSystem.GetMainControlUI()
+    if MainUI then
+        MainUI.NavigatorPanel:SetVisibility(ESlateVisibility.Collapsed)
+        MainUI.Image_0:SetVisibility(ESlateVisibility.Collapsed)
+    end
 
     -- Create UI only on the client.
     if self:HasAuthority() then

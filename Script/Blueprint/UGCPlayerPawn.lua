@@ -300,6 +300,12 @@ function UGCPlayerPawn:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser
 end
 
 function UGCPlayerPawn:ReceiveEndPlay()
+    -- Pawn 离场前，将当前血量写入跨对局存档（防止玩家未死亡直接退出）
+    local playerState = self.PlayerState
+    if playerState and playerState.SaveCurrentHP then
+        playerState:SaveCurrentHP(self)
+    end
+
     DestroySoulMesh(self)
 
     -- Pawn 重生或离场时，主动清理附属称号 Actor。
@@ -317,6 +323,9 @@ end
 
 function UGCPlayerPawn:InitPlayerState()
     local playerState = self.PlayerState
+    if playerState == nil then
+        return
+    end
     local HunHuan = playerState:GetHunHuan()
     self:ShowZhanLi()
     CreateSoulMesh(self, HunHuan)

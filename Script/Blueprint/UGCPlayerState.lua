@@ -1,7 +1,10 @@
 --[[-------------------这里放角色状态，重连后可以恢复数据---------------------------]]--
 local UGCPlayerState = {
     HunHuan=1,--大魂环
+    HunHuan_Little=1,--小等级
     Probability_Bonus=0,--掉落加成，比如本来掉落概率是20%,这个值是20，那就是20*1.2
+    RegenPercent=5,--战场回血：每秒恢复百分比（默认5%）
+    HP=-1,--上一次离场时保存的血量，-1 表示从未存档
  -- 跨对局存档: 被 SaveToArchive 消费
     ArchiveUID=nil,
 }
@@ -14,13 +17,18 @@ local UGCPlayerState = {
 local ARCHIVE_KEYS = {
     { key = "HunHuan", field = "HunHuan", default = 1 },
     { key = "HunHuan_Little", field = "HunHuan_Little", default = 1 },
+    { key = "RegenPercent", field = "RegenPercent", default = 5 },
+    { key = "HP", field = "HP", default = -1 },
     -- 示例: { key = "Gold",    field = "Gold",    default = 0 },
 }
 
 function UGCPlayerState:GetReplicatedProperties()
     return {
         "HunHuan",
+        "HunHuan_Little",
         "Probability_Bonus",
+        "RegenPercent",
+        "HP",
     }
 end
 
@@ -81,6 +89,64 @@ function UGCPlayerState:SetHunHuan(value)
     self:SaveToArchive()
 end
 
+function UGCPlayerState:GetHunHuan_Little()
+    return self.HunHuan_Little
+end
+
+function UGCPlayerState:SetHunHuan_Little(value)
+     self.HunHuan_Little=value
+    self:CallRefreshZhanli()
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetRegenPercent()
+    return self.RegenPercent
+end
+
+function UGCPlayerState:SetRegenPercent(value)
+    self.RegenPercent = value or 5
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetHP()
+    return self.HP
+end
+
+function UGCPlayerState:SetHP(value)
+    self.HP = value or -1
+    self:SaveToArchive()
+end
+
+--- 从 Pawn 读取当前血量并写入存档
+---@param playerPawn userdata 玩家 Pawn
+function UGCPlayerState:SaveCurrentHP(playerPawn)
+    if playerPawn == nil then
+        return
+    end
+    local hp = UGCPawnAttrSystem.GetHealth(playerPawn)
+    if hp ~= nil and hp > 0 then
+        self:SetHP(hp)
+    end
+end
+
+--- 将存档中的血量恢复应用到 Pawn（不会超过当前最大血量）
+---@param playerPawn userdata 玩家 Pawn
+function UGCPlayerState:RestoreHP(playerPawn)
+    if playerPawn == nil then
+        return
+    end
+    if self.HP == nil or self.HP <= 0 then
+        return
+    end
+
+    local maxHP = UGCPawnAttrSystem.GetHealthMax(playerPawn)
+    if maxHP == nil or maxHP <= 0 then
+        return
+    end
+
+    local targetHP = math.min(self.HP, maxHP)
+    UGCPawnAttrSystem.SetHealth(playerPawn, targetHP)
+end
 
 function UGCPlayerState:GetProbability_Bonus()
     return self.Probability_Bonus
