@@ -85,9 +85,32 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             if HTCLv2ItemID ~= nil then
                 UGCBackPackSystem.AddItem(PC.Pawn, HTCLv2ItemID, 1)
             end
-
+            --锻造材料
             UGCBackPackSystem.AddItem(PC.Pawn, 8310035, 10000)
             UGCBackPackSystem.AddItem(PC.Pawn, 8310036, 1000)
+            --境界升级材料先发背包
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310037, 99)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310038, 99)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310039, 99)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310040, 99)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310041, 99)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310042, 99)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310043, 99)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310044, 99)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310045, 99)
+            --魂环也先发
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310001, 50)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310002, 50)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310007, 50)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310008, 50)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310009, 50)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310010, 50)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310011, 50)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310012, 50)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310013, 50)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310014, 50)
+
+
         end
     end, false)
 end

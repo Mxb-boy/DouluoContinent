@@ -14,6 +14,21 @@
 ---@field Btn_Title_07 UButton
 ---@field Btn_Title_08 UButton
 ---@field Btn_Title_09 UButton
+---@field Img_Title_10 UImage
+---@field Img_Title_11 UImage
+---@field Img_Title_12 UImage
+---@field Img_Title_13 UImage
+---@field Img_Title_14 UImage
+---@field Img_Title_15 UImage
+---@field Img_Title_01 UImage
+---@field Img_Title_02 UImage
+---@field Img_Title_03 UImage
+---@field Img_Title_04 UImage
+---@field Img_Title_05 UImage
+---@field Img_Title_06 UImage
+---@field Img_Title_07 UImage
+---@field Img_Title_08 UImage
+---@field Img_Title_09 UImage
 --Edit Below--
 local UI_PlayerTitle = {}
 

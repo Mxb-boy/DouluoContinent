@@ -8,6 +8,7 @@
 --Edit Below--
 local UGCPlayerController = {}
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
+local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local TitleSystem = UGCGameSystem.UGCRequire("Script.Blueprint.Title.TitleSystem")
 
 local ForgeMaterialItemIDs = {
@@ -80,13 +81,15 @@ end
               "Client_BroadcastPlantMessage",
               "Client_ForgeWeaponResult",
               "Server_ForgeWeapon",
-              "Server_EquipTitle",
+	       "Server_EquipTitle",
               "Server_BeginFlyState",
               "Server_EndFlyState",
               "Server_FlyMove",
               "Server_StopFlyMove",
 	       "Server_AddProbabilityBonus",
-              "Client_ProbabilityBonusChanged"
+              "Client_ProbabilityBonusChanged",
+	      "Client_BreakRealmResult",
+              "Server_BreakRealm"
 	  end
 
 	  local function TeleportToSpawn(self, bornPointID)
@@ -399,6 +402,139 @@ function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, Res
     local UI10Instance = self.MainUIInstance.UI10Instance
     if UI10Instance.OnForgeWeaponResult ~= nil then
         UI10Instance:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID)
+    end
+end
+--突破
+local function GetRealmLevel(PlayerController)
+    return tonumber(PlayerController.RealmLevel) or 1
+end
+
+local function SetRealmLevel(PlayerController, Level)
+    PlayerController.RealmLevel = math.max(1, math.min(RealmConfig.MaxLevel, tonumber(Level) or 1))
+end
+
+local function GetRealmFailCount(PlayerController, Level)
+    PlayerController.RealmFailCounts = PlayerController.RealmFailCounts or {}
+    return tonumber(PlayerController.RealmFailCounts[Level]) or 0
+end
+
+local function SetRealmFailCount(PlayerController, Level, Count)
+    PlayerController.RealmFailCounts = PlayerController.RealmFailCounts or {}
+    PlayerController.RealmFailCounts[Level] = math.max(0, tonumber(Count) or 0)
+end
+
+local function HasRealmNeedItems(PlayerController, Config)
+    for _, Item in ipairs(Config.NeedItems or {}) do
+        local ItemID = tonumber(Item.ItemID)
+        local NeedCount = tonumber(Item.Count) or 0
+        if ItemID ~= nil and GetItemCount(PlayerController, ItemID) < NeedCount then
+            return false, Item
+        end
+    end
+
+    return true, nil
+end
+
+local function RemoveRealmNeedItems(PlayerController, Config)
+    local RemovedItems = {}
+    for _, Item in ipairs(Config.NeedItems or {}) do
+        local ItemID = tonumber(Item.ItemID)
+        local NeedCount = tonumber(Item.Count) or 0
+        if ItemID ~= nil and NeedCount > 0 then
+            if not RemoveItem(PlayerController, ItemID, NeedCount) then
+                for _, RemovedItem in ipairs(RemovedItems) do
+                    AddItem(PlayerController, RemovedItem.ItemID, RemovedItem.Count)
+                end
+                return false, Item
+            end
+
+            table.insert(RemovedItems, { ItemID = ItemID, Count = NeedCount })
+        end
+    end
+
+    return true, nil
+end
+
+function UGCPlayerController:Server_BreakRealm(TargetLevel)
+    TargetLevel = tonumber(TargetLevel)
+    local CurrentLevel = GetRealmLevel(self)
+    local ExpectedLevel = CurrentLevel + 1
+
+    if TargetLevel ~= ExpectedLevel or TargetLevel == nil or TargetLevel > RealmConfig.MaxLevel then
+        ugcprint("[UGCPlayerController:Server_BreakRealm] invalid target="
+            .. tostring(TargetLevel) .. ", current=" .. tostring(CurrentLevel))
+        return
+    end
+
+    local Config = RealmConfig.Get(TargetLevel)
+    if Config == nil then
+        return
+    end
+
+    local FailCount = GetRealmFailCount(self, TargetLevel)
+    local HasItems, MissingItem = HasRealmNeedItems(self, Config)
+    if not HasItems then
+        ugcprint("[UGCPlayerController:Server_BreakRealm] item not enough: "
+            .. tostring(MissingItem and MissingItem.Name or "nil")
+            .. ", target=" .. tostring(TargetLevel))
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_BreakRealmResult", false, CurrentLevel, TargetLevel, FailCount, 0, false)
+        return
+    end
+
+    local RemoveSuccess, RemoveFailedItem = RemoveRealmNeedItems(self, Config)
+    if not RemoveSuccess then
+        ugcprint("[UGCPlayerController:Server_BreakRealm] remove item failed: "
+            .. tostring(RemoveFailedItem and RemoveFailedItem.Name or "nil")
+            .. ", target=" .. tostring(TargetLevel))
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_BreakRealmResult", false, CurrentLevel, TargetLevel, FailCount, 0, false)
+        return
+    end
+
+    local Success, IsGuaranteed, UsedRate = RealmConfig.RollBreakResult(TargetLevel, FailCount, 0)
+    local NewLevel = CurrentLevel
+
+    if Success then
+        NewLevel = TargetLevel
+        SetRealmLevel(self, NewLevel)
+        SetRealmFailCount(self, TargetLevel, 0)
+    else
+        FailCount = FailCount + 1
+        SetRealmFailCount(self, TargetLevel, FailCount)
+    end
+
+    UnrealNetwork.CallUnrealRPC(
+        self,
+        self,
+        "Client_BreakRealmResult",
+        Success,
+        NewLevel,
+        TargetLevel,
+        FailCount,
+        UsedRate,
+        IsGuaranteed
+    )
+
+    ugcprint("[UGCPlayerController:Server_BreakRealm] target="
+        .. tostring(TargetLevel)
+        .. ", success=" .. tostring(Success)
+        .. ", rate=" .. tostring(UsedRate)
+        .. ", guaranteed=" .. tostring(IsGuaranteed)
+        .. ", failCount=" .. tostring(FailCount))
+end
+
+function UGCPlayerController:Client_BreakRealmResult(Success, NewLevel, TargetLevel, FailCount, UsedRate, IsGuaranteed)
+    self.RealmLevel = tonumber(NewLevel) or self.RealmLevel
+
+    if self.MainUIInstance == nil or self.MainUIInstance.UI08Instance == nil then
+        ugcprint("[UGCPlayerController:Client_BreakRealmResult] UI08 instance is nil")
+        return
+    end
+
+    local UI08Instance = self.MainUIInstance.UI08Instance
+    if UI08Instance.OnRealmBreakResult ~= nil then
+        UI08Instance:OnRealmBreakResult(Success, NewLevel, TargetLevel, FailCount, UsedRate, IsGuaranteed)
+    elseif UI08Instance.OnRealmLevelChanged ~= nil then
+        UI08Instance:OnRealmLevelChanged(NewLevel)
     end
 end
 

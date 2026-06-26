@@ -76,6 +76,7 @@ function UI02:LuaInit()
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
     self.Button_153.OnClicked:Add(self.Button_153_OnClicked, self)
     self.Button_149.OnClicked:Add(self.Button_149_OnClicked, self)
+    self.Button_151.OnClicked:Add(self.Button_151_OnClicked, self)
 
     self:ApplyButtonEffect(self.Button_0)
     self:ApplyButtonEffect(self.Button_144)
@@ -193,6 +194,44 @@ function UI02:Button_153_OnClicked()
     end
 
     self.UI10Instance:AddToViewport(11000)
+end
+
+-- 境界
+function UI02:Button_151_OnClicked()
+    ugcprint("[UI02:Button_151_OnClicked] Open UI08 realm panel")
+
+    if self.UI08Instance ~= nil then
+        if self.UI08Instance.Open ~= nil then
+            self.UI08Instance:Open()
+        else
+            self.UI08Instance:SetVisibility(ESlateVisibility.Visible)
+        end
+        return
+    end
+
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        ugcprint("[UI02:Button_151_OnClicked] PlayerController is nil")
+        return
+    end
+
+    local UI08Path = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI08.UI08_C"
+    local UI08Class = UE.LoadClass(UI08Path)
+    if UI08Class == nil then
+        ugcprint("[UI02:Button_151_OnClicked] UI08 class load failed: " .. UI08Path)
+        return
+    end
+
+    self.UI08Instance = UserWidget.NewWidgetObjectBP(PlayerController, UI08Class)
+    if self.UI08Instance == nil then
+        ugcprint("[UI02:Button_151_OnClicked] UI08 create failed")
+        return
+    end
+
+    self.UI08Instance:AddToViewport(11000)
+    if self.UI08Instance.Open ~= nil then
+        self.UI08Instance:Open()
+    end
 end
 
 function UI02:TeleportToHome()
