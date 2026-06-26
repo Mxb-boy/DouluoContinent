@@ -1,5 +1,6 @@
 ---@class BaseMons_C:BP_UGC_GenericMobPawn_Base_C
 ---@field HitBox UCapsuleComponent
+---@field MonsterID int32
 --Edit Below--
 local BaseMons = {}
 
@@ -81,8 +82,24 @@ function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEven
     DisableMonsterCollision(self)
 
     if self:HasAuthority() then
+        local DropID = self.MonsterID
+        if EventInstigator ~= nil and EventInstigator.PlayerState ~= nil then
+            local Probability_Bonus = EventInstigator.PlayerState.Probability_Bonus or 0
+            if Probability_Bonus > 100 then
+                Probability_Bonus = 100
+            end
+            DropID = Probability_Bonus * 100 + self.MonsterID
+        end
+
         -- 只有服务端才可以掉落
-        self.UGCPresetCommonDropItemComponent:StartDrop(self, EventInstigator, {})
+        if DropID ~= nil then
+            self.UGCPresetCommonDropItemComponent:StartDropByProduceID(
+                DropID,
+                -1,
+                EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor,
+                nil
+            )
+        end
     end
 end
 

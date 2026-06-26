@@ -294,8 +294,9 @@ function CreateMonsWall:Capsule_OnComponentBeginOverlap(OverlappedComponent, Oth
     end
 
     self.InPeo=(self.InPeo or 0)+1
-local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
-    UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi, tostring( self.InPeo))
+--[[--------------------通知谁开启了什么关卡--------------------------]]--
+-- local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
+--     UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi, tostring( self.InPeo))
 
     if self:HasAuthority() == false then
         return
@@ -323,13 +324,14 @@ local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
 
     self.HasStarted = true
 
-    local allPlayerControllers = UGCGameSystem.GetAllPlayerController()
+    --[[--------------------服务器通知所有客户端--------------------------]]--
+    -- local allPlayerControllers = UGCGameSystem.GetAllPlayerController()
 
-    for _, pc in ipairs(allPlayerControllers or {}) do
-        if pc then
-            UnrealNetwork.CallUnrealRPC(pc, pc, "Client_BroadcastPlantMessage", uid, self.LittleLevel)
-        end
-    end
+    -- for _, pc in ipairs(allPlayerControllers or {}) do
+    --     if pc then
+    --         UnrealNetwork.CallUnrealRPC(pc, pc, "Client_BroadcastPlantMessage", uid, self.LittleLevel)
+    --     end
+    -- end
 
     self:SpawnWave()
 end
@@ -341,8 +343,9 @@ function CreateMonsWall:Capsule_OnComponentEndOverlap(OverlappedComponent, Other
     end
 
   self.InPeo=math.max(0, (self.InPeo or 0)-1)
-  local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
-    UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi, tostring( self.InPeo))
+  --[[--------------------通知谁开启了什么关卡--------------------------]]--
+--   local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
+--     UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi, tostring( self.InPeo))
 
     if self:HasAuthority() == false then
         return
