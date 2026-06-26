@@ -15,6 +15,8 @@ local function GetData(owner)
     RuntimeData[key] = RuntimeData[key] or {
         FlatAttack = {},
         PercentAttack = {},
+        FlatHP = {},
+        PercentHP = {},
     }
     return RuntimeData[key]
 end
@@ -102,12 +104,85 @@ function property.RemoveAttackBonus(owner, sourceKey)
     data.PercentAttack[sourceKey] = nil
 end
 
+function property.SetHPFlat(owner, sourceKey, value)
+    local data = GetData(owner)
+    data.FlatHP[sourceKey or "default"] = tonumber(value) or 0
+end
+
+function property.AddHPFlat(owner, sourceKey, value)
+    local data = GetData(owner)
+    sourceKey = sourceKey or "default"
+    data.FlatHP[sourceKey] = (tonumber(data.FlatHP[sourceKey]) or 0) + (tonumber(value) or 0)
+end
+
+function property.SetHPPercent(owner, sourceKey, value)
+    local data = GetData(owner)
+    data.PercentHP[sourceKey or "default"] = NormalizePercent(value)
+end
+
+function property.AddHPPercent(owner, sourceKey, value)
+    local data = GetData(owner)
+    sourceKey = sourceKey or "default"
+    data.PercentHP[sourceKey] = (tonumber(data.PercentHP[sourceKey]) or 0) + NormalizePercent(value)
+end
+
+function property.RemoveHPBonus(owner, sourceKey)
+    local data = GetData(owner)
+    sourceKey = sourceKey or "default"
+    data.FlatHP[sourceKey] = nil
+    data.PercentHP[sourceKey] = nil
+end
+
+function property.RemoveBonus(owner, sourceKey)
+    property.RemoveAttackBonus(owner, sourceKey)
+    property.RemoveHPBonus(owner, sourceKey)
+end
+
 function property.GetAttackPercent(owner)
     local total = 0
     for _, value in pairs(GetData(owner).PercentAttack) do
         total = total + (tonumber(value) or 0)
     end
     return total
+end
+
+function property.GetAttackPercentTotal(owner)
+    return property.GetAttackPercent(owner)
+end
+
+function property.GetAttackPercentTotalValue(owner)
+    return property.GetAttackPercent(owner) * 100
+end
+
+function property.GetHPPercent(owner)
+    local total = 0
+    for _, value in pairs(GetData(owner).PercentHP) do
+        total = total + (tonumber(value) or 0)
+    end
+    return total
+end
+
+function property.GetHPPercentTotal(owner)
+    return property.GetHPPercent(owner)
+end
+
+function property.GetHPPercentTotalValue(owner)
+    return property.GetHPPercent(owner) * 100
+end
+
+function property.GetFlatHP(owner)
+    local total = 0
+    for _, value in pairs(GetData(owner).FlatHP) do
+        total = total + (tonumber(value) or 0)
+    end
+    return total
+end
+
+function property.GetFinalMaxHP(owner)
+    local baseHP = property.GetMaxHP(owner)
+    local flatHP = property.GetFlatHP(owner)
+    local percentHP = property.GetHPPercent(owner)
+    return (baseHP + flatHP) * (1 + percentHP)
 end
 
 function property.GetFlatAttack(owner)
@@ -127,14 +202,14 @@ end
 
 function property.GetCombatPower(owner, playerPawn)
     local attack = property.GetAttack(owner)
-    local maxHP = property.GetMaxHP(playerPawn or owner)
+    local maxHP = property.GetFinalMaxHP(playerPawn or owner)
     return attack + maxHP * COMBAT_POWER_HP_FACTOR
 end
 
 function property.GetSnapshot(owner, playerPawn)
     playerPawn = playerPawn or owner
     local currentHP = property.GetCurrentHP(playerPawn)
-    local maxHP = property.GetMaxHP(playerPawn)
+    local maxHP = property.GetFinalMaxHP(playerPawn)
 
     return {
         CurrentHP = currentHP,
