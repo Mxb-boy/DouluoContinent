@@ -1,5 +1,26 @@
 local UGCPlayerPawn = {}
 
+local FLY_STATE_TAG = "PawnState.Movement.Flying"
+local FLY_INTERRUPT_TAGS = {
+    "PawnState.Movement.Walk",
+    "PawnState.Movement.Run",
+    "PawnState.Action.Jump",
+    "PawnState.Action.Crouch",
+    "PawnState.Action.Prone",
+    "PawnState.Action.Reload",
+    "PawnState.Action.Fire",
+    "PawnState.Action.HoldWeapon",
+    "PawnState.Movement.Fall",
+}
+local FLY_DISABLE_TAGS = {
+    "PawnState.Movement.Walk",
+    "PawnState.Movement.Run",
+    "PawnState.Action.Jump",
+    "PawnState.Action.Crouch",
+    "PawnState.Action.Prone",
+    "PawnState.Action.Reload",
+    "PawnState.Action.Fire",
+}
 local SOUL_MESH_PATH = "Asset/Blueprint/Lin/Monster/Model/NewModel/"
 local SOUL_SOCKET = "Root"
 local SOUL_SCALE = Vector.New(300, 300, 300)
@@ -134,6 +155,58 @@ function UGCPlayerPawn:EnsurePlayerTitleActor()
     AddReplicatedSubObject(self, self.PlayerTitleActor)
 
     return self.PlayerTitleActor
+end
+
+local function InterruptStateSafe(player, tag)
+    if UGCPersistEffectSystem == nil or UGCPersistEffectSystem.InterruptDynamicState == nil then
+        return
+    end
+
+    pcall(UGCPersistEffectSystem.InterruptDynamicState, player, tag)
+end
+
+local function SetStateDisabledSafe(player, tag, bDisabled)
+    if UGCPersistEffectSystem == nil or UGCPersistEffectSystem.SetDynamicStateDisabled == nil then
+        return
+    end
+
+    local Success = pcall(UGCPersistEffectSystem.SetDynamicStateDisabled, player, tag, bDisabled)
+    if not Success and bDisabled then
+        pcall(UGCPersistEffectSystem.SetDynamicStateDisabled, player, tag)
+    end
+end
+
+function UGCPlayerPawn:BeginFly()
+    if UGCPersistEffectSystem == nil then
+        return
+    end
+
+    if not UGCPersistEffectSystem.HasDynamicState(self, FLY_STATE_TAG) then
+        UGCPersistEffectSystem.EnterDynamicState(self, FLY_STATE_TAG)
+        ugcprint("[UGCPlayerPawn] Enter fly state")
+
+        for _, Tag in ipairs(FLY_INTERRUPT_TAGS) do
+            InterruptStateSafe(self, Tag)
+        end
+        for _, Tag in ipairs(FLY_DISABLE_TAGS) do
+            SetStateDisabledSafe(self, Tag, true)
+        end
+    end
+end
+
+function UGCPlayerPawn:EndFly()
+    if UGCPersistEffectSystem == nil then
+        return
+    end
+
+    if UGCPersistEffectSystem.HasDynamicState(self, FLY_STATE_TAG) then
+        UGCPersistEffectSystem.LeaveDynamicState(self, FLY_STATE_TAG)
+        ugcprint("[UGCPlayerPawn] Leave fly state")
+    end
+
+    for _, Tag in ipairs(FLY_DISABLE_TAGS) do
+        SetStateDisabledSafe(self, Tag, false)
+    end
 end
 
 function UGCPlayerPawn:ReceiveBeginPlay()
