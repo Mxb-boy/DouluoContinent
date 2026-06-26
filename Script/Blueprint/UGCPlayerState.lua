@@ -14,6 +14,7 @@ local UGCPlayerState = {
 -- ============================================================
 local ARCHIVE_KEYS = {
     { key = "HunHuan", field = "HunHuan", default = 1 },
+    { key = "HunHuan_Little", field = "HunHuan_Little", default = 1 },
     -- 示例: { key = "Gold",    field = "Gold",    default = 0 },
 }
 
@@ -44,7 +45,11 @@ function UGCPlayerState:LoadFromArchive(UID)
     for _, entry in ipairs(ARCHIVE_KEYS) do
         local val = ArchiveData[entry.key]
         if val ~= nil then
-            self[entry.field] = val
+            -- 走 Setter 触发 CallRefreshZhanli 等副作用，同时 Setter 内会调用 SaveToArchive 写回
+            local setterName = "Set" .. entry.field
+            if self[setterName] then
+                self[setterName](self, val)
+            end
         end
     end
 end
@@ -84,6 +89,7 @@ end
 function UGCPlayerState:SetHunHuan_Little(value)
      self.HunHuan_Little=value
     self:CallRefreshZhanli()
+    self:SaveToArchive()
 end
 
 function  UGCPlayerState:CallRefreshZhanli()
