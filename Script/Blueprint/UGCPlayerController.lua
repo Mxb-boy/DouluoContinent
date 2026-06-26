@@ -49,6 +49,25 @@ function UGCPlayerController:ReceiveBeginPlay()
 
     self.MainUIInstance:AddToViewport()
     ugcprint("[UGCPlayerController] MainUI created")
+
+    local FeiUIPath =
+        UGCMapInfoLib.GetRootLongPackagePath()
+        .. "Asset/Blueprint/UI/Fei.Fei_C"
+    local FeiUIClass = UE.LoadClass(FeiUIPath)
+
+    if FeiUIClass == nil then
+        ugcprint("[UGCPlayerController] Fei UI class load failed: " .. FeiUIPath)
+        return
+    end
+
+    self.FeiUIInstance = UserWidget.NewWidgetObjectBP(self, FeiUIClass)
+    if self.FeiUIInstance == nil then
+        ugcprint("[UGCPlayerController] Fei UI create failed")
+        return
+    end
+
+    self.FeiUIInstance:AddToViewport()
+    ugcprint("[UGCPlayerController] Fei UI created")
 end
 
 	  function UGCPlayerController:GetAvailableServerRPCs()
@@ -58,7 +77,11 @@ end
               "Client_BroadcastPlantMessage",
               "Client_ForgeWeaponResult",
               "Server_ForgeWeapon",
-              "Server_EquipTitle"
+              "Server_EquipTitle",
+              "Server_BeginFlyState",
+              "Server_EndFlyState",
+              "Server_FlyMove",
+              "Server_StopFlyMove"
 	  end
 
 	  local function TeleportToSpawn(self, bornPointID)
@@ -90,6 +113,100 @@ end
 	  end
 
 -- WBP_RankingListBtn 更新排行榜服务端--要走官方测试按钮暂时没开
+function UGCPlayerController:Server_BeginFlyState()
+    local pawn = self:K2_GetPawn()
+    if pawn == nil or pawn.BeginFly == nil then
+        return
+    end
+
+    pawn:BeginFly()
+end
+
+function UGCPlayerController:Server_EndFlyState()
+    local pawn = self:K2_GetPawn()
+    if pawn == nil or pawn.EndFly == nil then
+        return
+    end
+
+    pawn:EndFly()
+end
+
+local FLY_SPEED = 3600
+
+function UGCPlayerController:Server_FlyMove(DirX, DirY, DirZ, DeltaTime)
+    local pawn = self:K2_GetPawn()
+    if pawn == nil or pawn.K2_GetActorLocation == nil or pawn.K2_SetActorLocation == nil then
+        return
+    end
+
+    local MovementComponent = pawn.CharacterMovement or pawn.MovementComponent
+    if MovementComponent ~= nil then
+        if MovementComponent.SetMovementMode ~= nil then
+            pcall(MovementComponent.SetMovementMode, MovementComponent, 5)
+        end
+        if MovementComponent.GravityScale ~= nil then
+            MovementComponent.GravityScale = 0
+        end
+        if MovementComponent.Velocity ~= nil then
+            MovementComponent.Velocity = Vector.New(0, 0, 0)
+        end
+    end
+
+    DirX = tonumber(DirX) or 0
+    DirY = tonumber(DirY) or 0
+    DirZ = tonumber(DirZ) or 0
+    DeltaTime = tonumber(DeltaTime) or 0.016
+
+    if DeltaTime <= 0 or DeltaTime > 0.1 then
+        DeltaTime = 0.016
+    end
+
+    local Length = math.sqrt(DirX * DirX + DirY * DirY + DirZ * DirZ)
+    if Length <= 0.01 then
+        return
+    end
+
+    DirX = DirX / Length
+    DirY = DirY / Length
+    DirZ = DirZ / Length
+
+    local Location = pawn:K2_GetActorLocation()
+    if Location == nil then
+        return
+    end
+
+    local Distance = FLY_SPEED * DeltaTime
+    local NewLocation = Vector.New(
+        Location.X + DirX * Distance,
+        Location.Y + DirY * Distance,
+        Location.Z + DirZ * Distance
+    )
+
+    pawn:K2_SetActorLocation(NewLocation, true, nil, true)
+end
+
+function UGCPlayerController:Server_StopFlyMove()
+    local pawn = self:K2_GetPawn()
+    if pawn == nil then
+        return
+    end
+
+    local MovementComponent = pawn.CharacterMovement or pawn.MovementComponent
+    if MovementComponent == nil then
+        return
+    end
+
+    if MovementComponent.GravityScale ~= nil then
+        MovementComponent.GravityScale = 1
+    end
+    if MovementComponent.Velocity ~= nil then
+        MovementComponent.Velocity = Vector.New(0, 0, 0)
+    end
+    if MovementComponent.SetMovementMode ~= nil then
+        pcall(MovementComponent.SetMovementMode, MovementComponent, 1)
+    end
+end
+
 local function GetVirtualItemManager()
     if UGCGamePartSystem ~= nil
         and UGCGamePartSystem.IsGamePartLoaded ~= nil

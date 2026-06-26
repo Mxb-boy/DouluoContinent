@@ -1,5 +1,7 @@
 ---@class UI02_C:UUserWidget
 ---@field Button_0 UButton
+---@field Button_93 UButton
+---@field Button_94 UButton
 ---@field Button_144 UButton
 ---@field Button_145 UButton
 ---@field Button_147 UButton
@@ -13,7 +15,11 @@
 ---@field Button_156 UButton
 ---@field Button_157 UButton
 ---@field Button_158 UButton
+---@field gjl UTextBlock
+---@field hp UTextBlock
 ---@field Image_0 UImage
+---@field Image_1 UImage
+---@field Image_70 UImage
 ---@field Image_225 UImage
 ---@field Image_246 UImage
 ---@field Image_302 UImage
@@ -32,6 +38,7 @@
 ---@field ProgressBar_0 UProgressBar
 ---@field ProgressBar_1 UProgressBar
 ---@field ProgressBar_122 UProgressBar
+---@field TextBlock_303 UTextBlock
 --Edit Below--
 UGCGameSystem.UGCRequire("ExtendResource.SignInEvent.OfficialPackage." .. "Script.SignInEvent.SignInEventManager")
 UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.ShopV2.ShopV2Manager")
@@ -42,6 +49,7 @@ local TaskManager = UGCGameSystem.UGCRequire(
 )
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
+local Property = UGCGameSystem.UGCRequire("Script.property.property")
 
 local UI02 = { bInitDoOnce = false }
 
@@ -97,6 +105,18 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_158)
 
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
+    self.PropertyRefreshElapsed = 0
+    Property.RefreshUI(self)
+end
+
+function UI02:Tick(MyGeometry, InDeltaTime)
+    self.PropertyRefreshElapsed = (self.PropertyRefreshElapsed or 0) + (tonumber(InDeltaTime) or 0.016)
+    if self.PropertyRefreshElapsed < 0.2 then
+        return
+    end
+
+    self.PropertyRefreshElapsed = 0
+    Property.RefreshUI(self)
 end
 
 --签到

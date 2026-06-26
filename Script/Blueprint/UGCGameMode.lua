@@ -56,11 +56,19 @@ function UGCGameMode:ReceiveBeginPlay()
     )
 end
 
--- 玩家登录时发初始武器（Pawn可能还没好，等1秒）
+-- 玩家登录时: 先加载跨对局存档, 再发初始武器（Pawn可能还没好，等1秒）
 function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
     local PC = PlayerController
     UGCTimerUtility.CreateLuaTimer(1, function()
         if PC.Pawn then
+            -- 1. 加载跨对局存档（注入 UID → 恢复所有注册字段）
+            local PlayerState = PC.PlayerState
+            if PlayerState and PlayerState.LoadFromArchive then
+                local UID = UGCPawnAttrSystem.GetPlayerUID(PC.Pawn)
+                PlayerState:LoadFromArchive(tonumber(UID))
+            end
+
+            -- 2. 发初始武器
             local HTCLv1ItemID = WeaponLevelConfig.GetItemID("HTC", 1)
             local HTCLv2ItemID = WeaponLevelConfig.GetItemID("HTC", 2)
 
