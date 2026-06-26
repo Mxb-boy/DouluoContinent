@@ -91,18 +91,13 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_156)
     self:ApplyButtonEffect(self.Button_157)
     self:ApplyButtonEffect(self.Button_158)
+    UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
-    self.PropertyRefreshElapsed = 0
+    UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
     Property.RefreshUI(self)
 end
 
-function UI02:Tick(MyGeometry, InDeltaTime)
-    self.PropertyRefreshElapsed = (self.PropertyRefreshElapsed or 0) + (tonumber(InDeltaTime) or 0.016)
-    if self.PropertyRefreshElapsed < 0.2 then
-        return
-    end
-
-    self.PropertyRefreshElapsed = 0
+function UI02:OnRefreshProperty()
     Property.RefreshUI(self)
 end
 

@@ -1,4 +1,5 @@
 local UGCPlayerPawn = {}
+local Property = UGCGameSystem.UGCRequire("Script.property.property")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
 local FLY_INTERRUPT_TAGS = {
@@ -26,6 +27,33 @@ local SOUL_SOCKET = "Root"
 local SOUL_SCALE = Vector.New(300, 300, 300)
 local SOUL_OFFSET = Vector.New(0, 0, 0)
 local SOUL_ROTATION = Rotator.New(90, 0, 0)
+
+local function Round2(value)
+    value = tonumber(value) or 0
+    return math.floor(value * 100 + 0.5) / 100
+end
+
+local function IsLocalPlayerPawn(player)
+    if player == nil or UGCGameSystem == nil or UGCGameSystem.GetLocalPlayerPawn == nil then
+        return false
+    end
+
+    return UGCGameSystem.GetLocalPlayerPawn() == player
+end
+
+local function BuildPropertyWatchKey(player)
+    if player == nil or Property == nil or Property.GetSnapshot == nil then
+        return nil
+    end
+
+    local snapshot = Property.GetSnapshot(player, player)
+    return table.concat({
+        tostring(Round2(snapshot.CurrentHP)),
+        tostring(Round2(snapshot.MaxHP)),
+        tostring(Round2(snapshot.Attack)),
+        tostring(Round2(snapshot.CombatPower)),
+    }, "|")
+end
 
 local function DestroySoulMesh(player)
     if player ~= nil and player.SoulMeshActor ~= nil then
@@ -214,12 +242,16 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.Test_01)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi_01)
+    UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenObjectMessage(self, L_Enum_Event.Enum.ReFreshZhanLi_01, self, self.InitPlayerState)
     UGCPawnAttrSystem.SetSpeedScale(self, 3)
 
     self.EquippedTitleID = self.EquippedTitleID or 0
+    self.PropertyWatchElapsed = 0
+    self.LastPropertyWatchKey = nil
 
     self:InitPlayerState()
+    self:NotifyPropertyChangedIfNeeded(true)
 
     if not self:HasAuthority() then
         return
@@ -228,8 +260,43 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     self:EnsurePlayerTitleActor()
 end
 
+function UGCPlayerPawn:ReceiveTick(DeltaTime)
+    if UGCPlayerPawn.SuperClass ~= nil and UGCPlayerPawn.SuperClass.ReceiveTick ~= nil then
+        UGCPlayerPawn.SuperClass.ReceiveTick(self, DeltaTime)
+    end
+
+    self.PropertyWatchElapsed = (self.PropertyWatchElapsed or 0) + (tonumber(DeltaTime) or 0.016)
+    if self.PropertyWatchElapsed < 0.1 then
+        return
+    end
+
+    self.PropertyWatchElapsed = 0
+    self:NotifyPropertyChangedIfNeeded(false)
+end
+
+function UGCPlayerPawn:NotifyPropertyChangedIfNeeded(bForce)
+    if not IsLocalPlayerPawn(self) then
+        return
+    end
+
+    local propertyWatchKey = BuildPropertyWatchKey(self)
+    if propertyWatchKey == nil then
+        return
+    end
+
+    if bForce or self.LastPropertyWatchKey ~= propertyWatchKey then
+        self.LastPropertyWatchKey = propertyWatchKey
+        Property.NotifyChanged(self)
+    end
+end
+
 function UGCPlayerPawn:UGC_PlayerDeadEvent(Killer, DamageType)
     DestroySoulMesh(self)
+    self:NotifyPropertyChangedIfNeeded(true)
+end
+
+function UGCPlayerPawn:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+    self:NotifyPropertyChangedIfNeeded(true)
 end
 
 function UGCPlayerPawn:ReceiveEndPlay()

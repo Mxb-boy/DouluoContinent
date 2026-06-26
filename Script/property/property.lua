@@ -1,4 +1,5 @@
 local property = {}
+local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 
 local DEFAULT_BASE_ATTACK = 40
 local DEFAULT_MAX_HP = 100
@@ -54,6 +55,25 @@ local function GetAttrMax(actor, attrName, fallback)
     return fallback
 end
 
+local function NotifyPropertyChanged(owner)
+    if UGCGenericMessageSystem == nil or L_Enum_Event == nil or L_Enum_Event.Enum == nil then
+        return
+    end
+
+    local target = owner
+    if target == nil and UGCGameSystem ~= nil and UGCGameSystem.GetLocalPlayerPawn ~= nil then
+        target = UGCGameSystem.GetLocalPlayerPawn()
+    end
+    if target == nil then
+        return
+    end
+
+    if UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage ~= nil then
+        pcall(UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage, L_Enum_Event.Enum.ReFreshProperty)
+    end
+    pcall(UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage, target, L_Enum_Event.Enum.ReFreshProperty)
+end
+
 function property.GetCurrentHP(playerPawn)
     return GetAttrValue(playerPawn, "Health", property.GetMaxHP(playerPawn))
 end
@@ -70,6 +90,7 @@ function property.SetBaseAttack(owner, value)
     if owner ~= nil and UGCAttributeSystem ~= nil and UGCAttributeSystem.SetGameAttributeValue ~= nil then
         local success = pcall(UGCAttributeSystem.SetGameAttributeValue, owner, "AttackPower", tonumber(value) or DEFAULT_BASE_ATTACK)
         if success then
+            NotifyPropertyChanged(owner)
             return
         end
     end
@@ -78,23 +99,27 @@ end
 function property.SetAttackFlat(owner, sourceKey, value)
     local data = GetData(owner)
     data.FlatAttack[sourceKey or "default"] = tonumber(value) or 0
+    NotifyPropertyChanged(owner)
 end
 
 function property.AddAttackFlat(owner, sourceKey, value)
     local data = GetData(owner)
     sourceKey = sourceKey or "default"
     data.FlatAttack[sourceKey] = (tonumber(data.FlatAttack[sourceKey]) or 0) + (tonumber(value) or 0)
+    NotifyPropertyChanged(owner)
 end
 
 function property.SetAttackPercent(owner, sourceKey, value)
     local data = GetData(owner)
     data.PercentAttack[sourceKey or "default"] = NormalizePercent(value)
+    NotifyPropertyChanged(owner)
 end
 
 function property.AddAttackPercent(owner, sourceKey, value)
     local data = GetData(owner)
     sourceKey = sourceKey or "default"
     data.PercentAttack[sourceKey] = (tonumber(data.PercentAttack[sourceKey]) or 0) + NormalizePercent(value)
+    NotifyPropertyChanged(owner)
 end
 
 function property.RemoveAttackBonus(owner, sourceKey)
@@ -102,28 +127,33 @@ function property.RemoveAttackBonus(owner, sourceKey)
     sourceKey = sourceKey or "default"
     data.FlatAttack[sourceKey] = nil
     data.PercentAttack[sourceKey] = nil
+    NotifyPropertyChanged(owner)
 end
 
 function property.SetHPFlat(owner, sourceKey, value)
     local data = GetData(owner)
     data.FlatHP[sourceKey or "default"] = tonumber(value) or 0
+    NotifyPropertyChanged(owner)
 end
 
 function property.AddHPFlat(owner, sourceKey, value)
     local data = GetData(owner)
     sourceKey = sourceKey or "default"
     data.FlatHP[sourceKey] = (tonumber(data.FlatHP[sourceKey]) or 0) + (tonumber(value) or 0)
+    NotifyPropertyChanged(owner)
 end
 
 function property.SetHPPercent(owner, sourceKey, value)
     local data = GetData(owner)
     data.PercentHP[sourceKey or "default"] = NormalizePercent(value)
+    NotifyPropertyChanged(owner)
 end
 
 function property.AddHPPercent(owner, sourceKey, value)
     local data = GetData(owner)
     sourceKey = sourceKey or "default"
     data.PercentHP[sourceKey] = (tonumber(data.PercentHP[sourceKey]) or 0) + NormalizePercent(value)
+    NotifyPropertyChanged(owner)
 end
 
 function property.RemoveHPBonus(owner, sourceKey)
@@ -131,6 +161,11 @@ function property.RemoveHPBonus(owner, sourceKey)
     sourceKey = sourceKey or "default"
     data.FlatHP[sourceKey] = nil
     data.PercentHP[sourceKey] = nil
+    NotifyPropertyChanged(owner)
+end
+
+function property.NotifyChanged(owner)
+    NotifyPropertyChanged(owner)
 end
 
 function property.RemoveBonus(owner, sourceKey)

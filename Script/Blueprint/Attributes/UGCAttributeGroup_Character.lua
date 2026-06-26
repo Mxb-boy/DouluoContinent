@@ -1,4 +1,29 @@
 local UGCAttributeGroup_Character = {}
+local Property = UGCGameSystem.UGCRequire("Script.property.property")
+
+local WATCHED_ATTRIBUTES = {
+    Health = true,
+    HealthMax = true,
+    AttackPower = true,
+}
+
+local function TryNotifyPropertyChanged(...)
+    local args = { ... }
+    local attrName = nil
+    local ownerActor = nil
+
+    for _, value in ipairs(args) do
+        if type(value) == "string" and WATCHED_ATTRIBUTES[value] then
+            attrName = value
+        elseif type(value) == "userdata" or type(value) == "table" then
+            ownerActor = ownerActor or value
+        end
+    end
+
+    if attrName ~= nil then
+        Property.NotifyChanged(ownerActor)
+    end
+end
  
 --[[
 function UGCAttributeGroup_Character:ReceiveBeginPlay()
@@ -32,6 +57,22 @@ end
 
 function UGCAttributeGroup_Character:GetFallingDamageRatio_Override(OriginalValue, AttributeOwnerActor)
 	return OriginalValue;
+end
+
+function UGCAttributeGroup_Character:OnAttributeChanged(...)
+    TryNotifyPropertyChanged(...)
+end
+
+function UGCAttributeGroup_Character:OnGameAttributeChanged(...)
+    TryNotifyPropertyChanged(...)
+end
+
+function UGCAttributeGroup_Character:PostAttributeChange(...)
+    TryNotifyPropertyChanged(...)
+end
+
+function UGCAttributeGroup_Character:PostAttributeChanged(...)
+    TryNotifyPropertyChanged(...)
 end
 
 return UGCAttributeGroup_Character
