@@ -9,14 +9,19 @@
 ---@field Image_101 UImage
 ---@field Image_103 UImage
 ---@field Image_107 UImage
+---@field Image_187 UImage
 ---@field Img_Current UImage
 ---@field Img_NeedItem_1 UImage
 ---@field Img_NeedItem_2 UImage
 ---@field Img_NeedItem_3 UImage
+---@field NewUGCWidgetBlueprint2 NewUGCWidgetBlueprint2_C
 ---@field Text_CurrentName UTextBlock
 ---@field Text_NextName UTextBlock
 ---@field Text_NextValue UTextBlock
 ---@field Text_NowValue UTextBlock
+---@field TextBlock_0 UTextBlock
+---@field TextBlock_1 UTextBlock
+---@field TextBlock_2 UTextBlock
 ---@field TextCailiao UTextBlock
 ---@field TextZhanli UTextBlock
 --Edit Below--
