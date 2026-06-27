@@ -77,6 +77,7 @@ function UI02:LuaInit()
     self.Button_153.OnClicked:Add(self.Button_153_OnClicked, self)
     self.Button_149.OnClicked:Add(self.Button_149_OnClicked, self)
     self.Button_151.OnClicked:Add(self.Button_151_OnClicked, self)
+    self.Button_155.OnClicked:Add(self.Button_155_OnClicked, self)
 
     self:ApplyButtonEffect(self.Button_0)
     self:ApplyButtonEffect(self.Button_144)
@@ -234,6 +235,38 @@ function UI02:Button_151_OnClicked()
     end
 end
 
+-- 传送
+function UI02:Button_155_OnClicked()
+    if self.TeleportUIInstance ~= nil then
+        -- 重新刷新战力门槛（玩家升级后按钮状态会更新）
+        if self.TeleportUIInstance.RefreshList then
+            self.TeleportUIInstance:RefreshList()
+        end
+        self.TeleportUIInstance:SetVisibility(ESlateVisibility.Visible)
+        return
+    end
+
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        return
+    end
+
+    local UI12Path = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/UI12.UI12_C"
+    local UI12Class = UE.LoadClass(UI12Path)
+    if UI12Class == nil then
+        ugcprint("[UI02:Button_155] UI12 class load failed: " .. UI12Path)
+        return
+    end
+
+    self.TeleportUIInstance = UserWidget.NewWidgetObjectBP(PlayerController, UI12Class)
+    if self.TeleportUIInstance == nil then
+        ugcprint("[UI02:Button_155] UI12 create failed")
+        return
+    end
+
+    self.TeleportUIInstance:AddToViewport(11000)
+end
+
 function UI02:TeleportToHome()
     local pc = GameplayStatics.GetPlayerController(self, 0)
     if pc then
@@ -262,22 +295,6 @@ function UI02:Button_0_OnClicked()
             GiftPackUI:AddToViewport(12000)
         end
     end
-
---[[----------------------LJP测试------------------------]]--
-local playerPawn = UGCGameSystem.GetLocalPlayerPawn()
-if playerPawn ~= nil and playerPawn.PlayerState ~= nil then
-    local playerState = playerPawn.PlayerState
-    local HunHuan = playerState:GetHunHuan()
-    if HunHuan == 10 then
-        HunHuan = 0
-    end
-    playerState:SetHunHuan(HunHuan + 1)
-
-end
- --[[----------------------测试发送事件-----------------------]]--
-if PlayerController ~= nil then
-    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_AddProbabilityBonus", 10)
-end
 end
 
 function UI02:OnhandleTest(str)
