@@ -32,6 +32,7 @@
 ---@field ProgressBar_0 UProgressBar
 ---@field ProgressBar_1 UProgressBar
 ---@field ProgressBar_122 UProgressBar
+---@field TextBlock_302 UTextBlock
 --Edit Below--
 local UI2t = { bInitDoOnce = false } 
 

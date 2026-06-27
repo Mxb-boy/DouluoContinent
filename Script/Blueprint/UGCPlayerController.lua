@@ -76,6 +76,7 @@ end
 
 	  function UGCPlayerController:GetAvailableServerRPCs()
 	      return "Server_TeleportToSpawn",
+              "Server_TeleportToLocation",
               "Server_UpdateRankingListScore",
               "Server_ClearAllRankingListData",
               "Client_BroadcastPlantMessage",
@@ -118,6 +119,14 @@ end
 
 	  function UGCPlayerController:Server_TeleportToSpawn(bornPointID)
 	      TeleportToSpawn(self, bornPointID)
+	  end
+
+	  --- 传送玩家到指定坐标
+	  ---@param x number
+	  ---@param y number
+	  ---@param z number
+	  function UGCPlayerController:Server_TeleportToLocation(x, y, z)
+	      UGCPlayerControllerSystem.TeleportTo(self, x, y, z)
 	  end
 
 -- WBP_RankingListBtn 更新排行榜服务端--要走官方测试按钮暂时没开
