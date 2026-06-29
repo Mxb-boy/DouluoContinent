@@ -1,7 +1,13 @@
 ---@class UI02_C:UUserWidget
 ---@field Button_0 UButton
+---@field Button_92 UButton
 ---@field Button_93 UButton
 ---@field Button_94 UButton
+---@field Button_95 UButton
+---@field Button_97 UButton
+---@field Button_99 UButton
+---@field Button_134 UButton
+---@field Button_135 UButton
 ---@field Button_144 UButton
 ---@field Button_145 UButton
 ---@field Button_147 UButton
@@ -15,11 +21,17 @@
 ---@field Button_156 UButton
 ---@field Button_157 UButton
 ---@field Button_158 UButton
+---@field Button_226 UButton
+---@field Button_227 UButton
+---@field Button_228 UButton
 ---@field gjl UTextBlock
 ---@field hp UTextBlock
 ---@field Image_0 UImage
 ---@field Image_1 UImage
+---@field Image_2 UImage
 ---@field Image_70 UImage
+---@field Image_109 UImage
+---@field Image_169 UImage
 ---@field Image_225 UImage
 ---@field Image_246 UImage
 ---@field Image_302 UImage
@@ -37,7 +49,10 @@
 ---@field Image_542 UImage
 ---@field ProgressBar_0 UProgressBar
 ---@field ProgressBar_1 UProgressBar
+---@field ProgressBar_2 UProgressBar
 ---@field ProgressBar_122 UProgressBar
+---@field TextBlock_0 UTextBlock
+---@field TextBlock_1 UTextBlock
 ---@field TextBlock_303 UTextBlock
 --Edit Below--
 UGCGameSystem.UGCRequire("ExtendResource.SignInEvent.OfficialPackage." .. "Script.SignInEvent.SignInEventManager")
