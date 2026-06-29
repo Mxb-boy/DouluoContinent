@@ -12,7 +12,6 @@ local FLY_EFFECT_SOCKET = "Root"
 local FLY_EFFECT_OFFSET = Vector.New(0, 0, 80)
 local FLY_EFFECT_ROTATION = Rotator.New(0, 0, 0)
 local FLY_EFFECT_SCALE = Vector.New(2, 2, 2)
-local FLY_KEY_NAMES = { "C", "c" }
 local FLY_RELEASE_GRACE_TIME = 0.35
 
 local BlockedControlWidgetNames = {
@@ -46,6 +45,7 @@ function Fei:LuaInit()
         return
     end
     self.bInitDoOnce = true
+    self:SetupRootHitTest()
     self:SetupKeyboardInputMode()
 
     if self.Button_84 ~= nil then
@@ -59,6 +59,12 @@ function Fei:LuaInit()
         if self.Button_84.OnReleased ~= nil then
             self.Button_84.OnReleased:Add(self.Button_84_OnReleased, self)
         end
+    end
+end
+
+function Fei:SetupRootHitTest()
+    if self.SetVisibility ~= nil and ESlateVisibility ~= nil and ESlateVisibility.SelfHitTestInvisible ~= nil then
+        pcall(self.SetVisibility, self, ESlateVisibility.SelfHitTestInvisible)
     end
 end
 
@@ -139,7 +145,6 @@ function Fei:StopFly()
 end
 
 function Fei:Tick(MyGeometry, InDeltaTime)
-    self:SetupKeyboardInputMode()
     self:UpdateKeyboardHold()
     self:UpdateButtonReleaseGrace(InDeltaTime)
     self:RefreshFlyHoldState()
@@ -221,14 +226,6 @@ function Fei:IsFlyKeyDown(PlayerController)
     local bChecked = false
     if EKeys ~= nil and EKeys.C ~= nil then
         local Success, Result = pcall(PlayerController.IsInputKeyDown, PlayerController, EKeys.C)
-        bChecked = bChecked or Success
-        if Success and Result then
-            return true
-        end
-    end
-
-    for _, KeyName in ipairs(FLY_KEY_NAMES) do
-        local Success, Result = pcall(PlayerController.IsInputKeyDown, PlayerController, KeyName)
         bChecked = bChecked or Success
         if Success and Result then
             return true

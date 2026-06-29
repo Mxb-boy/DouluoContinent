@@ -44,48 +44,74 @@ WeaponLevelConfig.ForgeCostByLevel = {
     [4] = { HGRJ = 300, QNHH = 20 },
 }
 
-WeaponLevelConfig.ForgeRateByLevel = {
-    [1] = { Success = 90, Keep = 10, Down = 0 },
-    [2] = { Success = 70, Keep = 25, Down = 5 },
-    [3] = { Success = 50, Keep = 25, Down = 15 },
-    [4] = { Success = 30, Keep = 50, Down = 20 },
+WeaponLevelConfig.ForgeRateBySeries = {
+    HWSCJ = {
+        [1] = { Success = 65, Keep = 30, Down = 5 },
+        [2] = { Success = 52, Keep = 36, Down = 12 },
+        [3] = { Success = 38, Keep = 42, Down = 20 },
+        [4] = { Success = 22, Keep = 48, Down = 30 },
+    },
+    HTC = {
+        [1] = { Success = 55, Keep = 33, Down = 12 },
+        [2] = { Success = 43, Keep = 39, Down = 18 },
+        [3] = { Success = 30, Keep = 44, Down = 26 },
+        [4] = { Success = 16, Keep = 47, Down = 37 },
+    },
+    LCSL = {
+        [1] = { Success = 55, Keep = 33, Down = 12 },
+        [2] = { Success = 43, Keep = 39, Down = 18 },
+        [3] = { Success = 30, Keep = 44, Down = 26 },
+        [4] = { Success = 16, Keep = 47, Down = 37 },
+    },
+    TSSJ = {
+        [1] = { Success = 55, Keep = 33, Down = 12 },
+        [2] = { Success = 43, Keep = 39, Down = 18 },
+        [3] = { Success = 30, Keep = 44, Down = 26 },
+        [4] = { Success = 16, Keep = 47, Down = 37 },
+    },
+    XJWQ = {
+        [1] = { Success = 42, Keep = 38, Down = 20 },
+        [2] = { Success = 30, Keep = 41, Down = 29 },
+        [3] = { Success = 19, Keep = 43, Down = 38 },
+        [4] = { Success = 9, Keep = 44, Down = 47 },
+    },
 }
 
 WeaponLevelConfig.BaseAttributeBySeries = {
     XJWQ = {
-        [1] = { AttackPercent = 8 },
-        [2] = { AttackPercent = 12 },
-        [3] = { AttackPercent = 16 },
-        [4] = { AttackPercent = 20 },
-        [5] = { AttackPercent = 24 },
+        [1] = { AttackPercent = 0 },
+        [2] = { AttackPercent = 2 },
+        [3] = { AttackPercent = 5 },
+        [4] = { AttackPercent = 8 },
+        [5] = { AttackPercent = 10 },
     },
     HWSCJ = {
-        [1] = { AttackPercent = 10 },
-        [2] = { AttackPercent = 15 },
-        [3] = { AttackPercent = 20 },
-        [4] = { AttackPercent = 25 },
-        [5] = { AttackPercent = 30 },
+        [1] = { AttackPercent = 20 },
+        [2] = { AttackPercent = 55 },
+        [3] = { AttackPercent = 100 },
+        [4] = { AttackPercent = 170 },
+        [5] = { AttackPercent = 250 },
     },
     HTC = {
-        [1] = { AttackPercent = 12 },
-        [2] = { AttackPercent = 18 },
-        [3] = { AttackPercent = 24 },
-        [4] = { AttackPercent = 30 },
-        [5] = { AttackPercent = 36 },
+        [1] = { AttackPercent = 6 },
+        [2] = { AttackPercent = 31 },
+        [3] = { AttackPercent = 66 },
+        [4] = { AttackPercent = 123 },
+        [5] = { AttackPercent = 193 },
     },
     LCSL = {
-        [1] = { AttackPercent = 14 },
-        [2] = { AttackPercent = 21 },
-        [3] = { AttackPercent = 28 },
-        [4] = { AttackPercent = 35 },
-        [5] = { AttackPercent = 42 },
+        [1] = { AttackPercent = 4 },
+        [2] = { AttackPercent = 29 },
+        [3] = { AttackPercent = 64 },
+        [4] = { AttackPercent = 121 },
+        [5] = { AttackPercent = 197 },
     },
     TSSJ = {
-        [1] = { AttackPercent = 16 },
-        [2] = { AttackPercent = 24 },
-        [3] = { AttackPercent = 32 },
-        [4] = { AttackPercent = 40 },
-        [5] = { AttackPercent = 50 },
+        [1] = { AttackPercent = 8 },
+        [2] = { AttackPercent = 33 },
+        [3] = { AttackPercent = 68 },
+        [4] = { AttackPercent = 125 },
+        [5] = { AttackPercent = 195 },
     },
 }
 
@@ -160,7 +186,12 @@ function WeaponLevelConfig.GetForgeRate(ItemID)
         return nil
     end
 
-    return WeaponLevelConfig.ForgeRateByLevel[Info.Level]
+    local SeriesRate = WeaponLevelConfig.ForgeRateBySeries[Info.SeriesKey]
+    if SeriesRate == nil then
+        return nil
+    end
+
+    return SeriesRate[Info.Level]
 end
 
 function WeaponLevelConfig.GetBaseAttribute(ItemID)

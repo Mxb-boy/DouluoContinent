@@ -11,6 +11,21 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     
      -- 传入的原始伤害数值
     local SkillAttack = UGCAttributeSystem.GetSourceMagnitudeFromContext(Context)
+    local ServerAttackPower = nil
+    if CauserActor ~= nil then
+        ServerAttackPower = UGCAttributeSystem.GetGameAttributeValue(CauserActor, "AttackPower")
+    end
+    print("[DamageDebug] CauserActor=" .. tostring(CauserActor)
+        .. ", SourceMagnitude=" .. tostring(SkillAttack)
+        .. ", ServerAttackPower=" .. tostring(ServerAttackPower)
+        .. ", VictimActor=" .. tostring(VictimActor))
+    ServerAttackPower = tonumber(ServerAttackPower)
+    SkillAttack = tonumber(SkillAttack) or 0
+    if ServerAttackPower ~= nil and ServerAttackPower > SkillAttack then
+        print("[DamageDebug] Override SourceMagnitude by ServerAttackPower: "
+            .. tostring(SkillAttack) .. " -> " .. tostring(ServerAttackPower))
+        SkillAttack = ServerAttackPower
+    end
     local CurrentSignalHP = UGCAttributeSystem.GetGameAttributeValue(VictimActor, "SignalHP")       --当前信号值
     print("[UGCGlobalDamageCalculation] Context CurrentSignalHP --->"..tostring(CurrentSignalHP))
     local MaxSignalHP = UGCAttributeSystem.GetGameAttributeValueMax(VictimActor, "SignalHP")       --Max信号值

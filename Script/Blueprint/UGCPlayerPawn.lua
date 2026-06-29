@@ -116,16 +116,24 @@ local WeaponLevelNameToLevel = {
 }
 
 local function TryCall(Object, FunctionName, ...)
-    if Object == nil or Object[FunctionName] == nil then
+    if Object == nil then
         return nil
     end
 
-    local Success, Result = pcall(Object[FunctionName], Object, ...)
+    local Success, Function = pcall(function()
+        return Object[FunctionName]
+    end)
+    if not Success or Function == nil then
+        return nil
+    end
+
+    local Result = nil
+    Success, Result = pcall(Function, Object, ...)
     if Success then
         return Result
     end
 
-    Success, Result = pcall(Object[FunctionName], ...)
+    Success, Result = pcall(Function, ...)
     if Success then
         return Result
     end
@@ -362,7 +370,6 @@ local function GetCurrentHeldWeapon(player)
             "GetCurrentWeapon",
             "GetCurrentWeaponActor",
             "GetCurrentActiveWeapon",
-            "GetCurrentUsingWeapon",
             "GetCurrentInventoryWeapon",
             "GetEquippedWeapon",
         }
@@ -372,12 +379,16 @@ local function GetCurrentHeldWeapon(player)
                 return Weapon
             end
         end
+        local Weapon = TryCall(WeaponManager, "GetCurrentUsingWeapon", true)
+            or TryCall(WeaponManager, "GetCurrentUsingWeapon", false)
+        if Weapon ~= nil then
+            return Weapon
+        end
     end
 
     local PawnFunctionNames = {
         "GetCurrentWeapon",
         "GetCurrentWeaponActor",
-        "GetCurrentUsingWeapon",
         "GetEquippedWeapon",
     }
     for _, FunctionName in ipairs(PawnFunctionNames) do
@@ -385,6 +396,11 @@ local function GetCurrentHeldWeapon(player)
         if Weapon ~= nil then
             return Weapon
         end
+    end
+    local Weapon = TryCall(player, "GetCurrentUsingWeapon", true)
+        or TryCall(player, "GetCurrentUsingWeapon", false)
+    if Weapon ~= nil then
+        return Weapon
     end
 
     return nil
@@ -684,6 +700,91 @@ end
 
 function UGCPlayerPawn:RefreshWeaponAttackBonus(bForce)
     local ItemID, SeriesKey, ItemName, Level = GetHeldWeaponAttributeItemID(self)
+    if not self:HasAuthority() then
+        if WeaponLevelConfig.GetWeaponInfo(ItemID) == nil then
+            return
+        end
+
+        local ClientWeaponAttackKey = tostring(ItemID or "none")
+            .. "|" .. tostring(SeriesKey or "none")
+            .. "|" .. tostring(ItemName or "none")
+            .. "|" .. tostring(Level or "none")
+        self:ApplyWeaponAttackBonusLocalDisplay(ItemID, SeriesKey, ItemName, Level, bForce)
+
+        if not bForce and self.LastWeaponAttackKey == ClientWeaponAttackKey then
+            return
+        end
+        self.LastWeaponAttackKey = ClientWeaponAttackKey
+
+        local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+        if PlayerController ~= nil then
+            UnrealNetwork.CallUnrealRPC(
+                PlayerController,
+                PlayerController,
+                "Server_UpdateWeaponAttackBonus",
+                tonumber(ItemID) or 0
+            )
+        end
+        return
+    end
+
+    if WeaponLevelConfig.GetWeaponInfo(ItemID) == nil and self.LastClientWeaponAttackItemID ~= nil then
+        return
+    end
+
+    self:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemName, Level, bForce)
+end
+
+function UGCPlayerPawn:ApplyWeaponAttackBonusLocalDisplay(ItemID, SeriesKey, ItemName, Level, bForce)
+    local Attribute = WeaponLevelConfig.GetTotalAttribute(ItemID)
+    local AttackPercent = 0
+    if Attribute ~= nil then
+        AttackPercent = tonumber(Attribute.AttackPercent) or 0
+    end
+
+    local BaseAttack = GetWeaponBaseAttack(self)
+    local CurrentBaseAttack = Property.GetBaseAttack(self)
+    local NormalizedAttackPercent = NormalizePercent(AttackPercent)
+    local FinalAttack = BaseAttack * (1 + NormalizedAttackPercent)
+    local LocalAttackPercent = 0
+
+    local LocalWeaponAttackKey = tostring(ItemID or "none")
+        .. "|" .. tostring(SeriesKey or "none")
+        .. "|" .. tostring(ItemName or "none")
+        .. "|" .. tostring(Level or "none")
+        .. "|" .. tostring(AttackPercent)
+        .. "|" .. tostring(Round2(BaseAttack))
+        .. "|" .. tostring(Round2(CurrentBaseAttack))
+    if not bForce and self.LastLocalWeaponAttackDisplayKey == LocalWeaponAttackKey then
+        return
+    end
+
+    self.LastLocalWeaponAttackDisplayKey = LocalWeaponAttackKey
+    Property.SetAttackPercent(self, WEAPON_ATTACK_SOURCE_KEY, LocalAttackPercent)
+    ugcprint("[AttackDebug] localDisplay item=" .. tostring(ItemID)
+        .. ", attackPercent=" .. tostring(AttackPercent)
+        .. ", localAttackPercent=" .. tostring(LocalAttackPercent)
+        .. ", baseAttack=" .. tostring(BaseAttack)
+        .. ", currentBaseAttack=" .. tostring(CurrentBaseAttack)
+        .. ", finalAttack=" .. tostring(FinalAttack))
+    self:ForceRefreshPropertySnapshot()
+end
+
+function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemName, Level, bForce)
+    ItemID = tonumber(ItemID)
+    if ItemID == 0 then
+        ItemID = nil
+    end
+
+    local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+    if self:HasAuthority() and WeaponInfo ~= nil then
+        self.LastClientWeaponAttackItemID = ItemID
+    end
+    if WeaponInfo ~= nil then
+        SeriesKey = SeriesKey or WeaponInfo.SeriesKey
+        Level = Level or WeaponInfo.Level
+    end
+
     local Attribute = WeaponLevelConfig.GetTotalAttribute(ItemID)
     local AttackPercent = 0
     if Attribute ~= nil then
@@ -710,6 +811,18 @@ function UGCPlayerPawn:RefreshWeaponAttackBonus(bForce)
     if bSetBaseAttackSuccess then
         self.LastAppliedWeaponAttackPower = FinalAttack
     end
+
+    local ReadBackAttackPower = nil
+    if UGCAttributeSystem ~= nil and UGCAttributeSystem.GetGameAttributeValue ~= nil then
+        local Success, Result = pcall(UGCAttributeSystem.GetGameAttributeValue, self, "AttackPower")
+        if Success then
+            ReadBackAttackPower = Result
+        end
+    end
+    ugcprint("[AttackDebug] hasAuthority=" .. tostring(self:HasAuthority())
+        .. ", finalAttack=" .. tostring(FinalAttack)
+        .. ", readBackAttackPower=" .. tostring(ReadBackAttackPower)
+        .. ", setBaseAttackSuccess=" .. tostring(bSetBaseAttackSuccess))
 
     ugcprint("[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID)
         .. ", series=" .. tostring(SeriesKey)

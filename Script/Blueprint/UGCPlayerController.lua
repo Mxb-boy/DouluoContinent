@@ -87,6 +87,7 @@ end
               "Server_EndFlyState",
               "Server_FlyMove",
               "Server_StopFlyMove",
+              "Server_UpdateWeaponAttackBonus",
 	       "Server_AddProbabilityBonus",
               "Client_ProbabilityBonusChanged",
 	      "Client_BreakRealmResult",
@@ -222,6 +223,20 @@ function UGCPlayerController:Server_StopFlyMove()
     if MovementComponent.SetMovementMode ~= nil then
         pcall(MovementComponent.SetMovementMode, MovementComponent, 1)
     end
+end
+
+function UGCPlayerController:Server_UpdateWeaponAttackBonus(ItemID)
+    ItemID = tonumber(ItemID)
+    if WeaponLevelConfig.GetWeaponInfo(ItemID) == nil then
+        return
+    end
+
+    local pawn = self:K2_GetPawn()
+    if pawn == nil or pawn.ApplyWeaponAttackBonusByItemID == nil then
+        return
+    end
+
+    pawn:ApplyWeaponAttackBonusByItemID(ItemID, nil, nil, nil, false)
 end
 
 local function GetVirtualItemManager()
