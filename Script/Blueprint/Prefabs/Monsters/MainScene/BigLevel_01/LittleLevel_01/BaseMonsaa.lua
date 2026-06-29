@@ -83,6 +83,10 @@ end
 function BaseMonsaa:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
     DisableMonsterCollision(self)
 
+    if self:HasAuthority() and self.SpawnWall ~= nil then
+        self.SpawnWall:OnMonsterDied(self)
+    end
+
     if self:HasAuthority() then
         local DropID = self.MonsterID
         if EventInstigator ~= nil and EventInstigator.PlayerState ~= nil then

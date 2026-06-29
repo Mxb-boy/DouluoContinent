@@ -192,7 +192,7 @@ function CreateMonsWall:ScheduleMonsterRespawn(monster)
     local token = (self.SpawnPointRespawnTokens[spawnPoint] or 0) + 1
     self.SpawnPointRespawnTokens[spawnPoint] = token
 
-    local respawnDelay = 2
+    local respawnDelay = 3
     if self.LittleLevel == 10 then
         respawnDelay = 5
     end
