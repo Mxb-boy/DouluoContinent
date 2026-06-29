@@ -5,7 +5,7 @@
 ---@field LotteryComponent LotteryComponent_C
 ---@field ShopV2Component ShopV2Component_C
 ---@field SignInEventComponent SignInEventComponent_C
---Edit Below--
+-- Edit Below--
 local UGCPlayerController = {}
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
@@ -13,12 +13,12 @@ local TitleSystem = UGCGameSystem.UGCRequire("Script.Blueprint.Title.TitleSystem
 
 local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
-    QNHH = 8310036,
+    QNHH = 8310036
 }
 
 function UGCPlayerController:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
-    --删去风向标
+    -- 删去风向标
     local MainUI = UGCWidgetManagerSystem.GetMainControlUI()
     if MainUI then
         MainUI.NavigatorPanel:SetVisibility(ESlateVisibility.Collapsed)
@@ -35,9 +35,7 @@ function UGCPlayerController:ReceiveBeginPlay()
         return
     end
 
-    local MainUIPath =
-        UGCMapInfoLib.GetRootLongPackagePath()
-        .. "Asset/Blueprint/UI/UI02.UI02_C"
+    local MainUIPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI02.UI02_C"
     local MainUIClass = UE.LoadClass(MainUIPath)
 
     if MainUIClass == nil then
@@ -54,9 +52,7 @@ function UGCPlayerController:ReceiveBeginPlay()
     self.MainUIInstance:AddToViewport()
     ugcprint("[UGCPlayerController] MainUI created")
 
-    local FeiUIPath =
-        UGCMapInfoLib.GetRootLongPackagePath()
-        .. "Asset/Blueprint/UI/Fei.Fei_C"
+    local FeiUIPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/Fei.Fei_C"
     local FeiUIClass = UE.LoadClass(FeiUIPath)
 
     if FeiUIClass == nil then
@@ -74,61 +70,51 @@ function UGCPlayerController:ReceiveBeginPlay()
     ugcprint("[UGCPlayerController] Fei UI created")
 end
 
-	  function UGCPlayerController:GetAvailableServerRPCs()
-	      return "Server_TeleportToSpawn",
-              "Server_TeleportToLocation",
-              "Server_UpdateRankingListScore",
-              "Server_ClearAllRankingListData",
-              "Client_BroadcastPlantMessage",
-              "Client_ForgeWeaponResult",
-              "Server_ForgeWeapon",
-	       "Server_EquipTitle",
-              "Server_BeginFlyState",
-              "Server_EndFlyState",
-              "Server_FlyMove",
-              "Server_StopFlyMove",
-              "Server_UpdateWeaponAttackBonus",
-	       "Server_AddProbabilityBonus",
-              "Client_ProbabilityBonusChanged",
-	      "Client_BreakRealmResult",
-              "Server_BreakRealm"
-	  end
+function UGCPlayerController:GetAvailableServerRPCs()
+    return "Server_TeleportToSpawn", "Server_TeleportToLocation", "Server_UpdateRankingListScore",
+        "Server_ClearAllRankingListData", "Client_BroadcastPlantMessage", "Client_ForgeWeaponResult",
+        "Server_ForgeWeapon", "Server_EquipTitle", "Server_BeginFlyState", "Server_EndFlyState", "Server_FlyMove",
+        "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus", "Server_AddProbabilityBonus",
+        "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm", "Server_SetAutoPickEnabled"
+end
 
-	  local function TeleportToSpawn(self, bornPointID)
-	      local pawn = self:K2_GetPawn()
-	      if not pawn then return false end
+local function TeleportToSpawn(self, bornPointID)
+    local pawn = self:K2_GetPawn()
+    if not pawn then
+        return false
+    end
 
-	      local PlayerStartManagerComponentClass = ScriptGameplayStatics.FindClass("PlayerStartManagerComponent")
-	      if PlayerStartManagerComponentClass == nil or UGCGameSystem.GameMode == nil then
-	          return false
-	      end
+    local PlayerStartManagerComponentClass = ScriptGameplayStatics.FindClass("PlayerStartManagerComponent")
+    if PlayerStartManagerComponentClass == nil or UGCGameSystem.GameMode == nil then
+        return false
+    end
 
-	      local PlayerStartManagerComponent = UGCGameSystem.GameMode:GetComponentByClass(PlayerStartManagerComponentClass)
-	      if PlayerStartManagerComponent == nil then
-	          return false
-	      end
+    local PlayerStartManagerComponent = UGCGameSystem.GameMode:GetComponentByClass(PlayerStartManagerComponentClass)
+    if PlayerStartManagerComponent == nil then
+        return false
+    end
 
-	      local PlayerStart = PlayerStartManagerComponent:FindPlayerStartByBornPointID(bornPointID, false)
-	      if PlayerStart == nil then
-	          return false
-	      end
+    local PlayerStart = PlayerStartManagerComponent:FindPlayerStartByBornPointID(bornPointID, false)
+    if PlayerStart == nil then
+        return false
+    end
 
-	      local loc = PlayerStart:K2_GetActorLocation()
-	      UGCPlayerControllerSystem.TeleportTo(self, loc.X, loc.Y, loc.Z + 100)
-	      return true
-	  end
+    local loc = PlayerStart:K2_GetActorLocation()
+    UGCPlayerControllerSystem.TeleportTo(self, loc.X, loc.Y, loc.Z + 100)
+    return true
+end
 
-	  function UGCPlayerController:Server_TeleportToSpawn(bornPointID)
-	      TeleportToSpawn(self, bornPointID)
-	  end
+function UGCPlayerController:Server_TeleportToSpawn(bornPointID)
+    TeleportToSpawn(self, bornPointID)
+end
 
-	  --- 传送玩家到指定坐标
-	  ---@param x number
-	  ---@param y number
-	  ---@param z number
-	  function UGCPlayerController:Server_TeleportToLocation(x, y, z)
-	      UGCPlayerControllerSystem.TeleportTo(self, x, y, z)
-	  end
+--- 传送玩家到指定坐标
+---@param x number
+---@param y number
+---@param z number
+function UGCPlayerController:Server_TeleportToLocation(x, y, z)
+    UGCPlayerControllerSystem.TeleportTo(self, x, y, z)
+end
 
 -- WBP_RankingListBtn 更新排行榜服务端--要走官方测试按钮暂时没开
 function UGCPlayerController:Server_BeginFlyState()
@@ -194,11 +180,8 @@ function UGCPlayerController:Server_FlyMove(DirX, DirY, DirZ, DeltaTime)
     end
 
     local Distance = FLY_SPEED * DeltaTime
-    local NewLocation = Vector.New(
-        Location.X + DirX * Distance,
-        Location.Y + DirY * Distance,
-        Location.Z + DirZ * Distance
-    )
+    local NewLocation = Vector.New(Location.X + DirX * Distance, Location.Y + DirY * Distance,
+        Location.Z + DirZ * Distance)
 
     pawn:K2_SetActorLocation(NewLocation, true, nil, true)
 end
@@ -240,10 +223,8 @@ function UGCPlayerController:Server_UpdateWeaponAttackBonus(ItemID)
 end
 
 local function GetVirtualItemManager()
-    if UGCGamePartSystem ~= nil
-        and UGCGamePartSystem.IsGamePartLoaded ~= nil
-        and UGCGamePartSystem.IsGamePartLoaded("VirtualItemManager")
-    then
+    if UGCGamePartSystem ~= nil and UGCGamePartSystem.IsGamePartLoaded ~= nil and
+        UGCGamePartSystem.IsGamePartLoaded("VirtualItemManager") then
         return UGCGamePartSystem.GetGamePartGlobalActor("VirtualItemManager")
     end
 
@@ -309,7 +290,8 @@ local function AddItem(PlayerController, ItemID, Count)
 
     local VirtualItemManager = GetVirtualItemManager()
     if VirtualItemManager ~= nil and VirtualItemManager.AddVirtualItem ~= nil then
-        local Success, Result = pcall(VirtualItemManager.AddVirtualItem, VirtualItemManager, PlayerController, ItemID, Count)
+        local Success, Result = pcall(VirtualItemManager.AddVirtualItem, VirtualItemManager, PlayerController, ItemID,
+            Count)
         if Success and Result ~= false then
             if Pawn ~= nil and WeaponLevelConfig.GetWeaponInfo(ItemID) ~= nil and Pawn.RefreshWeaponAttackBonus ~= nil then
                 Pawn:RefreshWeaponAttackBonus(true)
@@ -332,7 +314,7 @@ local function RemoveItem(PlayerController, ItemID, Count)
 
     local Pawn = GetPlayerPawn(PlayerController)
     if Pawn ~= nil and UGCBackPackSystem ~= nil then
-        local FunctionNames = { "RemoveItem", "RemoveItemByItemID", "DeleteItem", "SubItem" }
+        local FunctionNames = {"RemoveItem", "RemoveItemByItemID", "DeleteItem", "SubItem"}
         for _, FunctionName in ipairs(FunctionNames) do
             local Func = UGCBackPackSystem[FunctionName]
             if Func ~= nil then
@@ -355,8 +337,8 @@ local function RemoveItem(PlayerController, ItemID, Count)
     if VirtualItemManager ~= nil then
         local VirtualCount = 0
         if VirtualItemManager.GetItemNum ~= nil then
-            local CountSuccess, CountResult =
-                pcall(VirtualItemManager.GetItemNum, VirtualItemManager, ItemID, PlayerController)
+            local CountSuccess, CountResult = pcall(VirtualItemManager.GetItemNum, VirtualItemManager, ItemID,
+                PlayerController)
             if CountSuccess then
                 VirtualCount = tonumber(CountResult) or 0
             end
@@ -387,9 +369,8 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
         return
     end
 
-    if GetItemCount(self, ForgeMaterialItemIDs.HGRJ) < (Cost.HGRJ or 0)
-        or GetItemCount(self, ForgeMaterialItemIDs.QNHH) < (Cost.QNHH or 0)
-    then
+    if GetItemCount(self, ForgeMaterialItemIDs.HGRJ) < (Cost.HGRJ or 0) or GetItemCount(self, ForgeMaterialItemIDs.QNHH) <
+        (Cost.QNHH or 0) then
         ugcprint("[UGCPlayerController:Server_ForgeWeapon] Material not enough")
         return
     end
@@ -425,8 +406,9 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
 
     UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", ResultType, ItemID, ResultItemID)
 
-    ugcprint("[UGCPlayerController:Server_ForgeWeapon] result=" .. tostring(ResultType)
-        .. ", from=" .. tostring(ItemID) .. ", to=" .. tostring(ResultItemID))
+    ugcprint(
+        "[UGCPlayerController:Server_ForgeWeapon] result=" .. tostring(ResultType) .. ", from=" .. tostring(ItemID) ..
+            ", to=" .. tostring(ResultItemID))
 end
 
 function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, ResultItemID)
@@ -448,7 +430,7 @@ function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, Res
         end
     end
 end
---突破
+-- 突破
 local function GetRealmLevel(PlayerController)
     return tonumber(PlayerController.RealmLevel) or 1
 end
@@ -492,7 +474,10 @@ local function RemoveRealmNeedItems(PlayerController, Config)
                 return false, Item
             end
 
-            table.insert(RemovedItems, { ItemID = ItemID, Count = NeedCount })
+            table.insert(RemovedItems, {
+                ItemID = ItemID,
+                Count = NeedCount
+            })
         end
     end
 
@@ -505,8 +490,8 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
     local ExpectedLevel = CurrentLevel + 1
 
     if TargetLevel ~= ExpectedLevel or TargetLevel == nil or TargetLevel > RealmConfig.MaxLevel then
-        ugcprint("[UGCPlayerController:Server_BreakRealm] invalid target="
-            .. tostring(TargetLevel) .. ", current=" .. tostring(CurrentLevel))
+        ugcprint("[UGCPlayerController:Server_BreakRealm] invalid target=" .. tostring(TargetLevel) .. ", current=" ..
+                     tostring(CurrentLevel))
         return
     end
 
@@ -518,19 +503,20 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
     local FailCount = GetRealmFailCount(self, TargetLevel)
     local HasItems, MissingItem = HasRealmNeedItems(self, Config)
     if not HasItems then
-        ugcprint("[UGCPlayerController:Server_BreakRealm] item not enough: "
-            .. tostring(MissingItem and MissingItem.Name or "nil")
-            .. ", target=" .. tostring(TargetLevel))
-        UnrealNetwork.CallUnrealRPC(self, self, "Client_BreakRealmResult", false, CurrentLevel, TargetLevel, FailCount, 0, false)
+        ugcprint("[UGCPlayerController:Server_BreakRealm] item not enough: " ..
+                     tostring(MissingItem and MissingItem.Name or "nil") .. ", target=" .. tostring(TargetLevel))
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_BreakRealmResult", false, CurrentLevel, TargetLevel, FailCount,
+            0, false)
         return
     end
 
     local RemoveSuccess, RemoveFailedItem = RemoveRealmNeedItems(self, Config)
     if not RemoveSuccess then
-        ugcprint("[UGCPlayerController:Server_BreakRealm] remove item failed: "
-            .. tostring(RemoveFailedItem and RemoveFailedItem.Name or "nil")
-            .. ", target=" .. tostring(TargetLevel))
-        UnrealNetwork.CallUnrealRPC(self, self, "Client_BreakRealmResult", false, CurrentLevel, TargetLevel, FailCount, 0, false)
+        ugcprint("[UGCPlayerController:Server_BreakRealm] remove item failed: " ..
+                     tostring(RemoveFailedItem and RemoveFailedItem.Name or "nil") .. ", target=" ..
+                     tostring(TargetLevel))
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_BreakRealmResult", false, CurrentLevel, TargetLevel, FailCount,
+            0, false)
         return
     end
 
@@ -546,24 +532,12 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
         SetRealmFailCount(self, TargetLevel, FailCount)
     end
 
-    UnrealNetwork.CallUnrealRPC(
-        self,
-        self,
-        "Client_BreakRealmResult",
-        Success,
-        NewLevel,
-        TargetLevel,
-        FailCount,
-        UsedRate,
-        IsGuaranteed
-    )
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_BreakRealmResult", Success, NewLevel, TargetLevel, FailCount,
+        UsedRate, IsGuaranteed)
 
-    ugcprint("[UGCPlayerController:Server_BreakRealm] target="
-        .. tostring(TargetLevel)
-        .. ", success=" .. tostring(Success)
-        .. ", rate=" .. tostring(UsedRate)
-        .. ", guaranteed=" .. tostring(IsGuaranteed)
-        .. ", failCount=" .. tostring(FailCount))
+    ugcprint("[UGCPlayerController:Server_BreakRealm] target=" .. tostring(TargetLevel) .. ", success=" ..
+                 tostring(Success) .. ", rate=" .. tostring(UsedRate) .. ", guaranteed=" .. tostring(IsGuaranteed) ..
+                 ", failCount=" .. tostring(FailCount))
 end
 
 function UGCPlayerController:Client_BreakRealmResult(Success, NewLevel, TargetLevel, FailCount, UsedRate, IsGuaranteed)
@@ -582,7 +556,7 @@ function UGCPlayerController:Client_BreakRealmResult(Success, NewLevel, TargetLe
     end
 end
 
---装备相关
+-- 装备相关
 function UGCPlayerController:Server_EquipTitle(titleID)
     titleID = tonumber(titleID) or 0
 
@@ -605,8 +579,7 @@ function UGCPlayerController:Server_EquipTitle(titleID)
 
     -- 刷新头顶称号
     local titleActor = pawn.PlayerTitleActor
-    if (titleActor == nil or not UE.IsValid(titleActor))
-        and pawn.EnsurePlayerTitleActor ~= nil then
+    if (titleActor == nil or not UE.IsValid(titleActor)) and pawn.EnsurePlayerTitleActor ~= nil then
         titleActor = pawn:EnsurePlayerTitleActor()
     end
 
@@ -641,12 +614,12 @@ function UGCPlayerController:Server_ClearAllRankingListData()
     RankingListGlobalActor:PIEClearAllRankListData()
 end
 
-function UGCPlayerController:Client_BroadcastPlantMessage(UID,level)
---[[------------------客户端收到全服通知----------------------------]]--
+function UGCPlayerController:Client_BroadcastPlantMessage(UID, level)
+    --[[------------------客户端收到全服通知----------------------------]] --
     -- UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.Test_01,UID,level)
 end
 
---[[---------------------增加概率-------------------------]]--
+--[[---------------------增加概率-------------------------]] --
 function UGCPlayerController:Server_AddProbabilityBonus(value)
     value = tonumber(value) or 0
     if value == 0 then
@@ -667,5 +640,24 @@ function UGCPlayerController:Client_ProbabilityBonusChanged(str)
     end
 end
 
+--[[------------------------自动拾取----------------------]] --
+local AUTO_PICK_RANGE = 600
+local AUTO_PICK_INTERVAL = 0.5
+function UGCPlayerController:Server_SetAutoPickEnabled(bEnabled)
+    self.bAutoPickEnabled = bEnabled
+    local TimerName = "AutoPick_" .. tostring(self.PlayerKey)
+    UGCTimerUtility.RemoveLuaTimerByName(TimerName)
+    if not bEnabled then
+        return
+    end
 
+    UGCTimerUtility.CreateLuaTimer(AUTO_PICK_INTERVAL, function()
+        local Location = self.Pawn:K2_GetActorLocation()
+        local Wrappers = UGCItemSystemV2.FindPickupWrapperActorByRange(Location, AUTO_PICK_RANGE)
+
+        for _, Wrappers in pairs(Wrappers) do
+            UGCItemSystemV2.TryPickupWrapperItem(self.Pawn, Wrappers, nil, Wrappers:GetItemCount(), true)
+        end
+    end, true, TimerName)
+end
 return UGCPlayerController

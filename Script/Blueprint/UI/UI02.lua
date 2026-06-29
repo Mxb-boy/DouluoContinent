@@ -93,6 +93,7 @@ function UI02:LuaInit()
     self.Button_149.OnClicked:Add(self.Button_149_OnClicked, self)
     self.Button_151.OnClicked:Add(self.Button_151_OnClicked, self)
     self.Button_155.OnClicked:Add(self.Button_155_OnClicked, self)
+    self.Button_227.OnClicked:Add(self.Button_227_OnClicked, self)
 
     self:ApplyButtonEffect(self.Button_0)
     self:ApplyButtonEffect(self.Button_144)
@@ -108,6 +109,8 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_156)
     self:ApplyButtonEffect(self.Button_157)
     self:ApplyButtonEffect(self.Button_158)
+    self:ApplyButtonEffect(self.Button_227)
+
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
@@ -310,6 +313,17 @@ function UI02:Button_0_OnClicked()
             GiftPackUI:AddToViewport(12000)
         end
     end
+end
+
+
+--自动拾取
+function UI02:Button_227_OnClicked()
+    local PC = GameplayStatics.GetPlayerController(self, 0)
+    self.bAutoPickEnabled = not self.bAutoPickEnabled
+
+    UnrealNetwork.CallUnrealRPC(PC, PC, "Server_SetAutoPickEnabled", self.bAutoPickEnabled)
+
+    self:OnhandleTest(self.bAutoPickEnabled and "自动拾取已开启" or "自动拾取已关闭")
 end
 
 function UI02:OnhandleTest(str)
