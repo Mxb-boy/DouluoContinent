@@ -282,6 +282,12 @@ local function AddItem(PlayerController, ItemID, Count)
     if Pawn ~= nil and UGCBackPackSystem ~= nil and UGCBackPackSystem.AddItem ~= nil then
         local Success, Result = pcall(UGCBackPackSystem.AddItem, Pawn, ItemID, Count)
         if Success and Result ~= false then
+            if WeaponLevelConfig.GetWeaponInfo(ItemID) ~= nil and Pawn.RefreshWeaponAttackBonus ~= nil then
+                Pawn:RefreshWeaponAttackBonus(true)
+                if Pawn.ForceRefreshPropertySnapshot ~= nil then
+                    Pawn:ForceRefreshPropertySnapshot()
+                end
+            end
             return true
         end
     end
@@ -290,6 +296,12 @@ local function AddItem(PlayerController, ItemID, Count)
     if VirtualItemManager ~= nil and VirtualItemManager.AddVirtualItem ~= nil then
         local Success, Result = pcall(VirtualItemManager.AddVirtualItem, VirtualItemManager, PlayerController, ItemID, Count)
         if Success and Result ~= false then
+            if Pawn ~= nil and WeaponLevelConfig.GetWeaponInfo(ItemID) ~= nil and Pawn.RefreshWeaponAttackBonus ~= nil then
+                Pawn:RefreshWeaponAttackBonus(true)
+                if Pawn.ForceRefreshPropertySnapshot ~= nil then
+                    Pawn:ForceRefreshPropertySnapshot()
+                end
+            end
             return true
         end
     end
@@ -411,6 +423,14 @@ function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, Res
     local UI10Instance = self.MainUIInstance.UI10Instance
     if UI10Instance.OnForgeWeaponResult ~= nil then
         UI10Instance:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID)
+    end
+
+    local Pawn = GetPlayerPawn(self)
+    if Pawn ~= nil and Pawn.RefreshWeaponAttackBonus ~= nil then
+        Pawn:RefreshWeaponAttackBonus(true)
+        if Pawn.ForceRefreshPropertySnapshot ~= nil then
+            Pawn:ForceRefreshPropertySnapshot()
+        end
     end
 end
 --突破

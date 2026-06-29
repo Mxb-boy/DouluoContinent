@@ -51,6 +51,45 @@ WeaponLevelConfig.ForgeRateByLevel = {
     [4] = { Success = 30, Keep = 50, Down = 20 },
 }
 
+WeaponLevelConfig.BaseAttributeBySeries = {
+    XJWQ = {
+        [1] = { AttackPercent = 8 },
+        [2] = { AttackPercent = 12 },
+        [3] = { AttackPercent = 16 },
+        [4] = { AttackPercent = 20 },
+        [5] = { AttackPercent = 24 },
+    },
+    HWSCJ = {
+        [1] = { AttackPercent = 10 },
+        [2] = { AttackPercent = 15 },
+        [3] = { AttackPercent = 20 },
+        [4] = { AttackPercent = 25 },
+        [5] = { AttackPercent = 30 },
+    },
+    HTC = {
+        [1] = { AttackPercent = 12 },
+        [2] = { AttackPercent = 18 },
+        [3] = { AttackPercent = 24 },
+        [4] = { AttackPercent = 30 },
+        [5] = { AttackPercent = 36 },
+    },
+    LCSL = {
+        [1] = { AttackPercent = 14 },
+        [2] = { AttackPercent = 21 },
+        [3] = { AttackPercent = 28 },
+        [4] = { AttackPercent = 35 },
+        [5] = { AttackPercent = 42 },
+    },
+    TSSJ = {
+        [1] = { AttackPercent = 16 },
+        [2] = { AttackPercent = 24 },
+        [3] = { AttackPercent = 32 },
+        [4] = { AttackPercent = 40 },
+        [5] = { AttackPercent = 50 },
+    },
+}
+
+
 WeaponLevelConfig.ItemIndex = {}
 for SeriesKey, SeriesData in pairs(WeaponLevelConfig.Series) do
     for Level, ItemID in ipairs(SeriesData.ItemIDs) do
@@ -122,6 +161,31 @@ function WeaponLevelConfig.GetForgeRate(ItemID)
     end
 
     return WeaponLevelConfig.ForgeRateByLevel[Info.Level]
+end
+
+function WeaponLevelConfig.GetBaseAttribute(ItemID)
+    local Info = WeaponLevelConfig.GetWeaponInfo(ItemID)
+    if Info == nil then
+        return nil
+    end
+
+    local SeriesAttribute = WeaponLevelConfig.BaseAttributeBySeries[Info.SeriesKey]
+    if SeriesAttribute == nil then
+        return nil
+    end
+
+    return SeriesAttribute[Info.Level]
+end
+
+function WeaponLevelConfig.GetTotalAttribute(ItemID)
+    local BaseAttribute = WeaponLevelConfig.GetBaseAttribute(ItemID)
+    if BaseAttribute == nil then
+        return nil
+    end
+
+    return {
+        AttackPercent = tonumber(BaseAttribute.AttackPercent) or 0,
+    }
 end
 
 function WeaponLevelConfig.RollForgeResult(ItemID)

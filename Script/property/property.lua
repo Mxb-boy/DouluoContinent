@@ -1,9 +1,13 @@
 local property = {}
+UGCGameSystem.UGCRequire("Script.GameAttribute.game_attribute_type")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 
 local DEFAULT_BASE_ATTACK = 40
 local DEFAULT_MAX_HP = 100
 local COMBAT_POWER_HP_FACTOR = 12345
+local ATTACK_POWER_ATTR = UGCCustomGameAttributeType
+    and UGCCustomGameAttributeType.UGCAttributeGroup_Character_AttackPower
+    or "AttackPower"
 
 local RuntimeData = {}
 
@@ -83,17 +87,19 @@ function property.GetMaxHP(playerPawn)
 end
 
 function property.GetBaseAttack(owner)
-    return GetAttrValue(owner, "AttackPower", DEFAULT_BASE_ATTACK)
+    return GetAttrValue(owner, ATTACK_POWER_ATTR, DEFAULT_BASE_ATTACK)
 end
 
 function property.SetBaseAttack(owner, value)
+    local newValue = tonumber(value) or DEFAULT_BASE_ATTACK
     if owner ~= nil and UGCAttributeSystem ~= nil and UGCAttributeSystem.SetGameAttributeValue ~= nil then
-        local success = pcall(UGCAttributeSystem.SetGameAttributeValue, owner, "AttackPower", tonumber(value) or DEFAULT_BASE_ATTACK)
+        local success = pcall(UGCAttributeSystem.SetGameAttributeValue, owner, ATTACK_POWER_ATTR, newValue)
         if success then
             NotifyPropertyChanged(owner)
-            return
+            return math.abs((property.GetBaseAttack(owner) or 0) - newValue) <= 0.01
         end
     end
+    return false
 end
 
 function property.SetAttackFlat(owner, sourceKey, value)

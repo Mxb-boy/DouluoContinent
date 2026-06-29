@@ -74,17 +74,16 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
 
             -- 2. 发初始武器
             local HTCLv1ItemID = WeaponLevelConfig.GetItemID("HTC", 1)
-            local HTCLv2ItemID = WeaponLevelConfig.GetItemID("HTC", 2)
-
+            
             for _, ItemID in ipairs(WeaponLevelConfig.GetAllBaseItemIDs()) do
                 if ItemID ~= HTCLv1ItemID then
                     UGCBackPackSystem.AddItem(PC.Pawn, ItemID, 1)
                 end
             end
-
             if HTCLv2ItemID ~= nil then
                 UGCBackPackSystem.AddItem(PC.Pawn, HTCLv2ItemID, 1)
             end
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310046, 1)
             --锻造材料
             UGCBackPackSystem.AddItem(PC.Pawn, 8310035, 10000)
             UGCBackPackSystem.AddItem(PC.Pawn, 8310036, 1000)
@@ -110,6 +109,12 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             UGCBackPackSystem.AddItem(PC.Pawn, 8310013, 50)
             UGCBackPackSystem.AddItem(PC.Pawn, 8310014, 50)
 
+            if PC.Pawn.RefreshWeaponAttackBonus ~= nil then
+                PC.Pawn:RefreshWeaponAttackBonus(true)
+                if PC.Pawn.ForceRefreshPropertySnapshot ~= nil then
+                    PC.Pawn:ForceRefreshPropertySnapshot()
+                end
+            end
 
         end
     end, false)

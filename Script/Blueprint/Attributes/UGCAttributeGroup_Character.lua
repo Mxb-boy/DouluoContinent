@@ -75,4 +75,21 @@ function UGCAttributeGroup_Character:PostAttributeChanged(...)
     TryNotifyPropertyChanged(...)
 end
 
+function UGCAttributeGroup_Character:GetAttackPower_Override(OriginalValue, AttributeOwnerActor)
+    local baseAttack = tonumber(OriginalValue) or 0
+    local flatAttack = 0
+    local percentAttack = 0
+
+    if Property ~= nil then
+        if Property.GetFlatAttack ~= nil then
+            flatAttack = tonumber(Property.GetFlatAttack(AttributeOwnerActor)) or 0
+        end
+        if Property.GetAttackPercent ~= nil then
+            percentAttack = tonumber(Property.GetAttackPercent(AttributeOwnerActor)) or 0
+        end
+    end
+
+	return (baseAttack + flatAttack) * (1 + percentAttack);
+end
+
 return UGCAttributeGroup_Character

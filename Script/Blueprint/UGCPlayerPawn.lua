@@ -1,7 +1,10 @@
 local UGCPlayerPawn = {}
 local Property = UGCGameSystem.UGCRequire("Script.property.property")
+local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
+local WEAPON_ATTACK_SOURCE_KEY = "WeaponLevel"
+local WEAPON_ATTACK_CHECK_INTERVAL = 0.2
 local FLY_INTERRUPT_TAGS = {
     "PawnState.Movement.Walk",
     "PawnState.Movement.Run",
@@ -33,12 +36,38 @@ local function Round2(value)
     return math.floor(value * 100 + 0.5) / 100
 end
 
+local function NormalizePercent(value)
+    value = tonumber(value) or 0
+    if math.abs(value) > 1 then
+        return value / 100
+    end
+    return value
+end
+
 local function IsLocalPlayerPawn(player)
     if player == nil or UGCGameSystem == nil or UGCGameSystem.GetLocalPlayerPawn == nil then
         return false
     end
 
     return UGCGameSystem.GetLocalPlayerPawn() == player
+end
+
+local function GetWeaponBaseAttack(player)
+    local CurrentAttack = Property.GetBaseAttack(player)
+    if player.WeaponBaseAttackPower == nil then
+        player.WeaponBaseAttackPower = CurrentAttack
+        return CurrentAttack
+    end
+
+    if player.LastAppliedWeaponAttackPower == nil then
+        return player.WeaponBaseAttackPower
+    end
+
+    if math.abs((tonumber(CurrentAttack) or 0) - (tonumber(player.LastAppliedWeaponAttackPower) or 0)) > 0.01 then
+        player.WeaponBaseAttackPower = CurrentAttack
+    end
+
+    return player.WeaponBaseAttackPower
 end
 
 local function BuildPropertyWatchKey(player)
@@ -53,6 +82,376 @@ local function BuildPropertyWatchKey(player)
         tostring(Round2(snapshot.Attack)),
         tostring(Round2(snapshot.CombatPower)),
     }, "|")
+end
+
+local WeaponNameToSeries = {
+    HWSCJ = "HWSCJ",
+    TSSJ = "TSSJ",
+    HTC = "HTC",
+    LCSL = "LCSL",
+    LSSL = "LCSL",
+    XJWQ = "XJWQ",
+    XSWQ = "XJWQ",
+}
+
+local function Utf8Name(...)
+    return string.char(...)
+end
+
+local WeaponDisplayNameToSeries = {
+    [Utf8Name(230, 181, 183, 231, 142, 139, 228, 184, 137, 229, 143, 137, 230, 136, 159)] = "HWSCJ",
+    [Utf8Name(229, 164, 169, 228, 189, 191, 229, 156, 163, 229, 137, 145)] = "TSSJ",
+    [Utf8Name(230, 152, 138, 229, 164, 169, 233, 148, 164)] = "HTC",
+    [Utf8Name(231, 189, 151, 229, 136, 185, 231, 165, 158, 233, 149, 176)] = "LCSL",
+    [Utf8Name(229, 185, 189, 229, 133, 137, 231, 159, 173, 229, 136, 128)] = "XJWQ",
+    [Utf8Name(229, 185, 189, 229, 133, 137, 231, 159, 173, 229, 136, 131)] = "XJWQ",
+}
+
+local WeaponLevelNameToLevel = {
+    [Utf8Name(230, 153, 174, 233, 128, 154)] = 1,
+    [Utf8Name(228, 188, 152, 231, 167, 128)] = 2,
+    [Utf8Name(231, 178, 190, 232, 137, 175)] = 3,
+    [Utf8Name(229, 143, 178, 232, 175, 151)] = 4,
+    [Utf8Name(228, 188, 160, 232, 175, 180)] = 5,
+}
+
+local function TryCall(Object, FunctionName, ...)
+    if Object == nil or Object[FunctionName] == nil then
+        return nil
+    end
+
+    local Success, Result = pcall(Object[FunctionName], Object, ...)
+    if Success then
+        return Result
+    end
+
+    Success, Result = pcall(Object[FunctionName], ...)
+    if Success then
+        return Result
+    end
+
+    return nil
+end
+
+local function GetObjectName(Object)
+    if Object == nil then
+        return nil
+    end
+
+    local Name = TryCall(Object, "GetName")
+    if Name ~= nil then
+        return tostring(Name)
+    end
+
+    Name = TryCall(Object, "GetPathName")
+    if Name ~= nil then
+        return tostring(Name)
+    end
+
+    if Object.GetClass ~= nil then
+        local Class = TryCall(Object, "GetClass")
+        Name = GetObjectName(Class)
+        if Name ~= nil then
+            return Name
+        end
+    end
+
+    return tostring(Object)
+end
+
+local function GetNameFromItemData(ItemData)
+    if ItemData == nil then
+        return nil
+    end
+
+    local Name =
+        ItemData.ItemName
+        or ItemData.Name
+        or ItemData.DisplayName
+        or ItemData.ItemDisplayName
+        or ItemData.ItemNameText
+
+    if Name ~= nil then
+        return tostring(Name)
+    end
+
+    local NestedData =
+        ItemData.ItemData
+        or ItemData.ItemConfig
+        or ItemData.Config
+        or ItemData.ItemDefine
+        or ItemData.ItemTableData
+
+    if NestedData == nil then
+        return nil
+    end
+
+    Name =
+        NestedData.ItemName
+        or NestedData.Name
+        or NestedData.DisplayName
+        or NestedData.ItemDisplayName
+        or NestedData.ItemNameText
+
+    if Name ~= nil then
+        return tostring(Name)
+    end
+
+    return nil
+end
+
+local function GetVirtualItemManager()
+    if UGCGamePartSystem ~= nil
+        and UGCGamePartSystem.IsGamePartLoaded ~= nil
+        and UGCGamePartSystem.IsGamePartLoaded("VirtualItemManager")
+    then
+        return UGCGamePartSystem.GetGamePartGlobalActor("VirtualItemManager")
+    end
+
+    if UGCBlueprintFunctionLibrary ~= nil and UGCGameSystem.GameState ~= nil then
+        return UGCBlueprintFunctionLibrary.GetGamePartGlobalActor(UGCGameSystem.GameState, "VirtualItemManager")
+    end
+
+    return nil
+end
+
+local function GetItemConfigName(ItemID)
+    ItemID = tonumber(ItemID)
+    if ItemID == nil then
+        return nil
+    end
+
+    if UGCBackPackSystem ~= nil then
+        local FunctionNames = {
+            "GetItemData",
+            "GetItemConfigData",
+            "GetItemDataByItemID",
+            "GetItemDefine",
+        }
+        for _, FunctionName in ipairs(FunctionNames) do
+            local ConfigData = TryCall(UGCBackPackSystem, FunctionName, ItemID)
+            local Name = GetNameFromItemData(ConfigData)
+            if Name ~= nil and Name ~= "" then
+                return Name
+            end
+        end
+    end
+
+    local VirtualItemManager = GetVirtualItemManager()
+    if VirtualItemManager ~= nil then
+        local ConfigData = TryCall(VirtualItemManager, "GetItemData", ItemID)
+        local Name = GetNameFromItemData(ConfigData)
+        if Name ~= nil and Name ~= "" then
+            return Name
+        end
+    end
+
+    return nil
+end
+
+local function GetWeaponObjectItemName(Weapon)
+    local Name = GetNameFromItemData(Weapon)
+    if Name ~= nil and Name ~= "" then
+        return Name
+    end
+
+    local FunctionNames = {
+        "GetItemName",
+        "GetName",
+        "GetDisplayName",
+        "GetItemDisplayName",
+    }
+    for _, FunctionName in ipairs(FunctionNames) do
+        Name = TryCall(Weapon, FunctionName)
+        if Name ~= nil and tostring(Name) ~= "" then
+            return tostring(Name)
+        end
+    end
+
+    return nil
+end
+
+local function GetSeriesKeyFromName(Name)
+    if Name == nil then
+        return nil
+    end
+
+    Name = tostring(Name)
+    for Pattern, SeriesKey in pairs(WeaponDisplayNameToSeries) do
+        if string.find(Name, Pattern, 1, true) ~= nil then
+            return SeriesKey
+        end
+    end
+
+    Name = string.upper(Name)
+    for Pattern, SeriesKey in pairs(WeaponNameToSeries) do
+        if string.find(Name, Pattern, 1, true) ~= nil then
+            return SeriesKey
+        end
+    end
+
+    return nil
+end
+
+local function GetLevelFromName(Name)
+    if Name == nil then
+        return nil
+    end
+
+    Name = tostring(Name)
+    for Pattern, Level in pairs(WeaponLevelNameToLevel) do
+        if string.find(Name, Pattern, 1, true) ~= nil then
+            return Level
+        end
+    end
+
+    return nil
+end
+
+local function GetItemIDFromObject(Object)
+    if Object == nil then
+        return nil
+    end
+
+    local DirectItemID = tonumber(Object)
+    if DirectItemID ~= nil then
+        return DirectItemID
+    end
+
+    local FieldNames = {
+        "ItemID",
+        "ItemId",
+        "itemID",
+        "ItemDefineID",
+        "DefineID",
+        "DefineId",
+        "ID",
+    }
+    for _, FieldName in ipairs(FieldNames) do
+        local ItemID = tonumber(Object[FieldName])
+        if ItemID ~= nil then
+            return ItemID
+        end
+    end
+
+    local FunctionNames = {
+        "GetItemID",
+        "GetItemId",
+        "GetItemDefineID",
+        "GetDefineID",
+        "GetDefineId",
+    }
+    for _, FunctionName in ipairs(FunctionNames) do
+        local ItemID = tonumber(TryCall(Object, FunctionName))
+        if ItemID ~= nil then
+            return ItemID
+        end
+    end
+
+    return nil
+end
+
+local function GetCurrentHeldWeapon(player)
+    if player == nil then
+        return nil
+    end
+
+    local WeaponManager = TryCall(player, "GetWeaponManager") or player.WeaponManager
+    if WeaponManager ~= nil then
+        local FunctionNames = {
+            "GetCurrentWeapon",
+            "GetCurrentWeaponActor",
+            "GetCurrentActiveWeapon",
+            "GetCurrentUsingWeapon",
+            "GetCurrentInventoryWeapon",
+            "GetEquippedWeapon",
+        }
+        for _, FunctionName in ipairs(FunctionNames) do
+            local Weapon = TryCall(WeaponManager, FunctionName)
+            if Weapon ~= nil then
+                return Weapon
+            end
+        end
+    end
+
+    local PawnFunctionNames = {
+        "GetCurrentWeapon",
+        "GetCurrentWeaponActor",
+        "GetCurrentUsingWeapon",
+        "GetEquippedWeapon",
+    }
+    for _, FunctionName in ipairs(PawnFunctionNames) do
+        local Weapon = TryCall(player, FunctionName)
+        if Weapon ~= nil then
+            return Weapon
+        end
+    end
+
+    return nil
+end
+
+local function GetBestBackpackWeaponItemID(player, SeriesKey)
+    if player == nil or SeriesKey == nil or UGCBackPackSystem == nil or UGCBackPackSystem.GetAllItemData == nil then
+        return nil
+    end
+
+    local AllItemData = UGCBackPackSystem.GetAllItemData(player)
+    if AllItemData == nil then
+        return nil
+    end
+
+    local BestItemID = nil
+    local BestLevel = 0
+    for _, ItemData in pairs(AllItemData) do
+        local ItemID = tonumber(ItemData.ItemID)
+        local Count = tonumber(ItemData.Count or ItemData.ItemCount or ItemData.ItemNum or ItemData.Num) or 0
+        local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+        if Count > 0 and WeaponInfo ~= nil and WeaponInfo.SeriesKey == SeriesKey and WeaponInfo.Level > BestLevel then
+            BestItemID = ItemID
+            BestLevel = WeaponInfo.Level
+        end
+    end
+
+    return BestItemID
+end
+
+local function GetHeldWeaponAttributeItemID(player)
+    local Weapon = GetCurrentHeldWeapon(player)
+    if Weapon == nil then
+        return nil, nil
+    end
+
+    local ItemID = GetItemIDFromObject(Weapon)
+    local ItemName = GetItemConfigName(ItemID) or GetWeaponObjectItemName(Weapon)
+    local SeriesKey = GetSeriesKeyFromName(ItemName)
+    local Level = GetLevelFromName(ItemName)
+    if SeriesKey ~= nil then
+        if Level ~= nil then
+            return WeaponLevelConfig.GetItemID(SeriesKey, Level), SeriesKey, ItemName, Level
+        end
+
+        local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+        if WeaponInfo ~= nil and WeaponInfo.SeriesKey == SeriesKey then
+            return ItemID, SeriesKey, ItemName, WeaponInfo.Level
+        end
+
+        return GetBestBackpackWeaponItemID(player, SeriesKey) or WeaponLevelConfig.GetItemID(SeriesKey, 1),
+            SeriesKey,
+            ItemName,
+            1
+    end
+
+    local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+    if WeaponInfo ~= nil then
+        return ItemID, WeaponInfo.SeriesKey, GetItemConfigName(ItemID), WeaponInfo.Level
+    end
+
+    SeriesKey = GetSeriesKeyFromName(GetObjectName(Weapon))
+    if SeriesKey == nil then
+        return nil, nil
+    end
+
+    return GetBestBackpackWeaponItemID(player, SeriesKey) or WeaponLevelConfig.GetItemID(SeriesKey, 1), SeriesKey, nil, nil
 end
 
 local function DestroySoulMesh(player)
@@ -248,9 +647,12 @@ function UGCPlayerPawn:ReceiveBeginPlay()
 
     self.EquippedTitleID = self.EquippedTitleID or 0
     self.PropertyWatchElapsed = 0
+    self.WeaponAttackElapsed = 0
     self.LastPropertyWatchKey = nil
+    self.LastWeaponAttackKey = nil
 
     self:InitPlayerState()
+    self:RefreshWeaponAttackBonus(true)
     self:NotifyPropertyChangedIfNeeded(true)
 
     if not self:HasAuthority() then
@@ -265,13 +667,66 @@ function UGCPlayerPawn:ReceiveTick(DeltaTime)
         UGCPlayerPawn.SuperClass.ReceiveTick(self, DeltaTime)
     end
 
-    self.PropertyWatchElapsed = (self.PropertyWatchElapsed or 0) + (tonumber(DeltaTime) or 0.016)
-    if self.PropertyWatchElapsed < 0.1 then
+    local SafeDeltaTime = tonumber(DeltaTime) or 0.016
+
+    self.WeaponAttackElapsed = (self.WeaponAttackElapsed or 0) + SafeDeltaTime
+    if self.WeaponAttackElapsed >= WEAPON_ATTACK_CHECK_INTERVAL then
+        self.WeaponAttackElapsed = 0
+        self:RefreshWeaponAttackBonus(false)
+    end
+
+    self.PropertyWatchElapsed = (self.PropertyWatchElapsed or 0) + SafeDeltaTime
+    if self.PropertyWatchElapsed >= 0.1 then
+        self.PropertyWatchElapsed = 0
+        self:NotifyPropertyChangedIfNeeded(false)
+    end
+end
+
+function UGCPlayerPawn:RefreshWeaponAttackBonus(bForce)
+    local ItemID, SeriesKey, ItemName, Level = GetHeldWeaponAttributeItemID(self)
+    local Attribute = WeaponLevelConfig.GetTotalAttribute(ItemID)
+    local AttackPercent = 0
+    if Attribute ~= nil then
+        AttackPercent = tonumber(Attribute.AttackPercent) or 0
+    end
+    local BaseAttack = GetWeaponBaseAttack(self)
+    local NormalizedAttackPercent = NormalizePercent(AttackPercent)
+    local FinalAttack = BaseAttack * (1 + NormalizedAttackPercent)
+    self.LastWeaponAttackPercent = NormalizedAttackPercent
+
+    local WeaponAttackKey = tostring(ItemID or "none")
+        .. "|" .. tostring(SeriesKey or "none")
+        .. "|" .. tostring(ItemName or "none")
+        .. "|" .. tostring(Level or "none")
+        .. "|" .. tostring(AttackPercent)
+        .. "|" .. tostring(Round2(BaseAttack))
+    if not bForce and self.LastWeaponAttackKey == WeaponAttackKey then
         return
     end
 
-    self.PropertyWatchElapsed = 0
-    self:NotifyPropertyChangedIfNeeded(false)
+    self.LastWeaponAttackKey = WeaponAttackKey
+    local bSetBaseAttackSuccess = Property.SetBaseAttack(self, FinalAttack) == true
+    Property.SetAttackPercent(self, WEAPON_ATTACK_SOURCE_KEY, bSetBaseAttackSuccess and 0 or AttackPercent)
+    if bSetBaseAttackSuccess then
+        self.LastAppliedWeaponAttackPower = FinalAttack
+    end
+
+    ugcprint("[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID)
+        .. ", series=" .. tostring(SeriesKey)
+        .. ", name=" .. tostring(ItemName)
+        .. ", level=" .. tostring(Level)
+        .. ", attackPercent=" .. tostring(AttackPercent)
+        .. ", baseAttack=" .. tostring(BaseAttack)
+        .. ", finalAttack=" .. tostring(FinalAttack)
+        .. ", setBaseAttackSuccess=" .. tostring(bSetBaseAttackSuccess))
+
+    self:ForceRefreshPropertySnapshot()
+end
+
+function UGCPlayerPawn:ForceRefreshPropertySnapshot()
+    self.LastPropertyWatchKey = nil
+    Property.NotifyChanged(self)
+    self:NotifyPropertyChangedIfNeeded(true)
 end
 
 function UGCPlayerPawn:NotifyPropertyChangedIfNeeded(bForce)

@@ -1,6 +1,1 @@
-Douluo/Script/UI08.lua
-Douluo/Script/Blueprint/UI/UI02_BASE_1594.lua
-Douluo/Script/Blueprint/UI/UI02_LOCAL_1594.lua
-Douluo/Script/Blueprint/UI/UI02_BACKUP_1594.lua
-Douluo/Script/Blueprint/UI/UITitle.lua
-Douluo/Script/Blueprint/UI/UI02_REMOTE_1594.lua
+Douluo/Asset/╜╙┐┌╩╣╙├╦╡├≈.md

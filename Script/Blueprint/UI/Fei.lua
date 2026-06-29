@@ -12,6 +12,8 @@ local FLY_EFFECT_SOCKET = "Root"
 local FLY_EFFECT_OFFSET = Vector.New(0, 0, 80)
 local FLY_EFFECT_ROTATION = Rotator.New(0, 0, 0)
 local FLY_EFFECT_SCALE = Vector.New(2, 2, 2)
+local FLY_KEY_NAMES = { "C", "c" }
+local FLY_RELEASE_GRACE_TIME = 0.35
 
 local BlockedControlWidgetNames = {
     "MainUI_FireLeft_C_0",
@@ -44,10 +46,12 @@ function Fei:LuaInit()
         return
     end
     self.bInitDoOnce = true
+    self:SetupKeyboardInputMode()
 
     if self.Button_84 ~= nil then
         UIEffectUtil.SetButtonStateBrushSameAsNormal(self.Button_84)
         UIEffectUtil.BindPressScale(self, self.Button_84, self.Button_84, 1.06, 1.0)
+        self:SetupFlyButtonInputMode()
 
         if self.Button_84.OnPressed ~= nil then
             self.Button_84.OnPressed:Add(self.Button_84_OnPressed, self)
@@ -58,7 +62,60 @@ function Fei:LuaInit()
     end
 end
 
+function Fei:SetupKeyboardInputMode()
+    if self.SetIsFocusable ~= nil then
+        pcall(self.SetIsFocusable, self, true)
+    end
+
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil and self.SetUserFocus ~= nil then
+        pcall(self.SetUserFocus, self, PlayerController)
+    end
+
+    if self.SetKeyboardFocus ~= nil then
+        pcall(self.SetKeyboardFocus, self)
+    end
+end
+
 function Fei:Button_84_OnPressed()
+    self.bFlyButtonHeld = true
+    self.FlyButtonReleaseGraceRemaining = nil
+    self:RefreshFlyHoldState()
+end
+
+function Fei:Button_84_OnReleased()
+    self.FlyButtonReleaseGraceRemaining = FLY_RELEASE_GRACE_TIME
+end
+
+function Fei:SetupFlyButtonInputMode()
+    if self.Button_84 == nil then
+        return
+    end
+
+    if self.Button_84.SetIsFocusable ~= nil then
+        pcall(self.Button_84.SetIsFocusable, self.Button_84, false)
+    end
+
+    if self.Button_84.SetTouchMethod ~= nil and EButtonTouchMethod ~= nil then
+        local TouchMethod = EButtonTouchMethod.Down or EButtonTouchMethod.DownAndUp
+        if TouchMethod ~= nil then
+            pcall(self.Button_84.SetTouchMethod, self.Button_84, TouchMethod)
+        end
+    end
+
+    if self.Button_84.SetClickMethod ~= nil and EButtonClickMethod ~= nil then
+        local ClickMethod = EButtonClickMethod.MouseDown or EButtonClickMethod.DownAndUp
+        if ClickMethod ~= nil then
+            pcall(self.Button_84.SetClickMethod, self.Button_84, ClickMethod)
+        end
+    end
+end
+
+function Fei:StartFly()
+    if self.bFlying then
+        return
+    end
+
     self.bFlying = true
     self:BeginFly()
     self:PlayFlyAnimation()
@@ -67,7 +124,11 @@ function Fei:Button_84_OnPressed()
     self:SetNativeControlBlocked(true)
 end
 
-function Fei:Button_84_OnReleased()
+function Fei:StopFly()
+    if not self.bFlying then
+        return
+    end
+
     self.bFlying = false
     self:EndFly()
     self:StopFlyAnimation()
@@ -78,8 +139,144 @@ function Fei:Button_84_OnReleased()
 end
 
 function Fei:Tick(MyGeometry, InDeltaTime)
+    self:SetupKeyboardInputMode()
+    self:UpdateKeyboardHold()
+    self:UpdateButtonReleaseGrace(InDeltaTime)
+    self:RefreshFlyHoldState()
+
     if self.bFlying then
         self:ApplyFlyMovement(InDeltaTime)
+    end
+end
+
+function Fei:GetKeyNameFromEvent(KeyEvent)
+    if KeyEvent == nil then
+        return nil
+    end
+
+    local Key = nil
+    if KeyEvent.GetKey ~= nil then
+        local Success, Result = pcall(KeyEvent.GetKey, KeyEvent)
+        if Success then
+            Key = Result
+        end
+    end
+
+    Key = Key or KeyEvent.Key or KeyEvent.KeyName
+    if Key == nil then
+        return nil
+    end
+
+    if type(Key) == "string" then
+        return Key
+    end
+
+    local FunctionNames = { "GetFName", "GetDisplayName", "GetName", "ToString" }
+    for _, FunctionName in ipairs(FunctionNames) do
+        if Key[FunctionName] ~= nil then
+            local Success, Result = pcall(Key[FunctionName], Key)
+            if Success and Result ~= nil then
+                return tostring(Result)
+            end
+        end
+    end
+
+    return tostring(Key)
+end
+
+function Fei:IsFlyKeyName(KeyName)
+    if KeyName == nil then
+        return false
+    end
+
+    KeyName = string.upper(tostring(KeyName))
+    return KeyName == "C"
+        or KeyName == "KEY_C"
+        or KeyName == "EKEYS.C"
+        or string.sub(KeyName, -2) == ".C"
+        or string.sub(KeyName, -2) == "_C"
+end
+
+function Fei:OnKeyDown(MyGeometry, InKeyEvent)
+    local KeyName = self:GetKeyNameFromEvent(InKeyEvent)
+    if self:IsFlyKeyName(KeyName) then
+        self.bFlyKeyboardHeld = true
+        self:RefreshFlyHoldState()
+    end
+end
+
+function Fei:OnKeyUp(MyGeometry, InKeyEvent)
+    local KeyName = self:GetKeyNameFromEvent(InKeyEvent)
+    if self:IsFlyKeyName(KeyName) then
+        self.bFlyKeyboardHeld = false
+        self:RefreshFlyHoldState()
+    end
+end
+
+function Fei:IsFlyKeyDown(PlayerController)
+    if PlayerController == nil or PlayerController.IsInputKeyDown == nil then
+        return nil
+    end
+
+    local bChecked = false
+    if EKeys ~= nil and EKeys.C ~= nil then
+        local Success, Result = pcall(PlayerController.IsInputKeyDown, PlayerController, EKeys.C)
+        bChecked = bChecked or Success
+        if Success and Result then
+            return true
+        end
+    end
+
+    for _, KeyName in ipairs(FLY_KEY_NAMES) do
+        local Success, Result = pcall(PlayerController.IsInputKeyDown, PlayerController, KeyName)
+        bChecked = bChecked or Success
+        if Success and Result then
+            return true
+        end
+    end
+
+    if bChecked then
+        return false
+    end
+
+    return nil
+end
+
+function Fei:UpdateKeyboardHold()
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        return
+    end
+
+    local bKeyDown = self:IsFlyKeyDown(PlayerController)
+    if bKeyDown ~= nil then
+        self.bFlyKeyboardHeld = bKeyDown
+    end
+end
+
+function Fei:UpdateButtonReleaseGrace(InDeltaTime)
+    if self.FlyButtonReleaseGraceRemaining == nil then
+        return
+    end
+
+    local DeltaTime = tonumber(InDeltaTime) or 0.016
+    if DeltaTime <= 0 or DeltaTime > 0.1 then
+        DeltaTime = 0.016
+    end
+
+    self.FlyButtonReleaseGraceRemaining = self.FlyButtonReleaseGraceRemaining - DeltaTime
+    if self.FlyButtonReleaseGraceRemaining <= 0 then
+        self.FlyButtonReleaseGraceRemaining = nil
+        self.bFlyButtonHeld = false
+    end
+end
+
+function Fei:RefreshFlyHoldState()
+    local bShouldFly = self.bFlyButtonHeld == true or self.bFlyKeyboardHeld == true
+    if bShouldFly and not self.bFlying then
+        self:StartFly()
+    elseif not bShouldFly and self.bFlying then
+        self:StopFly()
     end
 end
 
