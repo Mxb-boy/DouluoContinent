@@ -901,6 +901,9 @@ end
 
 function UGCPlayerPawn:ShowZhanLi()
     local playerState = self.PlayerState
+    if playerState == nil then
+        return
+    end
     local HunHuan = playerState:GetHunHuan()
     --战力在这里设定,现在是魂环等级加小等级
     local dengji = HunHuan * 10 

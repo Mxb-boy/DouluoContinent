@@ -13,7 +13,16 @@
 ---@field BigLevel int32
 local CreateMonsWall = {}
 
-local RegenSystem = require("Script.Common.RegenSystem")
+local RegenSystem = UGCGameSystem.UGCRequire("Script.Common.RegenSystem")
+
+--- 判断 Actor 是否为玩家 Pawn
+local function IsPlayerPawn(actor)
+    if actor == nil then
+        return false
+    end
+    -- 玩家 Pawn 才有 GetPlayerControllerSafety 方法
+    return actor.GetPlayerControllerSafety ~= nil
+end
 
 function CreateMonsWall:ReceiveBeginPlay()
     CreateMonsWall.SuperClass.ReceiveBeginPlay(self)
@@ -300,8 +309,10 @@ function CreateMonsWall:Capsule_OnComponentBeginOverlap(OverlappedComponent, Oth
 -- local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
 --     UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi, tostring( self.InPeo))
 
-    -- 战场区域回血：进入即取消倒计时和回血
-    RegenSystem.OnEnterBattlefield(OtherActor)
+    -- 战场区域回血：仅对玩家触发，进入即取消倒计时和回血
+    if IsPlayerPawn(OtherActor) then
+        RegenSystem.OnEnterBattlefield(OtherActor)
+    end
 
     if self:HasAuthority() == false then
         return
@@ -352,8 +363,10 @@ function CreateMonsWall:Capsule_OnComponentEndOverlap(OverlappedComponent, Other
 --   local playerPawn=UGCGameSystem.GetLocalPlayerPawn()
 --     UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi, tostring( self.InPeo))
 
-    -- 战场区域回血：离开后 3 秒开始回血
-    RegenSystem.OnExitBattlefield(OtherActor)
+    -- 战场区域回血：仅对玩家触发，离开后 3 秒开始回血
+    if IsPlayerPawn(OtherActor) then
+        RegenSystem.OnExitBattlefield(OtherActor)
+    end
 
     if self:HasAuthority() == false then
         return
