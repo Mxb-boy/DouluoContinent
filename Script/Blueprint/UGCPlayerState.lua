@@ -141,7 +141,7 @@ function UGCPlayerState:SetYXWD_InvincibleBuffActive(value)
 end
 
 function UGCPlayerState:IsYXWDInvincibleBuffActive()
-    return self.YXWD_InvincibleBuffActive == true or tonumber(self.YXWD_InvincibleBuff) == 1
+    return self.YXWD_InvincibleBuffActive == true
 end
 
 function UGCPlayerState:SaveCurrentHP(playerPawn)

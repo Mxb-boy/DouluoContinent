@@ -76,7 +76,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_ForgeWeapon", "Server_AddShopItemToBackpackV2", "Server_EquipTitle", "Server_BeginFlyState",
         "Server_EndFlyState", "Server_FlyMove", "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus",
         "Server_AddProbabilityBonus", "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm",
-        "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged"
+        "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
+        "Client_YXWDInvincibleActiveChanged"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -713,6 +714,46 @@ function UGCPlayerController:Client_YXWDInvincibleBuffChanged(bEnabled, Duration
 end
 
 --[[------------------------自动拾取----------------------]] --
+function UGCPlayerController:Server_SetYXWDInvincibleBuffActive(bEnabled)
+    local PlayerState = self.PlayerState
+    if PlayerState == nil then
+        ugcprint("[UGCPlayerController:Server_SetYXWDInvincibleBuffActive] PlayerState is nil")
+        return
+    end
+
+    local bHasBuff = false
+    if PlayerState.GetYXWD_InvincibleBuff ~= nil then
+        bHasBuff = PlayerState:GetYXWD_InvincibleBuff() == true
+    else
+        bHasBuff = tonumber(PlayerState.YXWD_InvincibleBuff) == 1
+    end
+
+    if not bHasBuff then
+        ugcprint("[UGCPlayerController:Server_SetYXWDInvincibleBuffActive] ignored, buff not owned")
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_YXWDInvincibleActiveChanged", 0)
+        return
+    end
+
+    local bActive = bEnabled == true or tonumber(bEnabled) == 1
+    if PlayerState.SetYXWD_InvincibleBuffActive ~= nil then
+        PlayerState:SetYXWD_InvincibleBuffActive(bActive)
+    else
+        PlayerState.YXWD_InvincibleBuffActive = bActive
+    end
+
+    ugcprint("[UGCPlayerController:Server_SetYXWDInvincibleBuffActive] active=" .. tostring(bActive))
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_YXWDInvincibleActiveChanged", bActive and 1 or 0)
+end
+
+function UGCPlayerController:Client_YXWDInvincibleActiveChanged(bActive)
+    ugcprint("[UGCPlayerController:Client_YXWDInvincibleActiveChanged] active=" .. tostring(bActive))
+    if self.MainUIInstance ~= nil and self.MainUIInstance.OnYXWDInvincibleActiveChanged ~= nil then
+        self.MainUIInstance:OnYXWDInvincibleActiveChanged(bActive)
+    else
+        ugcprint("[UGCPlayerController:Client_YXWDInvincibleActiveChanged] MainUIInstance or UI handler is nil")
+    end
+end
+
 local AUTO_PICK_RANGE = 600
 local AUTO_PICK_INTERVAL = 0.5
 function UGCPlayerController:Server_SetAutoPickEnabled(bEnabled)

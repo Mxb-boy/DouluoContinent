@@ -31,8 +31,8 @@ local function HasYXWDInvincibleBuff(VictimActor)
 
     if PlayerState.IsYXWDInvincibleBuffActive ~= nil then
         local Success, Result = pcall(PlayerState.IsYXWDInvincibleBuffActive, PlayerState)
-        if Success and Result == true then
-            return true
+        if Success then
+            return Result == true
         end
     end
 

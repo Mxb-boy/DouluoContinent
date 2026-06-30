@@ -1,5 +1,7 @@
 ---@class UI02_C:UUserWidget
 ---@field Button_0 UButton
+---@field Button_3 UButton
+---@field Button_4 UButton
 ---@field Button_92 UButton
 ---@field Button_93 UButton
 ---@field Button_94 UButton
@@ -95,8 +97,10 @@ function UI02:LuaInit()
     self.Button_151.OnClicked:Add(self.Button_151_OnClicked, self)
     self.Button_155.OnClicked:Add(self.Button_155_OnClicked, self)
     self.Button_227.OnClicked:Add(self.Button_227_OnClicked, self)
+    self.Button_3.OnClicked:Add(self.Button_3_OnClicked, self)
 
     self:ApplyButtonEffect(self.Button_0)
+    self:ApplyButtonEffect(self.Button_3)
     self:ApplyButtonEffect(self.Button_144)
     self:ApplyButtonEffect(self.Button_145)
     self:ApplyButtonEffect(self.Button_147)
@@ -150,6 +154,10 @@ function UI02:GetLocalPlayerState()
 end
 
 function UI02:HasYXWDInvincibleBuff()
+    if self.YXWDBuffIconActive == true then
+        return true
+    end
+
     local PlayerState = self:GetLocalPlayerState()
     if PlayerState == nil then
         return false
@@ -164,6 +172,7 @@ end
 
 function UI02:HideYXWDBuffIcon()
     self.YXWDBuffIconActive = false
+    self.YXWDInvincibleActive = false
     self.YXWDBuffIconDurationSeconds = 0
     self.YXWDBuffIconExpireToken = (self.YXWDBuffIconExpireToken or 0) + 1
 
@@ -190,6 +199,9 @@ function UI02:ShowYXWDBuffIcon(DurationSeconds)
     end
 
     self.YXWDBuffIconActive = true
+    if self.YXWDInvincibleActive == nil then
+        self.YXWDInvincibleActive = true
+    end
     self.YXWDBuffIconDurationSeconds = Duration
     self.YXWDBuffIconExpireToken = (self.YXWDBuffIconExpireToken or 0) + 1
     local ExpireToken = self.YXWDBuffIconExpireToken
@@ -248,6 +260,7 @@ function UI02:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
     end
 
     if bEnabled == true or tonumber(bEnabled) == 1 then
+        self.YXWDInvincibleActive = true
         self:ShowYXWDBuffIcon(DurationSeconds)
     else
         self:HideYXWDBuffIcon()
@@ -256,6 +269,36 @@ function UI02:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
     print("[UI02:OnYXWDInvincibleBuffChanged] bEnabled=" .. tostring(bEnabled)
         .. ", duration=" .. tostring(DurationSeconds)
         .. ", active=" .. tostring(self.YXWDBuffIconActive))
+end
+
+function UI02:OnYXWDInvincibleActiveChanged(bActive)
+    if self:HasYXWDInvincibleBuff() ~= true then
+        self.YXWDInvincibleActive = false
+        print("[UI02:OnYXWDInvincibleActiveChanged] ignored, buff not owned")
+        return
+    end
+
+    self.YXWDInvincibleActive = bActive == true or tonumber(bActive) == 1
+    self:ShowYXWDBuffIcon(self.YXWDBuffIconDurationSeconds or -2)
+    print("[UI02:OnYXWDInvincibleActiveChanged] active=" .. tostring(self.YXWDInvincibleActive))
+end
+
+function UI02:Button_3_OnClicked()
+    if self:HasYXWDInvincibleBuff() ~= true then
+        print("[UI02:Button_3_OnClicked] ignored, YXWD buff not owned")
+        return
+    end
+
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        print("[UI02:Button_3_OnClicked] PlayerController is nil")
+        return
+    end
+
+    local bNextActive = not (self.YXWDInvincibleActive == true)
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SetYXWDInvincibleBuffActive",
+        bNextActive and 1 or 0)
+    print("[UI02:Button_3_OnClicked] request active=" .. tostring(bNextActive))
 end
 
 function UI02:Button_145_OnClicked()
