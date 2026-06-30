@@ -67,8 +67,10 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     print("[UGCGlobalDamageCalculation] Context VictimActor --->"..tostring(VictimActor))
 
     local SkillAttack = UGCAttributeSystem.GetSourceMagnitudeFromContext(Context)
+    local bCauserIsPlayer = CauserActor ~= nil and CauserActor.PlayerState ~= nil
+    local bVictimIsPlayer = VictimActor ~= nil and VictimActor.PlayerState ~= nil
     local ServerAttackPower = nil
-    if CauserActor ~= nil then
+    if bCauserIsPlayer and not bVictimIsPlayer then
         ServerAttackPower = UGCAttributeSystem.GetGameAttributeValue(CauserActor, "AttackPower")
     end
     print("[DamageDebug] CauserActor=" .. tostring(CauserActor)
