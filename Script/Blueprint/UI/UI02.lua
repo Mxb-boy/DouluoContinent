@@ -67,6 +67,7 @@ local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local Property = UGCGameSystem.UGCRequire("Script.property.property")
 
 local UI02 = { bInitDoOnce = false }
+local YXWD_BUFF_ICON_DEBUG_COUNT = 0
 
 function UI02:Construct()
     self:LuaInit()
@@ -110,18 +111,153 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_157)
     self:ApplyButtonEffect(self.Button_158)
     self:ApplyButtonEffect(self.Button_227)
+    self:ApplyButtonEffect(self.Button_228)
 
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
+    self:RefreshYXWDBuffIcon()
     Property.RefreshUI(self)
 end
 
 function UI02:OnRefreshProperty()
     Property.RefreshUI(self)
+    self:RefreshYXWDBuffIcon()
 end
 
 --签到
+function UI02:GetLocalPlayerState()
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil and PlayerController.PlayerState ~= nil then
+        return PlayerController.PlayerState
+    end
+
+    if UGCGameSystem ~= nil and UGCGameSystem.GetLocalPlayerState ~= nil then
+        local Success, Result = pcall(UGCGameSystem.GetLocalPlayerState)
+        if Success and Result ~= nil then
+            return Result
+        end
+    end
+
+    if UGCGameSystem ~= nil and UGCGameSystem.GetLocalPlayerPawn ~= nil then
+        local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+        if PlayerPawn ~= nil then
+            return PlayerPawn.PlayerState
+        end
+    end
+
+    return nil
+end
+
+function UI02:HasYXWDInvincibleBuff()
+    local PlayerState = self:GetLocalPlayerState()
+    if PlayerState == nil then
+        return false
+    end
+
+    if PlayerState.GetYXWD_InvincibleBuff ~= nil then
+        return PlayerState:GetYXWD_InvincibleBuff() == true
+    end
+
+    return tonumber(PlayerState.YXWD_InvincibleBuff) == 1
+end
+
+function UI02:HideYXWDBuffIcon()
+    self.YXWDBuffIconActive = false
+    self.YXWDBuffIconDurationSeconds = 0
+    self.YXWDBuffIconExpireToken = (self.YXWDBuffIconExpireToken or 0) + 1
+
+    if self.Button_228 ~= nil then
+        self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
+    end
+end
+
+function UI02:ShowYXWDBuffIcon(DurationSeconds)
+    if self.Button_228 == nil then
+        print("[UI02:ShowYXWDBuffIcon] Button_228 is nil")
+        return
+    end
+
+    local Duration = tonumber(DurationSeconds)
+    if Duration == nil then
+        Duration = -2
+    end
+
+    if Duration ~= -2 and Duration <= 0 then
+        self:HideYXWDBuffIcon()
+        print("[UI02:ShowYXWDBuffIcon] ignored invalid duration=" .. tostring(DurationSeconds))
+        return
+    end
+
+    self.YXWDBuffIconActive = true
+    self.YXWDBuffIconDurationSeconds = Duration
+    self.YXWDBuffIconExpireToken = (self.YXWDBuffIconExpireToken or 0) + 1
+    local ExpireToken = self.YXWDBuffIconExpireToken
+
+    self.Button_228:SetVisibility(ESlateVisibility.Visible)
+
+    if Duration == -2 then
+        print("[UI02:ShowYXWDBuffIcon] show permanent buff icon")
+        return
+    end
+
+    if UGCTimerUtility ~= nil and UGCTimerUtility.CreateLuaTimer ~= nil then
+        UGCTimerUtility.CreateLuaTimer(Duration, function()
+            if self ~= nil and self.YXWDBuffIconExpireToken == ExpireToken then
+                self:HideYXWDBuffIcon()
+                print("[UI02:ShowYXWDBuffIcon] finite buff icon expired, duration=" .. tostring(Duration))
+            end
+        end, false)
+    else
+        print("[UI02:ShowYXWDBuffIcon] UGCTimerUtility unavailable, duration=" .. tostring(Duration))
+    end
+end
+
+function UI02:RefreshYXWDBuffIcon()
+    if self.Button_228 == nil then
+        if YXWD_BUFF_ICON_DEBUG_COUNT < 10 then
+            YXWD_BUFF_ICON_DEBUG_COUNT = YXWD_BUFF_ICON_DEBUG_COUNT + 1
+            print("[UI02:RefreshYXWDBuffIcon] Button_228 is nil")
+        end
+        return
+    end
+
+    local bHasBuff = self:HasYXWDInvincibleBuff()
+    if bHasBuff then
+        self:ShowYXWDBuffIcon(-2)
+    end
+
+    if YXWD_BUFF_ICON_DEBUG_COUNT < 20 then
+        YXWD_BUFF_ICON_DEBUG_COUNT = YXWD_BUFF_ICON_DEBUG_COUNT + 1
+        print("[UI02:RefreshYXWDBuffIcon] hasBuff=" .. tostring(bHasBuff)
+            .. ", active=" .. tostring(self.YXWDBuffIconActive)
+            .. ", duration=" .. tostring(self.YXWDBuffIconDurationSeconds))
+    end
+
+    if self.YXWDBuffIconActive == true then
+        self.Button_228:SetVisibility(ESlateVisibility.Visible)
+    else
+        self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
+    end
+end
+
+function UI02:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
+    if self.Button_228 == nil then
+        print("[UI02:OnYXWDInvincibleBuffChanged] Button_228 is nil")
+        return
+    end
+
+    if bEnabled == true or tonumber(bEnabled) == 1 then
+        self:ShowYXWDBuffIcon(DurationSeconds)
+    else
+        self:HideYXWDBuffIcon()
+    end
+
+    print("[UI02:OnYXWDInvincibleBuffChanged] bEnabled=" .. tostring(bEnabled)
+        .. ", duration=" .. tostring(DurationSeconds)
+        .. ", active=" .. tostring(self.YXWDBuffIconActive))
+end
+
 function UI02:Button_145_OnClicked()
     SignInEventManager:OpenMainUI()
 end

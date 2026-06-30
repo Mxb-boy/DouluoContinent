@@ -1,121 +1,228 @@
 ---@class YXWD_WD_C:Template_Consumable_Drink_C
 --Edit Below--
-local YXWD_WD = {} 
+local YXWD_WD = {}
+local DEFAULT_BUFF_DURATION_SECONDS = -2
 
---[[经典背包事件]]--
---[[
---- func 处理物品的拾取(服务端生效)
----@return bool @是否拾取该物品, 返回true才能拾取进背包
--- function YXWD_WD:HandlePickup(ItemContainer, PickupInfo, Reason)
---    return YXWD_WD.SuperClass.HandlePickup(self, ItemContainer, PickupInfo, Reason)
--- end
+local function SetYXWDInvincibleBuffActive(PlayerState, DurationSeconds)
+    if PlayerState == nil then
+        return
+    end
 
---- func 处理物品的丢弃(服务端生效)
----@return bool @是否丢弃该物品, 返回true才会丢弃
--- function YXWD_WD:HandleDrop(InCount, Reason)
---    return YXWD_WD.SuperClass.HandleDrop(self, InCount, Reason)
--- end
+    local Duration = tonumber(DurationSeconds)
+    if Duration == nil then
+        Duration = DEFAULT_BUFF_DURATION_SECONDS
+    end
 
---- func 处理物品的取出(服务端生效)
----@return number @可取出物品数量
--- function YXWD_WD:HandleTake(TakeCount, TotalCount)
---    return YXWD_WD.SuperClass.HandleTake(self, TakeCount, TotalCount)
--- end
+    if PlayerState.SetYXWD_InvincibleBuffActive ~= nil then
+        PlayerState:SetYXWD_InvincibleBuffActive(true)
+    else
+        PlayerState.YXWD_InvincibleBuffActive = true
+    end
+    PlayerState.YXWD_InvincibleBuffToken = (tonumber(PlayerState.YXWD_InvincibleBuffToken) or 0) + 1
+    local BuffToken = PlayerState.YXWD_InvincibleBuffToken
 
---- func 处理物品的使用(服务端生效)
----@return bool @使用是否成功
--- function YXWD_WD:HandleUse(Target, Reason)
---    return YXWD_WD.SuperClass.HandleUse(self, Target, Reason) 
--- end
+    if PlayerState.SetYXWD_InvincibleBuff ~= nil then
+        PlayerState:SetYXWD_InvincibleBuff(Duration == -2)
+    else
+        PlayerState.YXWD_InvincibleBuff = Duration == -2 and 1 or 0
+        if PlayerState.SaveToArchive ~= nil then
+            PlayerState:SaveToArchive()
+        end
+    end
 
---- func 处理物品的取消使用(服务端生效)
----@return bool @取消使用是否成功
--- function YXWD_WD:HandleDisuse(Reason)
---    return YXWD_WD.SuperClass.HandleDisuse(self, Reason) 
--- end
+    if Duration == -2 then
+        print("[YXWD_WD:SetYXWDInvincibleBuffActive] permanent buff active")
+        return
+    end
 
---- func 尝试取消使用物品，仅尝试(服务端生效)
----@return bool @物品能否取消使用
--- function YXWD_WD:HandleTryDisuse(Reason)
---    return YXWD_WD.SuperClass.HandleTryDisuse(self, Reason)
--- end
+    if Duration <= 0 then
+        if PlayerState.SetYXWD_InvincibleBuffActive ~= nil then
+            PlayerState:SetYXWD_InvincibleBuffActive(false)
+        else
+            PlayerState.YXWD_InvincibleBuffActive = false
+        end
+        print("[YXWD_WD:SetYXWDInvincibleBuffActive] invalid duration, buff inactive: " .. tostring(Duration))
+        return
+    end
 
---- func 处理物品的有效性(服务端生效)
--- function YXWD_WD:HandleEnable(bEnable)
---    YXWD_WD.SuperClass.HandleEnable(self, bEnable)
--- end
+    if UGCTimerUtility ~= nil and UGCTimerUtility.CreateLuaTimer ~= nil then
+        local Success, ErrorMessage = pcall(UGCTimerUtility.CreateLuaTimer, Duration, function()
+            if PlayerState ~= nil and PlayerState.YXWD_InvincibleBuffToken == BuffToken then
+                if PlayerState.SetYXWD_InvincibleBuffActive ~= nil then
+                    PlayerState:SetYXWD_InvincibleBuffActive(false)
+                else
+                    PlayerState.YXWD_InvincibleBuffActive = false
+                end
+                print("[YXWD_WD:SetYXWDInvincibleBuffActive] finite buff expired, duration=" .. tostring(Duration))
+            end
+        end, false)
+        if not Success then
+            print("[YXWD_WD:SetYXWDInvincibleBuffActive] CreateLuaTimer failed: " .. tostring(ErrorMessage))
+        end
+    end
+end
 
---- func 处理物品的清除(服务端生效)
----@return bool @清除物品是否成功
--- function YXWD_WD:HanldeCleared()
---    return YXWD_WD.SuperClass.HanldeCleared(self)
--- end
-]]--
+local function SafeGetField(Object, FieldName)
+    if Object == nil then
+        return nil
+    end
 
---[[V2背包事件]]--
---[[
---- func 能否创建物品Handle(服务端生效)
----@return bool @是否允许创建物品Handle, 若不允许，物品也将创建失败
--- function YXWD_WD:CanCreateItemHandleV2()
---     return YXWD_WD.SuperClass.CanCreateItemHandleV2(self);
--- end
+    local Success, Result = pcall(function()
+        return Object[FieldName]
+    end)
 
---- func 当创建物品Handle后回调，可重载并自定义(服务端生效)
---  function YXWD_WD:OnCreateItemHandleV2()
---     YXWD_WD.SuperClass.OnCreateItemHandleV2(self);
---  end
+    if Success then
+        return Result
+    end
 
---- func 能否销毁物品Handle，可重载并自定义(服务端生效)
----@return bool 是否允许销毁Handle, 若不允许，物品移除或丢弃也可能失败
--- function YXWD_WD:CanDestoryItemHandleV2()
---     return YXWD_WD.SuperClass.CanDestoryItemHandleV2(self);
--- end
+    return nil
+end
 
---- func 销毁物品Handle前回调，可重载并自定义(服务端生效)
--- function YXWD_WD:OnDestoryItemHandleV2()
---     YXWD_WD.SuperClass.OnDestoryItemHandleV2(self);
--- end
+local function SafeGetIndex(Object, Index)
+    if Object == nil then
+        return nil
+    end
 
---- func 能否更新此物品实例，可重载并自定义(服务端生效)
----@param NewItemCount number 新物品数量
----@param OldItemCount number 旧物品数量
----@return 是否允许物品数量更新，若不允许，物品添加或移除操作可能失败
--- function YXWD_WD:CanUpdateItemCountV2(NewItemCount, OldItemCount)
---     return YXWD_WD.SuperClass.CanUpdateItemCountV2(self, NewItemCount, OldItemCount);
--- end
+    local Success, Result = pcall(function()
+        return Object[Index]
+    end)
 
---- func 物品数量更新后回调，可重载并自定义(服务端生效)
----@param NewItemCount number 新物品数量
----@param OldItemCount number 旧物品数量
--- function YXWD_WD:OnUpdateItemCountV2(NewItemCount, OldItemCount)
---     YXWD_WD.SuperClass.OnUpdateItemCountV2(self, NewItemCount, OldItemCount);
--- end
+    if Success then
+        return Result
+    end
 
---- func 能否使用物品，可重载并自定义(服务端生效)
----@return 物品是否能够被使用
--- function YXWD_WD:CanUseV2()
---     return YXWD_WD.SuperClass.CanUseV2(self);
--- end
+    return nil
+end
 
---- func 当物品被使用回调，可重载并自定义(服务端生效)
--- function YXWD_WD:OnUseV2()
---     YXWD_WD.SuperClass.OnUseV2(self);
--- end
+local function ReadNumber(value)
+    local NumberValue = tonumber(value)
+    if NumberValue ~= nil then
+        return NumberValue
+    end
+    return nil
+end
 
---- func 当物品被取消使用，与UseItem对应，用于清理状态，应当支持多次调用，不产生额外副作用，移除物品时自动调用，可重载并自定义(服务端生效)
--- function YXWD_WD:OnDisuseV2()
---     YXWD_WD.SuperClass.OnDisuseV2(self);
--- end
+local function ReadBuffDurationFromStruct(BuffConfig)
+    if BuffConfig == nil then
+        return nil
+    end
 
---- func 当物品开始使用时回调，可重载并自定义(服务端生效)
--- function YXWD_WD:UGC_OnStartUse()
---     YXWD_WD.SuperClass.UGC_OnStartUse(self)
--- end
+    local Duration = ReadNumber(SafeGetField(BuffConfig, "OverrideTime"))
+        or ReadNumber(SafeGetField(BuffConfig, "Duration"))
+        or ReadNumber(SafeGetField(BuffConfig, "BuffDuration"))
+        or ReadNumber(SafeGetField(BuffConfig, "LastTime"))
+        or ReadNumber(SafeGetField(BuffConfig, "Time"))
 
---- func 当物品停止使用时回调，可重载并自定义(服务端生效)，在OnUseV2后调用
--- function YXWD_WD:UGC_OnStopUse(Reason)
-    YXWD_WD.SuperClass.UGC_OnStopUse(self, Reason)
--- end
-]]--
+    return Duration
+end
+
+local function GetYXWDBuffDurationSeconds(ItemHandle)
+    if ItemHandle == nil then
+        return DEFAULT_BUFF_DURATION_SECONDS
+    end
+
+    local Duration = ReadNumber(SafeGetField(ItemHandle, "OverrideTime"))
+        or ReadNumber(SafeGetField(ItemHandle, "Duration"))
+        or ReadNumber(SafeGetField(ItemHandle, "BuffDuration"))
+
+    if Duration ~= nil then
+        return Duration
+    end
+
+    local PostBuffList = SafeGetField(ItemHandle, "PostBuffList")
+    if PostBuffList ~= nil then
+        Duration = ReadBuffDurationFromStruct(SafeGetIndex(PostBuffList, 1))
+            or ReadBuffDurationFromStruct(SafeGetIndex(PostBuffList, 0))
+        if Duration ~= nil then
+            return Duration
+        end
+    end
+
+    return DEFAULT_BUFF_DURATION_SECONDS
+end
+
+local function SendYXWDBuffIconRefresh(PlayerController, DurationSeconds)
+    if PlayerController == nil then
+        return
+    end
+
+    if UnrealNetwork == nil or UnrealNetwork.CallUnrealRPC == nil then
+        print("[YXWD_WD:SendYXWDBuffIconRefresh] UnrealNetwork.CallUnrealRPC is nil")
+        return
+    end
+
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_YXWDInvincibleBuffChanged", 1, DurationSeconds)
+    print("[YXWD_WD:SendYXWDBuffIconRefresh] Client_YXWDInvincibleBuffChanged sent, duration="
+        .. tostring(DurationSeconds))
+end
+
+function YXWD_WD:CanUseV2()
+    if YXWD_WD.SuperClass ~= nil and YXWD_WD.SuperClass.CanUseV2 ~= nil then
+        return YXWD_WD.SuperClass.CanUseV2(self)
+    end
+    return true
+end
+
+function YXWD_WD:OnUseV2()
+    if YXWD_WD.SuperClass ~= nil and YXWD_WD.SuperClass.OnUseV2 ~= nil then
+        YXWD_WD.SuperClass.OnUseV2(self)
+    end
+
+    local OwnBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(self)
+    if OwnBackpackComponent == nil then
+        print("[YXWD_WD:OnUseV2] Failed to get OwnBackpackComponent")
+        return
+    end
+
+    local PlayerController = OwnBackpackComponent:GetOwner()
+    if PlayerController == nil then
+        print("[YXWD_WD:OnUseV2] Failed to get PlayerController")
+        return
+    end
+
+    local PlayerState = PlayerController.PlayerState
+    if PlayerState == nil then
+        local PlayerPawn = UGCGameSystem.GetPlayerPawnByPlayerController(PlayerController)
+        if PlayerPawn ~= nil then
+            PlayerState = PlayerPawn.PlayerState
+        end
+    end
+
+    if PlayerState == nil then
+        print("[YXWD_WD:OnUseV2] Failed to get PlayerState")
+        return
+    end
+
+    local BuffDurationSeconds = GetYXWDBuffDurationSeconds(self)
+    SetYXWDInvincibleBuffActive(PlayerState, BuffDurationSeconds)
+
+    self.YXWD_PendingBuffIconNotify = true
+    self.YXWD_PendingBuffIconPlayerController = PlayerController
+    self.YXWD_PendingBuffDurationSeconds = BuffDurationSeconds
+    print("[YXWD_WD:OnUseV2] Invincible buff enabled, duration=" .. tostring(BuffDurationSeconds)
+        .. ", wait stop use to show icon")
+end
+
+function YXWD_WD:UGC_OnStopUse(Reason)
+    if YXWD_WD.SuperClass ~= nil and YXWD_WD.SuperClass.UGC_OnStopUse ~= nil then
+        YXWD_WD.SuperClass.UGC_OnStopUse(self, Reason)
+    end
+
+    if self.YXWD_PendingBuffIconNotify ~= true then
+        print("[YXWD_WD:UGC_OnStopUse] no pending buff icon notify, Reason=" .. tostring(Reason))
+        return
+    end
+
+    self.YXWD_PendingBuffIconNotify = false
+
+    local PlayerController = self.YXWD_PendingBuffIconPlayerController
+    local BuffDurationSeconds = self.YXWD_PendingBuffDurationSeconds
+    self.YXWD_PendingBuffIconPlayerController = nil
+    self.YXWD_PendingBuffDurationSeconds = nil
+
+    print("[YXWD_WD:UGC_OnStopUse] show buff icon after stop use, duration="
+        .. tostring(BuffDurationSeconds) .. ", Reason=" .. tostring(Reason))
+    SendYXWDBuffIconRefresh(PlayerController, BuffDurationSeconds)
+end
 
 return YXWD_WD

@@ -66,6 +66,14 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             if PlayerState and PlayerState.LoadFromArchive then
                 local UID = UGCPawnAttrSystem.GetPlayerUID(PC.Pawn)
                 PlayerState:LoadFromArchive(tonumber(UID))
+                if PlayerState.GetYXWD_InvincibleBuff ~= nil and PlayerState:GetYXWD_InvincibleBuff() == true then
+                    if PlayerState.SetYXWD_InvincibleBuffActive ~= nil then
+                        PlayerState:SetYXWD_InvincibleBuffActive(true)
+                    else
+                        PlayerState.YXWD_InvincibleBuffActive = true
+                    end
+                    UnrealNetwork.CallUnrealRPC(PC, PC, "Client_YXWDInvincibleBuffChanged", 1, -2)
+                end
                 -- 恢复上次存档的血量
                 if PlayerState.RestoreHP then
                     PlayerState:RestoreHP(PC.Pawn)
@@ -86,8 +94,8 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             if HTCLv2ItemID ~= nil then
                 UGCBackPackSystem.AddItem(PC.Pawn, HTCLv2ItemID, 1)
             end
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310046, 1)
-
+            UGCBackpackSystemV2.AddItem(PC.Pawn, 8310046, 1)
+            UGCBackpackSystemV2.AddItem(PC.Pawn, 8310047, 1)
             --锻造材料
             -- UGCBackPackSystem.AddItem(PC.Pawn, 8310035, 100)
             -- UGCBackPackSystem.AddItem(PC.Pawn, 8310036, 100)

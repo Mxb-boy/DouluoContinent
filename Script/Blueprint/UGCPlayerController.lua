@@ -76,7 +76,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_ForgeWeapon", "Server_AddShopItemToBackpackV2", "Server_EquipTitle", "Server_BeginFlyState",
         "Server_EndFlyState", "Server_FlyMove", "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus",
         "Server_AddProbabilityBonus", "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm",
-        "Server_SetAutoPickEnabled"
+        "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -682,6 +682,16 @@ end
 function UGCPlayerController:Client_ProbabilityBonusChanged(str)
     if self.MainUIInstance ~= nil and self.MainUIInstance.OnhandleTest ~= nil then
         self.MainUIInstance:OnhandleTest(str)
+    end
+end
+
+function UGCPlayerController:Client_YXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
+    ugcprint("[UGCPlayerController:Client_YXWDInvincibleBuffChanged] bEnabled=" .. tostring(bEnabled)
+        .. ", duration=" .. tostring(DurationSeconds))
+    if self.MainUIInstance ~= nil and self.MainUIInstance.OnYXWDInvincibleBuffChanged ~= nil then
+        self.MainUIInstance:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
+    else
+        ugcprint("[UGCPlayerController:Client_YXWDInvincibleBuffChanged] MainUIInstance or UI handler is nil")
     end
 end
 

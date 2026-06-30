@@ -6,6 +6,9 @@ local UGCPlayerState = {
     RegenPercent=5,--战场回血：每秒恢复百分比（默认5%）
     HP=-1,--上一次离场时保存的血量，-1 表示从未存档
  -- 跨对局存档: 被 SaveToArchive 消费
+    YXWD_InvincibleBuff=0,
+    YXWD_InvincibleBuffActive=false,
+    YXWD_InvincibleBuffToken=0,
     ArchiveUID=nil,
 }
 
@@ -19,6 +22,7 @@ local ARCHIVE_KEYS = {
     { key = "HunHuan_Little", field = "HunHuan_Little", default = 1 },
     { key = "RegenPercent", field = "RegenPercent", default = 5 },
     { key = "HP", field = "HP", default = -1 },
+    { key = "YXWD_InvincibleBuff", field = "YXWD_InvincibleBuff", default = 0 },
     -- 示例: { key = "Gold",    field = "Gold",    default = 0 },
 }
 
@@ -29,6 +33,7 @@ function UGCPlayerState:GetReplicatedProperties()
         "Probability_Bonus",
         "RegenPercent",
         "HP",
+        "YXWD_InvincibleBuff",
     }
 end
 
@@ -119,6 +124,26 @@ end
 
 --- 从 Pawn 读取当前血量并写入存档
 ---@param playerPawn userdata 玩家 Pawn
+function UGCPlayerState:GetYXWD_InvincibleBuff()
+    return tonumber(self.YXWD_InvincibleBuff) == 1
+end
+
+function UGCPlayerState:SetYXWD_InvincibleBuff(value)
+    self.YXWD_InvincibleBuff = (value == true or tonumber(value) == 1) and 1 or 0
+    if self.YXWD_InvincibleBuff == 1 then
+        self.YXWD_InvincibleBuffActive = true
+    end
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:SetYXWD_InvincibleBuffActive(value)
+    self.YXWD_InvincibleBuffActive = (value == true or tonumber(value) == 1)
+end
+
+function UGCPlayerState:IsYXWDInvincibleBuffActive()
+    return self.YXWD_InvincibleBuffActive == true or tonumber(self.YXWD_InvincibleBuff) == 1
+end
+
 function UGCPlayerState:SaveCurrentHP(playerPawn)
     if playerPawn == nil then
         return

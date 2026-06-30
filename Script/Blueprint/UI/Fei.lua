@@ -285,7 +285,12 @@ function Fei:SetOtherBlueprintUIHidden(bHidden)
 
     if bHidden then
         self.HiddenBlueprintWidgets = {}
-        self:HideWidget(PlayerController.MainUIInstance)
+        if PlayerController.MainUIInstance ~= nil
+            and PlayerController.MainUIInstance.YXWDBuffIconActive == true then
+            ugcprint("[Fei:SetOtherBlueprintUIHidden] keep MainUIInstance visible for YXWD icon")
+        else
+            self:HideWidget(PlayerController.MainUIInstance)
+        end
 
         if PlayerController.MainUIInstance ~= nil then
             self:HideWidget(PlayerController.MainUIInstance.UI10Instance)
