@@ -10,7 +10,7 @@ local UGCPlayerController = {}
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local TitleSystem = UGCGameSystem.UGCRequire("Script.Blueprint.Title.TitleSystem")
-
+local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
     QNHH = 8310036
@@ -704,6 +704,9 @@ function UGCPlayerController:Server_SetAutoPickEnabled(bEnabled)
             UGCItemSystemV2.TryPickupWrapperItem(self.Pawn, Wrappers, nil, Wrappers:GetItemCount(), true)
         end
     end, true, TimerName)
+
+    local pawn = self.Pawn or self:K2_GetPawn()
+    L_Com.UseHunHuan(pawn, 8310055, 100)
 end
 
 return UGCPlayerController
