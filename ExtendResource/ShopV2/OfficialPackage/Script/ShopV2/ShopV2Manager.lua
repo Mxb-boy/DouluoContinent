@@ -470,37 +470,42 @@ function ShopV2Manager:OnAddVirtualItem(Result)
         return;
     end
 
+    -- 虚拟物品ID → 背包物品ID 映射（后续新增商品在此扩展）
+    local VIRTUAL_TO_BACKPACK = {
+        [1002] = 8310001,  -- 核子可乐
+        [1013] = 8310038,  -- 图鉴 1013
+        [1014] = 8310037,  -- 图鉴 1014
+        [1015] = 8310039,  -- 图鉴 1015
+        [1016] = 8310040,  -- 图鉴 1016
+        [1017] = 8310041,  -- 图鉴 1017
+        [1018] = 8310042,  -- 图鉴 1018
+        [1019] = 8310043,  -- 图鉴 1019
+        [1020] = 8310044,  -- 图鉴 1020
+        [1021] = 8310045,  -- 图鉴 1021
+        [1022] = 8310035,  -- 火融金（锻造材料）
+        [1023] = 8310036,  -- 千年魂环（锻造材料）
+        [1024] = 8310047,  -- 图鉴 1024
+    }
+
     for ItemID, Num in pairs(Result.ItemList) do
         print("[ShopV2] OnAddVirtualItem: ItemID=" .. tostring(ItemID) .. " Num=" .. tostring(Num))
         self:ShowItemGetPopup(ItemID, Num);
 
-        -- 虚拟物品ID → 背包物品ID 映射
-        local VIRTUAL_TO_BACKPACK = {
-            [1002] = 8310001,  -- 核子可乐
-        }
         local BackpackItemID = VIRTUAL_TO_BACKPACK[ItemID]
         if BackpackItemID then
             local PlayerController = STExtraGameplayStatics.GetFirstPlayerController(UGCGameSystem.GameState)
             print("[ShopV2]  -> PC=" .. tostring(PlayerController))
             if PlayerController and UnrealNetwork and UnrealNetwork.CallUnrealRPC then
-                print("[ShopV2]  -> RPC Server_AddShopItemToBackpackV2: BP_ID=" .. tostring(BackpackItemID) .. " Num=" .. tostring(Num))
-                local ok, err = pcall(UnrealNetwork.CallUnrealRPC, PlayerController, PlayerController, "Server_AddShopItemToBackpackV2", BackpackItemID, Num)
+                print("[ShopV2]  -> RPC Server_AddShopItemToBackpackV2: BP_ID=" .. tostring(BackpackItemID) .. " Num=" .. tostring(Num) .. " VItemID=" .. tostring(ItemID))
+                -- BugFix: 传入 VirtualItemID，由服务端统一完成 AddItemV2 + RemoveVirtualItem
+                local ok, err = pcall(UnrealNetwork.CallUnrealRPC, PlayerController, PlayerController, "Server_AddShopItemToBackpackV2", BackpackItemID, Num, ItemID)
                 print("[ShopV2]  -> RPC ok=" .. tostring(ok) .. " err=" .. tostring(err))
-
-                -- 清理虚拟物品
-                local vm = self:GetVirtualItemManager()
-                if vm then
-                    local rmOK, rmErr = pcall(vm.RemoveVirtualItem, vm, PlayerController, ItemID, Num)
-                    print("[ShopV2]  -> RemoveVirtualItem ok=" .. tostring(rmOK) .. " err=" .. tostring(rmErr))
-                end
             else
                 print("[ShopV2]  -> MISSING PC or UnrealNetwork")
             end
         else
             print("[ShopV2]  -> No mapping for ItemID=" .. tostring(ItemID) .. " (not a shop reward)")
         end
-
-        return;
     end
 end
 

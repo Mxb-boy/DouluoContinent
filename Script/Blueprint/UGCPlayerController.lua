@@ -363,12 +363,14 @@ local function RemoveItem(PlayerController, ItemID, Count)
     return false
 end
 
---- 商城购买后通过 V2 API 把物品加到背包（必须在服务端执行）
+--- 商城购买后通过 V2 API 把物品加到背包，并清理虚拟物品（必须在服务端执行）
 ---@param BackpackItemID number 背包物品ID
 ---@param Num number 数量
-function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num)
+---@param VirtualItemID number 源虚拟物品ID（用于清理）
+function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num, VirtualItemID)
     BackpackItemID = tonumber(BackpackItemID)
     Num = tonumber(Num) or 1
+    VirtualItemID = tonumber(VirtualItemID)
     if BackpackItemID == nil or Num <= 0 then
         print("[ShopV2:SERVER] Invalid params: " .. tostring(BackpackItemID) .. " x " .. tostring(Num))
         return
@@ -383,6 +385,21 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num)
     local ret = UGCBackpackSystemV2.AddItemV2(PlayerPawn, BackpackItemID, Num)
     local after = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, BackpackItemID)
     print("[ShopV2:SERVER] AFTER AddItemV2: ret=" .. tostring(ret) .. " count=" .. tostring(after))
+
+    -- BugFix: 返回值为 0 表示添加失败（如背包满）
+    if ret == 0 then
+        print("[ShopV2:SERVER] AddItemV2 FAILED (ret=0), keeping virtual item as fallback")
+        return
+    end
+
+    -- AddItemV2 成功后，在服务端清理源虚拟物品（避免客户端调用 RemoveVirtualItem 无效）
+    if VirtualItemID ~= nil then
+        local VirtualItemManager = UGCGamePartSystem.GetGamePartGlobalActor("VirtualItemManager")
+        if VirtualItemManager then
+            local rmOK, rmErr = pcall(VirtualItemManager.RemoveVirtualItem, VirtualItemManager, self, VirtualItemID, Num)
+            print("[ShopV2:SERVER] RemoveVirtualItem(VItemID=" .. tostring(VirtualItemID) .. " x " .. tostring(Num) .. ") ok=" .. tostring(rmOK) .. " err=" .. tostring(rmErr))
+        end
+    end
 end
 
 function UGCPlayerController:Server_ForgeWeapon(ItemID)
