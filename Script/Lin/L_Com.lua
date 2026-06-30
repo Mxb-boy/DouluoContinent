@@ -6,7 +6,6 @@ local HUNHUAN_TABLE_PATH = "Data/Table/Customized/HunHuanConfig"
 
 function L_Com.UseHunHuan(pawn, itemID, num)
     local cfg = UGCGameSystem.GetTableDataByRowName(HUNHUAN_TABLE_PATH, tostring(itemID))
-
     local hp = tonumber(cfg.Add_Health) * num
     local maxhp = tonumber(cfg.Add_MaxHealth) * num
     local atk = tonumber(cfg.Add_Attack) * num

@@ -1,8 +1,20 @@
 ---@class HunHuan_01_C:UGCItemHandle_ConsumeBase_C
---Edit Below--
-local HunHuan_01 = {} 
+-- Edit Below--
+local HunHuan_01 = {}
+local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 
---[[经典背包事件]]--
+function HunHuan_01:OnUseV2()
+    local itemID = tonumber(self.ItemID)
+    local ownBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(self)
+    local player = ownBackpackComponent:GetOwner()
+    local pawn = UGCGameSystem.GetPlayerPawnByPlayerController(player) or player
+    local count = UGCBackpackSystemV2.GetItemCountV2(player, itemID)
+
+    L_Com.UseHunHuan(pawn, itemID, count)
+    UGCBackpackSystemV2.RemoveItemV2(player, itemID, count)
+end
+
+--[[经典背包事件]] --
 --[[
 --- func 处理物品的拾取(服务端生效)
 ---@return bool @是否拾取该物品, 返回true才能拾取进背包
@@ -50,9 +62,9 @@ local HunHuan_01 = {}
 -- function HunHuan_01:HanldeCleared()
 --    return HunHuan_01.SuperClass.HanldeCleared(self)
 -- end
-]]--
+]] --
 
---[[V2背包事件]]--
+--[[V2背包事件]] --
 --[[
 --- func 能否创建物品Handle(服务端生效)
 ---@return bool @是否允许创建物品Handle, 若不允许，物品也将创建失败
@@ -116,6 +128,6 @@ local HunHuan_01 = {}
 -- function HunHuan_01:UGC_OnStopUse(Reason)
     HunHuan_01.SuperClass.UGC_OnStopUse(self, Reason)
 -- end
-]]--
+]] --
 
 return HunHuan_01
