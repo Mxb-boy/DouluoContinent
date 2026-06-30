@@ -13,16 +13,16 @@ local function GetSoulRingIconPath(Level)
 end
 
 local ItemIDs = {
-    SoulRing1 = 8310001,
-    SoulRing2 = 8310002,
-    SoulRing3 = 8310007,
-    SoulRing4 = 8310008,
-    SoulRing5 = 8310009,
-    SoulRing6 = 8310010,
-    SoulRing7 = 8310011,
-    SoulRing8 = 8310012,
-    SoulRing9 = 8310013,
-    SoulRing10 = 8310014,
+    SoulRing1 = 8310101,
+    SoulRing2 = 8310102,
+    SoulRing3 = 8310103,
+    SoulRing4 = 8310104,
+    SoulRing5 = 8310105,
+    SoulRing6 = 8310106,
+    SoulRing7 = 8310107,
+    SoulRing8 = 8310108,
+    SoulRing9 = 8310109,
+    SoulRing10 = 8310110,
 
     RHY = 8310037,
     HSZZ = 8310038,
@@ -240,6 +240,28 @@ function RealmConfig.ParseBonusText(BonusText)
     end
 
     return BonusText, 0
+end
+
+function RealmConfig.GetAttrBonuses(Level)
+    local Config = RealmConfig.Get(Level)
+    local Result = {
+        HPPercent = 0,
+        AttackPercent = 0,
+    }
+    if Config == nil then
+        return Result
+    end
+
+    for _, BonusText in ipairs(Config.SuccessBonuses or {}) do
+        local Label, Value = RealmConfig.ParseBonusText(BonusText)
+        if string.find(Label, "生命") ~= nil then
+            Result.HPPercent = tonumber(Value) or 0
+        elseif string.find(Label, "攻击") ~= nil then
+            Result.AttackPercent = tonumber(Value) or 0
+        end
+    end
+
+    return Result
 end
 
 function RealmConfig.RollBreakResult(Level, CurrentFailCount, ExtraRate)

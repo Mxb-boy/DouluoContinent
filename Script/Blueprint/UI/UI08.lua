@@ -1,4 +1,5 @@
 ---@class UI08_C:UUserWidget
+---@field BreakHh BreakHh_C
 ---@field Btn_Break UButton
 ---@field Btn_Close UButton
 ---@field Image_4 UImage
@@ -14,7 +15,6 @@
 ---@field Img_NeedItem_1 UImage
 ---@field Img_NeedItem_2 UImage
 ---@field Img_NeedItem_3 UImage
----@field NewUGCWidgetBlueprint2 NewUGCWidgetBlueprint2_C
 ---@field Text_CurrentName UTextBlock
 ---@field Text_NextName UTextBlock
 ---@field Text_NextValue UTextBlock
@@ -44,6 +44,7 @@ function UI08:LuaInit()
 
     self:BindButton(self.Btn_Close, self.Btn_Close_OnClicked)
     self:BindButton(self.Btn_Break, self.Btn_Break_OnClicked)
+    self:HideBreakHh()
     self:Refresh()
 end
 
@@ -67,6 +68,7 @@ end
 function UI08:Open()
     self:SetBattleUIVisible(false)
     self.CurrentRealmLevel = self:GetPlayerRealmLevel()
+    self:HideBreakHh()
     self:Refresh()
     self:SetVisibility(ESlateVisibility.Visible)
 end
@@ -110,8 +112,7 @@ function UI08:RefreshNextRealm(CurrentConfig, NextConfig)
         self:SetText(self:GetWidget("Text_NowValue"), self:BuildCurrentBonusText(CurrentConfig.SuccessBonuses))
         self:SetText(self:GetWidget("Text_NextValue"), "")
         self:SetText(self:GetWidget("TextZhanli"), "所需战力：已满")
-        self:SetText(self:GetWidget("TextCailiao"), "所需道具：无")
-        self:RefreshNeedItemIcons(nil)
+        self:RefreshNeedItems(nil)
         self:SetButtonEnabled(self.Btn_Break, false)
         return
     end
@@ -121,8 +122,7 @@ function UI08:RefreshNextRealm(CurrentConfig, NextConfig)
     self:SetText(self:GetWidget("Text_NowValue"), self:BuildCompareLeftText(CurrentBonuses))
     self:SetText(self:GetWidget("Text_NextValue"), self:BuildCompareRightText(Bonuses))
     self:SetText(self:GetWidget("TextZhanli"), self:BuildNeedPowerText(NextConfig))
-    self:SetText(self:GetWidget("TextCailiao"), self:BuildNeedItemText(NextConfig))
-    self:RefreshNeedItemIcons(NextConfig)
+    self:RefreshNeedItems(NextConfig)
     self:SetButtonEnabled(self.Btn_Break, true)
 end
 
@@ -167,24 +167,6 @@ function UI08:BuildNeedPowerText(Config)
     end
     return string.gsub(NeedPowerText, "战力门槛", "所需战力")
 end
-function UI08:BuildNeedItemText(Config)
-    if Config == nil then
-        return ""
-    end
-    local Lines = { "所需道具：" }
-    for _, Item in ipairs(Config.NeedItems or {}) do
-        local NeedCount = tonumber(Item.Count) or 0
-        local CurrentCount = self:GetBackpackItemCount(Item.ItemID)
-        table.insert(
-            Lines,
-            tostring(Item.Name or Item.ItemID) .. "：" .. tostring(CurrentCount) .. "/" .. tostring(NeedCount)
-        )
-    end
-    if #(Config.NeedItems or {}) <= 0 then
-        table.insert(Lines, "无")
-    end
-    return table.concat(Lines, "\n")
-end
 function UI08:GetBackpackItemCount(ItemID)
     ItemID = tonumber(ItemID)
     if ItemID == nil then
@@ -196,23 +178,42 @@ function UI08:GetBackpackItemCount(ItemID)
     end
     return 0
 end
-function UI08:RefreshNeedItemIcons(Config)
+function UI08:RefreshNeedItems(Config)
     local NeedItems = {}
     if Config ~= nil then
         NeedItems = Config.NeedItems or {}
     end
     for Index = 1, 3 do
         local Image = self:GetWidget("Img_NeedItem_" .. tostring(Index))
+        local TextBlock = self:GetWidget("TextBlock_" .. tostring(Index - 1))
         local Item = NeedItems[Index]
+        local HasItem = Item ~= nil
         if Image ~= nil then
-            if Item ~= nil and Item.IconPath ~= nil and Item.IconPath ~= "" then
+            if HasItem and Item.IconPath ~= nil and Item.IconPath ~= "" then
                 self:SetImage(Image, Item.IconPath)
                 Image:SetVisibility(ESlateVisibility.Visible)
             else
                 Image:SetVisibility(ESlateVisibility.Collapsed)
             end
         end
+        if TextBlock ~= nil then
+            if HasItem then
+                self:SetText(TextBlock, self:BuildNeedItemSingleText(Item))
+                TextBlock:SetVisibility(ESlateVisibility.Visible)
+            else
+                self:SetText(TextBlock, "")
+                TextBlock:SetVisibility(ESlateVisibility.Collapsed)
+            end
+        end
     end
+end
+function UI08:BuildNeedItemSingleText(Item)
+    if Item == nil then
+        return ""
+    end
+    local NeedCount = tonumber(Item.Count) or 0
+    local CurrentCount = self:GetBackpackItemCount(Item.ItemID)
+    return tostring(Item.Name or Item.ItemID) .. ":" .. tostring(CurrentCount) .. "/" .. tostring(NeedCount)
 end
 function UI08:SetText(TextBlock, Text)
     if TextBlock ~= nil then
@@ -306,6 +307,9 @@ end
 function UI08:OnRealmBreakResult(Success, NewLevel, TargetLevel, FailCount, UsedRate, IsGuaranteed)
     self.CurrentRealmLevel = math.max(1, math.min(RealmConfig.MaxLevel, tonumber(NewLevel) or 1))
     self:Refresh()
+    if Success then
+        self:ShowBreakHh(self.CurrentRealmLevel)
+    end
     ugcprint("[UI08:OnRealmBreakResult] success="
         .. tostring(Success)
         .. ", newLevel=" .. tostring(NewLevel)
@@ -313,6 +317,32 @@ function UI08:OnRealmBreakResult(Success, NewLevel, TargetLevel, FailCount, Used
         .. ", failCount=" .. tostring(FailCount)
         .. ", rate=" .. tostring(UsedRate)
         .. ", guaranteed=" .. tostring(IsGuaranteed))
+end
+function UI08:HideBreakHh()
+    local BreakHh = self:GetWidget("BreakHh")
+    if BreakHh == nil then
+        return
+    end
+    BreakHh:SetVisibility(ESlateVisibility.Collapsed)
+    if BreakHh.SetIsEnabled ~= nil then
+        BreakHh:SetIsEnabled(false)
+    end
+end
+function UI08:ShowBreakHh(Level)
+    local BreakHh = self:GetWidget("BreakHh")
+    local Config = RealmConfig.Get(Level)
+    if BreakHh == nil or Config == nil then
+        return
+    end
+    if BreakHh.ShowBreakSuccess ~= nil then
+        BreakHh:ShowBreakSuccess(Config.IconPath)
+        return
+    end
+    self:SetImage(BreakHh.Img_Hh, Config.IconPath)
+    BreakHh:SetVisibility(ESlateVisibility.SelfHitTestInvisible)
+    if BreakHh.SetIsEnabled ~= nil then
+        BreakHh:SetIsEnabled(true)
+    end
 end
 function UI08:Destruct()
     self:SetBattleUIVisible(true)

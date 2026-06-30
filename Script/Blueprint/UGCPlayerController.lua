@@ -556,6 +556,15 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
         NewLevel = TargetLevel
         SetRealmLevel(self, NewLevel)
         SetRealmFailCount(self, TargetLevel, 0)
+
+        local PlayerPawn = self:K2_GetPawn()
+        local PlayerState = PlayerPawn and PlayerPawn.PlayerState
+        if PlayerState ~= nil and PlayerState.SetHunHuan ~= nil then
+            PlayerState:SetHunHuan(NewLevel)
+        end
+        if PlayerPawn ~= nil and PlayerPawn.RefreshSoulMesh ~= nil then
+            PlayerPawn:RefreshSoulMesh(NewLevel)
+        end
     else
         FailCount = FailCount + 1
         SetRealmFailCount(self, TargetLevel, FailCount)
@@ -571,6 +580,13 @@ end
 
 function UGCPlayerController:Client_BreakRealmResult(Success, NewLevel, TargetLevel, FailCount, UsedRate, IsGuaranteed)
     self.RealmLevel = tonumber(NewLevel) or self.RealmLevel
+
+    if Success then
+        local PlayerPawn = self:K2_GetPawn()
+        if PlayerPawn ~= nil and PlayerPawn.RefreshSoulMesh ~= nil then
+            PlayerPawn:RefreshSoulMesh(NewLevel)
+        end
+    end
 
     if self.MainUIInstance == nil or self.MainUIInstance.UI08Instance == nil then
         ugcprint("[UGCPlayerController:Client_BreakRealmResult] UI08 instance is nil")

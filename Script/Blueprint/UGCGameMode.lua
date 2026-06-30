@@ -70,6 +70,9 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                 if PlayerState.RestoreHP then
                     PlayerState:RestoreHP(PC.Pawn)
                 end
+                if PC.Pawn.RefreshSoulMesh ~= nil and PlayerState.GetHunHuan ~= nil then
+                    PC.Pawn:RefreshSoulMesh(PlayerState:GetHunHuan())
+                end
             end
 
             -- 2. 发初始武器
@@ -84,30 +87,31 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                 UGCBackPackSystem.AddItem(PC.Pawn, HTCLv2ItemID, 1)
             end
             UGCBackPackSystem.AddItem(PC.Pawn, 8310046, 1)
+
             --锻造材料
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310035, 10000)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310036, 1000)
-            --境界升级材料先发背包
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310037, 99)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310038, 99)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310039, 99)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310040, 99)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310041, 99)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310042, 99)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310043, 99)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310044, 99)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310045, 99)
-            --魂环也先发
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310001, 50)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310002, 50)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310007, 50)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310008, 50)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310009, 50)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310010, 50)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310011, 50)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310012, 50)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310013, 50)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310014, 50)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310035, 100)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310036, 100)
+            -- --境界升级材料先发背包
+             UGCBackPackSystem.AddItem(PC.Pawn, 8310037, 10)
+             UGCBackPackSystem.AddItem(PC.Pawn, 8310038, 10)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310039, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310040, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310041, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310042, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310043, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310044, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310045, 99)
+            -- --魂环也先发
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310101, 10)
+            UGCBackPackSystem.AddItem(PC.Pawn, 8310102, 10)
+            --UGCBackPackSystem.AddItem(PC.Pawn, 8310103, 99)
+            --UGCBackPackSystem.AddItem(PC.Pawn, 8310104, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310105, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310106, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310107, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310108, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310109, 99)
+            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310110, 99)
 
             if PC.Pawn.RefreshWeaponAttackBonus ~= nil then
                 PC.Pawn:RefreshWeaponAttackBonus(true)

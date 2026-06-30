@@ -96,7 +96,7 @@ function property.SetBaseAttack(owner, value)
         local success = pcall(UGCAttributeSystem.SetGameAttributeValue, owner, ATTACK_POWER_ATTR, newValue)
         if success then
             NotifyPropertyChanged(owner)
-            return math.abs((property.GetBaseAttack(owner) or 0) - newValue) <= 0.01
+            return true
         end
     end
     return false
@@ -235,10 +235,7 @@ function property.GetFlatAttack(owner)
 end
 
 function property.GetAttack(owner)
-    local baseAttack = property.GetBaseAttack(owner)
-    local flatAttack = property.GetFlatAttack(owner)
-    local percentAttack = property.GetAttackPercent(owner)
-    return (baseAttack + flatAttack) * (1 + percentAttack)
+    return GetAttrValue(owner, ATTACK_POWER_ATTR, DEFAULT_BASE_ATTACK)
 end
 
 function property.GetCombatPower(owner, playerPawn)

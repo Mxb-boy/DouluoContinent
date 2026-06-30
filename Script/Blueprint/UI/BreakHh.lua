@@ -1,22 +1,13 @@
----@class NewUGCWidgetBlueprint2_C:UUserWidget
+---@class BreakHh_C:UUserWidget
 ---@field Image_0 UImage
 ---@field Image_58 UImage
 ---@field Image_59 UImage
----@field Image_132 UImage
+---@field Img_Hh UImage
 ---@field text_dzcg UTextBlock
----@field TextBlock_58 UTextBlock
 --Edit Below--
 local NewUGCWidgetBlueprint = { bInitDoOnce = false } 
-local ResultText = {
-    Success = string.char(233, 148, 187, 233, 128, 160, 230, 136, 144, 229, 138, 159),
-    Keep = string.char(233, 148, 187, 233, 128, 160, 228, 191, 157, 230, 140, 129),
-    Down = string.char(233, 148, 187, 233, 128, 160, 233, 153, 141, 231, 186, 167),
-}
-local ResultColor = {
-    Success = { R = 1.0, G = 0.78, B = 0.22, A = 1.0 },
-    Keep = { R = 0.56, G = 0.86, B = 1.0, A = 1.0 },
-    Down = { R = 1.0, G = 0.32, B = 0.22, A = 1.0 },
-}
+local BreakSuccessText = "突破成功"
+local BreakSuccessColor = { R = 1.0, G = 0.78, B = 0.22, A = 1.0 }
 --[==[ Construct
 function NewUGCWidgetBlueprint:Construct()
     self:SetVisibility(ESlateVisibility.Collapsed)
@@ -31,18 +22,14 @@ function NewUGCWidgetBlueprint:Construct()
         self:SetIsEnabled(false)
     end
 end
--- function NewUGCWidgetBlueprint:Tick(MyGeometry, InDeltaTime)
--- end
-function NewUGCWidgetBlueprint:ShowForgeResult(ResultType, IconPath)
-    local Text = ResultText[ResultType] or ResultText.Keep
-    local Color = ResultColor[ResultType] or ResultColor.Keep
+function NewUGCWidgetBlueprint:ShowBreakSuccess(IconPath)
     if self.SetIsEnabled ~= nil then
         self:SetIsEnabled(true)
     end
     self:SetVisibility(ESlateVisibility.SelfHitTestInvisible)
     if self.text_dzcg ~= nil then
-        self.text_dzcg:SetText(Text)
-        self:SetTextBlockColor(self.text_dzcg, Color)
+        self.text_dzcg:SetText(BreakSuccessText)
+        self:SetTextBlockColor(self.text_dzcg, BreakSuccessColor)
     end
     self:SetResultIcon(IconPath)
     self:AutoHideAfterDelay(2.0)
@@ -58,7 +45,7 @@ function NewUGCWidgetBlueprint:AutoHideAfterDelay(DelaySeconds)
     end, false)
 end
 function NewUGCWidgetBlueprint:SetResultIcon(IconPath)
-    if self.Image_132 == nil or IconPath == nil then
+    if self.Img_Hh == nil or IconPath == nil then
         return
     end
     local IconTexture = UE.LoadObject(IconPath)
@@ -66,7 +53,10 @@ function NewUGCWidgetBlueprint:SetResultIcon(IconPath)
         ugcprint("[NewUGCWidgetBlueprint:SetResultIcon] Icon load failed: " .. tostring(IconPath))
         return
     end
-    self.Image_132:SetBrushFromTexture(IconTexture)
+    self.Img_Hh:SetBrushFromTexture(IconTexture)
+    if self.Img_Hh.SetColorAndOpacity ~= nil then
+        pcall(self.Img_Hh.SetColorAndOpacity, self.Img_Hh, { R = 1.0, G = 1.0, B = 1.0, A = 1.0 })
+    end
 end
 function NewUGCWidgetBlueprint:SetTextBlockColor(TextBlock, Color)
     if TextBlock == nil or Color == nil then
