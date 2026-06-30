@@ -803,12 +803,6 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusLocalDisplay(ItemID, SeriesKey, Ite
 
     self.LastLocalWeaponAttackDisplayKey = LocalWeaponAttackKey
     Property.SetAttackPercent(self, WEAPON_ATTACK_SOURCE_KEY, LocalAttackPercent)
-    ugcprint("[AttackDebug] localDisplay item=" .. tostring(ItemID)
-        .. ", attackPercent=" .. tostring(AttackPercent)
-        .. ", localAttackPercent=" .. tostring(LocalAttackPercent)
-        .. ", baseAttack=" .. tostring(BaseAttack)
-        .. ", currentBaseAttack=" .. tostring(CurrentBaseAttack)
-        .. ", finalAttack=" .. tostring(FinalAttack))
     self:ForceRefreshPropertySnapshot()
 end
 
@@ -857,18 +851,6 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     if bSetBaseAttackSuccess then
         self.LastAppliedWeaponAttackPower = FinalAttack
     end
-
-    local ReadBackAttackPower = nil
-    if UGCAttributeSystem ~= nil and UGCAttributeSystem.GetGameAttributeValue ~= nil then
-        local Success, Result = pcall(UGCAttributeSystem.GetGameAttributeValue, self, "AttackPower")
-        if Success then
-            ReadBackAttackPower = Result
-        end
-    end
-    ugcprint("[AttackDebug] hasAuthority=" .. tostring(self:HasAuthority())
-        .. ", finalAttack=" .. tostring(FinalAttack)
-        .. ", readBackAttackPower=" .. tostring(ReadBackAttackPower)
-        .. ", setBaseAttackSuccess=" .. tostring(bSetBaseAttackSuccess))
 
     ugcprint("[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID)
         .. ", series=" .. tostring(SeriesKey)

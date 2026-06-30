@@ -13,9 +13,6 @@ function UGCGameState:ReceiveBeginPlay()
     local RankListBtn = UserWidget.NewWidgetObjectBP(PlayerController, RankListBtnClass)
     if RankListBtn ~= nil then
         RankListBtn:AddToViewport(1000)
-        ugcprint("[UGCGameState] Ranking list debug button added")
-    else
-        ugcprint("[UGCGameState] Ranking list debug button create failed")
     end
 --]]
 

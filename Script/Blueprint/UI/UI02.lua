@@ -69,7 +69,6 @@ local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local Property = UGCGameSystem.UGCRequire("Script.property.property")
 
 local UI02 = { bInitDoOnce = false }
-local YXWD_BUFF_ICON_DEBUG_COUNT = 0
 
 function UI02:Construct()
     self:LuaInit()
@@ -183,7 +182,6 @@ end
 
 function UI02:ShowYXWDBuffIcon(DurationSeconds)
     if self.Button_228 == nil then
-        print("[UI02:ShowYXWDBuffIcon] Button_228 is nil")
         return
     end
 
@@ -194,7 +192,6 @@ function UI02:ShowYXWDBuffIcon(DurationSeconds)
 
     if Duration ~= -2 and Duration <= 0 then
         self:HideYXWDBuffIcon()
-        print("[UI02:ShowYXWDBuffIcon] ignored invalid duration=" .. tostring(DurationSeconds))
         return
     end
 
@@ -209,7 +206,6 @@ function UI02:ShowYXWDBuffIcon(DurationSeconds)
     self.Button_228:SetVisibility(ESlateVisibility.Visible)
 
     if Duration == -2 then
-        print("[UI02:ShowYXWDBuffIcon] show permanent buff icon")
         return
     end
 
@@ -217,33 +213,19 @@ function UI02:ShowYXWDBuffIcon(DurationSeconds)
         UGCTimerUtility.CreateLuaTimer(Duration, function()
             if self ~= nil and self.YXWDBuffIconExpireToken == ExpireToken then
                 self:HideYXWDBuffIcon()
-                print("[UI02:ShowYXWDBuffIcon] finite buff icon expired, duration=" .. tostring(Duration))
             end
         end, false)
-    else
-        print("[UI02:ShowYXWDBuffIcon] UGCTimerUtility unavailable, duration=" .. tostring(Duration))
     end
 end
 
 function UI02:RefreshYXWDBuffIcon()
     if self.Button_228 == nil then
-        if YXWD_BUFF_ICON_DEBUG_COUNT < 10 then
-            YXWD_BUFF_ICON_DEBUG_COUNT = YXWD_BUFF_ICON_DEBUG_COUNT + 1
-            print("[UI02:RefreshYXWDBuffIcon] Button_228 is nil")
-        end
         return
     end
 
     local bHasBuff = self:HasYXWDInvincibleBuff()
     if bHasBuff then
         self:ShowYXWDBuffIcon(-2)
-    end
-
-    if YXWD_BUFF_ICON_DEBUG_COUNT < 20 then
-        YXWD_BUFF_ICON_DEBUG_COUNT = YXWD_BUFF_ICON_DEBUG_COUNT + 1
-        print("[UI02:RefreshYXWDBuffIcon] hasBuff=" .. tostring(bHasBuff)
-            .. ", active=" .. tostring(self.YXWDBuffIconActive)
-            .. ", duration=" .. tostring(self.YXWDBuffIconDurationSeconds))
     end
 
     if self.YXWDBuffIconActive == true then
@@ -255,7 +237,6 @@ end
 
 function UI02:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
     if self.Button_228 == nil then
-        print("[UI02:OnYXWDInvincibleBuffChanged] Button_228 is nil")
         return
     end
 
@@ -265,40 +246,31 @@ function UI02:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
     else
         self:HideYXWDBuffIcon()
     end
-
-    print("[UI02:OnYXWDInvincibleBuffChanged] bEnabled=" .. tostring(bEnabled)
-        .. ", duration=" .. tostring(DurationSeconds)
-        .. ", active=" .. tostring(self.YXWDBuffIconActive))
 end
 
 function UI02:OnYXWDInvincibleActiveChanged(bActive)
     if self:HasYXWDInvincibleBuff() ~= true then
         self.YXWDInvincibleActive = false
-        print("[UI02:OnYXWDInvincibleActiveChanged] ignored, buff not owned")
         return
     end
 
     self.YXWDInvincibleActive = bActive == true or tonumber(bActive) == 1
     self:ShowYXWDBuffIcon(self.YXWDBuffIconDurationSeconds or -2)
-    print("[UI02:OnYXWDInvincibleActiveChanged] active=" .. tostring(self.YXWDInvincibleActive))
 end
 
 function UI02:Button_3_OnClicked()
     if self:HasYXWDInvincibleBuff() ~= true then
-        print("[UI02:Button_3_OnClicked] ignored, YXWD buff not owned")
         return
     end
 
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
     if PlayerController == nil then
-        print("[UI02:Button_3_OnClicked] PlayerController is nil")
         return
     end
 
     local bNextActive = not (self.YXWDInvincibleActive == true)
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SetYXWDInvincibleBuffActive",
         bNextActive and 1 or 0)
-    print("[UI02:Button_3_OnClicked] request active=" .. tostring(bNextActive))
 end
 
 function UI02:Button_145_OnClicked()

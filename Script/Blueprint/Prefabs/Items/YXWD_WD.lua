@@ -31,7 +31,6 @@ local function SetYXWDInvincibleBuffActive(PlayerState, DurationSeconds)
     end
 
     if Duration == -2 then
-        print("[YXWD_WD:SetYXWDInvincibleBuffActive] permanent buff active")
         return
     end
 
@@ -41,24 +40,19 @@ local function SetYXWDInvincibleBuffActive(PlayerState, DurationSeconds)
         else
             PlayerState.YXWD_InvincibleBuffActive = false
         end
-        print("[YXWD_WD:SetYXWDInvincibleBuffActive] invalid duration, buff inactive: " .. tostring(Duration))
         return
     end
 
     if UGCTimerUtility ~= nil and UGCTimerUtility.CreateLuaTimer ~= nil then
-        local Success, ErrorMessage = pcall(UGCTimerUtility.CreateLuaTimer, Duration, function()
+        pcall(UGCTimerUtility.CreateLuaTimer, Duration, function()
             if PlayerState ~= nil and PlayerState.YXWD_InvincibleBuffToken == BuffToken then
                 if PlayerState.SetYXWD_InvincibleBuffActive ~= nil then
                     PlayerState:SetYXWD_InvincibleBuffActive(false)
                 else
                     PlayerState.YXWD_InvincibleBuffActive = false
                 end
-                print("[YXWD_WD:SetYXWDInvincibleBuffActive] finite buff expired, duration=" .. tostring(Duration))
             end
         end, false)
-        if not Success then
-            print("[YXWD_WD:SetYXWDInvincibleBuffActive] CreateLuaTimer failed: " .. tostring(ErrorMessage))
-        end
     end
 end
 
@@ -147,13 +141,10 @@ local function SendYXWDBuffIconRefresh(PlayerController, DurationSeconds)
     end
 
     if UnrealNetwork == nil or UnrealNetwork.CallUnrealRPC == nil then
-        print("[YXWD_WD:SendYXWDBuffIconRefresh] UnrealNetwork.CallUnrealRPC is nil")
         return
     end
 
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_YXWDInvincibleBuffChanged", 1, DurationSeconds)
-    print("[YXWD_WD:SendYXWDBuffIconRefresh] Client_YXWDInvincibleBuffChanged sent, duration="
-        .. tostring(DurationSeconds))
 end
 
 function YXWD_WD:CanUseV2()
@@ -170,13 +161,11 @@ function YXWD_WD:OnUseV2()
 
     local OwnBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(self)
     if OwnBackpackComponent == nil then
-        print("[YXWD_WD:OnUseV2] Failed to get OwnBackpackComponent")
         return
     end
 
     local PlayerController = OwnBackpackComponent:GetOwner()
     if PlayerController == nil then
-        print("[YXWD_WD:OnUseV2] Failed to get PlayerController")
         return
     end
 
@@ -189,7 +178,6 @@ function YXWD_WD:OnUseV2()
     end
 
     if PlayerState == nil then
-        print("[YXWD_WD:OnUseV2] Failed to get PlayerState")
         return
     end
 
@@ -199,8 +187,6 @@ function YXWD_WD:OnUseV2()
     self.YXWD_PendingBuffIconNotify = true
     self.YXWD_PendingBuffIconPlayerController = PlayerController
     self.YXWD_PendingBuffDurationSeconds = BuffDurationSeconds
-    print("[YXWD_WD:OnUseV2] Invincible buff enabled, duration=" .. tostring(BuffDurationSeconds)
-        .. ", wait stop use to show icon")
 end
 
 function YXWD_WD:UGC_OnStopUse(Reason)
@@ -209,7 +195,6 @@ function YXWD_WD:UGC_OnStopUse(Reason)
     end
 
     if self.YXWD_PendingBuffIconNotify ~= true then
-        print("[YXWD_WD:UGC_OnStopUse] no pending buff icon notify, Reason=" .. tostring(Reason))
         return
     end
 
@@ -220,8 +205,6 @@ function YXWD_WD:UGC_OnStopUse(Reason)
     self.YXWD_PendingBuffIconPlayerController = nil
     self.YXWD_PendingBuffDurationSeconds = nil
 
-    print("[YXWD_WD:UGC_OnStopUse] show buff icon after stop use, duration="
-        .. tostring(BuffDurationSeconds) .. ", Reason=" .. tostring(Reason))
     SendYXWDBuffIconRefresh(PlayerController, BuffDurationSeconds)
 end
 

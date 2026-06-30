@@ -704,12 +704,8 @@ function UGCPlayerController:Client_ProbabilityBonusChanged(str)
 end
 
 function UGCPlayerController:Client_YXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
-    ugcprint("[UGCPlayerController:Client_YXWDInvincibleBuffChanged] bEnabled=" .. tostring(bEnabled)
-        .. ", duration=" .. tostring(DurationSeconds))
     if self.MainUIInstance ~= nil and self.MainUIInstance.OnYXWDInvincibleBuffChanged ~= nil then
         self.MainUIInstance:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
-    else
-        ugcprint("[UGCPlayerController:Client_YXWDInvincibleBuffChanged] MainUIInstance or UI handler is nil")
     end
 end
 
@@ -717,7 +713,6 @@ end
 function UGCPlayerController:Server_SetYXWDInvincibleBuffActive(bEnabled)
     local PlayerState = self.PlayerState
     if PlayerState == nil then
-        ugcprint("[UGCPlayerController:Server_SetYXWDInvincibleBuffActive] PlayerState is nil")
         return
     end
 
@@ -729,7 +724,6 @@ function UGCPlayerController:Server_SetYXWDInvincibleBuffActive(bEnabled)
     end
 
     if not bHasBuff then
-        ugcprint("[UGCPlayerController:Server_SetYXWDInvincibleBuffActive] ignored, buff not owned")
         UnrealNetwork.CallUnrealRPC(self, self, "Client_YXWDInvincibleActiveChanged", 0)
         return
     end
@@ -741,16 +735,12 @@ function UGCPlayerController:Server_SetYXWDInvincibleBuffActive(bEnabled)
         PlayerState.YXWD_InvincibleBuffActive = bActive
     end
 
-    ugcprint("[UGCPlayerController:Server_SetYXWDInvincibleBuffActive] active=" .. tostring(bActive))
     UnrealNetwork.CallUnrealRPC(self, self, "Client_YXWDInvincibleActiveChanged", bActive and 1 or 0)
 end
 
 function UGCPlayerController:Client_YXWDInvincibleActiveChanged(bActive)
-    ugcprint("[UGCPlayerController:Client_YXWDInvincibleActiveChanged] active=" .. tostring(bActive))
     if self.MainUIInstance ~= nil and self.MainUIInstance.OnYXWDInvincibleActiveChanged ~= nil then
         self.MainUIInstance:OnYXWDInvincibleActiveChanged(bActive)
-    else
-        ugcprint("[UGCPlayerController:Client_YXWDInvincibleActiveChanged] MainUIInstance or UI handler is nil")
     end
 end
 
