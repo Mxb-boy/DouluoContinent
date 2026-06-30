@@ -1,6 +1,5 @@
 ---@class CSActor_C:AActor
 ---@field Box UBoxComponent
----@field StaticMesh UStaticMeshComponent
 ---@field DefaultSceneRoot USceneComponent
 ---@field CSPoint int32
 --Edit Below--
