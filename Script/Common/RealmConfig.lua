@@ -13,16 +13,16 @@ local function GetSoulRingIconPath(Level)
 end
 
 local ItemIDs = {
-    SoulRing1 = 8310101,
-    SoulRing2 = 8310102,
-    SoulRing3 = 8310103,
-    SoulRing4 = 8310104,
-    SoulRing5 = 8310105,
-    SoulRing6 = 8310106,
-    SoulRing7 = 8310107,
-    SoulRing8 = 8310108,
-    SoulRing9 = 8310109,
-    SoulRing10 = 8310110,
+    SoulRing1 = 8310048,
+    SoulRing2 = 8310049,
+    SoulRing3 = 8310051,
+    SoulRing4 = 8310053,
+    SoulRing5 = 8310054,
+    SoulRing6 = 8310055,
+    SoulRing7 = 8310056,
+    SoulRing8 = 8310057,
+    SoulRing9 = 8310052,
+    SoulRing10 = 8310052,
 
     RHY = 8310037,
     HSZZ = 8310038,

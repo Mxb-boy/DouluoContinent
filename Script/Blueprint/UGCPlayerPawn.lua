@@ -1,9 +1,11 @@
 local UGCPlayerPawn = {}
 local Property = UGCGameSystem.UGCRequire("Script.property.property")
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
+local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
 local WEAPON_ATTACK_SOURCE_KEY = "WeaponLevel"
+local REALM_PROPERTY_SOURCE_KEY = "Realm"
 local WEAPON_ATTACK_CHECK_INTERVAL = 0.2
 local FLY_INTERRUPT_TAGS = {
     "PawnState.Movement.Walk",
@@ -54,6 +56,12 @@ end
 
 local function GetWeaponBaseAttack(player)
     local CurrentAttack = Property.GetBaseAttack(player)
+    local PercentAttack = Property.GetAttackPercent ~= nil and (tonumber(Property.GetAttackPercent(player)) or 0) or 0
+    local FlatAttack = Property.GetFlatAttack ~= nil and (tonumber(Property.GetFlatAttack(player)) or 0) or 0
+    if PercentAttack ~= 0 then
+        CurrentAttack = ((tonumber(CurrentAttack) or 0) / (1 + PercentAttack)) - FlatAttack
+    end
+
     if player.WeaponBaseAttackPower == nil then
         player.WeaponBaseAttackPower = CurrentAttack
         return CurrentAttack
@@ -82,6 +90,18 @@ local function BuildPropertyWatchKey(player)
         tostring(Round2(snapshot.Attack)),
         tostring(Round2(snapshot.CombatPower)),
     }, "|")
+end
+
+local function ApplyRealmAttackBonus(player, HunHuan)
+    if player == nil or RealmConfig == nil or RealmConfig.GetAttrBonuses == nil then
+        return
+    end
+
+    local Bonuses = RealmConfig.GetAttrBonuses(HunHuan)
+    Property.SetAttackPercent(player, REALM_PROPERTY_SOURCE_KEY, Bonuses.AttackPercent or 0)
+    if player.ForceRefreshPropertySnapshot ~= nil then
+        player:ForceRefreshPropertySnapshot()
+    end
 end
 
 local WeaponNameToSeries = {
@@ -771,6 +791,10 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusLocalDisplay(ItemID, SeriesKey, Ite
 end
 
 function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemName, Level, bForce)
+    if self:HasAuthority() and self.PlayerState ~= nil and self.PlayerState.GetHunHuan ~= nil then
+        ApplyRealmAttackBonus(self, self.PlayerState:GetHunHuan())
+    end
+
     ItemID = tonumber(ItemID)
     if ItemID == 0 then
         ItemID = nil
@@ -895,7 +919,14 @@ function UGCPlayerPawn:InitPlayerState()
         return
     end
     local HunHuan = playerState:GetHunHuan()
+    ApplyRealmAttackBonus(self, HunHuan)
     self:ShowZhanLi()
+    CreateSoulMesh(self, HunHuan)
+end
+
+function UGCPlayerPawn:RefreshSoulMesh(HunHuan)
+    HunHuan = math.max(1, math.min(10, tonumber(HunHuan) or 1))
+    ApplyRealmAttackBonus(self, HunHuan)
     CreateSoulMesh(self, HunHuan)
 end
 
