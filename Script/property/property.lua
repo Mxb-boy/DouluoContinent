@@ -209,8 +209,10 @@ end
 
 function property.GetHPPercent(owner)
     local total = 0
-    for _, value in pairs(GetData(owner).PercentHP) do
-        total = total + (tonumber(value) or 0)
+    for sourceKey, value in pairs(GetData(owner).PercentHP) do
+        if sourceKey ~= "Realm" then
+            total = total + (tonumber(value) or 0)
+        end
     end
     return total
 end

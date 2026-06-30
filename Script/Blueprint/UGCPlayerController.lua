@@ -77,7 +77,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_EndFlyState", "Server_FlyMove", "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus",
         "Server_AddProbabilityBonus", "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm",
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
-        "Client_YXWDInvincibleActiveChanged"
+        "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -620,6 +620,31 @@ function UGCPlayerController:Client_BreakRealmResult(Success, NewLevel, TargetLe
 end
 
 -- 装备相关
+-- Lottery
+function UGCPlayerController:Server_RequestLottery(LotteryType, SlotIndex)
+    LotteryType = tonumber(LotteryType) or 0
+    SlotIndex = tonumber(SlotIndex) or 0
+    ugcprint("[UGCPlayerController:Server_RequestLottery] type="
+        .. tostring(LotteryType)
+        .. ", slot=" .. tostring(SlotIndex))
+
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, SlotIndex, 0, 0)
+end
+
+function UGCPlayerController:Client_LotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount)
+    if self.UI14Instance ~= nil and self.UI14Instance.OnLotteryResult ~= nil then
+        self.UI14Instance:OnLotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount)
+        return
+    end
+
+    if self.MainUIInstance ~= nil
+        and self.MainUIInstance.UI14Instance ~= nil
+        and self.MainUIInstance.UI14Instance.OnLotteryResult ~= nil then
+        self.MainUIInstance.UI14Instance:OnLotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount)
+    end
+end
+
+-- Title equip
 function UGCPlayerController:Server_EquipTitle(titleID)
     titleID = tonumber(titleID) or 0
 

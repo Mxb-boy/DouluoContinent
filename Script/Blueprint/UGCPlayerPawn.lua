@@ -97,6 +97,17 @@ local function ApplyRealmPropertyBonus(player, HunHuan, bFillHealth)
         return
     end
 
+    local Bonuses = RealmConfig.GetAttrBonuses(HunHuan)
+    Property.SetHPPercent(player, REALM_PROPERTY_SOURCE_KEY, 0)
+    Property.SetAttackPercent(player, REALM_PROPERTY_SOURCE_KEY, Bonuses.AttackPercent or 0)
+
+    if player.HasAuthority ~= nil and not player:HasAuthority() then
+        if player.ForceRefreshPropertySnapshot ~= nil then
+            player:ForceRefreshPropertySnapshot()
+        end
+        return
+    end
+
     local CurrentMaxHP = UGCPawnAttrSystem.GetHealthMax(player)
     if player.RealmBaseMaxHP == nil then
         player.RealmBaseMaxHP = CurrentMaxHP
@@ -105,10 +116,6 @@ local function ApplyRealmPropertyBonus(player, HunHuan, bFillHealth)
     then
         player.RealmBaseMaxHP = CurrentMaxHP
     end
-
-    local Bonuses = RealmConfig.GetAttrBonuses(HunHuan)
-    Property.SetHPPercent(player, REALM_PROPERTY_SOURCE_KEY, 0)
-    Property.SetAttackPercent(player, REALM_PROPERTY_SOURCE_KEY, Bonuses.AttackPercent or 0)
 
     local NewMaxHP = (tonumber(player.RealmBaseMaxHP) or 0) * (1 + NormalizePercent(Bonuses.HPPercent or 0))
     UGCPawnAttrSystem.SetHealthMax(player, NewMaxHP)
