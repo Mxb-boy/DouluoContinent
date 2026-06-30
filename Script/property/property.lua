@@ -79,10 +79,22 @@ local function NotifyPropertyChanged(owner)
 end
 
 function property.GetCurrentHP(playerPawn)
+    if playerPawn ~= nil and UGCPawnAttrSystem ~= nil and UGCPawnAttrSystem.GetHealth ~= nil then
+        local hp = UGCPawnAttrSystem.GetHealth(playerPawn)
+        if hp ~= nil then
+            return tonumber(hp) or property.GetMaxHP(playerPawn)
+        end
+    end
     return GetAttrValue(playerPawn, "Health", property.GetMaxHP(playerPawn))
 end
 
 function property.GetMaxHP(playerPawn)
+    if playerPawn ~= nil and UGCPawnAttrSystem ~= nil and UGCPawnAttrSystem.GetHealthMax ~= nil then
+        local maxHP = UGCPawnAttrSystem.GetHealthMax(playerPawn)
+        if maxHP ~= nil then
+            return tonumber(maxHP) or DEFAULT_MAX_HP
+        end
+    end
     return GetAttrMax(playerPawn, "Health", DEFAULT_MAX_HP)
 end
 
@@ -220,6 +232,13 @@ function property.GetFlatHP(owner)
 end
 
 function property.GetFinalMaxHP(owner)
+    if owner ~= nil and UGCPawnAttrSystem ~= nil and UGCPawnAttrSystem.GetHealthMax ~= nil then
+        local maxHP = UGCPawnAttrSystem.GetHealthMax(owner)
+        if maxHP ~= nil then
+            return tonumber(maxHP) or DEFAULT_MAX_HP
+        end
+    end
+
     local baseHP = property.GetMaxHP(owner)
     local flatHP = property.GetFlatHP(owner)
     local percentHP = property.GetHPPercent(owner)

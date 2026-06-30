@@ -71,7 +71,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                     PlayerState:RestoreHP(PC.Pawn)
                 end
                 if PC.Pawn.RefreshSoulMesh ~= nil and PlayerState.GetHunHuan ~= nil then
-                    PC.Pawn:RefreshSoulMesh(PlayerState:GetHunHuan())
+                    PC.Pawn:RefreshSoulMesh(PlayerState:GetHunHuan(), true)
                 end
             end
 

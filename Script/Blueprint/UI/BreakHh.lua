@@ -4,10 +4,13 @@
 ---@field Image_59 UImage
 ---@field Img_Hh UImage
 ---@field text_dzcg UTextBlock
+---@field TextBlock_58 UTextBlock
 --Edit Below--
 local NewUGCWidgetBlueprint = { bInitDoOnce = false } 
 local BreakSuccessText = "突破成功"
+local BreakFailText = "突破失败"
 local BreakSuccessColor = { R = 1.0, G = 0.78, B = 0.22, A = 1.0 }
+local BreakFailColor = { R = 1.0, G = 0.18, B = 0.12, A = 1.0 }
 --[==[ Construct
 function NewUGCWidgetBlueprint:Construct()
     self:SetVisibility(ESlateVisibility.Collapsed)
@@ -22,17 +25,20 @@ function NewUGCWidgetBlueprint:Construct()
         self:SetIsEnabled(false)
     end
 end
-function NewUGCWidgetBlueprint:ShowBreakSuccess(IconPath)
+function NewUGCWidgetBlueprint:ShowBreakResult(IconPath, bSuccess)
     if self.SetIsEnabled ~= nil then
         self:SetIsEnabled(true)
     end
     self:SetVisibility(ESlateVisibility.SelfHitTestInvisible)
     if self.text_dzcg ~= nil then
-        self.text_dzcg:SetText(BreakSuccessText)
-        self:SetTextBlockColor(self.text_dzcg, BreakSuccessColor)
+        self.text_dzcg:SetText(bSuccess and BreakSuccessText or BreakFailText)
+        self:SetTextBlockColor(self.text_dzcg, bSuccess and BreakSuccessColor or BreakFailColor)
     end
     self:SetResultIcon(IconPath)
     self:AutoHideAfterDelay(2.0)
+end
+function NewUGCWidgetBlueprint:ShowBreakSuccess(IconPath)
+    self:ShowBreakResult(IconPath, true)
 end
 function NewUGCWidgetBlueprint:AutoHideAfterDelay(DelaySeconds)
     UGCTimerUtility.CreateLuaTimer(DelaySeconds, function()

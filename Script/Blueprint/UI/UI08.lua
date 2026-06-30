@@ -83,6 +83,10 @@ function UI08:Btn_Break_OnClicked()
     if NextConfig == nil then
         return
     end
+    if not self:HasEnoughNeedItems(NextConfig) then
+        self:SetButtonEnabled(self.Btn_Break, false)
+        return
+    end
 
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
         or GameplayStatics.GetPlayerController(self, 0)
@@ -122,8 +126,7 @@ function UI08:RefreshNextRealm(CurrentConfig, NextConfig)
     self:SetText(self:GetWidget("Text_NowValue"), self:BuildCompareLeftText(CurrentBonuses))
     self:SetText(self:GetWidget("Text_NextValue"), self:BuildCompareRightText(Bonuses))
     self:SetText(self:GetWidget("TextZhanli"), self:BuildNeedPowerText(NextConfig))
-    self:RefreshNeedItems(NextConfig)
-    self:SetButtonEnabled(self.Btn_Break, true)
+    self:SetButtonEnabled(self.Btn_Break, self:RefreshNeedItems(NextConfig))
 end
 
 function UI08:BuildCurrentBonusText(Bonuses)
@@ -183,11 +186,19 @@ function UI08:RefreshNeedItems(Config)
     if Config ~= nil then
         NeedItems = Config.NeedItems or {}
     end
+    local CanBreak = true
     for Index = 1, 3 do
         local Image = self:GetWidget("Img_NeedItem_" .. tostring(Index))
         local TextBlock = self:GetWidget("TextBlock_" .. tostring(Index - 1))
         local Item = NeedItems[Index]
         local HasItem = Item ~= nil
+        if HasItem then
+            local NeedCount = tonumber(Item.Count) or 0
+            local CurrentCount = self:GetBackpackItemCount(Item.ItemID)
+            if CurrentCount < NeedCount then
+                CanBreak = false
+            end
+        end
         if Image ~= nil then
             if HasItem and Item.IconPath ~= nil and Item.IconPath ~= "" then
                 self:SetImage(Image, Item.IconPath)
@@ -206,6 +217,20 @@ function UI08:RefreshNeedItems(Config)
             end
         end
     end
+    return CanBreak
+end
+function UI08:HasEnoughNeedItems(Config)
+    if Config == nil then
+        return false
+    end
+    for _, Item in ipairs(Config.NeedItems or {}) do
+        local NeedCount = tonumber(Item.Count) or 0
+        local CurrentCount = self:GetBackpackItemCount(Item.ItemID)
+        if CurrentCount < NeedCount then
+            return false
+        end
+    end
+    return true
 end
 function UI08:BuildNeedItemSingleText(Item)
     if Item == nil then
@@ -308,7 +333,9 @@ function UI08:OnRealmBreakResult(Success, NewLevel, TargetLevel, FailCount, Used
     self.CurrentRealmLevel = math.max(1, math.min(RealmConfig.MaxLevel, tonumber(NewLevel) or 1))
     self:Refresh()
     if Success then
-        self:ShowBreakHh(self.CurrentRealmLevel)
+        self:ShowBreakHh(self.CurrentRealmLevel, true)
+    else
+        self:ShowBreakHh(TargetLevel, false)
     end
     ugcprint("[UI08:OnRealmBreakResult] success="
         .. tostring(Success)
@@ -328,10 +355,14 @@ function UI08:HideBreakHh()
         BreakHh:SetIsEnabled(false)
     end
 end
-function UI08:ShowBreakHh(Level)
+function UI08:ShowBreakHh(Level, bSuccess)
     local BreakHh = self:GetWidget("BreakHh")
     local Config = RealmConfig.Get(Level)
     if BreakHh == nil or Config == nil then
+        return
+    end
+    if BreakHh.ShowBreakResult ~= nil then
+        BreakHh:ShowBreakResult(Config.IconPath, bSuccess ~= false)
         return
     end
     if BreakHh.ShowBreakSuccess ~= nil then

@@ -92,13 +92,35 @@ local function BuildPropertyWatchKey(player)
     }, "|")
 end
 
-local function ApplyRealmAttackBonus(player, HunHuan)
+local function ApplyRealmPropertyBonus(player, HunHuan, bFillHealth)
     if player == nil or RealmConfig == nil or RealmConfig.GetAttrBonuses == nil then
         return
     end
 
+    local CurrentMaxHP = UGCPawnAttrSystem.GetHealthMax(player)
+    if player.RealmBaseMaxHP == nil then
+        player.RealmBaseMaxHP = CurrentMaxHP
+    elseif player.LastAppliedRealmMaxHP ~= nil
+        and math.abs((tonumber(CurrentMaxHP) or 0) - (tonumber(player.LastAppliedRealmMaxHP) or 0)) > 0.01
+    then
+        player.RealmBaseMaxHP = CurrentMaxHP
+    end
+
     local Bonuses = RealmConfig.GetAttrBonuses(HunHuan)
+    Property.SetHPPercent(player, REALM_PROPERTY_SOURCE_KEY, 0)
     Property.SetAttackPercent(player, REALM_PROPERTY_SOURCE_KEY, Bonuses.AttackPercent or 0)
+
+    local NewMaxHP = (tonumber(player.RealmBaseMaxHP) or 0) * (1 + NormalizePercent(Bonuses.HPPercent or 0))
+    UGCPawnAttrSystem.SetHealthMax(player, NewMaxHP)
+    player.LastAppliedRealmMaxHP = NewMaxHP
+
+    if bFillHealth then
+        UGCPawnAttrSystem.SetHealth(player, NewMaxHP)
+        if player.PlayerState ~= nil and player.PlayerState.SetHP ~= nil then
+            player.PlayerState:SetHP(NewMaxHP)
+        end
+    end
+
     if player.ForceRefreshPropertySnapshot ~= nil then
         player:ForceRefreshPropertySnapshot()
     end
@@ -792,7 +814,7 @@ end
 
 function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemName, Level, bForce)
     if self:HasAuthority() and self.PlayerState ~= nil and self.PlayerState.GetHunHuan ~= nil then
-        ApplyRealmAttackBonus(self, self.PlayerState:GetHunHuan())
+        ApplyRealmPropertyBonus(self, self.PlayerState:GetHunHuan(), false)
     end
 
     ItemID = tonumber(ItemID)
@@ -919,14 +941,14 @@ function UGCPlayerPawn:InitPlayerState()
         return
     end
     local HunHuan = playerState:GetHunHuan()
-    ApplyRealmAttackBonus(self, HunHuan)
+    ApplyRealmPropertyBonus(self, HunHuan, false)
     self:ShowZhanLi()
     CreateSoulMesh(self, HunHuan)
 end
 
-function UGCPlayerPawn:RefreshSoulMesh(HunHuan)
+function UGCPlayerPawn:RefreshSoulMesh(HunHuan, bFillHealth)
     HunHuan = math.max(1, math.min(10, tonumber(HunHuan) or 1))
-    ApplyRealmAttackBonus(self, HunHuan)
+    ApplyRealmPropertyBonus(self, HunHuan, bFillHealth == true)
     CreateSoulMesh(self, HunHuan)
 end
 

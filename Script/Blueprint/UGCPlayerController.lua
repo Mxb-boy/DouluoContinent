@@ -563,7 +563,7 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
             PlayerState:SetHunHuan(NewLevel)
         end
         if PlayerPawn ~= nil and PlayerPawn.RefreshSoulMesh ~= nil then
-            PlayerPawn:RefreshSoulMesh(NewLevel)
+            PlayerPawn:RefreshSoulMesh(NewLevel, true)
         end
     else
         FailCount = FailCount + 1
