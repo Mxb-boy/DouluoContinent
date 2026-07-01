@@ -72,8 +72,8 @@ local Property = UGCGameSystem.UGCRequire("Script.property.property")
 local UI02 = { bInitDoOnce = false }
 local YXWDItemID = 1024
 local YXWDPrice = 640
-local AutoSoulRingItemID = 1026
-local AutoAttackItemID = 1025
+local AutoSoulRingItemID = 1027
+local AutoAttackItemID = 1026
 
 function UI02:Construct()
     self:LuaInit()

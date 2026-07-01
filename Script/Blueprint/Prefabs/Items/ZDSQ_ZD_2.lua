@@ -1,54 +1,54 @@
 ---@class ZDSQ_ZD_C:Template_Consumable_Drink_C
 --Edit Below--
-local ZDSQ_ZD = {} 
+local ZDSQ_ZD_2 = {} 
 
 --[[经典背包事件]]--
 --[[
 --- func 处理物品的拾取(服务端生效)
 ---@return bool @是否拾取该物品, 返回true才能拾取进背包
--- function ZDSQ_ZD:HandlePickup(ItemContainer, PickupInfo, Reason)
---    return ZDSQ_ZD.SuperClass.HandlePickup(self, ItemContainer, PickupInfo, Reason)
+-- function ZDSQ_ZD_2:HandlePickup(ItemContainer, PickupInfo, Reason)
+--    return ZDSQ_ZD_2.SuperClass.HandlePickup(self, ItemContainer, PickupInfo, Reason)
 -- end
 
 --- func 处理物品的丢弃(服务端生效)
 ---@return bool @是否丢弃该物品, 返回true才会丢弃
--- function ZDSQ_ZD:HandleDrop(InCount, Reason)
---    return ZDSQ_ZD.SuperClass.HandleDrop(self, InCount, Reason)
+-- function ZDSQ_ZD_2:HandleDrop(InCount, Reason)
+--    return ZDSQ_ZD_2.SuperClass.HandleDrop(self, InCount, Reason)
 -- end
 
 --- func 处理物品的取出(服务端生效)
 ---@return number @可取出物品数量
--- function ZDSQ_ZD:HandleTake(TakeCount, TotalCount)
---    return ZDSQ_ZD.SuperClass.HandleTake(self, TakeCount, TotalCount)
+-- function ZDSQ_ZD_2:HandleTake(TakeCount, TotalCount)
+--    return ZDSQ_ZD_2.SuperClass.HandleTake(self, TakeCount, TotalCount)
 -- end
 
 --- func 处理物品的使用(服务端生效)
 ---@return bool @使用是否成功
--- function ZDSQ_ZD:HandleUse(Target, Reason)
---    return ZDSQ_ZD.SuperClass.HandleUse(self, Target, Reason) 
+-- function ZDSQ_ZD_2:HandleUse(Target, Reason)
+--    return ZDSQ_ZD_2.SuperClass.HandleUse(self, Target, Reason) 
 -- end
 
 --- func 处理物品的取消使用(服务端生效)
 ---@return bool @取消使用是否成功
--- function ZDSQ_ZD:HandleDisuse(Reason)
---    return ZDSQ_ZD.SuperClass.HandleDisuse(self, Reason) 
+-- function ZDSQ_ZD_2:HandleDisuse(Reason)
+--    return ZDSQ_ZD_2.SuperClass.HandleDisuse(self, Reason) 
 -- end
 
 --- func 尝试取消使用物品，仅尝试(服务端生效)
 ---@return bool @物品能否取消使用
--- function ZDSQ_ZD:HandleTryDisuse(Reason)
---    return ZDSQ_ZD.SuperClass.HandleTryDisuse(self, Reason)
+-- function ZDSQ_ZD_2:HandleTryDisuse(Reason)
+--    return ZDSQ_ZD_2.SuperClass.HandleTryDisuse(self, Reason)
 -- end
 
 --- func 处理物品的有效性(服务端生效)
--- function ZDSQ_ZD:HandleEnable(bEnable)
---    ZDSQ_ZD.SuperClass.HandleEnable(self, bEnable)
+-- function ZDSQ_ZD_2:HandleEnable(bEnable)
+--    ZDSQ_ZD_2.SuperClass.HandleEnable(self, bEnable)
 -- end
 
 --- func 处理物品的清除(服务端生效)
 ---@return bool @清除物品是否成功
--- function ZDSQ_ZD:HanldeCleared()
---    return ZDSQ_ZD.SuperClass.HanldeCleared(self)
+-- function ZDSQ_ZD_2:HanldeCleared()
+--    return ZDSQ_ZD_2.SuperClass.HanldeCleared(self)
 -- end
 ]]--
 
@@ -56,66 +56,66 @@ local ZDSQ_ZD = {}
 --[[
 --- func 能否创建物品Handle(服务端生效)
 ---@return bool @是否允许创建物品Handle, 若不允许，物品也将创建失败
--- function ZDSQ_ZD:CanCreateItemHandleV2()
---     return ZDSQ_ZD.SuperClass.CanCreateItemHandleV2(self);
+-- function ZDSQ_ZD_2:CanCreateItemHandleV2()
+--     return ZDSQ_ZD_2.SuperClass.CanCreateItemHandleV2(self);
 -- end
 
 --- func 当创建物品Handle后回调，可重载并自定义(服务端生效)
---  function ZDSQ_ZD:OnCreateItemHandleV2()
---     ZDSQ_ZD.SuperClass.OnCreateItemHandleV2(self);
+--  function ZDSQ_ZD_2:OnCreateItemHandleV2()
+--     ZDSQ_ZD_2.SuperClass.OnCreateItemHandleV2(self);
 --  end
 
 --- func 能否销毁物品Handle，可重载并自定义(服务端生效)
 ---@return bool 是否允许销毁Handle, 若不允许，物品移除或丢弃也可能失败
--- function ZDSQ_ZD:CanDestoryItemHandleV2()
---     return ZDSQ_ZD.SuperClass.CanDestoryItemHandleV2(self);
+-- function ZDSQ_ZD_2:CanDestoryItemHandleV2()
+--     return ZDSQ_ZD_2.SuperClass.CanDestoryItemHandleV2(self);
 -- end
 
 --- func 销毁物品Handle前回调，可重载并自定义(服务端生效)
--- function ZDSQ_ZD:OnDestoryItemHandleV2()
---     ZDSQ_ZD.SuperClass.OnDestoryItemHandleV2(self);
+-- function ZDSQ_ZD_2:OnDestoryItemHandleV2()
+--     ZDSQ_ZD_2.SuperClass.OnDestoryItemHandleV2(self);
 -- end
 
 --- func 能否更新此物品实例，可重载并自定义(服务端生效)
 ---@param NewItemCount number 新物品数量
 ---@param OldItemCount number 旧物品数量
 ---@return 是否允许物品数量更新，若不允许，物品添加或移除操作可能失败
--- function ZDSQ_ZD:CanUpdateItemCountV2(NewItemCount, OldItemCount)
---     return ZDSQ_ZD.SuperClass.CanUpdateItemCountV2(self, NewItemCount, OldItemCount);
+-- function ZDSQ_ZD_2:CanUpdateItemCountV2(NewItemCount, OldItemCount)
+--     return ZDSQ_ZD_2.SuperClass.CanUpdateItemCountV2(self, NewItemCount, OldItemCount);
 -- end
 
 --- func 物品数量更新后回调，可重载并自定义(服务端生效)
 ---@param NewItemCount number 新物品数量
 ---@param OldItemCount number 旧物品数量
--- function ZDSQ_ZD:OnUpdateItemCountV2(NewItemCount, OldItemCount)
---     ZDSQ_ZD.SuperClass.OnUpdateItemCountV2(self, NewItemCount, OldItemCount);
+-- function ZDSQ_ZD_2:OnUpdateItemCountV2(NewItemCount, OldItemCount)
+--     ZDSQ_ZD_2.SuperClass.OnUpdateItemCountV2(self, NewItemCount, OldItemCount);
 -- end
 
 --- func 能否使用物品，可重载并自定义(服务端生效)
 ---@return 物品是否能够被使用
--- function ZDSQ_ZD:CanUseV2()
---     return ZDSQ_ZD.SuperClass.CanUseV2(self);
+-- function ZDSQ_ZD_2:CanUseV2()
+--     return ZDSQ_ZD_2.SuperClass.CanUseV2(self);
 -- end
 
 --- func 当物品被使用回调，可重载并自定义(服务端生效)
--- function ZDSQ_ZD:OnUseV2()
---     ZDSQ_ZD.SuperClass.OnUseV2(self);
+-- function ZDSQ_ZD_2:OnUseV2()
+--     ZDSQ_ZD_2.SuperClass.OnUseV2(self);
 -- end
 
 --- func 当物品被取消使用，与UseItem对应，用于清理状态，应当支持多次调用，不产生额外副作用，移除物品时自动调用，可重载并自定义(服务端生效)
--- function ZDSQ_ZD:OnDisuseV2()
---     ZDSQ_ZD.SuperClass.OnDisuseV2(self);
+-- function ZDSQ_ZD_2:OnDisuseV2()
+--     ZDSQ_ZD_2.SuperClass.OnDisuseV2(self);
 -- end
 
 --- func 当物品开始使用时回调，可重载并自定义(服务端生效)
--- function ZDSQ_ZD:UGC_OnStartUse()
---     ZDSQ_ZD.SuperClass.UGC_OnStartUse(self)
+-- function ZDSQ_ZD_2:UGC_OnStartUse()
+--     ZDSQ_ZD_2.SuperClass.UGC_OnStartUse(self)
 -- end
 
 --- func 当物品停止使用时回调，可重载并自定义(服务端生效)，在OnUseV2后调用
--- function ZDSQ_ZD:UGC_OnStopUse(Reason)
-    ZDSQ_ZD.SuperClass.UGC_OnStopUse(self, Reason)
+-- function ZDSQ_ZD_2:UGC_OnStopUse(Reason)
+    ZDSQ_ZD_2.SuperClass.UGC_OnStopUse(self, Reason)
 -- end
 ]]--
 
-return ZDSQ_ZD
+return ZDSQ_ZD_2

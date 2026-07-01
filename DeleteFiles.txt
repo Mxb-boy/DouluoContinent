@@ -1,1 +1,2 @@
-Douluo/Asset/╜╙┐┌╩╣╙├╦╡├≈.md
+Douluo/Asset/Blueprint/Prefabs/Items/ZDSQ_ZD.uasset
+Douluo/Script/Blueprint/Prefabs/Items/ZDSQ_ZD.lua
