@@ -6,6 +6,13 @@ local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelCon
 -- 保存玩家死亡前的背包快照，键为 PlayerKey。
 local PlayerBackpackSnapshots = {};
 
+local function AddV2ItemIfMissing(PlayerPawn, ItemID, Count)
+    local CurrentCount = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID) or 0
+    if CurrentCount <= 0 then
+        UGCBackpackSystemV2.AddItemV2(PlayerPawn, ItemID, Count)
+    end
+end
+
 local function SaveBackpackSnapshot(PlayerKey, PlayerPawn)
     if not PlayerKey or not PlayerPawn then
         return
@@ -85,10 +92,10 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
 
             -- 2. 发初始武器
             for _, ItemID in ipairs(WeaponLevelConfig.GetAllBaseItemIDs()) do
-                UGCBackpackSystemV2.AddItemV2(PC.Pawn, ItemID, 1)
+                AddV2ItemIfMissing(PC.Pawn, ItemID, 1)
             end
             if HTCLv2ItemID ~= nil then
-                UGCBackpackSystemV2.AddItemV2(PC.Pawn, HTCLv2ItemID, 1)
+                AddV2ItemIfMissing(PC.Pawn, HTCLv2ItemID, 1)
             end
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310046, 1)
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310047, 1)
@@ -116,8 +123,6 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310057, 99)
             -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310052, 99)
             -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310050, 99)
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310006, 99)
-
             if PC.Pawn.RefreshWeaponAttackBonus ~= nil then
                 PC.Pawn:RefreshWeaponAttackBonus(true)
                 if PC.Pawn.ForceRefreshPropertySnapshot ~= nil then
