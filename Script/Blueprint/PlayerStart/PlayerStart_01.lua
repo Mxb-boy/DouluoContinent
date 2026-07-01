@@ -1,6 +1,6 @@
 local PlayerStart_01 = {}
 
-MAX_PLAYER_BORN_POINT_ID = 99
+local MAX_PLAYER_BORN_POINT_ID = 99
 
 function PlayerStart_01:GetUGCModePlayerStart(Controller)
     local PlayerState = Controller and Controller.PlayerState
@@ -15,7 +15,7 @@ function PlayerStart_01:GetUGCModePlayerStart(Controller)
     end
     return PlayerStart
 end
- 
+
 --[[
 function PlayerStart_01:ReceiveBeginPlay()
     PlayerStart_01.SuperClass.ReceiveBeginPlay(self)

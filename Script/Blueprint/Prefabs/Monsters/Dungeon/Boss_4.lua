@@ -1,8 +1,8 @@
----@class Boss_1_C:BP_UGC_GenericMobPawn_Base_C
+---@class Boss_4_C:BP_UGC_GenericMobPawn_Base_C
 ---@field HitBox UCapsuleComponent
 ---@field MonsterID int32
 --Edit Below--
-local Boss_1 = {}
+local Boss_4 = {}
 
 local function DisableMonsterCollision(monster)
     if monster.HitBox ~= nil then
@@ -14,19 +14,19 @@ local function DisableMonsterCollision(monster)
     end
 end
 
--- function Boss_1:ReceiveBeginPlay()
---     Boss_1.SuperClass.ReceiveBeginPlay(self)
+-- function Boss_4:ReceiveBeginPlay()
+--     Boss_4.SuperClass.ReceiveBeginPlay(self)
 -- end
 
--- function Boss_1:ReceiveTick(DeltaTime)
---     Boss_1.SuperClass.ReceiveTick(self, DeltaTime)
+-- function Boss_4:ReceiveTick(DeltaTime)
+--     Boss_4.SuperClass.ReceiveTick(self, DeltaTime)
 -- end
 
--- function Boss_1:ReceiveEndPlay()
---     Boss_1.SuperClass.ReceiveEndPlay(self) 
+-- function Boss_4:ReceiveEndPlay()
+--     Boss_4.SuperClass.ReceiveEndPlay(self) 
 -- end
 
--- function Boss_1:GetReplicatedProperties()
+-- function Boss_4:GetReplicatedProperties()
 --     return
 -- end
 
@@ -36,7 +36,7 @@ end
 -- ---@param EventInstigator AController 伤害来源的Controller
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
--- function Boss_1:PreTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function Boss_4:PreTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
      
 -- end
 
@@ -46,7 +46,7 @@ end
 -- ---@param EventInstigator AController 伤害来源的Controller
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
--- function Boss_1:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function Boss_4:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
     
 -- end
 
@@ -57,7 +57,7 @@ end
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- ---@return float 修改后的伤害值
--- function Boss_1:PreOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function Boss_4:PreOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
 --     return Damage
 -- end
 
@@ -68,7 +68,7 @@ end
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- ---@return float 修改后的伤害值
--- function Boss_1:PostOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function Boss_4:PostOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
 --     return Damage
 -- end
 
@@ -79,7 +79,7 @@ end
 ---@param DamageCauser AActor 伤害来源
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
-function Boss_1:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
+function Boss_4:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
     DisableMonsterCollision(self)
 
     if self:HasAuthority() and self.SpawnWall ~= nil then
@@ -111,7 +111,7 @@ end
 -- ---状态进入事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 进入的状态
--- function Boss_1:OnEnterTagState_BP(DynamicState)
+-- function Boss_4:OnEnterTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnEnterTagState_BP: ' .. Tag)
 -- end
@@ -119,7 +119,7 @@ end
 -- ---状态退出事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 退出的状态
--- function Boss_1:OnLeaveTagState_BP(DynamicState)
+-- function Boss_4:OnLeaveTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnLeaveTagState_BP: ' .. Tag)
 -- end
@@ -127,7 +127,7 @@ end
 -- ---状态打断事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 打断的状态
--- function Boss_1:OnInterruptTagState_BP(DynamicState)
+-- function Boss_4:OnInterruptTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnInterruptTagState_BP' .. Tag)
 -- end
@@ -135,7 +135,7 @@ end
 -- ---行为树消息
 -- ---生效范围：服务器
 -- ---@param NotifyMsg string 消息
--- function Boss_1:OnBehaviorNotify_BP(NotifyMsg)
+-- function Boss_4:OnBehaviorNotify_BP(NotifyMsg)
 --     ugcprint('OnBehaviorNotify_BP: ' .. NotifyMsg)
 -- end
 
@@ -143,8 +143,8 @@ end
 -- ---生效范围：服务器&客户端
 -- ---@param NewTarget AActor 新目标
 -- ---@param OldTarget AActor 旧目标
--- function Boss_1:OnTargetChange_BP(NewTarget, OldTarget)
+-- function Boss_4:OnTargetChange_BP(NewTarget, OldTarget)
     
 -- end
 
-return Boss_1
+return Boss_4

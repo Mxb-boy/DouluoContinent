@@ -13,6 +13,7 @@ local function DisableMonsterCollision(monster)
         monster.StaticMesh:SetCollisionEnabled(ECollisionEnabled.NoCollision)
     end
 end
+
 -- function BaseMons:ReceiveBeginPlay()
 --     BaseMons.SuperClass.ReceiveBeginPlay(self)
 -- end
