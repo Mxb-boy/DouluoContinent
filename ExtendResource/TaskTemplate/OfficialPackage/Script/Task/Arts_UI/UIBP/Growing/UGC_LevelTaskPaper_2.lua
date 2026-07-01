@@ -2,8 +2,8 @@
 ---@field CanvasPanel_BG UCanvasPanel
 ---@field Image_0 UImage
 ---@field Image_1 UImage
----@field Task_BG UUGC_ReuseList2_C
----@field Task_Item UUGC_ReuseList2_C
+---@field Task_BG UGC_ReuseList2_C
+---@field Task_Item UGC_ReuseList2_C
 --Edit Below--
 local UGC_LevelTaskPaper_2 = { bInitDoOnce = false } 
 

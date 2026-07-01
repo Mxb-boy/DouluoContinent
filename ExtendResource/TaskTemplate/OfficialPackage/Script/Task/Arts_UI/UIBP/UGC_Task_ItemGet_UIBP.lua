@@ -1,8 +1,8 @@
 ---@class UGC_Task_ItemGet_UIBP_C:UUserWidget
 ---@field DX_Parachute UWidgetAnimation
 ---@field DX_GXHD UWidgetAnimation
----@field Button_Close UButton
----@field Button_Mask UButton
+---@field Button_Close UNewButton
+---@field Button_Mask UNewButton
 ---@field CanvasPanel_Arrow UCanvasPanel
 ---@field CanvasPanel_List02 UCanvasPanel
 ---@field DesText UUTRichTextBlock
@@ -17,8 +17,8 @@
 ---@field PlaceTitle03 UHorizontalBox
 ---@field SizeBox_ItemGet_UseImmediately USizeBox
 ---@field TextBlock_Use UTextBlock
----@field UGC_ReuseList2_Item1 UUGC_ReuseList2_C
----@field UGC_ReuseList2_Item2 UUGC_ReuseList2_C
+---@field UGC_ReuseList2_Item1 UGC_ReuseList2_C
+---@field UGC_ReuseList2_Item2 UGC_ReuseList2_C
 ---@field UIParticleEmitter_0 UUIParticleEmitter
 ---@field WidgetSwitcher_ItemGet UWidgetSwitcher
 --Edit Below--

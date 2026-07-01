@@ -3,8 +3,8 @@
 ---@field Button_Help UButton
 ---@field Button_SwitcherBut UButton
 ---@field Button_Yes UButton
----@field Common_PopupsBg_Small_UIBP UCommon_PopupsBg_Small_UIBP_C
----@field Common_UIPopupBG UCommon_UIPopupBG_C
+---@field Common_PopupsBg_Small_UIBP Common_PopupsBg_Small_UIBP_C
+---@field Common_UIPopupBG Common_UIPopupBG_C
 ---@field HorizontalBox_Won UHorizontalBox
 ---@field TextBlock_Details UTextBlock
 ---@field Title UTextBlock

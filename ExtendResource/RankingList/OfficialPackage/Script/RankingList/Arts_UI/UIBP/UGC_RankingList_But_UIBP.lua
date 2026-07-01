@@ -7,6 +7,7 @@
 ---@field CanvasPanel_OtherPlays UCanvasPanel
 ---@field CanvasPanel_SelectBg UCanvasPanel
 ---@field Common_Avatar_BP Common_Avatar_BP_C
+---@field Image_1 UImage
 ---@field Image_Coer_Medal UImage
 ---@field Image_Huang UImage
 ---@field Image_Icon_GenderBoy UImage
@@ -15,7 +16,7 @@
 ---@field Image_Myself UImage
 ---@field Image_Pass_RankItemSelectBg UImage
 ---@field TextBlock_Num UTextBlock
----@field TextBlock_PlayerName UTextBlock
+---@field TextBlock_PlayerName UUTRichTextBlock
 ---@field TextBlock_RankIndex UTextBlock
 ---@field TextBlockNoRank UTextBlock
 ---@field UGC_ReuseList2_Item UGC_ReuseList2_C

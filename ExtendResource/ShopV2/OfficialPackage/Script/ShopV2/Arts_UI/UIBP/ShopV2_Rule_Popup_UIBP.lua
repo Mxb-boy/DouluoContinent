@@ -1,7 +1,7 @@
 ---@class ShopV2_Rule_Popup_UIBP_C:UUserWidget
 ---@field CloseButton UButton
 ---@field ContentText UUTRichTextBlock
----@field ShopV2_PopupsBG_UIBP UShopV2_PopupsBG_UIBP_C
+---@field ShopV2_PopupsBG_UIBP ShopV2_PopupsBG_UIBP_C
 --Edit Below--
 local ShopV2_Rule_Popup_UIBP = 
 { 
