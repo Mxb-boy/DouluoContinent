@@ -116,6 +116,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310057, 99)
             -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310052, 99)
             -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310050, 99)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310006, 99)
 
             if PC.Pawn.RefreshWeaponAttackBonus ~= nil then
                 PC.Pawn:RefreshWeaponAttackBonus(true)

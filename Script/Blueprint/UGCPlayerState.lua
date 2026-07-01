@@ -9,6 +9,7 @@ local UGCPlayerState = {
     YXWD_InvincibleBuff=0,
     YXWD_InvincibleBuffActive=false,
     YXWD_InvincibleBuffToken=0,
+    LotteryState={},
     ArchiveUID=nil,
 }
 
@@ -23,6 +24,7 @@ local ARCHIVE_KEYS = {
     { key = "RegenPercent", field = "RegenPercent", default = 5 },
     { key = "HP", field = "HP", default = -1 },
     { key = "YXWD_InvincibleBuff", field = "YXWD_InvincibleBuff", default = 0 },
+    { key = "LotteryState", field = "LotteryState", default = {} },
     -- 示例: { key = "Gold",    field = "Gold",    default = 0 },
 }
 
@@ -34,6 +36,7 @@ function UGCPlayerState:GetReplicatedProperties()
         "RegenPercent",
         "HP",
         "YXWD_InvincibleBuff",
+        "LotteryState",
     }
 end
 
@@ -142,6 +145,18 @@ end
 
 function UGCPlayerState:IsYXWDInvincibleBuffActive()
     return self.YXWD_InvincibleBuffActive == true
+end
+
+function UGCPlayerState:GetLotteryState()
+    if self.LotteryState == nil then
+        self.LotteryState = {}
+    end
+    return self.LotteryState
+end
+
+function UGCPlayerState:SetLotteryState(value)
+    self.LotteryState = value or {}
+    self:SaveToArchive()
 end
 
 function UGCPlayerState:SaveCurrentHP(playerPawn)

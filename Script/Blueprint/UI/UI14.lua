@@ -19,29 +19,12 @@
 ---@field kj01_C_3 kj01_C
 --Edit Below--
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
+local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
 
 local UI14 = { bInitDoOnce = false }
 
-local LotteryType = {
-    Title = 1,
-    Weapon = 2,
-    Wing = 3,
-}
-
-local LotteryConfigs = {
-    [LotteryType.Title] = {
-        Name = "Title",
-        Awards = {},
-    },
-    [LotteryType.Weapon] = {
-        Name = "Weapon",
-        Awards = {},
-    },
-    [LotteryType.Wing] = {
-        Name = "Wing",
-        Awards = {},
-    },
-}
+local LotteryType = LotteryConfig.Types
+local LotteryConfigs = LotteryConfig.Pools
 
 function UI14:Construct()
     self:LuaInit()
@@ -84,7 +67,7 @@ function UI14:Btn_Close_OnClicked()
 end
 
 function UI14:Btn_FHSY_OnClicked()
-    self:Close()
+    self:SelectLotteryType(LotteryType.FHSY)
 end
 
 function UI14:Btn_Title_OnClicked()
@@ -114,66 +97,173 @@ function UI14:SelectLotteryType(Type)
 end
 
 function UI14:Refresh()
-    self:RefreshAwardSlots()
-    self:RefreshAwardPreview(nil)
+    local Config = LotteryConfigs[self.SelectedLotteryType]
+    self:RefreshAwardPanel(Config)
+    self:RefreshAwardPreview(Config and Config.GrandPrize or nil)
 end
 
-function UI14:GetAwardSlots()
+function UI14:GetAwardPanels()
     return {
-        self.kj01,
-        self.kj01_C_0,
-        self.kj01_C_1,
-        self.kj01_C_2,
-        self.kj01_C_3,
+        [LotteryType.Weapon] = self.kj01_C_0,
+        [LotteryType.Wing] = self.kj01_C_1,
+        [LotteryType.Title] = self.kj01_C_2,
+        [LotteryType.FHSY] = self.kj01_C_3,
     }
 end
 
 function UI14:BindAwardSlots()
-    for Index, Slot in ipairs(self:GetAwardSlots()) do
-        if Slot ~= nil and Slot.Btn_Summon ~= nil then
-            Slot.LotterySlotIndex = Index
-            Slot.Btn_Summon.OnClicked:Add(function()
-                self:RequestLottery(Index)
+    for Type, Panel in pairs(self:GetAwardPanels()) do
+        if Panel ~= nil and Panel.Btn_Summon ~= nil then
+            local PanelLotteryType = Type
+            Panel.LotteryType = Type
+            Panel.Btn_Summon.OnClicked:Add(function()
+                self:RequestLottery(PanelLotteryType)
             end, self)
-            UIEffectUtil.SetButtonStateBrushSameAsNormal(Slot.Btn_Summon)
-            UIEffectUtil.BindPressScale(self, Slot.Btn_Summon, Slot.Btn_Summon, 1.06, 1.0)
+            UIEffectUtil.SetButtonStateBrushSameAsNormal(Panel.Btn_Summon)
+            UIEffectUtil.BindPressScale(self, Panel.Btn_Summon, Panel.Btn_Summon, 1.06, 1.0)
         end
     end
 end
 
-function UI14:RefreshAwardSlots()
-    local Config = LotteryConfigs[self.SelectedLotteryType]
-    local Awards = Config and Config.Awards or {}
+function UI14:RefreshAwardPanel(Config)
+    local Panels = self:GetAwardPanels()
+    local ActivePanel = Panels[self.SelectedLotteryType]
 
-    for Index, Slot in ipairs(self:GetAwardSlots()) do
-        local Award = Awards[Index]
-        if Slot ~= nil then
-            Slot.LotteryAwardData = Award
-            self:SetWidgetVisible(Slot, true)
-            if Award ~= nil then
-                self:SetAwardSlotImage(Slot, Award.IconPath)
+    for _, Panel in pairs(Panels) do
+        self:SetWidgetVisible(Panel, Panel == ActivePanel)
+        self:HideAwardOKImages(Panel)
+    end
+    self:SetWidgetVisible(self.kj01, false)
+
+    if ActivePanel == nil or Config == nil then
+        return
+    end
+
+    self:SetAwardImage(ActivePanel.Img_Best, Config.GrandPrize and Config.GrandPrize.IconPath or "")
+    local Images = { ActivePanel.Img1, ActivePanel.Img2, ActivePanel.Img3, ActivePanel.Img4, ActivePanel.Img5, ActivePanel.Img6 }
+    for Index, Image in ipairs(Images) do
+        local Award = Config.Awards and Config.Awards[Index] or nil
+        if Award ~= nil then
+            self:SetAwardImage(Image, Award.IconPath)
+        end
+    end
+    self:RefreshSummonCostText(ActivePanel, self.SelectedLotteryType)
+    self:ApplyLotteryOKState(ActivePanel, self.SelectedLotteryType)
+end
+
+function UI14:RefreshSummonCostText(Panel, LotteryTypeValue)
+    if Panel == nil or Panel.TextNum == nil then
+        return
+    end
+
+    local ServerState = self:GetServerLotteryState(LotteryTypeValue)
+    local NextRound = (tonumber(ServerState and ServerState.Round) or 0) + 1
+    Panel.TextNum:SetText(tostring(LotteryConfig.GetRoundCost(NextRound)) .. "召唤")
+end
+
+function UI14:HideAwardOKImages(Panel)
+    if Panel == nil then
+        return
+    end
+
+    local Images = {
+        Panel.Img_OK_Best,
+        Panel.Img_OK_1,
+        Panel.Img_OK_2,
+        Panel.Img_OK_3,
+        Panel.Img_OK_4,
+        Panel.Img_OK_5,
+        Panel.Img_OK_6,
+    }
+    for _, Image in ipairs(Images) do
+        self:SetWidgetVisible(Image, false)
+    end
+end
+
+function UI14:SetAwardOKVisible(Panel, AwardIndex, bVisible)
+    if Panel == nil then
+        return
+    end
+
+    local OKImages = {
+        [0] = Panel.Img_OK_Best,
+        [1] = Panel.Img_OK_1,
+        [2] = Panel.Img_OK_2,
+        [3] = Panel.Img_OK_3,
+        [4] = Panel.Img_OK_4,
+        [5] = Panel.Img_OK_5,
+        [6] = Panel.Img_OK_6,
+    }
+    self:SetWidgetVisible(OKImages[tonumber(AwardIndex) or -1], bVisible)
+end
+
+function UI14:ShowAllAwardOKImages(Panel)
+    if Panel == nil then
+        return
+    end
+
+    for Index = 0, 6 do
+        self:SetAwardOKVisible(Panel, Index, true)
+    end
+end
+
+function UI14:GetLocalLotteryOKState(LotteryTypeValue)
+    self.LocalLotteryOKStates = self.LocalLotteryOKStates or {}
+    local Key = tostring(LotteryTypeValue)
+    self.LocalLotteryOKStates[Key] = self.LocalLotteryOKStates[Key] or {
+        Awards = {},
+        Completed = false,
+    }
+    return self.LocalLotteryOKStates[Key]
+end
+
+function UI14:ApplyLotteryOKState(Panel, LotteryTypeValue)
+    local State = self:GetLocalLotteryOKState(LotteryTypeValue)
+    local ServerState = self:GetServerLotteryState(LotteryTypeValue)
+    if ServerState ~= nil then
+        State.Completed = ServerState.Completed == true
+        if ServerState.GrandPrize == true then
+            State.Awards["0"] = true
+        end
+        for Index, bOwned in pairs(ServerState.OwnedAwards or {}) do
+            if bOwned == true then
+                State.Awards[tostring(Index)] = true
             end
         end
     end
+
+    if State.Completed == true then
+        self:ShowAllAwardOKImages(Panel)
+        return
+    end
+
+    for Index, bOwned in pairs(State.Awards) do
+        if bOwned == true then
+            self:SetAwardOKVisible(Panel, tonumber(Index) or -1, true)
+        end
+    end
 end
 
-function UI14:SetAwardSlotImage(Slot, IconPath)
-    if Slot == nil or IconPath == nil or IconPath == "" then
+function UI14:GetServerLotteryState(LotteryTypeValue)
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+    local PlayerState = PlayerController and PlayerController.PlayerState or nil
+    local State = PlayerState and PlayerState.LotteryState or nil
+    return State and State[tostring(LotteryTypeValue)] or nil
+end
+
+function UI14:SetAwardImage(Image, IconPath)
+    if Image == nil or IconPath == nil or IconPath == "" then
         return
     end
 
     local Texture = UE.LoadObject(IconPath)
     if Texture == nil then
-        ugcprint("[UI14:SetAwardSlotImage] load failed: " .. tostring(IconPath))
+        ugcprint("[UI14:SetAwardImage] load failed: " .. tostring(IconPath))
         return
     end
 
-    local Images = { Slot.Img_Best, Slot.Img1, Slot.Img2, Slot.Img3, Slot.Img4, Slot.Img5, Slot.Img6 }
-    for _, Image in ipairs(Images) do
-        if Image ~= nil then
-            Image:SetBrushFromTexture(Texture)
-        end
-    end
+    Image:SetBrushFromTexture(Texture)
 end
 
 function UI14:RefreshAwardPreview(Award)
@@ -181,16 +271,13 @@ function UI14:RefreshAwardPreview(Award)
         return
     end
 
-    local Texture = UE.LoadObject(Award.IconPath)
-    if Texture ~= nil then
-        self.Img_Award:SetBrushFromTexture(Texture)
-    end
+    self:SetAwardImage(self.Img_Award, Award.IconPath)
 end
 
-function UI14:RequestLottery(SlotIndex)
-    local Config = LotteryConfigs[self.SelectedLotteryType]
-    local Award = Config and Config.Awards[SlotIndex] or nil
-    if Award == nil then
+function UI14:RequestLottery(LotteryTypeValue)
+    LotteryTypeValue = tonumber(LotteryTypeValue) or self.SelectedLotteryType
+    local Config = LotteryConfigs[LotteryTypeValue]
+    if Config == nil then
         return
     end
 
@@ -205,26 +292,59 @@ function UI14:RequestLottery(SlotIndex)
         PlayerController,
         PlayerController,
         "Server_RequestLottery",
-        self.SelectedLotteryType,
-        SlotIndex
+        LotteryTypeValue,
+        0
     )
 end
 
-function UI14:OnLotteryResult(LotteryTypeValue, SlotIndex, AwardItemID, AwardCount)
+function UI14:OnLotteryResult(LotteryTypeValue, SlotIndex, AwardItemID, AwardCount, bCompleted, ItemList)
     if LotteryTypeValue ~= nil then
         self.SelectedLotteryType = tonumber(LotteryTypeValue) or self.SelectedLotteryType
     end
 
     local Config = LotteryConfigs[self.SelectedLotteryType]
-    local Award = Config and Config.Awards[tonumber(SlotIndex) or 0] or nil
+    local AwardIndex = tonumber(SlotIndex) or 0
+    local OKState = self:GetLocalLotteryOKState(self.SelectedLotteryType)
+    if AwardIndex >= 0 then
+        OKState.Awards[tostring(AwardIndex)] = true
+    end
+    if tonumber(bCompleted) == 1 then
+        OKState.Completed = true
+    end
+
+    local Award = nil
+    if Config ~= nil then
+        Award = AwardIndex == 0 and Config.GrandPrize or Config.Awards[AwardIndex]
+    end
     self:Refresh()
-    self:RefreshAwardPreview(Award)
+    local Panel = self:GetAwardPanels()[self.SelectedLotteryType]
+    if tonumber(bCompleted) == 1 then
+        self:ShowAllAwardOKImages(Panel)
+        self:RefreshAwardPreview(Config and Config.GrandPrize or nil)
+    else
+        self:SetAwardOKVisible(Panel, AwardIndex, true)
+        self:RefreshAwardPreview(Award)
+    end
+    self:OpenLotteryGetItemUI(ItemList)
 
     ugcprint("[UI14:OnLotteryResult] type="
         .. tostring(self.SelectedLotteryType)
         .. ", slot=" .. tostring(SlotIndex)
         .. ", item=" .. tostring(AwardItemID)
         .. ", count=" .. tostring(AwardCount))
+end
+
+function UI14:OpenLotteryGetItemUI(ItemList)
+    if ItemList == nil or #ItemList <= 0 then
+        return
+    end
+
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+    local LotteryComponent = PlayerController and PlayerController.LotteryComponent or nil
+    if LotteryComponent ~= nil and LotteryComponent.OpenGetItemUI ~= nil then
+        LotteryComponent:OpenGetItemUI(ItemList)
+    end
 end
 
 function UI14:SetWidgetVisible(Widget, bVisible)

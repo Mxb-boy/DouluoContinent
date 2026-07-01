@@ -24,6 +24,7 @@
 ---@field Img_OK_5 UImage
 ---@field Img_OK_6 UImage
 ---@field Img_OK_Best UImage
+---@field TextNum UTextBlock
 --Edit Below--
 local kj01 = { bInitDoOnce = false } 
 

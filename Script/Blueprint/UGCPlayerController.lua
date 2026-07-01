@@ -9,6 +9,7 @@
 local UGCPlayerController = {}
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
+local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
 local TitleSystem = UGCGameSystem.UGCRequire("Script.Blueprint.Title.TitleSystem")
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 local ForgeMaterialItemIDs = {
@@ -621,26 +622,219 @@ end
 
 -- 装备相关
 -- Lottery
-function UGCPlayerController:Server_RequestLottery(LotteryType, SlotIndex)
-    LotteryType = tonumber(LotteryType) or 0
-    SlotIndex = tonumber(SlotIndex) or 0
-    ugcprint("[UGCPlayerController:Server_RequestLottery] type="
-        .. tostring(LotteryType)
-        .. ", slot=" .. tostring(SlotIndex))
+local function GetLotteryState(PlayerController, LotteryType)
+    local PlayerState = PlayerController.PlayerState
+    if PlayerState == nil then
+        return nil
+    end
 
-    UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, SlotIndex, 0, 0)
+    local State = PlayerState.GetLotteryState and PlayerState:GetLotteryState() or PlayerState.LotteryState
+    if State == nil then
+        State = {}
+        PlayerState.LotteryState = State
+    end
+
+    local Key = tostring(LotteryType)
+    if State[Key] == nil then
+        State[Key] = {
+            Round = 0,
+            Completed = false,
+            OwnedAwards = {},
+            GrandPrize = false,
+        }
+    end
+
+    State[Key].OwnedAwards = State[Key].OwnedAwards or {}
+    return State[Key], State
 end
 
-function UGCPlayerController:Client_LotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount)
+local function SaveLotteryState(PlayerController, State)
+    local PlayerState = PlayerController.PlayerState
+    if PlayerState == nil then
+        return
+    end
+
+    if PlayerState.SetLotteryState ~= nil then
+        PlayerState:SetLotteryState(State)
+    else
+        PlayerState.LotteryState = State
+        if PlayerState.SaveToArchive ~= nil then
+            PlayerState:SaveToArchive()
+        end
+    end
+end
+
+local function GetRemainingAwards(Pool, LotteryState)
+    local Awards = {}
+    for Index, Award in ipairs(Pool.Awards or {}) do
+        if LotteryState.OwnedAwards[tostring(Index)] ~= true then
+            table.insert(Awards, {
+                Index = Index,
+                Award = Award,
+                IsGrandPrize = false,
+            })
+        end
+    end
+
+    if LotteryState.GrandPrize ~= true then
+        table.insert(Awards, {
+            Index = 0,
+            Award = Pool.GrandPrize,
+            IsGrandPrize = true,
+        })
+    end
+
+    return Awards
+end
+
+local function RollAward(Candidates)
+    local TotalWeight = 0
+    for _, Candidate in ipairs(Candidates) do
+        TotalWeight = TotalWeight + (tonumber(Candidate.Award.Weight) or 0)
+    end
+
+    if TotalWeight <= 0 then
+        return Candidates[1]
+    end
+
+    local Roll = math.random(1, TotalWeight)
+    local Acc = 0
+    for _, Candidate in ipairs(Candidates) do
+        Acc = Acc + (tonumber(Candidate.Award.Weight) or 0)
+        if Roll <= Acc then
+            return Candidate
+        end
+    end
+
+    return Candidates[#Candidates]
+end
+
+local function GrantLotteryAward(PlayerController, Award)
+    if Award == nil then
+        return true
+    end
+
+    local ItemID = tonumber(Award.ItemID) or 0
+    local Count = tonumber(Award.Count) or 1
+    if ItemID <= 0 then
+        return true
+    end
+
+    return AddItem(PlayerController, ItemID, Count)
+end
+
+local function AddLotteryAwardToList(ItemList, Award)
+    local ItemID = tonumber(Award and Award.ItemID) or 0
+    if ItemID > 0 then
+        table.insert(ItemList, {
+            ItemID = ItemID,
+            ItemNum = tonumber(Award.Count) or 1,
+        })
+    end
+end
+
+function UGCPlayerController:Server_RequestLottery(LotteryType, SlotIndex)
+    LotteryType = tonumber(LotteryType) or 0
+    local Pool = LotteryConfig.GetPool(LotteryType)
+    if Pool == nil then
+        ugcprint("[UGCPlayerController:Server_RequestLottery] invalid type=" .. tostring(LotteryType))
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, -1, 0, 0, 0, {})
+        return
+    end
+
+    local LotteryState, AllLotteryState = GetLotteryState(self, LotteryType)
+    if LotteryState == nil then
+        return
+    end
+
+    if LotteryState.Completed == true and not LotteryConfig.CanDrawCompletedPool() then
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, -2, 0, 0, 1, {})
+        return
+    end
+
+    local NextRound = (tonumber(LotteryState.Round) or 0) + 1
+    local Cost = LotteryConfig.GetRoundCost(NextRound)
+    if (tonumber(LotteryConfig.CostItemID) or 0) > 0 then
+        if GetItemCount(self, LotteryConfig.CostItemID) < Cost then
+            UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, -3, 0, 0, 0, {})
+            return
+        end
+        if not RemoveItem(self, LotteryConfig.CostItemID, Cost) then
+            UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, -4, 0, 0, 0, {})
+            return
+        end
+    end
+
+    local Candidate = nil
+    if LotteryConfig.IsGrandPrizeRound(LotteryType, NextRound) and LotteryState.GrandPrize ~= true then
+        Candidate = {
+            Index = 0,
+            Award = Pool.GrandPrize,
+            IsGrandPrize = true,
+        }
+    else
+        local Candidates = GetRemainingAwards(Pool, LotteryState)
+        if #Candidates <= 0 then
+            LotteryState.Completed = true
+            SaveLotteryState(self, AllLotteryState)
+            UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, -2, 0, 0, 1, {})
+            return
+        end
+        Candidate = RollAward(Candidates)
+    end
+
+    local Award = Candidate.Award
+    local ItemList = {}
+    if Candidate.IsGrandPrize then
+        if not GrantLotteryAward(self, Award) then
+            UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, -5, 0, 0, 0, {})
+            return
+        end
+        AddLotteryAwardToList(ItemList, Award)
+
+        LotteryState.GrandPrize = true
+        local AllMissingAwardsGranted = true
+        if LotteryConfig.GrantMissingAwardsOnGrandPrize then
+            for Index, MissingAward in ipairs(Pool.Awards or {}) do
+                if LotteryState.OwnedAwards[tostring(Index)] ~= true then
+                    if GrantLotteryAward(self, MissingAward) then
+                        LotteryState.OwnedAwards[tostring(Index)] = true
+                        AddLotteryAwardToList(ItemList, MissingAward)
+                    else
+                        AllMissingAwardsGranted = false
+                    end
+                end
+            end
+        end
+        if LotteryConfig.CompleteOnGrandPrize and AllMissingAwardsGranted then
+            LotteryState.Completed = true
+        end
+    else
+        if not GrantLotteryAward(self, Award) then
+            UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, -5, 0, 0, 0, {})
+            return
+        end
+        AddLotteryAwardToList(ItemList, Award)
+        LotteryState.OwnedAwards[tostring(Candidate.Index)] = true
+    end
+
+    LotteryState.Round = NextRound
+    SaveLotteryState(self, AllLotteryState)
+
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, Candidate.Index,
+        tonumber(Award.ItemID) or 0, tonumber(Award.Count) or 1, LotteryState.Completed and 1 or 0, ItemList)
+end
+
+function UGCPlayerController:Client_LotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount, bCompleted, ItemList)
     if self.UI14Instance ~= nil and self.UI14Instance.OnLotteryResult ~= nil then
-        self.UI14Instance:OnLotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount)
+        self.UI14Instance:OnLotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount, bCompleted, ItemList)
         return
     end
 
     if self.MainUIInstance ~= nil
         and self.MainUIInstance.UI14Instance ~= nil
         and self.MainUIInstance.UI14Instance.OnLotteryResult ~= nil then
-        self.MainUIInstance.UI14Instance:OnLotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount)
+        self.MainUIInstance.UI14Instance:OnLotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount, bCompleted, ItemList)
     end
 end
 

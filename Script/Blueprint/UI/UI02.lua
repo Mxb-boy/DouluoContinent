@@ -105,6 +105,7 @@ function UI02:LuaInit()
     self.Button_227.OnClicked:Add(self.Button_227_OnClicked, self)
     self.Button_3.OnClicked:Add(self.Button_3_OnClicked, self)
     self.Button_4.OnClicked:Add(self.Button_4_OnClicked, self)
+    self.Button_158.OnClicked:Add(self.Button_158_OnClicked, self)
 
     self:ApplyButtonEffect(self.Button_0)
     self:ApplyButtonEffect(self.Button_1)
@@ -469,6 +470,32 @@ function UI02:Button_153_OnClicked()
     end
 
     self.UI10Instance:AddToViewport(11000)
+end
+
+function UI02:Button_158_OnClicked()
+    if self.UI14Instance ~= nil then
+        self.UI14Instance:Open()
+        return
+    end
+
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        return
+    end
+
+    local UI14Path = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI14.UI14_C"
+    local UI14Class = UE.LoadClass(UI14Path)
+    if UI14Class == nil then
+        return
+    end
+
+    self.UI14Instance = UserWidget.NewWidgetObjectBP(PlayerController, UI14Class)
+    if self.UI14Instance == nil then
+        return
+    end
+
+    self.UI14Instance:AddToViewport(11000)
+    self.UI14Instance:Open()
 end
 
 -- 境界
