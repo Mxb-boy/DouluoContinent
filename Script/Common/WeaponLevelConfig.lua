@@ -252,8 +252,10 @@ end
 
 function WeaponLevelConfig.GetAllBaseItemIDs()
     local Result = {}
-    for _, SeriesData in pairs(WeaponLevelConfig.Series) do
-        if SeriesData.ItemIDs[1] ~= nil then
+    local SeriesOrder = { "XJWQ", "HWSCJ", "HTC", "LCSL", "TSSJ" }
+    for _, SeriesKey in ipairs(SeriesOrder) do
+        local SeriesData = WeaponLevelConfig.Series[SeriesKey]
+        if SeriesData ~= nil and SeriesData.ItemIDs[1] ~= nil then
             table.insert(Result, SeriesData.ItemIDs[1])
         end
     end

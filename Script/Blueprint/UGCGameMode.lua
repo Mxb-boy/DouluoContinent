@@ -84,42 +84,38 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             end
 
             -- 2. 发初始武器
-            local HTCLv1ItemID = WeaponLevelConfig.GetItemID("HTC", 1)
-            
             for _, ItemID in ipairs(WeaponLevelConfig.GetAllBaseItemIDs()) do
-                if ItemID ~= HTCLv1ItemID then
-                    UGCBackPackSystem.AddItem(PC.Pawn, ItemID, 1)
-                end
+                UGCBackpackSystemV2.AddItemV2(PC.Pawn, ItemID, 1)
             end
             if HTCLv2ItemID ~= nil then
-                UGCBackPackSystem.AddItem(PC.Pawn, HTCLv2ItemID, 1)
+                UGCBackpackSystemV2.AddItemV2(PC.Pawn, HTCLv2ItemID, 1)
             end
-            UGCBackpackSystemV2.AddItem(PC.Pawn, 8310046, 1)
-            UGCBackpackSystemV2.AddItem(PC.Pawn, 8310047, 1)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310046, 1)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310047, 1)
             --锻造材料
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310035, 100)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310036, 100)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310035, 100)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310036, 100)
             -- --境界升级材料先发背包
-             UGCBackPackSystem.AddItem(PC.Pawn, 8310037, 10)
-             UGCBackPackSystem.AddItem(PC.Pawn, 8310038, 10)
-             UGCBackPackSystem.AddItem(PC.Pawn, 8310039, 10)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310040, 99)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310041, 99)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310042, 99)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310043, 99)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310044, 99)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310045, 99)
+             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310037, 10)
+             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310038, 10)
+             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310039, 10)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310040, 99)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310041, 99)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310042, 99)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310043, 99)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310044, 99)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310045, 99)
             -- --魂环也先发
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310048, 10)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310049, 10)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310051, 10)
-            UGCBackPackSystem.AddItem(PC.Pawn, 8310053, 10)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310054, 99)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310055, 99)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310056, 99)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310057, 99)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310052, 99)
-            -- UGCBackPackSystem.AddItem(PC.Pawn, 8310050, 99)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310048, 10)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310049, 10)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310051, 10)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310053, 10)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310054, 99)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310055, 99)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310056, 99)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310057, 99)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310052, 99)
+            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310050, 99)
 
             if PC.Pawn.RefreshWeaponAttackBonus ~= nil then
                 PC.Pawn:RefreshWeaponAttackBonus(true)
