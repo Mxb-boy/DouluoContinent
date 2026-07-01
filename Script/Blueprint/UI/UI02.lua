@@ -1,5 +1,7 @@
 ---@class UI02_C:UUserWidget
 ---@field Button_0 UButton
+---@field Button_1 UButton
+---@field Button_2 UButton
 ---@field Button_3 UButton
 ---@field Button_4 UButton
 ---@field Button_92 UButton
@@ -31,7 +33,6 @@
 ---@field Image_0 UImage
 ---@field Image_1 UImage
 ---@field Image_2 UImage
----@field Image_70 UImage
 ---@field Image_109 UImage
 ---@field Image_169 UImage
 ---@field Image_225 UImage
@@ -69,6 +70,10 @@ local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local Property = UGCGameSystem.UGCRequire("Script.property.property")
 
 local UI02 = { bInitDoOnce = false }
+local YXWDItemID = 1024
+local YXWDPrice = 640
+local AutoSoulRingItemID = 1026
+local AutoAttackItemID = 1025
 
 function UI02:Construct()
     self:LuaInit()
@@ -90,6 +95,8 @@ function UI02:LuaInit()
     self.Button_144.OnClicked:Add(self.Button_144_OnClicked,self)
     self.Button_150.OnClicked:Add(self.Button_150_OnClicked, self)
     self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
+    self.Button_1.OnClicked:Add(self.Button_1_OnClicked, self)
+    self.Button_2.OnClicked:Add(self.Button_2_OnClicked, self)
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
     self.Button_153.OnClicked:Add(self.Button_153_OnClicked, self)
     self.Button_149.OnClicked:Add(self.Button_149_OnClicked, self)
@@ -97,9 +104,13 @@ function UI02:LuaInit()
     self.Button_155.OnClicked:Add(self.Button_155_OnClicked, self)
     self.Button_227.OnClicked:Add(self.Button_227_OnClicked, self)
     self.Button_3.OnClicked:Add(self.Button_3_OnClicked, self)
+    self.Button_4.OnClicked:Add(self.Button_4_OnClicked, self)
 
     self:ApplyButtonEffect(self.Button_0)
+    self:ApplyButtonEffect(self.Button_1)
+    self:ApplyButtonEffect(self.Button_2)
     self:ApplyButtonEffect(self.Button_3)
+    self:ApplyButtonEffect(self.Button_4)
     self:ApplyButtonEffect(self.Button_144)
     self:ApplyButtonEffect(self.Button_145)
     self:ApplyButtonEffect(self.Button_147)
@@ -120,12 +131,14 @@ function UI02:LuaInit()
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
     self:RefreshYXWDBuffIcon()
+    self:RefreshYXWDPurchaseButton()
     Property.RefreshUI(self)
 end
 
 function UI02:OnRefreshProperty()
     Property.RefreshUI(self)
     self:RefreshYXWDBuffIcon()
+    self:RefreshYXWDPurchaseButton()
 end
 
 --签到
@@ -169,6 +182,18 @@ function UI02:HasYXWDInvincibleBuff()
     return tonumber(PlayerState.YXWD_InvincibleBuff) == 1
 end
 
+function UI02:RefreshYXWDPurchaseButton()
+    if self.Button_4 == nil then
+        return
+    end
+
+    if self:HasYXWDInvincibleBuff() then
+        self.Button_4:SetVisibility(ESlateVisibility.Collapsed)
+    else
+        self.Button_4:SetVisibility(ESlateVisibility.Visible)
+    end
+end
+
 function UI02:HideYXWDBuffIcon()
     self.YXWDBuffIconActive = false
     self.YXWDInvincibleActive = false
@@ -178,6 +203,7 @@ function UI02:HideYXWDBuffIcon()
     if self.Button_228 ~= nil then
         self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
     end
+    self:RefreshYXWDPurchaseButton()
 end
 
 function UI02:ShowYXWDBuffIcon(DurationSeconds)
@@ -204,6 +230,7 @@ function UI02:ShowYXWDBuffIcon(DurationSeconds)
     local ExpireToken = self.YXWDBuffIconExpireToken
 
     self.Button_228:SetVisibility(ESlateVisibility.Visible)
+    self:RefreshYXWDPurchaseButton()
 
     if Duration == -2 then
         return
@@ -233,6 +260,7 @@ function UI02:RefreshYXWDBuffIcon()
     else
         self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
     end
+    self:RefreshYXWDPurchaseButton()
 end
 
 function UI02:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
@@ -246,6 +274,7 @@ function UI02:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
     else
         self:HideYXWDBuffIcon()
     end
+    self:RefreshYXWDPurchaseButton()
 end
 
 function UI02:OnYXWDInvincibleActiveChanged(bActive)
@@ -271,6 +300,82 @@ function UI02:Button_3_OnClicked()
     local bNextActive = not (self.YXWDInvincibleActive == true)
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SetYXWDInvincibleBuffActive",
         bNextActive and 1 or 0)
+end
+
+function UI02:Button_4_OnClicked()
+    if self:HasYXWDInvincibleBuff() then
+        self:RefreshYXWDPurchaseButton()
+        return
+    end
+
+    self:PurchaseShopItem(YXWDItemID, YXWDPrice)
+end
+
+function UI02:Button_1_OnClicked()
+    self:PurchaseShopItem(AutoSoulRingItemID)
+end
+
+function UI02:Button_2_OnClicked()
+    self:PurchaseShopItem(AutoAttackItemID)
+end
+
+function UI02:PurchaseShopItem(ItemID, Price)
+    local ProductID = self:GetShopProductID(ItemID, Price)
+    if ProductID == nil then
+        return
+    end
+
+    self:EnsureShopPurchaseCallbacks()
+    if ShopV2Manager.bBlockRepeatPurchase == true then
+        return
+    end
+
+    ShopV2Manager.bBlockRepeatPurchase = true
+    local ProductData = ShopV2Manager:GetProductConfigData(ProductID)
+    if ProductData.CurrencyType == ECurrencyType.OtherCoin then
+        ShopV2Manager:BuyProduct(ProductID, 1, ShopV2Manager:GetDiscountPrice(ProductID))
+    else
+        local ObjectData = ShopV2Manager:GetItemConfigData(ProductData.ItemID)
+        self.YXWDCanAfford = ShopV2Manager:CanAfford(ProductID, 1)
+        local PromiseFuture = UGCCommoditySystem.BuyUGCCommodity2(ProductID, ObjectData.ItemIcon, ObjectData.ItemDesc, 1)
+        if PromiseFuture ~= nil then
+            PromiseFuture:Then(function(Result)
+                local UI = Result:Get()
+                UI.ConfirmationOperationDelegate:Add(self.OnYXWDPurchaseConfirm, self)
+            end)
+        end
+    end
+end
+
+function UI02:EnsureShopPurchaseCallbacks()
+    if ShopV2Manager.bBuyProductResultBinded ~= true then
+        ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Add(ShopV2Manager.OnBuyProductResult, ShopV2Manager)
+        ShopV2Manager.bBuyProductResultBinded = true
+    end
+
+    if ShopV2Manager.bAddItemResultDelegateBinded ~= true then
+        ShopV2Manager:GetVirtualItemManager().AddItemResultDelegate:Add(ShopV2Manager.OnAddVirtualItem, ShopV2Manager)
+        ShopV2Manager.bAddItemResultDelegateBinded = true
+    end
+end
+
+function UI02:OnYXWDPurchaseConfirm(Value)
+    if not Value or not self.YXWDCanAfford then
+        ShopV2Manager.bBlockRepeatPurchase = false
+    end
+end
+
+function UI02:GetShopProductID(ItemID, Price)
+    local ProductDatas = ShopV2Manager:GetAllProductConfigData()
+    for ProductID, ProductData in pairs(ProductDatas) do
+        local bSameItem = tonumber(ProductData.ItemID) == ItemID
+        local bSamePrice = Price == nil or tonumber(ProductData.SellingPrice) == Price
+        if bSameItem and bSamePrice then
+            return tonumber(ProductData.ProductID) or tonumber(ProductData.ProductId) or tonumber(ProductID)
+        end
+    end
+
+    return nil
 end
 
 function UI02:Button_145_OnClicked()
