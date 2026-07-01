@@ -5,8 +5,8 @@
 ---@field Btn_Reduce UButton
 ---@field BtnClose UButton
 ---@field Button_Buy UButton
----@field Common_UIPopupBG UCommon_UIPopupBG_C
----@field GiftPack_PopupsBG_UIBP UGiftPack_PopupsBG_UIBP_C
+---@field Common_UIPopupBG Common_UIPopupBG_C
+---@field GiftPack_PopupsBG_UIBP GiftPack_PopupsBG_UIBP_C
 ---@field Image_BgQuality UImage
 ---@field Image_EffectExpression UImage
 ---@field Image_Icon UImage

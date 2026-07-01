@@ -5,8 +5,8 @@
 ---@field MsgBox UCanvasPanel
 ---@field ScrollBox_0 UScrollBox
 ---@field TextBlock_WindowsTitle UTextBlock
----@field UGC_Common_UIPopupBG UUGC_Common_UIPopupBG_C
----@field UGC_RankingList_PopupsBG_UIBP UUGC_RankingList_PopupsBG_UIBP_C
+---@field UGC_Common_UIPopupBG UGC_Common_UIPopupBG_C
+---@field UGC_RankingList_PopupsBG_UIBP UGC_RankingList_PopupsBG_UIBP_C
 ---@field UTRichTextBlock_TipsContent UUTRichTextBlock
 --Edit Below--
 local UGC_RankingList_Explanation_UIBP = { bInitDoOnce = false } 

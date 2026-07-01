@@ -17,8 +17,8 @@
 ---@field PlaceTitle03 UHorizontalBox
 ---@field SizeBox_ItemGet_UseImmediately USizeBox
 ---@field TextBlock_Use UTextBlock
----@field UGC_ReuseList2_Item1 UUGC_ReuseList2_C
----@field UGC_ReuseList2_Item2 UUGC_ReuseList2_C
+---@field UGC_ReuseList2_Item1 UGC_ReuseList2_C
+---@field UGC_ReuseList2_Item2 UGC_ReuseList2_C
 ---@field UIParticleEmitter_0 UUIParticleEmitter
 ---@field WidgetSwitcher_ItemGet UWidgetSwitcher
 --Edit Below--

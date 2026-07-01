@@ -2,7 +2,7 @@
 ---@field DX_Parachute UWidgetAnimation
 ---@field DX_GXHD UWidgetAnimation
 ---@field ConfirmButton UNewButton
----@field ItemList UUGC_ReuseList2_C
+---@field ItemList UGC_ReuseList2_C
 --Edit Below--
 
 local ShopV2_ItemGet_UIBP = { bInitDoOnce = false } 

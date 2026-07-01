@@ -12,8 +12,8 @@
 ---@field TextBlock_14 UTextBlock
 ---@field TextBlock_Desc UTextBlock
 ---@field TextBlock_Name UTextBlock
----@field UGC_ReuseList2_MustObtain UUGC_ReuseList2_C
----@field UGC_ReuseList2_Probability UUGC_ReuseList2_C
+---@field UGC_ReuseList2_MustObtain UGC_ReuseList2_C
+---@field UGC_ReuseList2_Probability UGC_ReuseList2_C
 --Edit Below--
 local Lottery_DescShop_UIBP = { bInitDoOnce = false } 
 

@@ -1,7 +1,7 @@
 ---@class Lottery_Exchange_Main_UIBP_C:UUserWidget
 ---@field Button_ExchangeClose UButton
----@field Lottery_Currency_01 ULottery_Currency_UIBP_C
----@field Lottery_Exchange_List UUGC_ReuseList2_C
+---@field Lottery_Currency_01 Lottery_Currency_UIBP_C
+---@field Lottery_Exchange_List UGC_ReuseList2_C
 ---@field ScaleBox_IPX UScaleBox
 ---@field TextBlock_Exchange_Tips UTextBlock
 ---@field TextBlock_Title UTextBlock

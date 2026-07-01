@@ -1,5 +1,5 @@
 ---@class ShopV2_Goods_Panel_UIBP_C:UUserWidget
----@field BuyButton UShopV2_CommonButton_UIBP_C
+---@field BuyButton ShopV2_CommonButton_UIBP_C
 ---@field CurrencyIcon UImage
 ---@field DescriptionText UTextBlock
 ---@field Image_Market_Goods_QualityLine UImage

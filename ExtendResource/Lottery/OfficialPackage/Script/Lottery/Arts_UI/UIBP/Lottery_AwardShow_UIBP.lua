@@ -1,8 +1,8 @@
 ---@class Lottery_AwardShow_UIBP_C:UUserWidget
 ---@field Button_Close UButton
 ---@field CanvasPanel_UI UCanvasPanel
----@field Lottery_AwardItemList UUGC_ReuseList2_C
----@field Lottery_DescShop_UIBP ULottery_DescShop_UIBP_C
+---@field Lottery_AwardItemList UGC_ReuseList2_C
+---@field Lottery_DescShop_UIBP Lottery_DescShop_UIBP_C
 ---@field ScaleBox_IPX UScaleBox
 --Edit Below--
 local Lottery_AwardShow_UIBP = { bInitDoOnce = false } 

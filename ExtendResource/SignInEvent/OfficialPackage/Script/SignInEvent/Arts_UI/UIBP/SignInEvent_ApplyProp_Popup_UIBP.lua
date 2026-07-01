@@ -4,8 +4,8 @@
 ---@field Btn_Reduce UButton
 ---@field BtnClose UButton
 ---@field Button_Buy UButton
----@field Common_PopupsBg_Medium_UIBP UCommon_PopupsBg_Medium_UIBP_C
----@field Common_UIPopupBG UCommon_UIPopupBG_C
+---@field Common_PopupsBg_Medium_UIBP Common_PopupsBg_Medium_UIBP_C
+---@field Common_UIPopupBG Common_UIPopupBG_C
 ---@field HorizontalBox_Won UHorizontalBox
 ---@field Image_Bg_Quality UImage
 ---@field Image_EffectExpression UImage

@@ -1,8 +1,8 @@
 ---@class GiftPack_Singular_Popup_UIBP_C:UUserWidget
 ---@field BtnClose UButton
 ---@field Button_Buy UButton
----@field Common_UIPopupBG UCommon_UIPopupBG_C
----@field GiftPack_SingularList UUGC_ReuseList2_C
+---@field Common_UIPopupBG Common_UIPopupBG_C
+---@field GiftPack_SingularList UGC_ReuseList2_C
 ---@field Text UTextBlock
 ---@field Title UTextBlock
 ---@field WidgetSwitcher_Btn UWidgetSwitcher
