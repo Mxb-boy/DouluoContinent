@@ -100,8 +100,8 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310046, 1)
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310047, 1)
             --锻造材料
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310035, 100)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310036, 100)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310035, 1000)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310036, 1000)
             -- --境界升级材料先发背包
              UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310037, 10)
              UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310038, 10)

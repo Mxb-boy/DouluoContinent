@@ -154,27 +154,18 @@ function UI10:GetBackpackWeaponList()
         return {}
     end
 
-    local AllItemData = UGCBackPackSystem.GetAllItemData(PlayerPawn)
-    if AllItemData == nil then
-        ugcprint("[UI10:GetBackpackWeaponList] Backpack item data is nil")
-        return {}
-    end
-
     local BestWeaponBySeries = {}
-    for _, ItemData in pairs(AllItemData) do
-        local ItemID = tonumber(ItemData.ItemID)
-        local Count = tonumber(ItemData.Count or ItemData.ItemCount or ItemData.ItemNum or ItemData.Num) or 0
-        local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
-        if ItemID ~= nil and Count > 0 and WeaponInfo ~= nil then
-            local SeriesKey = WeaponInfo.SeriesKey
-            local CurrentWeapon = BestWeaponBySeries[SeriesKey]
-            if CurrentWeapon == nil or WeaponInfo.Level > CurrentWeapon.Level then
-                BestWeaponBySeries[SeriesKey] = {
-                    ItemData = ItemData,
-                    ItemID = ItemID,
-                    Level = WeaponInfo.Level,
-                    SeriesKey = SeriesKey,
-                }
+    for SeriesKey, SeriesData in pairs(WeaponLevelConfig.Series) do
+        for Level, ItemID in ipairs(SeriesData.ItemIDs) do
+            if self:GetBackpackItemCount(PlayerPawn, ItemID) > 0 then
+                local CurrentWeapon = BestWeaponBySeries[SeriesKey]
+                if CurrentWeapon == nil or Level > CurrentWeapon.Level then
+                    BestWeaponBySeries[SeriesKey] = {
+                        ItemID = ItemID,
+                        Level = Level,
+                        SeriesKey = SeriesKey,
+                    }
+                end
             end
         end
     end
@@ -468,17 +459,17 @@ function UI10:ConsumeForgeItems(PlayerPawn, OldItemID, NewItemID, Cost)
         return false
     end
     if not self:TryRemoveBackpackItem(PlayerPawn, MaterialItemIDs.QNHH, Cost.QNHH or 0) then
-        UGCBackPackSystem.AddItem(PlayerPawn, MaterialItemIDs.HGRJ, Cost.HGRJ or 0)
+        UGCBackpackSystemV2.AddItemV2(PlayerPawn, MaterialItemIDs.HGRJ, Cost.HGRJ or 0)
         return false
     end
 
     if NewItemID ~= OldItemID then
         if not self:TryRemoveBackpackItem(PlayerPawn, OldItemID, 1) then
-            UGCBackPackSystem.AddItem(PlayerPawn, MaterialItemIDs.HGRJ, Cost.HGRJ or 0)
-            UGCBackPackSystem.AddItem(PlayerPawn, MaterialItemIDs.QNHH, Cost.QNHH or 0)
+            UGCBackpackSystemV2.AddItemV2(PlayerPawn, MaterialItemIDs.HGRJ, Cost.HGRJ or 0)
+            UGCBackpackSystemV2.AddItemV2(PlayerPawn, MaterialItemIDs.QNHH, Cost.QNHH or 0)
             return false
         end
-        UGCBackPackSystem.AddItem(PlayerPawn, NewItemID, 1)
+        UGCBackpackSystemV2.AddItemV2(PlayerPawn, NewItemID, 1)
     end
 
     return true
@@ -490,20 +481,10 @@ function UI10:TryRemoveBackpackItem(PlayerPawn, ItemID, Count)
         return true
     end
 
-    local FunctionNames = {
-        "RemoveItem",
-        "RemoveItemByItemID",
-        "DeleteItem",
-        "SubItem",
-    }
-
-    for _, FunctionName in ipairs(FunctionNames) do
-        local Func = UGCBackPackSystem[FunctionName]
-        if Func ~= nil then
-            local Success, Result = pcall(Func, PlayerPawn, ItemID, Count)
-            if Success and Result ~= false then
-                return true
-            end
+    if PlayerPawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.RemoveItemV2 ~= nil then
+        local Success, Result = pcall(UGCBackpackSystemV2.RemoveItemV2, PlayerPawn, ItemID, Count)
+        if Success and Result ~= false and Result ~= 0 then
+            return true
         end
     end
 
@@ -519,13 +500,6 @@ function UI10:TryRemoveBackpackItem(PlayerPawn, ItemID, Count)
             if Success and Result ~= false then
                 return true
             end
-        end
-    end
-
-    if UGCBackPackSystem.AddItem ~= nil then
-        local Success = pcall(UGCBackPackSystem.AddItem, PlayerPawn, ItemID, -Count)
-        if Success then
-            return true
         end
     end
 
@@ -554,8 +528,8 @@ function UI10:GetBackpackItemCount(PlayerPawn, ItemID)
     end
 
     local BackpackCount = 0
-    if PlayerPawn ~= nil and UGCBackPackSystem.GetItemCount ~= nil then
-        BackpackCount = tonumber(UGCBackPackSystem.GetItemCount(PlayerPawn, ItemID)) or 0
+    if PlayerPawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.GetItemCountV2 ~= nil then
+        BackpackCount = tonumber(UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID)) or 0
     end
 
     local VirtualCount = 0

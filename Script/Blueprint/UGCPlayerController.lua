@@ -251,8 +251,8 @@ end
 local function GetItemCount(PlayerController, ItemID)
     local BackpackCount = 0
     local Pawn = GetPlayerPawn(PlayerController)
-    if Pawn ~= nil and UGCBackPackSystem ~= nil and UGCBackPackSystem.GetItemCount ~= nil then
-        BackpackCount = tonumber(UGCBackPackSystem.GetItemCount(Pawn, ItemID)) or 0
+    if Pawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.GetItemCountV2 ~= nil then
+        BackpackCount = tonumber(UGCBackpackSystemV2.GetItemCountV2(Pawn, ItemID)) or 0
     end
 
     local VirtualCount = 0
@@ -278,10 +278,10 @@ local function AddItem(PlayerController, ItemID, Count)
     end
 
     local Pawn = GetPlayerPawn(PlayerController)
-    if Pawn ~= nil and UGCBackPackSystem ~= nil and UGCBackPackSystem.AddItem ~= nil then
-        local Success, Result = pcall(UGCBackPackSystem.AddItem, Pawn, ItemID, Count)
-        print("[ShopV2:SERVER] Backpack path: OK=" .. tostring(Success) .. " Result=" .. tostring(Result))
-        if Success and Result ~= false then
+    if Pawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.AddItemV2 ~= nil then
+        local Success, Result = pcall(UGCBackpackSystemV2.AddItemV2, Pawn, ItemID, Count)
+        print("[ShopV2:SERVER] BackpackV2 path: OK=" .. tostring(Success) .. " Result=" .. tostring(Result))
+        if Success and Result ~= false and Result ~= 0 then
             if WeaponLevelConfig.GetWeaponInfo(ItemID) ~= nil and Pawn.RefreshWeaponAttackBonus ~= nil then
                 Pawn:RefreshWeaponAttackBonus(true)
                 if Pawn.ForceRefreshPropertySnapshot ~= nil then
@@ -291,8 +291,8 @@ local function AddItem(PlayerController, ItemID, Count)
             return true
         end
     else
-        print("[ShopV2:SERVER] Backpack path: UNAVAILABLE (Pawn=" .. tostring(Pawn) .. " BPS=" ..
-                  tostring(UGCBackPackSystem) .. ")")
+        print("[ShopV2:SERVER] BackpackV2 path: UNAVAILABLE (Pawn=" .. tostring(Pawn) .. " BPS=" ..
+                  tostring(UGCBackpackSystemV2) .. ")")
     end
 
     local VirtualItemManager = GetVirtualItemManager()
@@ -322,23 +322,10 @@ local function RemoveItem(PlayerController, ItemID, Count)
     end
 
     local Pawn = GetPlayerPawn(PlayerController)
-    if Pawn ~= nil and UGCBackPackSystem ~= nil then
-        local FunctionNames = {"RemoveItem", "RemoveItemByItemID", "DeleteItem", "SubItem"}
-        for _, FunctionName in ipairs(FunctionNames) do
-            local Func = UGCBackPackSystem[FunctionName]
-            if Func ~= nil then
-                local Success, Result = pcall(Func, Pawn, ItemID, Count)
-                if Success and Result ~= false then
-                    return true
-                end
-            end
-        end
-
-        if UGCBackPackSystem.AddItem ~= nil then
-            local Success = pcall(UGCBackPackSystem.AddItem, Pawn, ItemID, -Count)
-            if Success then
-                return true
-            end
+    if Pawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.RemoveItemV2 ~= nil then
+        local Success, Result = pcall(UGCBackpackSystemV2.RemoveItemV2, Pawn, ItemID, Count)
+            if Success and Result ~= false and Result ~= 0 then
+            return true
         end
     end
 
@@ -356,7 +343,7 @@ local function RemoveItem(PlayerController, ItemID, Count)
         local Func = VirtualItemManager.RemoveVirtualItem or VirtualItemManager.RemoveItem
         if Func ~= nil and VirtualCount >= Count then
             local Success, Result = pcall(Func, VirtualItemManager, PlayerController, ItemID, Count)
-            if Success and Result ~= false then
+            if Success and Result ~= false and Result ~= 0 then
                 return true
             end
         end

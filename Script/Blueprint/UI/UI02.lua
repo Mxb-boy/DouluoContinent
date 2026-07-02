@@ -58,6 +58,10 @@
 ---@field ProgressBar_122 UProgressBar
 ---@field TextBlock_0 UTextBlock
 ---@field TextBlock_1 UTextBlock
+---@field TextBlock_109 UTextBlock
+---@field TextBlock_110 UTextBlock
+---@field TextBlock_112 UTextBlock
+---@field TextBlock_114 UTextBlock
 ---@field TextBlock_303 UTextBlock
 --Edit Below--
 ---@class UI02_C:UUserWidget
@@ -118,6 +122,7 @@
 ---@field ProgressBar_122 UProgressBar
 ---@field TextBlock_0 UTextBlock
 ---@field TextBlock_1 UTextBlock
+---@field TextBlock_112 UTextBlock
 ---@field TextBlock_303 UTextBlock
 -- Edit Below--
 UGCGameSystem.UGCRequire("ExtendResource.SignInEvent.OfficialPackage." .. "Script.SignInEvent.SignInEventManager")
@@ -195,6 +200,7 @@ function UI02:LuaInit()
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
+    self:RefreshWeaponBonusText()
     Property.RefreshUI(self)
 end
 
@@ -202,6 +208,27 @@ function UI02:OnRefreshProperty()
     Property.RefreshUI(self)
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
+    self:RefreshWeaponBonusText()
+end
+
+function UI02:RefreshWeaponBonusText()
+    if self.TextBlock_112 == nil then
+        return
+    end
+
+    local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    local AttackPercent = 0
+    if PlayerPawn ~= nil and PlayerPawn.GetCurrentWeaponBonusPercent ~= nil then
+        AttackPercent = PlayerPawn:GetCurrentWeaponBonusPercent()
+    elseif PlayerPawn ~= nil then
+        AttackPercent = PlayerPawn.LastWeaponAttackPercent
+    end
+    AttackPercent = AttackPercent or 0
+    if math.floor(AttackPercent) == AttackPercent then
+        AttackPercent = math.floor(AttackPercent)
+    end
+
+    self.TextBlock_112:SetText("武器加成：" .. tostring(AttackPercent) .. "%")
 end
 
 -- 签到

@@ -46,31 +46,31 @@ WeaponLevelConfig.ForgeCostByLevel = {
 
 WeaponLevelConfig.ForgeRateBySeries = {
     HWSCJ = {
-        [1] = { Success = 65, Keep = 30, Down = 5 },
+        [1] = { Success = 65, Keep = 35, Down = 0 },
         [2] = { Success = 52, Keep = 36, Down = 12 },
         [3] = { Success = 38, Keep = 42, Down = 20 },
         [4] = { Success = 22, Keep = 48, Down = 30 },
     },
     HTC = {
-        [1] = { Success = 55, Keep = 33, Down = 12 },
+        [1] = { Success = 55, Keep = 45, Down = 0 },
         [2] = { Success = 43, Keep = 39, Down = 18 },
         [3] = { Success = 30, Keep = 44, Down = 26 },
         [4] = { Success = 16, Keep = 47, Down = 37 },
     },
     LCSL = {
-        [1] = { Success = 55, Keep = 33, Down = 12 },
+        [1] = { Success = 55, Keep = 45, Down = 0 },
         [2] = { Success = 43, Keep = 39, Down = 18 },
         [3] = { Success = 30, Keep = 44, Down = 26 },
         [4] = { Success = 16, Keep = 47, Down = 37 },
     },
     TSSJ = {
-        [1] = { Success = 55, Keep = 33, Down = 12 },
+        [1] = { Success = 55, Keep = 45, Down = 0 },
         [2] = { Success = 43, Keep = 39, Down = 18 },
         [3] = { Success = 30, Keep = 44, Down = 26 },
         [4] = { Success = 16, Keep = 47, Down = 37 },
     },
     XJWQ = {
-        [1] = { Success = 42, Keep = 38, Down = 20 },
+        [1] = { Success = 42, Keep = 58, Down = 0 },
         [2] = { Success = 30, Keep = 41, Down = 29 },
         [3] = { Success = 19, Keep = 43, Down = 38 },
         [4] = { Success = 9, Keep = 44, Down = 47 },

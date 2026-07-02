@@ -92,6 +92,18 @@ local function BuildPropertyWatchKey(player)
     }, "|")
 end
 
+local function SetWeaponBonusPercent(player, AttackPercent, bForce)
+    AttackPercent = tonumber(AttackPercent) or 0
+    if not bForce and player.LastWeaponAttackPercent == AttackPercent then
+        return
+    end
+
+    player.LastWeaponAttackPercent = AttackPercent
+    if IsLocalPlayerPawn(player) then
+        Property.NotifyChanged(player)
+    end
+end
+
 local function ApplyRealmPropertyBonus(player, HunHuan, bFillHealth)
     if player == nil or RealmConfig == nil or RealmConfig.GetAttrBonuses == nil then
         return
@@ -751,6 +763,7 @@ function UGCPlayerPawn:RefreshWeaponAttackBonus(bForce)
     local ItemID, SeriesKey, ItemName, Level = GetHeldWeaponAttributeItemID(self)
     if not self:HasAuthority() then
         if WeaponLevelConfig.GetWeaponInfo(ItemID) == nil then
+            SetWeaponBonusPercent(self, 0, bForce)
             return
         end
 
@@ -778,10 +791,21 @@ function UGCPlayerPawn:RefreshWeaponAttackBonus(bForce)
     end
 
     if WeaponLevelConfig.GetWeaponInfo(ItemID) == nil and self.LastClientWeaponAttackItemID ~= nil then
+        SetWeaponBonusPercent(self, 0, bForce)
         return
     end
 
     self:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemName, Level, bForce)
+end
+
+function UGCPlayerPawn:GetCurrentWeaponBonusPercent()
+    local ItemID = GetHeldWeaponAttributeItemID(self)
+    local Attribute = WeaponLevelConfig.GetTotalAttribute(ItemID)
+    if Attribute ~= nil then
+        return tonumber(Attribute.AttackPercent) or 0
+    end
+
+    return 0
 end
 
 function UGCPlayerPawn:ApplyWeaponAttackBonusLocalDisplay(ItemID, SeriesKey, ItemName, Level, bForce)
@@ -790,6 +814,7 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusLocalDisplay(ItemID, SeriesKey, Ite
     if Attribute ~= nil then
         AttackPercent = tonumber(Attribute.AttackPercent) or 0
     end
+    SetWeaponBonusPercent(self, AttackPercent, bForce)
 
     local BaseAttack = GetWeaponBaseAttack(self)
     local CurrentBaseAttack = Property.GetBaseAttack(self)
@@ -809,8 +834,8 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusLocalDisplay(ItemID, SeriesKey, Ite
     end
 
     self.LastLocalWeaponAttackDisplayKey = LocalWeaponAttackKey
-    Property.SetAttackPercent(self, WEAPON_ATTACK_SOURCE_KEY, LocalAttackPercent)
-    self:ForceRefreshPropertySnapshot()
+    -- Property.SetAttackPercent(self, WEAPON_ATTACK_SOURCE_KEY, LocalAttackPercent)
+    -- self:ForceRefreshPropertySnapshot()
 end
 
 function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemName, Level, bForce)
@@ -840,7 +865,7 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     local BaseAttack = GetWeaponBaseAttack(self)
     local NormalizedAttackPercent = NormalizePercent(AttackPercent)
     local FinalAttack = BaseAttack * (1 + NormalizedAttackPercent)
-    self.LastWeaponAttackPercent = NormalizedAttackPercent
+    SetWeaponBonusPercent(self, AttackPercent, bForce)
 
     local WeaponAttackKey = tostring(ItemID or "none")
         .. "|" .. tostring(SeriesKey or "none")
@@ -853,11 +878,12 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     end
 
     self.LastWeaponAttackKey = WeaponAttackKey
-    local bSetBaseAttackSuccess = Property.SetBaseAttack(self, FinalAttack) == true
-    Property.SetAttackPercent(self, WEAPON_ATTACK_SOURCE_KEY, bSetBaseAttackSuccess and 0 or AttackPercent)
-    if bSetBaseAttackSuccess then
-        self.LastAppliedWeaponAttackPower = FinalAttack
-    end
+    local bSetBaseAttackSuccess = false
+    -- local bSetBaseAttackSuccess = Property.SetBaseAttack(self, FinalAttack) == true
+    -- Property.SetAttackPercent(self, WEAPON_ATTACK_SOURCE_KEY, bSetBaseAttackSuccess and 0 or AttackPercent)
+    -- if bSetBaseAttackSuccess then
+    --     self.LastAppliedWeaponAttackPower = FinalAttack
+    -- end
 
     ugcprint("[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID)
         .. ", series=" .. tostring(SeriesKey)
@@ -868,7 +894,7 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
         .. ", finalAttack=" .. tostring(FinalAttack)
         .. ", setBaseAttackSuccess=" .. tostring(bSetBaseAttackSuccess))
 
-    self:ForceRefreshPropertySnapshot()
+    -- self:ForceRefreshPropertySnapshot()
 end
 
 function UGCPlayerPawn:ForceRefreshPropertySnapshot()
