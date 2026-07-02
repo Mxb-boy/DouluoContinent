@@ -32,6 +32,8 @@ local LotteryConfigs = LotteryConfig.Pools
 local DefaultImageColor = { R = 1.0, G = 1.0, B = 1.0, A = 1.0 }
 local AwardBgOwnedColor = { R = 0.32549, G = 0.32549, B = 0.32549, A = 1.0 }
 local AwardIconOwnedColor = { R = 0.6, G = 0.6, B = 0.6, A = 1.0 }
+local TabButtonBrightColor = { R = 1.0, G = 1.0, B = 1.0, A = 1.0 }
+local TabButtonDarkColor = { R = 0.282353, G = 0.282353, B = 0.282353, A = 1.0 }
 
 function UI14:Construct()
     self:LuaInit()
@@ -98,8 +100,13 @@ function UI14:SelectLotteryType(Type)
     if LotteryConfigs[Type] == nil then
         return
     end
+    if self.ActiveTabType == Type then
+        return
+    end
 
     self.SelectedLotteryType = Type
+    self.ActiveTabType = Type
+    self:RefreshLotteryTabButtons()
     self:Refresh()
 end
 
@@ -117,6 +124,45 @@ function UI14:GetAwardPanels()
         [LotteryType.Title] = self.kj01_C_2,
         [LotteryType.FHSY] = self.kj01_C_3,
     }
+end
+
+function UI14:GetLotteryTabButtons()
+    return {
+        [LotteryType.Weapon] = self.Btn_Weapon,
+        [LotteryType.Wing] = self.Btn_Wing,
+        [LotteryType.Title] = self.Btn_Title,
+        [LotteryType.FHSY] = self.Btn_FHSY,
+    }
+end
+
+function UI14:RefreshLotteryTabButtons()
+    for Type, Button in pairs(self:GetLotteryTabButtons()) do
+        self:SetButtonTint(Button, Type == self.ActiveTabType and TabButtonDarkColor or TabButtonBrightColor)
+    end
+end
+
+function UI14:SetButtonTint(Button, Color)
+    if Button == nil or Color == nil then
+        return
+    end
+
+    if Button.SetColorAndOpacity ~= nil then
+        pcall(Button.SetColorAndOpacity, Button, Color)
+    end
+    if Button.WidgetStyle ~= nil then
+        self:SetBrushTint(Button.WidgetStyle.Normal, Color)
+        self:SetBrushTint(Button.WidgetStyle.Hovered, Color)
+        self:SetBrushTint(Button.WidgetStyle.Pressed, Color)
+        if Button.SetStyle ~= nil then
+            Button:SetStyle(Button.WidgetStyle)
+        end
+    end
+end
+
+function UI14:SetBrushTint(Brush, Color)
+    if Brush ~= nil then
+        Brush.TintColor = { SpecifiedColor = Color }
+    end
 end
 
 function UI14:BindAwardSlots()
