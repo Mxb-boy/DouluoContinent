@@ -9,6 +9,8 @@
 ---@field Image_26 UImage
 ---@field Image_45 UImage
 ---@field Image_126 UImage
+---@field Image_144 UImage
+---@field Image_145 UImage
 ---@field Image_358 UImage
 ---@field Image_544 UImage
 ---@field Img_Award UImage
