@@ -596,6 +596,10 @@ function UGCPlayerController:Client_BreakRealmResult(Success, NewLevel, TargetLe
         end
     end
 
+    if self.MainUIInstance ~= nil and self.MainUIInstance.RefreshRealmNameText ~= nil then
+        self.MainUIInstance:RefreshRealmNameText()
+    end
+
     if self.MainUIInstance == nil or self.MainUIInstance.UI08Instance == nil then
         ugcprint("[UGCPlayerController:Client_BreakRealmResult] UI08 instance is nil")
         return

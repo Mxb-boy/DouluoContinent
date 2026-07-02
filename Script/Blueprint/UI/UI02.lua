@@ -58,6 +58,7 @@
 ---@field ProgressBar_122 UProgressBar
 ---@field TextBlock_0 UTextBlock
 ---@field TextBlock_1 UTextBlock
+---@field TextBlock_49 UTextBlock
 ---@field TextBlock_109 UTextBlock
 ---@field TextBlock_110 UTextBlock
 ---@field TextBlock_112 UTextBlock
@@ -133,6 +134,7 @@ local TaskManager = UGCGameSystem.UGCRequire("ExtendResource.TaskTemplate.Offici
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local Property = UGCGameSystem.UGCRequire("Script.property.property")
+local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 
 local UI02 = {
     bInitDoOnce = false
@@ -201,6 +203,7 @@ function UI02:LuaInit()
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
     self:RefreshWeaponBonusText()
+    self:RefreshRealmNameText()
     Property.RefreshUI(self)
 end
 
@@ -209,6 +212,26 @@ function UI02:OnRefreshProperty()
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
     self:RefreshWeaponBonusText()
+    self:RefreshRealmNameText()
+end
+
+function UI02:RefreshRealmNameText()
+    if self.TextBlock_49 == nil then
+        return
+    end
+
+    local Level = 1
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil and PlayerController.RealmLevel ~= nil then
+        Level = tonumber(PlayerController.RealmLevel) or Level
+    elseif PlayerController ~= nil and PlayerController.PlayerState ~= nil
+        and PlayerController.PlayerState.GetHunHuan ~= nil
+    then
+        Level = tonumber(PlayerController.PlayerState:GetHunHuan()) or Level
+    end
+
+    local Config = RealmConfig.Get(Level)
+    self.TextBlock_49:SetText("境界：" .. RealmConfig.GetDisplayName(Config))
 end
 
 function UI02:RefreshWeaponBonusText()

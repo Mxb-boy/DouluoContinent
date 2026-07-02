@@ -5,7 +5,6 @@ local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
 local WEAPON_ATTACK_SOURCE_KEY = "WeaponLevel"
-local REALM_PROPERTY_SOURCE_KEY = "Realm"
 local WEAPON_ATTACK_CHECK_INTERVAL = 0.2
 local FLY_INTERRUPT_TAGS = {
     "PawnState.Movement.Walk",
@@ -103,45 +102,21 @@ local function SetWeaponBonusPercent(player, AttackPercent, bForce)
         Property.NotifyChanged(player)
     end
 end
-
-local function ApplyRealmPropertyBonus(player, HunHuan, bFillHealth)
+--境界加成结果生成并推送给管理器
+local function UpdateRealmBonusResult(player, HunHuan)
     if player == nil or RealmConfig == nil or RealmConfig.GetAttrBonuses == nil then
         return
     end
 
     local Bonuses = RealmConfig.GetAttrBonuses(HunHuan)
-    Property.SetHPPercent(player, REALM_PROPERTY_SOURCE_KEY, 0)
-    Property.SetAttackPercent(player, REALM_PROPERTY_SOURCE_KEY, Bonuses.AttackPercent or 0)
+    player.RealmBonusResult = {
+        Level = math.max(1, math.min(10, tonumber(HunHuan) or 1)),
+        HPPercent = tonumber(Bonuses.HPPercent) or 0,
+        AttackPercent = tonumber(Bonuses.AttackPercent) or 0,
+    }
 
-    if player.HasAuthority ~= nil and not player:HasAuthority() then
-        if player.ForceRefreshPropertySnapshot ~= nil then
-            player:ForceRefreshPropertySnapshot()
-        end
-        return
-    end
-
-    local CurrentMaxHP = UGCPawnAttrSystem.GetHealthMax(player)
-    if player.RealmBaseMaxHP == nil then
-        player.RealmBaseMaxHP = CurrentMaxHP
-    elseif player.LastAppliedRealmMaxHP ~= nil
-        and math.abs((tonumber(CurrentMaxHP) or 0) - (tonumber(player.LastAppliedRealmMaxHP) or 0)) > 0.01
-    then
-        player.RealmBaseMaxHP = CurrentMaxHP
-    end
-
-    local NewMaxHP = (tonumber(player.RealmBaseMaxHP) or 0) * (1 + NormalizePercent(Bonuses.HPPercent or 0))
-    UGCPawnAttrSystem.SetHealthMax(player, NewMaxHP)
-    player.LastAppliedRealmMaxHP = NewMaxHP
-
-    if bFillHealth then
-        UGCPawnAttrSystem.SetHealth(player, NewMaxHP)
-        if player.PlayerState ~= nil and player.PlayerState.SetHP ~= nil then
-            player.PlayerState:SetHP(NewMaxHP)
-        end
-    end
-
-    if player.ForceRefreshPropertySnapshot ~= nil then
-        player:ForceRefreshPropertySnapshot()
+    if player.RealmBonusManager ~= nil and player.RealmBonusManager.SetRealmBonus ~= nil then
+        player.RealmBonusManager:SetRealmBonus(player, player.RealmBonusResult)
     end
 end
 
@@ -840,7 +815,7 @@ end
 
 function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemName, Level, bForce)
     if self:HasAuthority() and self.PlayerState ~= nil and self.PlayerState.GetHunHuan ~= nil then
-        ApplyRealmPropertyBonus(self, self.PlayerState:GetHunHuan(), false)
+        UpdateRealmBonusResult(self, self.PlayerState:GetHunHuan())
     end
 
     ItemID = tonumber(ItemID)
@@ -902,6 +877,13 @@ function UGCPlayerPawn:ForceRefreshPropertySnapshot()
     Property.NotifyChanged(self)
     self:NotifyPropertyChangedIfNeeded(true)
 end
+--境界主动读取入口
+function UGCPlayerPawn:GetRealmBonusResult()
+    if self.RealmBonusResult == nil and self.PlayerState ~= nil and self.PlayerState.GetHunHuan ~= nil then
+        UpdateRealmBonusResult(self, self.PlayerState:GetHunHuan())
+    end
+    return self.RealmBonusResult
+end
 
 function UGCPlayerPawn:NotifyPropertyChangedIfNeeded(bForce)
     if not IsLocalPlayerPawn(self) then
@@ -956,14 +938,14 @@ function UGCPlayerPawn:InitPlayerState()
         return
     end
     local HunHuan = playerState:GetHunHuan()
-    ApplyRealmPropertyBonus(self, HunHuan, false)
+    UpdateRealmBonusResult(self, HunHuan)
     self:ShowZhanLi()
     CreateSoulMesh(self, HunHuan)
 end
 
 function UGCPlayerPawn:RefreshSoulMesh(HunHuan, bFillHealth)
     HunHuan = math.max(1, math.min(10, tonumber(HunHuan) or 1))
-    ApplyRealmPropertyBonus(self, HunHuan, bFillHealth == true)
+    UpdateRealmBonusResult(self, HunHuan)
     CreateSoulMesh(self, HunHuan)
 end
 

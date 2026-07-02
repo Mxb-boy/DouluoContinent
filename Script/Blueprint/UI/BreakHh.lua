@@ -41,6 +41,8 @@ function NewUGCWidgetBlueprint:ShowBreakSuccess(IconPath)
     self:ShowBreakResult(IconPath, true)
 end
 function NewUGCWidgetBlueprint:AutoHideAfterDelay(DelaySeconds)
+    self.AutoHideTimerName = self.AutoHideTimerName or ("BreakHhAutoHide_" .. tostring(self))
+    UGCTimerUtility.RemoveLuaTimerByName(self.AutoHideTimerName)
     UGCTimerUtility.CreateLuaTimer(DelaySeconds, function()
         if self ~= nil then
             self:SetVisibility(ESlateVisibility.Collapsed)
@@ -48,7 +50,7 @@ function NewUGCWidgetBlueprint:AutoHideAfterDelay(DelaySeconds)
                 self:SetIsEnabled(false)
             end
         end
-    end, false)
+    end, false, self.AutoHideTimerName)
 end
 function NewUGCWidgetBlueprint:SetResultIcon(IconPath)
     if self.Img_Hh == nil or IconPath == nil then
