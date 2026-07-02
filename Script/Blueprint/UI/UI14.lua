@@ -17,6 +17,7 @@
 ---@field kj01_C_1 kj01_C
 ---@field kj01_C_2 kj01_C
 ---@field kj01_C_3 kj01_C
+---@field Text_AwardName UTextBlock
 --Edit Below--
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
@@ -25,6 +26,8 @@ local UI14 = { bInitDoOnce = false }
 
 local LotteryType = LotteryConfig.Types
 local LotteryConfigs = LotteryConfig.Pools
+local AwardBgNormalColor = { R = 1.0, G = 1.0, B = 1.0, A = 1.0 }
+local AwardBgOwnedColor = { R = 0.32549, G = 0.32549, B = 0.32549, A = 1.0 }
 
 function UI14:Construct()
     self:LuaInit()
@@ -148,6 +151,7 @@ function UI14:RefreshAwardPanel(Config)
         end
     end
     self:RefreshSummonCostText(ActivePanel, self.SelectedLotteryType)
+    self:RefreshSummonButtonState(ActivePanel, self.SelectedLotteryType)
     self:ApplyLotteryOKState(ActivePanel, self.SelectedLotteryType)
 end
 
@@ -156,9 +160,8 @@ function UI14:RefreshSummonCostText(Panel, LotteryTypeValue)
         return
     end
 
-    local ServerState = self:GetServerLotteryState(LotteryTypeValue)
-    local NextRound = (tonumber(ServerState and ServerState.Round) or 0) + 1
-    Panel.TextNum:SetText(tostring(LotteryConfig.GetRoundCost(NextRound)) .. "召唤")
+    local NextRound = self:GetLotteryRound(LotteryTypeValue) + 1
+    Panel.TextNum:SetText("x" .. tostring(LotteryConfig.GetRoundCost(NextRound)) .. "召唤")
 end
 
 function UI14:HideAwardOKImages(Panel)
@@ -178,6 +181,7 @@ function UI14:HideAwardOKImages(Panel)
     for _, Image in ipairs(Images) do
         self:SetWidgetVisible(Image, false)
     end
+    self:ResetAwardBgImages(Panel)
 end
 
 function UI14:SetAwardOKVisible(Panel, AwardIndex, bVisible)
@@ -195,6 +199,7 @@ function UI14:SetAwardOKVisible(Panel, AwardIndex, bVisible)
         [6] = Panel.Img_OK_6,
     }
     self:SetWidgetVisible(OKImages[tonumber(AwardIndex) or -1], bVisible)
+    self:SetAwardBgOwned(Panel, AwardIndex, bVisible)
 end
 
 function UI14:ShowAllAwardOKImages(Panel)
@@ -207,12 +212,49 @@ function UI14:ShowAllAwardOKImages(Panel)
     end
 end
 
+function UI14:ResetAwardBgImages(Panel)
+    for Index = 0, 6 do
+        self:SetAwardBgOwned(Panel, Index, false)
+    end
+end
+
+function UI14:SetAwardBgOwned(Panel, AwardIndex, bOwned)
+    if Panel == nil then
+        return
+    end
+
+    local BgImages = {
+        [0] = Panel.Image_46,
+        [1] = Panel.Image_47,
+        [2] = Panel.Image_50,
+        [3] = Panel.Image_51,
+        [4] = Panel.Image_52,
+        [5] = Panel.Image_53,
+        [6] = Panel.Image_54,
+    }
+    self:SetImageColor(BgImages[tonumber(AwardIndex) or -1], bOwned and AwardBgOwnedColor or AwardBgNormalColor)
+end
+
+function UI14:SetImageColor(Image, Color)
+    if Image == nil or Color == nil then
+        return
+    end
+
+    if Image.SetColorAndOpacity ~= nil then
+        pcall(Image.SetColorAndOpacity, Image, Color)
+    end
+    if Image.Brush ~= nil then
+        Image.Brush.TintColor = { SpecifiedColor = Color }
+    end
+end
+
 function UI14:GetLocalLotteryOKState(LotteryTypeValue)
     self.LocalLotteryOKStates = self.LocalLotteryOKStates or {}
     local Key = tostring(LotteryTypeValue)
     self.LocalLotteryOKStates[Key] = self.LocalLotteryOKStates[Key] or {
         Awards = {},
         Completed = false,
+        Round = 0,
     }
     return self.LocalLotteryOKStates[Key]
 end
@@ -222,6 +264,7 @@ function UI14:ApplyLotteryOKState(Panel, LotteryTypeValue)
     local ServerState = self:GetServerLotteryState(LotteryTypeValue)
     if ServerState ~= nil then
         State.Completed = ServerState.Completed == true
+        State.Round = tonumber(ServerState.Round) or State.Round
         if ServerState.GrandPrize == true then
             State.Awards["0"] = true
         end
@@ -252,6 +295,88 @@ function UI14:GetServerLotteryState(LotteryTypeValue)
     return State and State[tostring(LotteryTypeValue)] or nil
 end
 
+function UI14:GetLotteryRound(LotteryTypeValue)
+    local Round = 0
+    local ServerState = self:GetServerLotteryState(LotteryTypeValue)
+    if ServerState ~= nil then
+        Round = tonumber(ServerState.Round) or 0
+    end
+
+    local LocalState = self.LocalLotteryOKStates and self.LocalLotteryOKStates[tostring(LotteryTypeValue)] or nil
+    local LocalRound = tonumber(LocalState and LocalState.Round) or 0
+    if LocalRound > Round then
+        return LocalRound
+    end
+
+    return Round
+end
+
+function UI14:GetLotteryTicketCount()
+    local ItemID = tonumber(LotteryConfig.CostItemID) or 0
+    if ItemID <= 0 then
+        return 0
+    end
+
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+    local PlayerPawn = PlayerController and PlayerController.Pawn or nil
+    if PlayerPawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.GetItemCountV2 ~= nil then
+        return tonumber(UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID)) or 0
+    end
+
+    return 0
+end
+
+function UI14:GetAdjustedLotteryTicketCount()
+    local Count = self:GetLotteryTicketCount()
+    local Offset = tonumber(self.LocalLotteryTicketOffset) or 0
+    local LastCount = tonumber(self.LastLotteryTicketCount)
+    if LastCount ~= nil and Count < LastCount and Offset < 0 then
+        Offset = math.min(0, Offset + LastCount - Count)
+        self.LocalLotteryTicketOffset = Offset
+    end
+    self.LastLotteryTicketCount = Count
+
+    local AdjustedCount = Count + Offset
+    return AdjustedCount > 0 and AdjustedCount or 0
+end
+
+function UI14:IsLotteryCompleted(LotteryTypeValue)
+    local ServerState = self:GetServerLotteryState(LotteryTypeValue)
+    if ServerState ~= nil and (ServerState.Completed == true or ServerState.GrandPrize == true) then
+        return true
+    end
+
+    local LocalState = self.LocalLotteryOKStates and self.LocalLotteryOKStates[tostring(LotteryTypeValue)] or nil
+    return LocalState ~= nil and (LocalState.Completed == true or LocalState.Awards["0"] == true)
+end
+
+function UI14:CanSummonLottery(LotteryTypeValue)
+    if self:IsLotteryCompleted(LotteryTypeValue) then
+        return false
+    end
+
+    local CostItemID = tonumber(LotteryConfig.CostItemID) or 0
+    if CostItemID <= 0 then
+        return true
+    end
+
+    local Cost = LotteryConfig.GetRoundCost(self:GetLotteryRound(LotteryTypeValue) + 1)
+    return self:GetAdjustedLotteryTicketCount() >= Cost
+end
+
+function UI14:RefreshSummonButtonState(Panel, LotteryTypeValue)
+    if Panel == nil or Panel.Btn_Summon == nil then
+        return
+    end
+
+    local bEnabled = self:CanSummonLottery(LotteryTypeValue)
+    Panel.Btn_Summon:SetIsEnabled(bEnabled)
+    if Panel.Btn_Summon.SetRenderOpacity ~= nil then
+        Panel.Btn_Summon:SetRenderOpacity(bEnabled and 1.0 or 0.45)
+    end
+end
+
 function UI14:SetAwardImage(Image, IconPath)
     if Image == nil or IconPath == nil or IconPath == "" then
         return
@@ -272,6 +397,9 @@ function UI14:RefreshAwardPreview(Award)
     end
 
     self:SetAwardImage(self.Img_Award, Award.IconPath)
+    if self.Text_AwardName ~= nil then
+        self.Text_AwardName:SetText(Award.Name or "")
+    end
 end
 
 function UI14:RequestLottery(LotteryTypeValue)
@@ -287,7 +415,18 @@ function UI14:RequestLottery(LotteryTypeValue)
         ugcprint("[UI14:RequestLottery] PlayerController is nil")
         return
     end
+    if not self:CanSummonLottery(LotteryTypeValue) then
+        self:RefreshAwardPanel(Config)
+        return
+    end
 
+    local Cost = LotteryConfig.GetRoundCost(self:GetLotteryRound(LotteryTypeValue) + 1)
+    self.LocalLotteryTicketOffset = (tonumber(self.LocalLotteryTicketOffset) or 0) - Cost
+    self.PendingLotteryRounds = self.PendingLotteryRounds or {}
+    self.PendingLotteryCosts = self.PendingLotteryCosts or {}
+    self.PendingLotteryRounds[tostring(LotteryTypeValue)] = self:GetLotteryRound(LotteryTypeValue)
+    self.PendingLotteryCosts[tostring(LotteryTypeValue)] = Cost
+    self:RefreshAwardPanel(Config)
     UnrealNetwork.CallUnrealRPC(
         PlayerController,
         PlayerController,
@@ -305,8 +444,21 @@ function UI14:OnLotteryResult(LotteryTypeValue, SlotIndex, AwardItemID, AwardCou
     local Config = LotteryConfigs[self.SelectedLotteryType]
     local AwardIndex = tonumber(SlotIndex) or 0
     local OKState = self:GetLocalLotteryOKState(self.SelectedLotteryType)
+    local Key = tostring(self.SelectedLotteryType)
+    if AwardIndex < 0 and self.PendingLotteryCosts ~= nil and self.PendingLotteryCosts[Key] ~= nil then
+        self.LocalLotteryTicketOffset = (tonumber(self.LocalLotteryTicketOffset) or 0) + self.PendingLotteryCosts[Key]
+        self.PendingLotteryCosts[Key] = nil
+    end
     if AwardIndex >= 0 then
         OKState.Awards[tostring(AwardIndex)] = true
+        local PendingRound = self.PendingLotteryRounds and self.PendingLotteryRounds[Key] or nil
+        OKState.Round = (tonumber(PendingRound) or self:GetLotteryRound(self.SelectedLotteryType)) + 1
+        if self.PendingLotteryRounds ~= nil then
+            self.PendingLotteryRounds[Key] = nil
+        end
+        if self.PendingLotteryCosts ~= nil then
+            self.PendingLotteryCosts[Key] = nil
+        end
     end
     if tonumber(bCompleted) == 1 then
         OKState.Completed = true

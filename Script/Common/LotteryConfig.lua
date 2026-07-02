@@ -13,7 +13,7 @@ LotteryConfig.Types = {
     FHSY = 4,
 }
 
-LotteryConfig.CostItemID = 8310006
+LotteryConfig.CostItemID = 8310008
 
 LotteryConfig.RoundCosts = { 8, 38, 88, 128, 188, 268, 368 }
 LotteryConfig.DiscountCosts = { 4, 19, 44, 64 }
@@ -69,14 +69,14 @@ LotteryConfig.Pools = {
     [LotteryConfig.Types.FHSY] = {
         Name = "FHSY",
         GrandPrizeRound = 7,
-        GrandPrize = { ItemID = 8310044, Count = 1, Weight = LotteryConfig.GrandPrizeWeight, Name = "LV9_FHSY", IconPath = GetIconPath("fhsy") },
+        GrandPrize = { ItemID = 8310044, Count = 1, Weight = LotteryConfig.GrandPrizeWeight, Name = "封号神印", IconPath = GetIconPath("fhsy") },
         Awards = {
-            { ItemID = 8310038, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "LV3_HSZZ", IconPath = GetIconPath("hszz") },
-            { ItemID = 8310039, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "LV4_LYZH", IconPath = GetIconPath("lyzh") },
-            { ItemID = 8310040, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "LV5_FZSP", IconPath = GetIconPath("fzsp") },
-            { ItemID = 8310041, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "LV6_DHY", IconPath = GetIconPath("dhy") },
-            { ItemID = 8310042, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "LV7_SHY", IconPath = GetIconPath("shy") },
-            { ItemID = 8310043, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "LV8_SSZX", IconPath = GetIconPath("sszx") },
+            { ItemID = 8310038, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "魂师之证", IconPath = GetIconPath("hszz") },
+            { ItemID = 8310039, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "神兽之血", IconPath = GetIconPath("lyzh") },
+            { ItemID = 8310040, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "法则碎片", IconPath = GetIconPath("fzsp") },
+            { ItemID = 8310041, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "帝魂印", IconPath = GetIconPath("dhy") },
+            { ItemID = 8310042, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "圣魂玉", IconPath = GetIconPath("shy") },
+            { ItemID = 8310043, Count = 1, Weight = LotteryConfig.SmallAwardWeight, Name = "神兽之血", IconPath = GetIconPath("sszx") },
         },
     },
 }
