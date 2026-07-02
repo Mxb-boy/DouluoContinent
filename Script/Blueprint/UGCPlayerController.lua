@@ -398,8 +398,10 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num,
     if VirtualItemID ~= nil then
         local VirtualItemManager = UGCGamePartSystem.GetGamePartGlobalActor("VirtualItemManager")
         if VirtualItemManager then
-            local rmOK, rmErr = pcall(VirtualItemManager.RemoveVirtualItem, VirtualItemManager, self, VirtualItemID, Num)
-            print("[ShopV2:SERVER] RemoveVirtualItem(VItemID=" .. tostring(VirtualItemID) .. " x " .. tostring(Num) .. ") ok=" .. tostring(rmOK) .. " err=" .. tostring(rmErr))
+            local rmOK, rmErr =
+                pcall(VirtualItemManager.RemoveVirtualItem, VirtualItemManager, self, VirtualItemID, Num)
+            print("[ShopV2:SERVER] RemoveVirtualItem(VItemID=" .. tostring(VirtualItemID) .. " x " .. tostring(Num) ..
+                      ") ok=" .. tostring(rmOK) .. " err=" .. tostring(rmErr))
         end
     end
 end
@@ -640,7 +642,7 @@ local function GetLotteryState(PlayerController, LotteryType)
             Round = 0,
             Completed = false,
             OwnedAwards = {},
-            GrandPrize = false,
+            GrandPrize = false
         }
     end
 
@@ -671,7 +673,7 @@ local function GetRemainingAwards(Pool, LotteryState)
             table.insert(Awards, {
                 Index = Index,
                 Award = Award,
-                IsGrandPrize = false,
+                IsGrandPrize = false
             })
         end
     end
@@ -680,7 +682,7 @@ local function GetRemainingAwards(Pool, LotteryState)
         table.insert(Awards, {
             Index = 0,
             Award = Pool.GrandPrize,
-            IsGrandPrize = true,
+            IsGrandPrize = true
         })
     end
 
@@ -728,7 +730,7 @@ local function AddLotteryAwardToList(ItemList, Award)
     if ItemID > 0 then
         table.insert(ItemList, {
             ItemID = ItemID,
-            ItemNum = tonumber(Award.Count) or 1,
+            ItemNum = tonumber(Award.Count) or 1
         })
     end
 end
@@ -770,7 +772,7 @@ function UGCPlayerController:Server_RequestLottery(LotteryType, SlotIndex)
         Candidate = {
             Index = 0,
             Award = Pool.GrandPrize,
-            IsGrandPrize = true,
+            IsGrandPrize = true
         }
     else
         local Candidates = GetRemainingAwards(Pool, LotteryState)
@@ -831,10 +833,10 @@ function UGCPlayerController:Client_LotteryResult(LotteryType, SlotIndex, AwardI
         return
     end
 
-    if self.MainUIInstance ~= nil
-        and self.MainUIInstance.UI14Instance ~= nil
-        and self.MainUIInstance.UI14Instance.OnLotteryResult ~= nil then
-        self.MainUIInstance.UI14Instance:OnLotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount, bCompleted, ItemList)
+    if self.MainUIInstance ~= nil and self.MainUIInstance.UI14Instance ~= nil and
+        self.MainUIInstance.UI14Instance.OnLotteryResult ~= nil then
+        self.MainUIInstance.UI14Instance:OnLotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount, bCompleted,
+            ItemList)
     end
 end
 
@@ -982,8 +984,37 @@ function UGCPlayerController:Server_SetAutoPickEnabled(bEnabled)
         end
     end, true, TimerName)
 
+    --[[--------------------这边测试加战力--------------------------]] --
     local pawn = self.Pawn or self:K2_GetPawn()
     L_Com.UseHunHuan(pawn, 8310055, 100)
+end
+
+--[[----------------------自动攻击------------------------]] --
+function UGCPlayerController:StopAutoMeleeAttack()
+    UGCTimerUtility.RemoveLuaTimerByName("AutoMeleeAttack")
+end
+
+local Auto_Melee_Attack = 0.45
+local function TriggerMeleeWeaponAttack(Weapon)
+    local PressEvent = EWeaponTriggerEvent.EWeaponTriggerEvent_PressFuncBtn
+    local ReleaseEvent = EWeaponTriggerEvent.EWeaponTriggerEvent_ReleaseFuncBtn
+    Weapon:TriggerWeaponEvent(PressEvent, "")
+    Weapon:TriggerWeaponEvent(ReleaseEvent, "")
+end
+
+function UGCPlayerController:StartAutoMeleeAttack()
+    UGCTimerUtility.RemoveLuaTimerByName("AutoMeleeAttack")
+    UGCTimerUtility.CreateLuaTimer(Auto_Melee_Attack, function()
+        self:TryAutoMeleeAttack()
+    end, true, "AutoMeleeAttack")
+end
+
+function UGCPlayerController:TryAutoMeleeAttack()
+    local Pawn = self.Pawn
+    local MeleeSlot = ESurviveWeaponPropSlot.SWPS_MeleeWeapon
+    if tonumber(UGCWeaponManagerSystem.GetCurrentWeaponSlot(Pawn)) == tonumber(MeleeSlot) then
+        TriggerMeleeWeaponAttack(UGCWeaponManagerSystem.GetCurrentWeapon(Pawn))
+    end
 end
 
 return UGCPlayerController

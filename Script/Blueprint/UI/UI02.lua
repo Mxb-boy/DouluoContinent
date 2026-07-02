@@ -57,19 +57,19 @@
 ---@field TextBlock_0 UTextBlock
 ---@field TextBlock_1 UTextBlock
 ---@field TextBlock_303 UTextBlock
---Edit Below--
+-- Edit Below--
 UGCGameSystem.UGCRequire("ExtendResource.SignInEvent.OfficialPackage." .. "Script.SignInEvent.SignInEventManager")
 UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.ShopV2.ShopV2Manager")
 UGCGameSystem.UGCRequire("ExtendResource.RankingList.OfficialPackage." .. "Script.RankingList.RankingListManager")
 UGCGameSystem.UGCRequire("ExtendResource.GiftPack.OfficialPackage.Script.GiftPack.GiftPackManager")
-local TaskManager = UGCGameSystem.UGCRequire(
-    "ExtendResource.TaskTemplate.OfficialPackage.Script.Task.TaskManager"
-)
+local TaskManager = UGCGameSystem.UGCRequire("ExtendResource.TaskTemplate.OfficialPackage.Script.Task.TaskManager")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local Property = UGCGameSystem.UGCRequire("Script.property.property")
 
-local UI02 = { bInitDoOnce = false }
+local UI02 = {
+    bInitDoOnce = false
+}
 local YXWDItemID = 1024
 local YXWDPrice = 640
 local AutoSoulRingItemID = 1027
@@ -92,7 +92,7 @@ function UI02:LuaInit()
 
     self.Button_145.OnClicked:Add(self.Button_145_OnClicked, self)
     self.Button_157.OnClicked:Add(self.Button_157_OnClicked, self)
-    self.Button_144.OnClicked:Add(self.Button_144_OnClicked,self)
+    self.Button_144.OnClicked:Add(self.Button_144_OnClicked, self)
     self.Button_150.OnClicked:Add(self.Button_150_OnClicked, self)
     self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
     self.Button_1.OnClicked:Add(self.Button_1_OnClicked, self)
@@ -142,7 +142,7 @@ function UI02:OnRefreshProperty()
     self:RefreshYXWDPurchaseButton()
 end
 
---签到
+-- 签到
 function UI02:GetLocalPlayerState()
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
     if PlayerController ~= nil and PlayerController.PlayerState ~= nil then
@@ -338,7 +338,8 @@ function UI02:PurchaseShopItem(ItemID, Price)
     else
         local ObjectData = ShopV2Manager:GetItemConfigData(ProductData.ItemID)
         self.YXWDCanAfford = ShopV2Manager:CanAfford(ProductID, 1)
-        local PromiseFuture = UGCCommoditySystem.BuyUGCCommodity2(ProductID, ObjectData.ItemIcon, ObjectData.ItemDesc, 1)
+        local PromiseFuture =
+            UGCCommoditySystem.BuyUGCCommodity2(ProductID, ObjectData.ItemIcon, ObjectData.ItemDesc, 1)
         if PromiseFuture ~= nil then
             PromiseFuture:Then(function(Result)
                 local UI = Result:Get()
@@ -350,7 +351,8 @@ end
 
 function UI02:EnsureShopPurchaseCallbacks()
     if ShopV2Manager.bBuyProductResultBinded ~= true then
-        ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Add(ShopV2Manager.OnBuyProductResult, ShopV2Manager)
+        ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Add(ShopV2Manager.OnBuyProductResult,
+            ShopV2Manager)
         ShopV2Manager.bBuyProductResultBinded = true
     end
 
@@ -382,7 +384,7 @@ end
 function UI02:Button_145_OnClicked()
     SignInEventManager:OpenMainUI()
 end
---商城
+-- 商城
 function UI02:Button_144_OnClicked()
     if ShopV2Manager == nil then
         return
@@ -390,7 +392,7 @@ function UI02:Button_144_OnClicked()
 
     ShopV2Manager:OpenMainUI()
 end
---排行榜
+-- 排行榜
 function UI02:Button_150_OnClicked()
     if RankingListManager == nil then
         return
@@ -398,11 +400,11 @@ function UI02:Button_150_OnClicked()
 
     RankingListManager:OpenRankingList()
 end
---回城
+-- 回城
 function UI02:Button_157_OnClicked()
     self:TeleportToHome()
 end
---任务
+-- 任务
 function UI02:Button_152_OnClicked()
     if TaskManager == nil then
         return
@@ -424,17 +426,14 @@ function UI02:Button_149_OnClicked()
     end
 
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
-    local TitleUIPath =
-        UGCMapInfoLib.GetRootLongPackagePath()
-        .. "Asset/Blueprint/UI/UI06.UI06_C"
+    local TitleUIPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI06.UI06_C"
     local TitleUIClass = UE.LoadClass(TitleUIPath)
 
     if PlayerController == nil or TitleUIClass == nil then
         return
     end
 
-    self.TitleUIInstance =
-        UserWidget.NewWidgetObjectBP(PlayerController, TitleUIClass)
+    self.TitleUIInstance = UserWidget.NewWidgetObjectBP(PlayerController, TitleUIClass)
 
     if self.TitleUIInstance == nil then
         return
@@ -578,19 +577,15 @@ function UI02:TeleportToHome()
     -- UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.Test_01, 66)
 end
 
---礼包
+-- 礼包
 function UI02:Button_0_OnClicked()
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
 
-    local GiftPackUIClass = UE.LoadClass(
-        UGCGameSystem.GetUGCResourcesFullPath(
-            "ExtendResource/GiftPack/OfficialPackage/Asset/GiftPack/Blueprint/WBP_GiftPackBtn.WBP_GiftPackBtn_C"
-        )
-    )
+    local GiftPackUIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath(
+        "ExtendResource/GiftPack/OfficialPackage/Asset/GiftPack/Blueprint/WBP_GiftPackBtn.WBP_GiftPackBtn_C"))
 
     if PlayerController and GiftPackUIClass then
-        local GiftPackUI =
-            UserWidget.NewWidgetObjectBP(PlayerController, GiftPackUIClass)
+        local GiftPackUI = UserWidget.NewWidgetObjectBP(PlayerController, GiftPackUIClass)
 
         if GiftPackUI then
             GiftPackUI:AddToViewport(12000)
@@ -598,15 +593,20 @@ function UI02:Button_0_OnClicked()
     end
 end
 
-
---自动拾取
+-- 自动拾取
 function UI02:Button_227_OnClicked()
     local PC = GameplayStatics.GetPlayerController(self, 0)
     self.bAutoPickEnabled = not self.bAutoPickEnabled
 
     UnrealNetwork.CallUnrealRPC(PC, PC, "Server_SetAutoPickEnabled", self.bAutoPickEnabled)
 
-    self:OnhandleTest(self.bAutoPickEnabled and "自动拾取已开启" or "自动拾取已关闭")
+    --[[--------------------------自动攻击--------------------]] --
+    if self.bAutoPickEnabled then
+        PC:StartAutoMeleeAttack()
+    else
+        PC:StopAutoMeleeAttack()
+    end
+    self:OnhandleTest(self.bAutoPickEnabled and "自动已开启" or "自动已关闭")
 end
 
 function UI02:OnhandleTest(str)
