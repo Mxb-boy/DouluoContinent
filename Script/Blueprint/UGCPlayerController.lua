@@ -19,6 +19,10 @@ local ForgeMaterialItemIDs = {
 
 function UGCPlayerController:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
+
+    -- 注册补偿系统委托
+    self:RegisterCompensationDelegates()
+
     -- 删去风向标
     local MainUI = UGCWidgetManagerSystem.GetMainControlUI()
     if MainUI then
@@ -78,7 +82,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_EndFlyState", "Server_FlyMove", "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus",
         "Server_AddProbabilityBonus", "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm",
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
-        "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult"
+        "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult",
+        "Client_CompensationReceived", "Server_TestCompensation"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -1005,6 +1010,162 @@ function UGCPlayerController:TryAutoMeleeAttack()
     local MeleeSlot = ESurviveWeaponPropSlot.SWPS_MeleeWeapon
     if tonumber(UGCWeaponManagerSystem.GetCurrentWeaponSlot(Pawn)) == tonumber(MeleeSlot) then
         TriggerMeleeWeaponAttack(UGCWeaponManagerSystem.GetCurrentWeapon(Pawn))
+    end
+end
+
+--[[----------------------补偿系统----------------------]] --
+-- 注册补偿系统委托
+-- 服务器注册全部3个委托，客户端只注册单笔补偿委托
+function UGCPlayerController:RegisterCompensationDelegates()
+    if UGCCommoditySystem == nil then
+        return
+    end
+
+    -- 单笔补偿（服务器&客户端都会收到）
+    if UGCCommoditySystem.CompensateUGCCommodityDelegate ~= nil then
+        UGCCommoditySystem.CompensateUGCCommodityDelegate:Add(self.OnCompensateUGCCommodity, self)
+    end
+
+    -- 以下两个委托仅服务器
+    if self:HasAuthority() then
+        if UGCCommoditySystem.CompensateUGCCommodityBatchDelegate ~= nil then
+            UGCCommoditySystem.CompensateUGCCommodityBatchDelegate:Add(self.OnCompensateUGCCommodityBatch, self)
+        end
+        if UGCCommoditySystem.BuyUGCCommodityResultBetweenGamesDelegate ~= nil then
+            UGCCommoditySystem.BuyUGCCommodityResultBetweenGamesDelegate:Add(
+                self.OnBuyUGCCommodityResultBetweenGames, self)
+        end
+    end
+
+    print("[Compensation] RegisterCompensationDelegates: isServer=" .. tostring(self:HasAuthority()))
+end
+
+-- 注销补偿系统委托
+function UGCPlayerController:UnregisterCompensationDelegates()
+    if UGCCommoditySystem == nil then
+        return
+    end
+
+    if UGCCommoditySystem.CompensateUGCCommodityDelegate ~= nil then
+        UGCCommoditySystem.CompensateUGCCommodityDelegate:Remove(self.OnCompensateUGCCommodity, self)
+    end
+
+    if self:HasAuthority() then
+        if UGCCommoditySystem.CompensateUGCCommodityBatchDelegate ~= nil then
+            UGCCommoditySystem.CompensateUGCCommodityBatchDelegate:Remove(self.OnCompensateUGCCommodityBatch, self)
+        end
+        if UGCCommoditySystem.BuyUGCCommodityResultBetweenGamesDelegate ~= nil then
+            UGCCommoditySystem.BuyUGCCommodityResultBetweenGamesDelegate:Remove(
+                self.OnBuyUGCCommodityResultBetweenGames, self)
+        end
+    end
+end
+
+function UGCPlayerController:ReceiveEndPlay()
+    self:UnregisterCompensationDelegates()
+end
+
+--- 单笔补偿回调（服务器&客户端都会收到）
+---@param PlayerKey number
+---@param UID number
+---@param CommodityID number 物品ID（对应UGCObject表）
+---@param Count number 补偿数量
+---@param ProductID number 商品ID（对应UGCShop表）
+function UGCPlayerController:OnCompensateUGCCommodity(PlayerKey, UID, CommodityID, Count, ProductID)
+    print(string.format("[Compensation] OnCompensateUGCCommodity: PlayerKey=%s UID=%s CommodityID=%s Count=%s ProductID=%s",
+        tostring(PlayerKey), tostring(UID), tostring(CommodityID), tostring(Count), tostring(ProductID)))
+
+    -- 服务器收到后转发给对应客户端
+    if self:HasAuthority() then
+        local TargetPC = UGCGameSystem.GetPlayerControllerByPlayerKey(PlayerKey)
+        if TargetPC ~= nil then
+            UnrealNetwork.CallUnrealRPC(self, TargetPC, "Client_CompensationReceived", CommodityID, Count, ProductID)
+        end
+    end
+end
+
+--- 批量补偿回调（仅服务器）
+---@param PlayerKey number
+---@param UID number
+---@param CommodityList table 补偿商品列表
+function UGCPlayerController:OnCompensateUGCCommodityBatch(PlayerKey, UID, CommodityList)
+    print(string.format("[Compensation] OnCompensateUGCCommodityBatch: PlayerKey=%s UID=%s count=%d",
+        tostring(PlayerKey), tostring(UID), #CommodityList))
+
+    local TargetPC = UGCGameSystem.GetPlayerControllerByPlayerKey(PlayerKey)
+    if TargetPC == nil then
+        return
+    end
+
+    -- 逐个转发给客户端
+    for _, item in ipairs(CommodityList) do
+        UnrealNetwork.CallUnrealRPC(self, TargetPC, "Client_CompensationReceived",
+            item.CommodityID, item.Count, item.ProductID or 0)
+    end
+end
+
+--- 跨局商品变化回调（仅服务器）
+---@param PlayerKey number
+---@param UID number
+---@param CommodityID number 物品ID
+---@param Count number 新增的差异数量
+function UGCPlayerController:OnBuyUGCCommodityResultBetweenGames(PlayerKey, UID, CommodityID, Count)
+    print(string.format("[Compensation] OnBuyUGCCommodityResultBetweenGames: PlayerKey=%s UID=%s CommodityID=%s Count=%s",
+        tostring(PlayerKey), tostring(UID), tostring(CommodityID), tostring(Count)))
+
+    local TargetPC = UGCGameSystem.GetPlayerControllerByPlayerKey(PlayerKey)
+    if TargetPC == nil then
+        return
+    end
+
+    -- 转发给客户端弹窗（ProductID传0表示跨局变化，非补偿购买）
+    UnrealNetwork.CallUnrealRPC(self, TargetPC, "Client_CompensationReceived", CommodityID, Count, 0)
+end
+
+--- 客户端收到补偿通知后弹窗
+---@param CommodityID number 物品ID
+---@param Count number 数量
+---@param ProductID number 商品ID（0表示跨局变化）
+function UGCPlayerController:Client_CompensationReceived(CommodityID, Count, ProductID)
+    print(string.format("[Compensation] Client_CompensationReceived: CommodityID=%s Count=%s ProductID=%s",
+        tostring(CommodityID), tostring(Count), tostring(ProductID)))
+
+    -- 复用 ShopV2Manager 的弹窗
+    if ShopV2Manager ~= nil and ShopV2Manager.ShowItemGetPopup ~= nil then
+        ShopV2Manager:ShowItemGetPopup(CommodityID, Count)
+    else
+        print("[Compensation] ShopV2Manager not available, popup skipped")
+    end
+end
+
+--- GM测试补偿系统（客户端调用，服务器执行模拟补偿）
+---@param TestType number 1=单笔 2=批量 3=跨局
+---@param CommodityID number 物品ID（默认1001）
+---@param Count number 数量（默认5）
+function UGCPlayerController:Server_TestCompensation(TestType, CommodityID, Count)
+    if not self:HasAuthority() then
+        return
+    end
+    TestType = tonumber(TestType) or 1
+    CommodityID = tonumber(CommodityID) or 1001
+    Count = tonumber(Count) or 5
+
+    print(string.format("[Compensation][GM] Server_TestCompensation: type=%d item=%d count=%d",
+        TestType, CommodityID, Count))
+
+    if TestType == 1 then
+        -- 模拟单笔补偿
+        self:OnCompensateUGCCommodity(self.PlayerKey, 0, CommodityID, Count, 9000001)
+    elseif TestType == 2 then
+        -- 模拟批量补偿
+        local list = {
+            {CommodityID = CommodityID, Count = Count, ProductID = 9000001},
+            {CommodityID = CommodityID + 1, Count = Count + 2, ProductID = 9000002}
+        }
+        self:OnCompensateUGCCommodityBatch(self.PlayerKey, 0, list)
+    elseif TestType == 3 then
+        -- 模拟跨局商品变化
+        self:OnBuyUGCCommodityResultBetweenGames(self.PlayerKey, 0, CommodityID, Count)
     end
 end
 
