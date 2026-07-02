@@ -20,6 +20,7 @@
 ---@field kj01_C_2 kj01_C
 ---@field kj01_C_3 kj01_C
 ---@field Text_AwardName UTextBlock
+---@field TextTicket_Now UTextBlock
 --Edit Below--
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
@@ -28,8 +29,9 @@ local UI14 = { bInitDoOnce = false }
 
 local LotteryType = LotteryConfig.Types
 local LotteryConfigs = LotteryConfig.Pools
-local AwardBgNormalColor = { R = 1.0, G = 1.0, B = 1.0, A = 1.0 }
+local DefaultImageColor = { R = 1.0, G = 1.0, B = 1.0, A = 1.0 }
 local AwardBgOwnedColor = { R = 0.32549, G = 0.32549, B = 0.32549, A = 1.0 }
+local AwardIconOwnedColor = { R = 0.6, G = 0.6, B = 0.6, A = 1.0 }
 
 function UI14:Construct()
     self:LuaInit()
@@ -103,6 +105,7 @@ end
 
 function UI14:Refresh()
     local Config = LotteryConfigs[self.SelectedLotteryType]
+    self:RefreshLotteryTicketText()
     self:RefreshAwardPanel(Config)
     self:RefreshAwardPreview(Config and Config.GrandPrize or nil)
 end
@@ -202,6 +205,7 @@ function UI14:SetAwardOKVisible(Panel, AwardIndex, bVisible)
     }
     self:SetWidgetVisible(OKImages[tonumber(AwardIndex) or -1], bVisible)
     self:SetAwardBgOwned(Panel, AwardIndex, bVisible)
+    self:SetAwardIconOwned(Panel, AwardIndex, bVisible)
 end
 
 function UI14:ShowAllAwardOKImages(Panel)
@@ -217,6 +221,7 @@ end
 function UI14:ResetAwardBgImages(Panel)
     for Index = 0, 6 do
         self:SetAwardBgOwned(Panel, Index, false)
+        self:SetAwardIconOwned(Panel, Index, false)
     end
 end
 
@@ -226,15 +231,83 @@ function UI14:SetAwardBgOwned(Panel, AwardIndex, bOwned)
     end
 
     local BgImages = {
-        [0] = Panel.Image_46,
+        [0] = Panel.Image_7,
         [1] = Panel.Image_47,
-        [2] = Panel.Image_50,
-        [3] = Panel.Image_51,
-        [4] = Panel.Image_52,
-        [5] = Panel.Image_53,
-        [6] = Panel.Image_54,
+        [2] = Panel.Image_2,
+        [3] = Panel.Image_3,
+        [4] = Panel.Image_4,
+        [5] = Panel.Image_5,
+        [6] = Panel.Image_6,
     }
-    self:SetImageColor(BgImages[tonumber(AwardIndex) or -1], bOwned and AwardBgOwnedColor or AwardBgNormalColor)
+    self:SetImageColor(BgImages[tonumber(AwardIndex) or -1], bOwned and AwardBgOwnedColor or DefaultImageColor)
+end
+
+function UI14:SetAwardIconOwned(Panel, AwardIndex, bOwned)
+    if Panel == nil then
+        return
+    end
+
+    local AwardImages = {
+        [0] = Panel.Img_Best,
+        [1] = Panel.Img1,
+        [2] = Panel.Img2,
+        [3] = Panel.Img3,
+        [4] = Panel.Img4,
+        [5] = Panel.Img5,
+        [6] = Panel.Img6,
+    }
+    self:SetImageColor(AwardImages[tonumber(AwardIndex) or -1], bOwned and AwardIconOwnedColor or DefaultImageColor)
+end
+
+function UI14:SetImageOwnedColor(Image, bOwned, OwnedColor)
+    if Image == nil then
+        return
+    end
+
+    if bOwned then
+        self:SetImageColor(Image, OwnedColor)
+    else
+        self:RestoreImageColor(Image)
+    end
+end
+
+function UI14:CopyImageColor(Color)
+    Color = Color or DefaultImageColor
+    return {
+        R = tonumber(Color.R) or 1.0,
+        G = tonumber(Color.G) or 1.0,
+        B = tonumber(Color.B) or 1.0,
+        A = tonumber(Color.A) or 1.0,
+    }
+end
+
+function UI14:GetImageColor(Image)
+    local Color = Image
+        and Image.Brush
+        and Image.Brush.TintColor
+        and Image.Brush.TintColor.SpecifiedColor
+        or DefaultImageColor
+    return self:CopyImageColor(Color)
+end
+
+function UI14:CacheOriginalImageColor(Image)
+    if Image == nil then
+        return
+    end
+
+    self.OriginalImageColors = self.OriginalImageColors or {}
+    if self.OriginalImageColors[Image] == nil then
+        self.OriginalImageColors[Image] = self:GetImageColor(Image)
+    end
+end
+
+function UI14:RestoreImageColor(Image)
+    if Image == nil then
+        return
+    end
+
+    self:CacheOriginalImageColor(Image)
+    self:SetImageColor(Image, self.OriginalImageColors and self.OriginalImageColors[Image] or DefaultImageColor)
 end
 
 function UI14:SetImageColor(Image, Color)
@@ -242,6 +315,7 @@ function UI14:SetImageColor(Image, Color)
         return
     end
 
+    self:CacheOriginalImageColor(Image)
     if Image.SetColorAndOpacity ~= nil then
         pcall(Image.SetColorAndOpacity, Image, Color)
     end
@@ -341,6 +415,14 @@ function UI14:GetAdjustedLotteryTicketCount()
 
     local AdjustedCount = Count + Offset
     return AdjustedCount > 0 and AdjustedCount or 0
+end
+
+function UI14:RefreshLotteryTicketText()
+    if self.TextTicket_Now == nil then
+        return
+    end
+
+    self.TextTicket_Now:SetText(tostring(self:GetAdjustedLotteryTicketCount()))
 end
 
 function UI14:IsLotteryCompleted(LotteryTypeValue)
@@ -443,7 +525,6 @@ function UI14:OnLotteryResult(LotteryTypeValue, SlotIndex, AwardItemID, AwardCou
         self.SelectedLotteryType = tonumber(LotteryTypeValue) or self.SelectedLotteryType
     end
 
-    local Config = LotteryConfigs[self.SelectedLotteryType]
     local AwardIndex = tonumber(SlotIndex) or 0
     local OKState = self:GetLocalLotteryOKState(self.SelectedLotteryType)
     local Key = tostring(self.SelectedLotteryType)
@@ -466,18 +547,12 @@ function UI14:OnLotteryResult(LotteryTypeValue, SlotIndex, AwardItemID, AwardCou
         OKState.Completed = true
     end
 
-    local Award = nil
-    if Config ~= nil then
-        Award = AwardIndex == 0 and Config.GrandPrize or Config.Awards[AwardIndex]
-    end
     self:Refresh()
     local Panel = self:GetAwardPanels()[self.SelectedLotteryType]
     if tonumber(bCompleted) == 1 then
         self:ShowAllAwardOKImages(Panel)
-        self:RefreshAwardPreview(Config and Config.GrandPrize or nil)
     else
         self:SetAwardOKVisible(Panel, AwardIndex, true)
-        self:RefreshAwardPreview(Award)
     end
     self:OpenLotteryGetItemUI(ItemList)
 

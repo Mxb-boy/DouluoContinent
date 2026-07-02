@@ -1,12 +1,12 @@
 ---@class kj01_C:UUserWidget
 ---@field Btn_Summon UButton
----@field Image_46 UImage
+---@field Image_2 UImage
+---@field Image_3 UImage
+---@field Image_4 UImage
+---@field Image_5 UImage
+---@field Image_6 UImage
+---@field Image_7 UImage
 ---@field Image_47 UImage
----@field Image_50 UImage
----@field Image_51 UImage
----@field Image_52 UImage
----@field Image_53 UImage
----@field Image_54 UImage
 ---@field Image_100 UImage
 ---@field Image_101 UImage
 ---@field Image_134 UImage
