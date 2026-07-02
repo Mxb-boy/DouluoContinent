@@ -2522,6 +2522,10 @@ end
 ---@param Result any
 function LotteryComponent:OnBuyProduct(Result)
     log_tree("[LotteryComponent] OnBuyProduct:", Result);
+    -- BugFix: 商城等模块共用 CommodityOperationManager，非抽奖发起的购买直接跳过
+    if not self.IsBuying then
+        return;
+    end
     self.IsBuying = false;
     local bSucceeded = Result.bSucceeded;
     local PlayerKey = Result.PlayerKey;
@@ -2530,6 +2534,9 @@ function LotteryComponent:OnBuyProduct(Result)
     local Validation = Result.Validation or -1;
     if bSucceeded then
         local ProductData = self:GetProductDataByID(ProductID);
+        if ProductData == nil then
+            return;
+        end
         ---打开获得道具界面
         local ItemList = {[1] = {ItemID = ProductData.ItemID, ItemNum = Num * ProductData.ItemNum}};
         self:OpenGetItemUI(ItemList);
