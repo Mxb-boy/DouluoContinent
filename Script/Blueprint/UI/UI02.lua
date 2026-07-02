@@ -62,7 +62,7 @@
 --Edit Below--
 ---@class UI02_C:UUserWidget
 ---@field Button_0 UButton
----@field Button_1 UButton
+---@field Button_5 UButton
 ---@field Button_2 UButton
 ---@field Button_3 UButton
 ---@field Button_4 UButton
@@ -157,7 +157,7 @@ function UI02:LuaInit()
     self.Button_144.OnClicked:Add(self.Button_144_OnClicked, self)
     self.Button_150.OnClicked:Add(self.Button_150_OnClicked, self)
     self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
-    self.Button_1.OnClicked:Add(self.Button_1_OnClicked, self)
+    self.Button_5.OnClicked:Add(self.Button_1_OnClicked, self)
     self.Button_2.OnClicked:Add(self.Button_2_OnClicked, self)
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
     self.Button_153.OnClicked:Add(self.Button_153_OnClicked, self)
@@ -170,7 +170,7 @@ function UI02:LuaInit()
     self.Button_158.OnClicked:Add(self.Button_158_OnClicked, self)
 
     self:ApplyButtonEffect(self.Button_0)
-    self:ApplyButtonEffect(self.Button_1)
+    self:ApplyButtonEffect(self.Button_5)
     self:ApplyButtonEffect(self.Button_2)
     self:ApplyButtonEffect(self.Button_3)
     self:ApplyButtonEffect(self.Button_4)
