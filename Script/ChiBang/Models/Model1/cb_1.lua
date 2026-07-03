@@ -4,24 +4,17 @@
 --Edit Below--
 local cb_1 = {}
 
-local function DestroyIfOwnerInvalid(actor)
-    actor.OwnerPawn = actor.OwnerPawn or UGCActorComponentUtility.GetOwner(actor)
-    local ownerPawn = actor.OwnerPawn
-    if ownerPawn == nil or (UE ~= nil and UE.IsValid ~= nil and not UE.IsValid(ownerPawn)) then
-        actor:K2_DestroyActor()
-    end
-end
-
 --[[
 function cb_1:ReceiveBeginPlay()
     cb_1.SuperClass.ReceiveBeginPlay(self)
 end
 --]]
 
+--[[
 function cb_1:ReceiveTick(DeltaTime)
     cb_1.SuperClass.ReceiveTick(self, DeltaTime)
-    DestroyIfOwnerInvalid(self)
 end
+--]]
 
 --[[
 function cb_1:ReceiveEndPlay()

@@ -3,7 +3,15 @@
 local CB_4 = {} 
 
 function CB_4:Bind11(PlayerPawn)
+    local HPPercent = CB_4.WingConfig[1].HPPercent
+    if PlayerPawn ~= nil and UGCPawnAttrSystem ~= nil and UGCPawnAttrSystem.GetHealthMax ~= nil then
+        local MaxHP = tonumber(UGCPawnAttrSystem.GetHealthMax(PlayerPawn)) or 0
+        if MaxHP > 0 then
+            return MaxHP * (1 + HPPercent / 100)
+        end
+    end
 
+    return HPPercent
 end
 
 --[[V2背包事件]]--

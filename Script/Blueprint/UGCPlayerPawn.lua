@@ -792,7 +792,6 @@ function UGCPlayerPawn:RefreshStateMgrProperty(bFillHealth)
     local baseMaxHp = playerState.GetBaseMaxHp ~= nil and playerState:GetBaseMaxHp() or 100
 
     if self:HasAuthority() then
-        UGCAttributeSystem.SetGameAttributeValue(self, "AttackPower", baseAttack)
         UGCPawnAttrSystem.SetHealthMax(self, baseMaxHp)
         if bFillHealth then
             UGCPawnAttrSystem.SetHealth(self, baseMaxHp)

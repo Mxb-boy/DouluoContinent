@@ -5,7 +5,7 @@ local CB_1 = {}
 function CB_1:Bind11(PlayerPawn)
 
 end
-
+ 
 --[[V2背包事件]]--
 --[[
 --- func 能否更新此物品实例，可重载并自定义(服务端生效)
