@@ -1,4 +1,4 @@
----@class ZDSQ_ZD_C:Template_Consumable_Drink_C
+---@class ZDSQ_ZD_2_C:Template_Consumable_Drink_C
 --Edit Below--
 local ZDSQ_ZD_2 = {} 
 
