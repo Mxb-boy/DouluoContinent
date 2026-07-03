@@ -3,12 +3,14 @@
 ---@field DefaultSceneRoot USceneComponent
 --Edit Below--
 local CB_3 = {}
+local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 
---[[
 function CB_3:ReceiveBeginPlay()
     CB_3.SuperClass.ReceiveBeginPlay(self)
+    if StateMgr ~= nil and StateMgr.UI ~= nil then
+        StateMgr:ChiBangTextShow(10)
+    end
 end
---]]
 
 --[[
 function CB_3:ReceiveTick(DeltaTime)
@@ -16,11 +18,12 @@ function CB_3:ReceiveTick(DeltaTime)
 end
 --]]
 
---[[
 function CB_3:ReceiveEndPlay()
     CB_3.SuperClass.ReceiveEndPlay(self) 
+    if StateMgr ~= nil and StateMgr.UI ~= nil then
+        StateMgr:ChiBangTextShow(0)
+    end
 end
---]]
 
 --[[
 function CB_3:GetReplicatedProperties()
