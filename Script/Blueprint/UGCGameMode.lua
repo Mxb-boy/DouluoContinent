@@ -55,16 +55,6 @@ local function RestoreBackpackSnapshot(PlayerKey, PlayerPawn)
 end
 
 function UGCGameMode:ReceiveBeginPlay()
-    UGCPlayerPawnSystem.SetDefaultPlayerSpawnPointSelectionMethod(
-        EUGCPlayerSpawnPointSelectionMethod.DesignatedPlayerStartID,
-        1,
-        false
-    )
-    UGCPlayerPawnSystem.SetDefaultPlayerRespawnPointSelectionMethod(
-        EUGCPlayerRespawnPointSelectionMethod.RespawnBySpawnMethod,
-        Vector.New(0, 0, 0)
-    )
-
     UGCGenericMessageSystem.ListenGlobalMessage(
         self,
         UGCGenericMessageSystem.Messages.UGC.PlayerPawn.PawnDefeat,

@@ -1,31 +1,23 @@
 local PlayerStart_01 = {}
 
 function PlayerStart_01:GetUGCModePlayerStart(Controller)
-    local bornPointID = 1
-
-    local PlayerStart = self:FindPlayerStartByBornPointID(bornPointID, true)
-    if PlayerStart then
-        PlayerStart:SetMarkOccupied()
+    if UGCGameSystem.GameState:HasAuthority() == true then
+        print("MMG_Lua PlayerStart_01:GetUGCModePlayerStart Server");
+    else
+        print("MMG_Lua PlayerStart_01:GetUGCModePlayerStart Client");
     end
-    return PlayerStart
-end
 
---[[
-function PlayerStart_01:ReceiveBeginPlay()
-    PlayerStart_01.SuperClass.ReceiveBeginPlay(self)
-end
---]]
+    local SelectedPlayerStart = self:FindPlayerStartByBornPointID(1, false);
 
---[[
-function PlayerStart_01:ReceiveTick(DeltaTime)
-    PlayerStart_01.SuperClass.ReceiveTick(self, DeltaTime)
-end
---]]
+    if SelectedPlayerStart ~= nil then
+        print(string.format("PlayerStart_01:GetUGCModePlayerStart SelectedPlayerStart[%s] BornID[%d] PlayerID[%s]",
+            KismetSystemLibrary.GetObjectName(SelectedPlayerStart), SelectedPlayerStart.PlayerBornPointID,
+            Controller.PlayerKey));
+        return SelectedPlayerStart;
+    end
 
---[[
-function PlayerStart_01:ReceiveEndPlay()
-    PlayerStart_01.SuperClass.ReceiveEndPlay(self) 
+    print("Error: PlayerStart_01:GetUGCModePlayerStart SelectedPlayerStart is nil!");
+    return nil;
 end
---]]
 
 return PlayerStart_01
