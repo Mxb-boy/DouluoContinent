@@ -494,6 +494,7 @@ function ShopV2Manager:OnAddVirtualItem(Result)
         [1031] = 8310013,  -- 白金圣天使翼
         [1032] = 8310014,  -- 骸骨亡灵骨翼
         [1033] = 8310058,  -- 星澜幻彩羽翼
+        [1037] = 8310059,  -- 幸运符
     }
 
     for ItemID, Num in pairs(Result.ItemList) do
