@@ -1,4 +1,4 @@
----@class HTC_B_C:Template_Melee_TangDao_Handle_C
+---@class HTC_B_2_C:Template_Melee_TangDao_Handle_C
 --Edit Below--
 local HTC_B = {} 
 
