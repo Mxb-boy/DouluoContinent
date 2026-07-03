@@ -6,7 +6,9 @@ local StateMgr = {
     ChiBang = 0,
     WuQi = 0,
     ChengHao = 0,
-    JingJie = 0,
+    JingJieName = "",
+    JingJieAddMaxHp = 0,
+    JingJieAddAtk = 0,
     BeiLv = 100
 }
 
@@ -16,6 +18,8 @@ local DaoJuAddNum_Atk = 0
 local DaoJuAddNum_Hp = 0
 local DefaultBaseAttack = 40
 local DefaultBaseMaxHp = 100
+
+local L_Com = UGCGameSystem.UGCRequire('Script.Lin.L_Com')
 
 function StateMgr:SetUI(ui)
     self.UI = ui
@@ -45,7 +49,7 @@ function StateMgr:Init()
     self:ChiBangTextShow(0, true)
     self:WuQiTextShow(0, true)
     self:ChengHaoTextShow(0, true)
-    self:JingJieTextShow(0, true)
+    self:JingJieTextShow(1, true)
     self:BeiLvTextShow(0, true)
     self:CountAll()
 end
@@ -83,8 +87,11 @@ function StateMgr:ChengHaoTextShow(Num, SkipCount)
 end
 
 function StateMgr:JingJieTextShow(Num, SkipCount)
-    self.JingJie = Num
-    self.UI.TextBlock_49:SetText("境界加成:" .. self.JingJie .. "%")
+    self.JingJieName = L_Com:GetJingJieName(Num)
+    self.JingJieAddMaxHp = L_Com:GetJingJieAddMaxHp(Num)
+    self.JingJieAddAtk = L_Com:GetJingJieAddAtk(Num)
+
+    self.UI.TextBlock_49:SetText("境界:" .. self.JingJieName)
     if not SkipCount then
         self:CountAll()
     end
@@ -107,7 +114,7 @@ end
 
 function StateMgr:CountFinalAttack(pawn)
     local baseAttack = self.BaseAttack
-    local AttackAddForce = self.PaiHangAdd + self.ChiBang + self.WuQi + self.ChengHao + self.JingJie
+    local AttackAddForce = self.PaiHangAdd + self.ChiBang + self.WuQi + self.ChengHao + self.JingJieAddAtk
     FinalAttack = baseAttack * (1 + AttackAddForce / 100)
     pawn = pawn or UGCGameSystem.GetLocalPlayerPawn()
     if pawn == nil then
@@ -140,7 +147,7 @@ end
 
 function StateMgr:CountFinalMaxHp(pawn, showHp, showMaxHp, bFillHealth)
     local baseMaxHp = self.BaseMaxHp
-    local MaxHpAddForce = self.PaiHangAdd + self.ChiBang + self.ChengHao + self.JingJie
+    local MaxHpAddForce = self.PaiHangAdd + self.ChiBang + self.ChengHao + self.JingJieAddMaxHp
     FinalMaxHp = baseMaxHp * (1 + MaxHpAddForce / 100)
     pawn = pawn or UGCGameSystem.GetLocalPlayerPawn()
     if pawn == nil then
