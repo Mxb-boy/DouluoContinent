@@ -495,6 +495,8 @@ function ShopV2Manager:OnAddVirtualItem(Result)
         [1032] = 8310014,  -- 骸骨亡灵骨翼
         [1033] = 8310058,  -- 星澜幻彩羽翼
         [1037] = 8310062,  -- 幸运符
+        [1038] = 8310063,  -- 密道终身通行证
+        [1039] = 8310064,  -- 爬塔传送卷
     }
 
     for ItemID, Num in pairs(Result.ItemList) do
