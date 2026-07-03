@@ -118,11 +118,7 @@ function NewUGCWidgetBlueprint:SetBrushTexture(Brush, Texture, ImageSize)
         return
     end
 
-    if Brush.SetResourceObject ~= nil then
-        Brush:SetResourceObject(Texture)
-    else
-        Brush.ResourceObject = Texture
-    end
+    Brush.ResourceObject = Texture
 
     if ImageSize ~= nil then
         Brush.ImageSize = ImageSize
