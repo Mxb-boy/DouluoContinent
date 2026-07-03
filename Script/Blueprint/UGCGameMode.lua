@@ -18,13 +18,13 @@ local function SaveBackpackSnapshot(PlayerKey, PlayerPawn)
         return
     end
 
-    local AllItemData = UGCBackPackSystem.GetAllItemData(PlayerPawn)
+    local AllItemData = UGCBackpackSystemV2.GetAllItemDefineIDsV2(PlayerPawn)
     local Snapshot = {}
 
     if AllItemData then
-        for _, ItemData in pairs(AllItemData) do
-            local ItemID = tonumber(ItemData.ItemID)
-            local Count = tonumber(ItemData.Count) or 0
+        for _, ItemDefineID in pairs(AllItemData) do
+            local ItemID = tonumber(ItemDefineID.TypeSpecificID)
+            local Count = tonumber(UGCBackpackSystemV2.GetItemCountByDefineIDV2(PlayerPawn, ItemDefineID)) or 0
             if ItemID and Count > 0 then
                 Snapshot[ItemID] = (Snapshot[ItemID] or 0) + Count
             end
@@ -43,10 +43,10 @@ local function RestoreBackpackSnapshot(PlayerKey, PlayerPawn)
 
     -- 只补回新背包中缺少的数量，防止引擎已经保留的物品被重复添加。
     for ItemID, SavedCount in pairs(Snapshot) do
-        local CurrentCount = UGCBackPackSystem.GetItemCount(PlayerPawn, ItemID) or 0
+        local CurrentCount = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID) or 0
         local MissingCount = SavedCount - CurrentCount
         if MissingCount > 0 then
-            UGCBackPackSystem.AddItem(PlayerPawn, ItemID, MissingCount)
+            UGCBackpackSystemV2.AddItemV2(PlayerPawn, ItemID, MissingCount)
         end
     end
 
@@ -55,6 +55,16 @@ local function RestoreBackpackSnapshot(PlayerKey, PlayerPawn)
 end
 
 function UGCGameMode:ReceiveBeginPlay()
+    UGCPlayerPawnSystem.SetDefaultPlayerSpawnPointSelectionMethod(
+        EUGCPlayerSpawnPointSelectionMethod.DesignatedPlayerStartID,
+        1,
+        false
+    )
+    UGCPlayerPawnSystem.SetDefaultPlayerRespawnPointSelectionMethod(
+        EUGCPlayerRespawnPointSelectionMethod.RespawnBySpawnMethod,
+        Vector.New(0, 0, 0)
+    )
+
     UGCGenericMessageSystem.ListenGlobalMessage(
         self,
         UGCGenericMessageSystem.Messages.UGC.PlayerPawn.PawnDefeat,
