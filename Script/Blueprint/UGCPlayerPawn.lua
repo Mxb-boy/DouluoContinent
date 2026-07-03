@@ -1,36 +1,23 @@
 local UGCPlayerPawn = {}
-local Property = UGCGameSystem.UGCRequire("Script.property.property")
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
+local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
 local WEAPON_ATTACK_SOURCE_KEY = "WeaponLevel"
 local WEAPON_ATTACK_CHECK_INTERVAL = 0.2
-local FLY_INTERRUPT_TAGS = {
-    "PawnState.Movement.Walk",
-    "PawnState.Movement.Run",
-    "PawnState.Action.Jump",
-    "PawnState.Action.Crouch",
-    "PawnState.Action.Prone",
-    "PawnState.Action.Reload",
-    "PawnState.Action.Fire",
-    "PawnState.Action.HoldWeapon",
-    "PawnState.Movement.Fall",
-}
-local FLY_DISABLE_TAGS = {
-    "PawnState.Movement.Walk",
-    "PawnState.Movement.Run",
-    "PawnState.Action.Jump",
-    "PawnState.Action.Crouch",
-    "PawnState.Action.Prone",
-    "PawnState.Action.Reload",
-    "PawnState.Action.Fire",
-}
+local FLY_INTERRUPT_TAGS = {"PawnState.Movement.Walk", "PawnState.Movement.Run", "PawnState.Action.Jump",
+                            "PawnState.Action.Crouch", "PawnState.Action.Prone", "PawnState.Action.Reload",
+                            "PawnState.Action.Fire", "PawnState.Action.HoldWeapon", "PawnState.Movement.Fall"}
+local FLY_DISABLE_TAGS = {"PawnState.Movement.Walk", "PawnState.Movement.Run", "PawnState.Action.Jump",
+                          "PawnState.Action.Crouch", "PawnState.Action.Prone", "PawnState.Action.Reload",
+                          "PawnState.Action.Fire"}
 local SOUL_MESH_PATH = "Asset/Blueprint/Lin/Monster/Model/NewModel/"
 local SOUL_SOCKET = "Root"
 local SOUL_SCALE = Vector.New(300, 300, 300)
 local SOUL_OFFSET = Vector.New(0, 0, 0)
 local SOUL_ROTATION = Rotator.New(90, 0, 0)
+local DEFAULT_BASE_ATTACK = 40
 
 local function Round2(value)
     value = tonumber(value) or 0
@@ -54,11 +41,9 @@ local function IsLocalPlayerPawn(player)
 end
 
 local function GetWeaponBaseAttack(player)
-    local CurrentAttack = Property.GetBaseAttack(player)
-    local PercentAttack = Property.GetAttackPercent ~= nil and (tonumber(Property.GetAttackPercent(player)) or 0) or 0
-    local FlatAttack = Property.GetFlatAttack ~= nil and (tonumber(Property.GetFlatAttack(player)) or 0) or 0
-    if PercentAttack ~= 0 then
-        CurrentAttack = ((tonumber(CurrentAttack) or 0) / (1 + PercentAttack)) - FlatAttack
+    local CurrentAttack = DEFAULT_BASE_ATTACK
+    if player ~= nil and UGCAttributeSystem ~= nil and UGCAttributeSystem.GetGameAttributeValue ~= nil then
+        CurrentAttack = tonumber(UGCAttributeSystem.GetGameAttributeValue(player, "AttackPower")) or DEFAULT_BASE_ATTACK
     end
 
     if player.WeaponBaseAttackPower == nil then
@@ -78,17 +63,17 @@ local function GetWeaponBaseAttack(player)
 end
 
 local function BuildPropertyWatchKey(player)
-    if player == nil or Property == nil or Property.GetSnapshot == nil then
+    if player == nil then
         return nil
     end
 
-    local snapshot = Property.GetSnapshot(player, player)
-    return table.concat({
-        tostring(Round2(snapshot.CurrentHP)),
-        tostring(Round2(snapshot.MaxHP)),
-        tostring(Round2(snapshot.Attack)),
-        tostring(Round2(snapshot.CombatPower)),
-    }, "|")
+    local hp = UGCPawnAttrSystem.GetHealth(player) or 0
+    local maxHp = UGCPawnAttrSystem.GetHealthMax(player) or 0
+    local attack = DEFAULT_BASE_ATTACK
+    if UGCAttributeSystem ~= nil and UGCAttributeSystem.GetGameAttributeValue ~= nil then
+        attack = tonumber(UGCAttributeSystem.GetGameAttributeValue(player, "AttackPower")) or DEFAULT_BASE_ATTACK
+    end
+    return table.concat({tostring(Round2(hp)), tostring(Round2(maxHp)), tostring(Round2(attack))}, "|")
 end
 
 local function SetWeaponBonusPercent(player, AttackPercent, bForce)
@@ -98,11 +83,8 @@ local function SetWeaponBonusPercent(player, AttackPercent, bForce)
     end
 
     player.LastWeaponAttackPercent = AttackPercent
-    if IsLocalPlayerPawn(player) then
-        Property.NotifyChanged(player)
-    end
 end
---境界加成结果生成并推送给管理器
+-- 境界加成结果生成并推送给管理器
 local function UpdateRealmBonusResult(player, HunHuan)
     if player == nil or RealmConfig == nil or RealmConfig.GetAttrBonuses == nil then
         return
@@ -112,7 +94,7 @@ local function UpdateRealmBonusResult(player, HunHuan)
     player.RealmBonusResult = {
         Level = math.max(1, math.min(10, tonumber(HunHuan) or 1)),
         HPPercent = tonumber(Bonuses.HPPercent) or 0,
-        AttackPercent = tonumber(Bonuses.AttackPercent) or 0,
+        AttackPercent = tonumber(Bonuses.AttackPercent) or 0
     }
 
     if player.RealmBonusManager ~= nil and player.RealmBonusManager.SetRealmBonus ~= nil then
@@ -127,7 +109,7 @@ local WeaponNameToSeries = {
     LCSL = "LCSL",
     LSSL = "LCSL",
     XJWQ = "XJWQ",
-    XSWQ = "XJWQ",
+    XSWQ = "XJWQ"
 }
 
 local function Utf8Name(...)
@@ -140,7 +122,7 @@ local WeaponDisplayNameToSeries = {
     [Utf8Name(230, 152, 138, 229, 164, 169, 233, 148, 164)] = "HTC",
     [Utf8Name(231, 189, 151, 229, 136, 185, 231, 165, 158, 233, 149, 176)] = "LCSL",
     [Utf8Name(229, 185, 189, 229, 133, 137, 231, 159, 173, 229, 136, 128)] = "XJWQ",
-    [Utf8Name(229, 185, 189, 229, 133, 137, 231, 159, 173, 229, 136, 131)] = "XJWQ",
+    [Utf8Name(229, 185, 189, 229, 133, 137, 231, 159, 173, 229, 136, 131)] = "XJWQ"
 }
 
 local WeaponLevelNameToLevel = {
@@ -148,7 +130,7 @@ local WeaponLevelNameToLevel = {
     [Utf8Name(228, 188, 152, 231, 167, 128)] = 2,
     [Utf8Name(231, 178, 190, 232, 137, 175)] = 3,
     [Utf8Name(229, 143, 178, 232, 175, 151)] = 4,
-    [Utf8Name(228, 188, 160, 232, 175, 180)] = 5,
+    [Utf8Name(228, 188, 160, 232, 175, 180)] = 5
 }
 
 local function TryCall(Object, FunctionName, ...)
@@ -208,34 +190,22 @@ local function GetNameFromItemData(ItemData)
         return nil
     end
 
-    local Name =
-        ItemData.ItemName
-        or ItemData.Name
-        or ItemData.DisplayName
-        or ItemData.ItemDisplayName
-        or ItemData.ItemNameText
+    local Name = ItemData.ItemName or ItemData.Name or ItemData.DisplayName or ItemData.ItemDisplayName or
+                     ItemData.ItemNameText
 
     if Name ~= nil then
         return tostring(Name)
     end
 
-    local NestedData =
-        ItemData.ItemData
-        or ItemData.ItemConfig
-        or ItemData.Config
-        or ItemData.ItemDefine
-        or ItemData.ItemTableData
+    local NestedData = ItemData.ItemData or ItemData.ItemConfig or ItemData.Config or ItemData.ItemDefine or
+                           ItemData.ItemTableData
 
     if NestedData == nil then
         return nil
     end
 
-    Name =
-        NestedData.ItemName
-        or NestedData.Name
-        or NestedData.DisplayName
-        or NestedData.ItemDisplayName
-        or NestedData.ItemNameText
+    Name = NestedData.ItemName or NestedData.Name or NestedData.DisplayName or NestedData.ItemDisplayName or
+               NestedData.ItemNameText
 
     if Name ~= nil then
         return tostring(Name)
@@ -245,10 +215,8 @@ local function GetNameFromItemData(ItemData)
 end
 
 local function GetVirtualItemManager()
-    if UGCGamePartSystem ~= nil
-        and UGCGamePartSystem.IsGamePartLoaded ~= nil
-        and UGCGamePartSystem.IsGamePartLoaded("VirtualItemManager")
-    then
+    if UGCGamePartSystem ~= nil and UGCGamePartSystem.IsGamePartLoaded ~= nil and
+        UGCGamePartSystem.IsGamePartLoaded("VirtualItemManager") then
         return UGCGamePartSystem.GetGamePartGlobalActor("VirtualItemManager")
     end
 
@@ -266,12 +234,7 @@ local function GetItemConfigName(ItemID)
     end
 
     if UGCBackPackSystem ~= nil then
-        local FunctionNames = {
-            "GetItemData",
-            "GetItemConfigData",
-            "GetItemDataByItemID",
-            "GetItemDefine",
-        }
+        local FunctionNames = {"GetItemData", "GetItemConfigData", "GetItemDataByItemID", "GetItemDefine"}
         for _, FunctionName in ipairs(FunctionNames) do
             local ConfigData = TryCall(UGCBackPackSystem, FunctionName, ItemID)
             local Name = GetNameFromItemData(ConfigData)
@@ -299,12 +262,7 @@ local function GetWeaponObjectItemName(Weapon)
         return Name
     end
 
-    local FunctionNames = {
-        "GetItemName",
-        "GetName",
-        "GetDisplayName",
-        "GetItemDisplayName",
-    }
+    local FunctionNames = {"GetItemName", "GetName", "GetDisplayName", "GetItemDisplayName"}
     for _, FunctionName in ipairs(FunctionNames) do
         Name = TryCall(Weapon, FunctionName)
         if Name ~= nil and tostring(Name) ~= "" then
@@ -362,15 +320,7 @@ local function GetItemIDFromObject(Object)
         return DirectItemID
     end
 
-    local FieldNames = {
-        "ItemID",
-        "ItemId",
-        "itemID",
-        "ItemDefineID",
-        "DefineID",
-        "DefineId",
-        "ID",
-    }
+    local FieldNames = {"ItemID", "ItemId", "itemID", "ItemDefineID", "DefineID", "DefineId", "ID"}
     for _, FieldName in ipairs(FieldNames) do
         local ItemID = tonumber(Object[FieldName])
         if ItemID ~= nil then
@@ -378,13 +328,7 @@ local function GetItemIDFromObject(Object)
         end
     end
 
-    local FunctionNames = {
-        "GetItemID",
-        "GetItemId",
-        "GetItemDefineID",
-        "GetDefineID",
-        "GetDefineId",
-    }
+    local FunctionNames = {"GetItemID", "GetItemId", "GetItemDefineID", "GetDefineID", "GetDefineId"}
     for _, FunctionName in ipairs(FunctionNames) do
         local ItemID = tonumber(TryCall(Object, FunctionName))
         if ItemID ~= nil then
@@ -402,39 +346,29 @@ local function GetCurrentHeldWeapon(player)
 
     local WeaponManager = TryCall(player, "GetWeaponManager") or player.WeaponManager
     if WeaponManager ~= nil then
-        local FunctionNames = {
-            "GetCurrentWeapon",
-            "GetCurrentWeaponActor",
-            "GetCurrentActiveWeapon",
-            "GetCurrentInventoryWeapon",
-            "GetEquippedWeapon",
-        }
+        local FunctionNames = {"GetCurrentWeapon", "GetCurrentWeaponActor", "GetCurrentActiveWeapon",
+                               "GetCurrentInventoryWeapon", "GetEquippedWeapon"}
         for _, FunctionName in ipairs(FunctionNames) do
             local Weapon = TryCall(WeaponManager, FunctionName)
             if Weapon ~= nil then
                 return Weapon
             end
         end
-        local Weapon = TryCall(WeaponManager, "GetCurrentUsingWeapon", true)
-            or TryCall(WeaponManager, "GetCurrentUsingWeapon", false)
+        local Weapon = TryCall(WeaponManager, "GetCurrentUsingWeapon", true) or
+                           TryCall(WeaponManager, "GetCurrentUsingWeapon", false)
         if Weapon ~= nil then
             return Weapon
         end
     end
 
-    local PawnFunctionNames = {
-        "GetCurrentWeapon",
-        "GetCurrentWeaponActor",
-        "GetEquippedWeapon",
-    }
+    local PawnFunctionNames = {"GetCurrentWeapon", "GetCurrentWeaponActor", "GetEquippedWeapon"}
     for _, FunctionName in ipairs(PawnFunctionNames) do
         local Weapon = TryCall(player, FunctionName)
         if Weapon ~= nil then
             return Weapon
         end
     end
-    local Weapon = TryCall(player, "GetCurrentUsingWeapon", true)
-        or TryCall(player, "GetCurrentUsingWeapon", false)
+    local Weapon = TryCall(player, "GetCurrentUsingWeapon", true) or TryCall(player, "GetCurrentUsingWeapon", false)
     if Weapon ~= nil then
         return Weapon
     end
@@ -487,10 +421,8 @@ local function GetHeldWeaponAttributeItemID(player)
             return ItemID, SeriesKey, ItemName, WeaponInfo.Level
         end
 
-        return GetBestBackpackWeaponItemID(player, SeriesKey) or WeaponLevelConfig.GetItemID(SeriesKey, 1),
-            SeriesKey,
-            ItemName,
-            1
+        return GetBestBackpackWeaponItemID(player, SeriesKey) or WeaponLevelConfig.GetItemID(SeriesKey, 1), SeriesKey,
+            ItemName, 1
     end
 
     local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
@@ -503,7 +435,8 @@ local function GetHeldWeaponAttributeItemID(player)
         return nil, nil
     end
 
-    return GetBestBackpackWeaponItemID(player, SeriesKey) or WeaponLevelConfig.GetItemID(SeriesKey, 1), SeriesKey, nil, nil
+    return GetBestBackpackWeaponItemID(player, SeriesKey) or WeaponLevelConfig.GetItemID(SeriesKey, 1), SeriesKey, nil,
+        nil
 end
 
 local function DestroySoulMesh(player)
@@ -520,7 +453,8 @@ local function CreateSoulMesh(player, HunHuan)
 
     DestroySoulMesh(player)
 
-    local SoulPath = UGCMapInfoLib.GetRootLongPackagePath() .. SOUL_MESH_PATH .. "M_" .. tostring(HunHuan) .. ".M_" .. tostring(HunHuan)
+    local SoulPath = UGCMapInfoLib.GetRootLongPackagePath() .. SOUL_MESH_PATH .. "M_" .. tostring(HunHuan) .. ".M_" ..
+                         tostring(HunHuan)
     local soulMesh = UE.LoadObject(SoulPath)
     if soulMesh == nil then
         print("CreateSoulMesh load failed:", SoulPath)
@@ -528,14 +462,8 @@ local function CreateSoulMesh(player, HunHuan)
     end
 
     local staticMeshActorClass = UE.LoadClass("/Script/Engine.StaticMeshActor")
-    local soulActor = UGCActorComponentUtility.SpawnActor(
-        player,
-        staticMeshActorClass,
-        Vector.New(0, 0, 0),
-        Rotator.New(0, 0, 0),
-        SOUL_SCALE,
-        player
-    )
+    local soulActor = UGCActorComponentUtility.SpawnActor(player, staticMeshActorClass, Vector.New(0, 0, 0),
+        Rotator.New(0, 0, 0), SOUL_SCALE, player)
     if soulActor == nil then
         return
     end
@@ -546,15 +474,8 @@ local function CreateSoulMesh(player, HunHuan)
     meshComponent:K2_SetMobility(EComponentMobility.Movable)
     meshComponent:SetStaticMesh(soulMesh)
     meshComponent:SetCollisionEnabled(ECollisionEnabled.NoCollision)
-    UGCActorComponentUtility.AttachToComponent(
-        soulActor,
-        player.Mesh,
-        EAttachmentRule.SnapToTarget,
-        EAttachmentRule.SnapToTarget,
-        EAttachmentRule.KeepWorld,
-        SOUL_SOCKET,
-        false
-    )
+    UGCActorComponentUtility.AttachToComponent(soulActor, player.Mesh, EAttachmentRule.SnapToTarget,
+        EAttachmentRule.SnapToTarget, EAttachmentRule.KeepWorld, SOUL_SOCKET, false)
     meshComponent:K2_SetRelativeLocation(SOUL_OFFSET, false, {}, false)
     meshComponent:K2_SetRelativeRotation(SOUL_ROTATION, false, {}, false)
 end
@@ -596,9 +517,8 @@ function UGCPlayerPawn:EnsurePlayerTitleActor()
         return self.PlayerTitleActor
     end
 
-    local titleClass = UE.LoadClass(
-        UGCMapInfoLib.GetRootLongPackagePath()
-        .. "Asset/Blueprint/UI/BP_PlayerTitleActor.BP_PlayerTitleActor_C")
+    local titleClass = UE.LoadClass(UGCMapInfoLib.GetRootLongPackagePath() ..
+                                        "Asset/Blueprint/UI/BP_PlayerTitleActor.BP_PlayerTitleActor_C")
 
     if titleClass == nil then
         ugcprint("[UGCPlayerPawn] Title class load failed")
@@ -607,29 +527,23 @@ function UGCPlayerPawn:EnsurePlayerTitleActor()
 
     local location = self:K2_GetActorLocation()
 
-    self.PlayerTitleActor = UGCActorComponentUtility.SpawnActor(
-        self,
-        titleClass,
-        location,
-        {X = 0, Y = 0, Z = 0},
-        {X = 1, Y = 1, Z = 1},
-        self
-    )
+    self.PlayerTitleActor = UGCActorComponentUtility.SpawnActor(self, titleClass, location, {
+        X = 0,
+        Y = 0,
+        Z = 0
+    }, {
+        X = 1,
+        Y = 1,
+        Z = 1
+    }, self)
 
     if self.PlayerTitleActor == nil then
         ugcprint("[UGCPlayerPawn] PlayerTitleActor spawn failed")
         return nil
     end
 
-    UGCActorComponentUtility.AttachToComponent(
-        self.PlayerTitleActor,
-        self.CapsuleComponent,
-        EAttachmentRule.SnapToTarget,
-        EAttachmentRule.SnapToTarget,
-        EAttachmentRule.KeepRelative,
-        "",
-        false
-    )
+    UGCActorComponentUtility.AttachToComponent(self.PlayerTitleActor, self.CapsuleComponent,
+        EAttachmentRule.SnapToTarget, EAttachmentRule.SnapToTarget, EAttachmentRule.KeepRelative, "", false)
 
     AddReplicatedSubObject(self, self.PlayerTitleActor)
 
@@ -742,10 +656,8 @@ function UGCPlayerPawn:RefreshWeaponAttackBonus(bForce)
             return
         end
 
-        local ClientWeaponAttackKey = tostring(ItemID or "none")
-            .. "|" .. tostring(SeriesKey or "none")
-            .. "|" .. tostring(ItemName or "none")
-            .. "|" .. tostring(Level or "none")
+        local ClientWeaponAttackKey = tostring(ItemID or "none") .. "|" .. tostring(SeriesKey or "none") .. "|" ..
+                                          tostring(ItemName or "none") .. "|" .. tostring(Level or "none")
         self:ApplyWeaponAttackBonusLocalDisplay(ItemID, SeriesKey, ItemName, Level, bForce)
 
         if not bForce and self.LastWeaponAttackKey == ClientWeaponAttackKey then
@@ -755,12 +667,8 @@ function UGCPlayerPawn:RefreshWeaponAttackBonus(bForce)
 
         local PlayerController = GameplayStatics.GetPlayerController(self, 0)
         if PlayerController ~= nil then
-            UnrealNetwork.CallUnrealRPC(
-                PlayerController,
-                PlayerController,
-                "Server_UpdateWeaponAttackBonus",
-                tonumber(ItemID) or 0
-            )
+            UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_UpdateWeaponAttackBonus",
+                tonumber(ItemID) or 0)
         end
         return
     end
@@ -792,24 +700,20 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusLocalDisplay(ItemID, SeriesKey, Ite
     SetWeaponBonusPercent(self, AttackPercent, bForce)
 
     local BaseAttack = GetWeaponBaseAttack(self)
-    local CurrentBaseAttack = Property.GetBaseAttack(self)
+    local CurrentBaseAttack = BaseAttack
     local NormalizedAttackPercent = NormalizePercent(AttackPercent)
     local FinalAttack = BaseAttack * (1 + NormalizedAttackPercent)
     local LocalAttackPercent = 0
 
-    local LocalWeaponAttackKey = tostring(ItemID or "none")
-        .. "|" .. tostring(SeriesKey or "none")
-        .. "|" .. tostring(ItemName or "none")
-        .. "|" .. tostring(Level or "none")
-        .. "|" .. tostring(AttackPercent)
-        .. "|" .. tostring(Round2(BaseAttack))
-        .. "|" .. tostring(Round2(CurrentBaseAttack))
+    local LocalWeaponAttackKey = tostring(ItemID or "none") .. "|" .. tostring(SeriesKey or "none") .. "|" ..
+                                     tostring(ItemName or "none") .. "|" .. tostring(Level or "none") .. "|" ..
+                                     tostring(AttackPercent) .. "|" .. tostring(Round2(BaseAttack)) .. "|" ..
+                                     tostring(Round2(CurrentBaseAttack))
     if not bForce and self.LastLocalWeaponAttackDisplayKey == LocalWeaponAttackKey then
         return
     end
 
     self.LastLocalWeaponAttackDisplayKey = LocalWeaponAttackKey
-    -- Property.SetAttackPercent(self, WEAPON_ATTACK_SOURCE_KEY, LocalAttackPercent)
     -- self:ForceRefreshPropertySnapshot()
 end
 
@@ -842,42 +746,71 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     local FinalAttack = BaseAttack * (1 + NormalizedAttackPercent)
     SetWeaponBonusPercent(self, AttackPercent, bForce)
 
-    local WeaponAttackKey = tostring(ItemID or "none")
-        .. "|" .. tostring(SeriesKey or "none")
-        .. "|" .. tostring(ItemName or "none")
-        .. "|" .. tostring(Level or "none")
-        .. "|" .. tostring(AttackPercent)
-        .. "|" .. tostring(Round2(BaseAttack))
+    local WeaponAttackKey = tostring(ItemID or "none") .. "|" .. tostring(SeriesKey or "none") .. "|" ..
+                                tostring(ItemName or "none") .. "|" .. tostring(Level or "none") .. "|" ..
+                                tostring(AttackPercent) .. "|" .. tostring(Round2(BaseAttack))
     if not bForce and self.LastWeaponAttackKey == WeaponAttackKey then
         return
     end
 
     self.LastWeaponAttackKey = WeaponAttackKey
     local bSetBaseAttackSuccess = false
-    -- local bSetBaseAttackSuccess = Property.SetBaseAttack(self, FinalAttack) == true
-    -- Property.SetAttackPercent(self, WEAPON_ATTACK_SOURCE_KEY, bSetBaseAttackSuccess and 0 or AttackPercent)
     -- if bSetBaseAttackSuccess then
     --     self.LastAppliedWeaponAttackPower = FinalAttack
     -- end
 
-    ugcprint("[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID)
-        .. ", series=" .. tostring(SeriesKey)
-        .. ", name=" .. tostring(ItemName)
-        .. ", level=" .. tostring(Level)
-        .. ", attackPercent=" .. tostring(AttackPercent)
-        .. ", baseAttack=" .. tostring(BaseAttack)
-        .. ", finalAttack=" .. tostring(FinalAttack)
-        .. ", setBaseAttackSuccess=" .. tostring(bSetBaseAttackSuccess))
+    ugcprint(
+        "[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID) .. ", series=" .. tostring(SeriesKey) ..
+            ", name=" .. tostring(ItemName) .. ", level=" .. tostring(Level) .. ", attackPercent=" ..
+            tostring(AttackPercent) .. ", baseAttack=" .. tostring(BaseAttack) .. ", finalAttack=" ..
+            tostring(FinalAttack) .. ", setBaseAttackSuccess=" .. tostring(bSetBaseAttackSuccess))
 
     -- self:ForceRefreshPropertySnapshot()
 end
 
 function UGCPlayerPawn:ForceRefreshPropertySnapshot()
     self.LastPropertyWatchKey = nil
-    Property.NotifyChanged(self)
     self:NotifyPropertyChangedIfNeeded(true)
 end
---境界主动读取入口
+-- 境界主动读取入口
+function UGCPlayerPawn:RefreshStateMgrProperty(bFillHealth)
+    local playerState = self.PlayerState
+    if playerState == nil then
+        return
+    end
+
+    if playerState.GetHunHuan ~= nil then
+        self:RefreshSoulMesh(playerState:GetHunHuan())
+    end
+
+    self.LastWeaponAttackKey = nil
+    self.LastLocalWeaponAttackDisplayKey = nil
+    self.WeaponBaseAttackPower = nil
+    self:RefreshWeaponAttackBonus(true)
+
+    local baseAttack = playerState.GetBaseAttack ~= nil and playerState:GetBaseAttack() or DEFAULT_BASE_ATTACK
+    local baseMaxHp = playerState.GetBaseMaxHp ~= nil and playerState:GetBaseMaxHp() or 100
+
+    if self:HasAuthority() then
+        UGCAttributeSystem.SetGameAttributeValue(self, "AttackPower", baseAttack)
+        UGCPawnAttrSystem.SetHealthMax(self, baseMaxHp)
+        if bFillHealth then
+            UGCPawnAttrSystem.SetHealth(self, baseMaxHp)
+        end
+
+        local playerController = self.Controller
+        if playerController ~= nil then
+            UnrealNetwork.CallUnrealRPC(playerController, playerController, "Client_RefreshProperty", baseAttack,
+                baseMaxHp, nil, nil, bFillHealth == true)
+        end
+    else
+        UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty, baseAttack,
+            baseMaxHp, nil, nil, bFillHealth == true)
+    end
+
+    self:ForceRefreshPropertySnapshot()
+end
+
 function UGCPlayerPawn:GetRealmBonusResult()
     if self.RealmBonusResult == nil and self.PlayerState ~= nil and self.PlayerState.GetHunHuan ~= nil then
         UpdateRealmBonusResult(self, self.PlayerState:GetHunHuan())
@@ -897,7 +830,10 @@ function UGCPlayerPawn:NotifyPropertyChangedIfNeeded(bForce)
 
     if bForce or self.LastPropertyWatchKey ~= propertyWatchKey then
         self.LastPropertyWatchKey = propertyWatchKey
-        Property.NotifyChanged(self)
+        local hp = UGCPawnAttrSystem.GetHealth(self)
+        local maxHp = UGCPawnAttrSystem.GetHealthMax(self)
+        UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty, nil, nil, hp,
+            maxHp)
     end
 end
 
@@ -908,6 +844,20 @@ end
 
 function UGCPlayerPawn:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
     self:NotifyPropertyChangedIfNeeded(true)
+
+    local hp = UGCPawnAttrSystem.GetHealth(self)
+    local maxHp = UGCPawnAttrSystem.GetHealthMax(self)
+
+    if self:HasAuthority() then
+        local playerController = self.Controller
+        if playerController ~= nil then
+            UnrealNetwork.CallUnrealRPC(playerController, playerController, "Client_RefreshProperty", nil, nil, hp,
+                maxHp)
+        end
+    else
+        UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty, nil, nil, hp,
+            maxHp)
+    end
 end
 
 function UGCPlayerPawn:ReceiveEndPlay()
@@ -920,9 +870,7 @@ function UGCPlayerPawn:ReceiveEndPlay()
     DestroySoulMesh(self)
 
     -- Pawn 重生或离场时，主动清理附属称号 Actor。
-    if self:HasAuthority()
-        and self.PlayerTitleActor
-        and UE.IsValid(self.PlayerTitleActor) then
+    if self:HasAuthority() and self.PlayerTitleActor and UE.IsValid(self.PlayerTitleActor) then
         RemoveReplicatedSubObject(self, self.PlayerTitleActor)
         self.PlayerTitleActor:K2_DestroyActor()
         self.PlayerTitleActor = nil
@@ -930,7 +878,6 @@ function UGCPlayerPawn:ReceiveEndPlay()
 
     UGCPlayerPawn.SuperClass.ReceiveEndPlay(self)
 end
-
 
 function UGCPlayerPawn:InitPlayerState()
     local playerState = self.PlayerState
@@ -955,15 +902,14 @@ function UGCPlayerPawn:ShowZhanLi()
         return
     end
     local HunHuan = playerState:GetHunHuan()
-    --战力在这里设定,现在是魂环等级加小等级
-    local dengji = HunHuan * 10 
-    --[[-------------------这边是测试通知的---------------------------]]--
+    -- 战力在这里设定,现在是魂环等级加小等级
+    local dengji = HunHuan * 10
+    --[[-------------------这边是测试通知的---------------------------]] --
     -- UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(self, L_Enum_Event.Enum.ReFreshZhanLi, tostring(dengji))
 end
 
 function UGCPlayerPawn:GetReplicatedProperties()
     return {"__SubObjectRepList", "Lazy", "EquippedTitleID"}
 end
-
 
 return UGCPlayerPawn

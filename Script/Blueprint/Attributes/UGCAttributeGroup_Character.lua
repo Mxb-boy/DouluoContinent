@@ -1,14 +1,14 @@
 local UGCAttributeGroup_Character = {}
-local Property = UGCGameSystem.UGCRequire("Script.property.property")
+local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 
 local WATCHED_ATTRIBUTES = {
     Health = true,
     HealthMax = true,
-    AttackPower = true,
+    AttackPower = true
 }
 
 local function TryNotifyPropertyChanged(...)
-    local args = { ... }
+    local args = {...}
     local attrName = nil
     local ownerActor = nil
 
@@ -21,10 +21,10 @@ local function TryNotifyPropertyChanged(...)
     end
 
     if attrName ~= nil then
-        Property.NotifyChanged(ownerActor)
+        UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty)
     end
 end
- 
+
 --[[
 function UGCAttributeGroup_Character:ReceiveBeginPlay()
     UGCAttributeGroup_Character.SuperClass.ReceiveBeginPlay(self)
@@ -56,7 +56,7 @@ end
 --]]
 
 function UGCAttributeGroup_Character:GetFallingDamageRatio_Override(OriginalValue, AttributeOwnerActor)
-	return OriginalValue;
+    return OriginalValue;
 end
 
 function UGCAttributeGroup_Character:OnAttributeChanged(...)
@@ -76,20 +76,7 @@ function UGCAttributeGroup_Character:PostAttributeChanged(...)
 end
 
 function UGCAttributeGroup_Character:GetAttackPower_Override(OriginalValue, AttributeOwnerActor)
-    local baseAttack = tonumber(OriginalValue) or 0
-    local flatAttack = 0
-    local percentAttack = 0
-
-    if Property ~= nil then
-        if Property.GetFlatAttack ~= nil then
-            flatAttack = tonumber(Property.GetFlatAttack(AttributeOwnerActor)) or 0
-        end
-        if Property.GetAttackPercent ~= nil then
-            percentAttack = tonumber(Property.GetAttackPercent(AttributeOwnerActor)) or 0
-        end
-    end
-
-	return (baseAttack + flatAttack) * (1 + percentAttack);
+    return OriginalValue;
 end
 
 return UGCAttributeGroup_Character

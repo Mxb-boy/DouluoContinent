@@ -1,5 +1,4 @@
 local DamageSync = {}
-local Property = UGCGameSystem.UGCRequire("Script.property.property")
 
 local function TryCall(object, functionName, ...)
     if object == nil or object[functionName] == nil then
@@ -28,9 +27,8 @@ local function GetPawnFromController(controller)
         return controller.Pawn
     end
 
-    return TryCall(controller, "K2_GetPawn")
-        or TryCall(controller, "GetPawn")
-        or TryCall(controller, "GetControlledPawn")
+    return TryCall(controller, "K2_GetPawn") or TryCall(controller, "GetPawn") or
+               TryCall(controller, "GetControlledPawn")
 end
 
 local function GetInstigatorPawn(eventInstigator, damageCauser)
@@ -44,8 +42,7 @@ local function GetInstigatorPawn(eventInstigator, damageCauser)
         return pawn
     end
 
-    pawn = TryCall(damageCauser, "GetInstigator")
-        or TryCall(damageCauser, "GetOwner")
+    pawn = TryCall(damageCauser, "GetInstigator") or TryCall(damageCauser, "GetOwner")
     if pawn ~= nil then
         return pawn
     end
@@ -57,13 +54,6 @@ function DamageSync.GetPanelAttack(eventInstigator, damageCauser)
     local pawn = GetInstigatorPawn(eventInstigator, damageCauser)
     if pawn == nil then
         return nil
-    end
-
-    if Property ~= nil and Property.GetAttack ~= nil then
-        local attack = tonumber(Property.GetAttack(pawn))
-        if attack ~= nil and attack > 0 then
-            return attack
-        end
     end
 
     if UGCAttributeSystem ~= nil and UGCAttributeSystem.GetGameAttributeValue ~= nil then

@@ -59,12 +59,80 @@
 ---@field TextBlock_0 UTextBlock
 ---@field TextBlock_1 UTextBlock
 ---@field TextBlock_49 UTextBlock
+---@field TextBlock_50 UTextBlock
 ---@field TextBlock_109 UTextBlock
 ---@field TextBlock_110 UTextBlock
 ---@field TextBlock_112 UTextBlock
 ---@field TextBlock_114 UTextBlock
 ---@field TextBlock_303 UTextBlock
---Edit Below--
+-- Edit Below--
+---@class UI02_C:UUserWidget
+---@field Button_0 UButton
+---@field Button_2 UButton
+---@field Button_3 UButton
+---@field Button_4 UButton
+---@field Button_5 UButton
+---@field Button_92 UButton
+---@field Button_93 UButton
+---@field Button_94 UButton
+---@field Button_95 UButton
+---@field Button_97 UButton
+---@field Button_99 UButton
+---@field Button_134 UButton
+---@field Button_135 UButton
+---@field Button_144 UButton
+---@field Button_145 UButton
+---@field Button_147 UButton
+---@field Button_149 UButton
+---@field Button_150 UButton
+---@field Button_151 UButton
+---@field Button_152 UButton
+---@field Button_153 UButton
+---@field Button_154 UButton
+---@field Button_155 UButton
+---@field Button_156 UButton
+---@field Button_157 UButton
+---@field Button_158 UButton
+---@field Button_226 UButton
+---@field Button_227 UButton
+---@field Button_228 UButton
+---@field gjl UTextBlock
+---@field hp UTextBlock
+---@field Image_0 UImage
+---@field Image_1 UImage
+---@field Image_2 UImage
+---@field Image_3 UImage
+---@field Image_4 UImage
+---@field Image_109 UImage
+---@field Image_169 UImage
+---@field Image_225 UImage
+---@field Image_246 UImage
+---@field Image_302 UImage
+---@field Image_303 UImage
+---@field Image_386 UImage
+---@field Image_387 UImage
+---@field Image_388 UImage
+---@field Image_389 UImage
+---@field Image_392 UImage
+---@field Image_393 UImage
+---@field Image_395 UImage
+---@field Image_396 UImage
+---@field Image_397 UImage
+---@field Image_398 UImage
+---@field Image_542 UImage
+---@field ProgressBar_0 UProgressBar
+---@field ProgressBar_1 UProgressBar
+---@field ProgressBar_2 UProgressBar
+---@field ProgressBar_122 UProgressBar
+---@field TextBlock_0 UTextBlock
+---@field TextBlock_1 UTextBlock
+---@field TextBlock_49 UTextBlock
+---@field TextBlock_109 UTextBlock
+---@field TextBlock_110 UTextBlock
+---@field TextBlock_112 UTextBlock
+---@field TextBlock_114 UTextBlock
+---@field TextBlock_303 UTextBlock
+-- Edit Below--
 ---@class UI02_C:UUserWidget
 ---@field Button_0 UButton
 ---@field Button_5 UButton
@@ -133,8 +201,8 @@ UGCGameSystem.UGCRequire("ExtendResource.GiftPack.OfficialPackage.Script.GiftPac
 local TaskManager = UGCGameSystem.UGCRequire("ExtendResource.TaskTemplate.OfficialPackage.Script.Task.TaskManager")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
-local Property = UGCGameSystem.UGCRequire("Script.property.property")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
+local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 
 local UI02 = {
     bInitDoOnce = false
@@ -197,18 +265,24 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_227)
     self:ApplyButtonEffect(self.Button_228)
 
-    UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
-    UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
     self:RefreshWeaponBonusText()
     self:RefreshRealmNameText()
-    Property.RefreshUI(self)
+    UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
+    UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
+    StateMgr:SetUI(self)
+
 end
 
-function UI02:OnRefreshProperty()
-    Property.RefreshUI(self)
+function UI02:OnRefreshProperty(baseAttack, baseMaxHp, hp, maxHp, bFillHealth)
+    if baseAttack == nil and baseMaxHp == nil then
+        StateMgr:RefreshHpText(nil, maxHp or StateMgr:GetFinalMaxHp(), hp)
+        return
+    end
+
+    StateMgr:RefreshFromPlayerState(nil, baseAttack, baseMaxHp, hp, maxHp, bFillHealth)
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
     self:RefreshWeaponBonusText()
@@ -216,45 +290,43 @@ function UI02:OnRefreshProperty()
 end
 
 function UI02:RefreshRealmNameText()
-    if self.TextBlock_49 == nil then
-        return
-    end
+    -- if self.TextBlock_49 == nil then
+    --     return
+    -- end
 
-    local Level = 1
-    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
-    if PlayerController ~= nil and PlayerController.RealmLevel ~= nil then
-        Level = tonumber(PlayerController.RealmLevel) or Level
-    elseif PlayerController ~= nil and PlayerController.PlayerState ~= nil
-        and PlayerController.PlayerState.GetHunHuan ~= nil
-    then
-        Level = tonumber(PlayerController.PlayerState:GetHunHuan()) or Level
-    end
+    -- local Level = 1
+    -- local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    -- if PlayerController ~= nil and PlayerController.RealmLevel ~= nil then
+    --     Level = tonumber(PlayerController.RealmLevel) or Level
+    -- elseif PlayerController ~= nil and PlayerController.PlayerState ~= nil and PlayerController.PlayerState.GetHunHuan ~=
+    --     nil then
+    --     Level = tonumber(PlayerController.PlayerState:GetHunHuan()) or Level
+    -- end
 
-    local Config = RealmConfig.Get(Level)
-    self.TextBlock_49:SetText("境界：" .. RealmConfig.GetDisplayName(Config))
+    -- local Config = RealmConfig.Get(Level)
+    -- self.TextBlock_49:SetText("境界：" .. RealmConfig.GetDisplayName(Config))
 end
 
 function UI02:RefreshWeaponBonusText()
-    if self.TextBlock_112 == nil then
-        return
-    end
+    -- if self.TextBlock_112 == nil then
+    --     return
+    -- end
 
-    local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
-    local AttackPercent = 0
-    if PlayerPawn ~= nil and PlayerPawn.GetCurrentWeaponBonusPercent ~= nil then
-        AttackPercent = PlayerPawn:GetCurrentWeaponBonusPercent()
-    elseif PlayerPawn ~= nil then
-        AttackPercent = PlayerPawn.LastWeaponAttackPercent
-    end
-    AttackPercent = AttackPercent or 0
-    if math.floor(AttackPercent) == AttackPercent then
-        AttackPercent = math.floor(AttackPercent)
-    end
+    -- local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    -- local AttackPercent = 0
+    -- if PlayerPawn ~= nil and PlayerPawn.GetCurrentWeaponBonusPercent ~= nil then
+    --     AttackPercent = PlayerPawn:GetCurrentWeaponBonusPercent()
+    -- elseif PlayerPawn ~= nil then
+    --     AttackPercent = PlayerPawn.LastWeaponAttackPercent
+    -- end
+    -- AttackPercent = AttackPercent or 0
+    -- if math.floor(AttackPercent) == AttackPercent then
+    --     AttackPercent = math.floor(AttackPercent)
+    -- end
 
-    self.TextBlock_112:SetText("武器加成：" .. tostring(AttackPercent) .. "%")
+    -- self.TextBlock_112:SetText("武器加成：" .. tostring(AttackPercent) .. "%")
 end
 
--- 签到
 function UI02:GetLocalPlayerState()
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
     if PlayerController ~= nil and PlayerController.PlayerState ~= nil then
@@ -703,6 +775,8 @@ function UI02:Button_0_OnClicked()
             GiftPackUI:AddToViewport(12000)
         end
     end
+    StateMgr:WuQiTextShow(20)
+
 end
 
 -- 自动拾取
@@ -719,12 +793,14 @@ function UI02:Button_227_OnClicked()
         PC:StopAutoMeleeAttack()
     end
     self:OnhandleTest(self.bAutoPickEnabled and "自动已开启" or "自动已关闭")
+
+    StateMgr:WuQiTextShow(20)
 end
 
 function UI02:OnhandleTest(str)
-    if self.TextBlock_303 ~= nil then
-        self.TextBlock_303:SetText(tostring(str))
-    end
+    -- if self.TextBlock_303 ~= nil then
+    --     self.TextBlock_303:SetText(tostring(str))
+    -- end
 end
 
 return UI02

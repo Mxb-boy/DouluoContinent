@@ -10,7 +10,17 @@ function HunHuan_01:OnUseV2()
     local pawn = UGCGameSystem.GetPlayerPawnByPlayerController(player) or player
     local count = UGCBackpackSystemV2.GetItemCountV2(player, itemID)
 
-    L_Com.UseHunHuan(pawn, itemID, count)
+    --[[-------------------测试加baseatk---------------------------]] --
+
+    local ok, newBaseAttack, newBaseMaxHp = L_Com.UseHunHuan(pawn, itemID, count)
+    if not ok then
+        return
+    end
+
+    if UnrealNetwork ~= nil and UnrealNetwork.CallUnrealRPC ~= nil then
+        UnrealNetwork.CallUnrealRPC(player, player, "Client_RefreshProperty", newBaseAttack, newBaseMaxHp)
+    end
+
     UGCBackpackSystemV2.RemoveItemV2(player, itemID, count)
 end
 

@@ -82,6 +82,9 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                     UnrealNetwork.CallUnrealRPC(PC, PC, "Client_YXWDInvincibleBuffChanged", 1, -2)
                 end
                 -- 恢复上次存档的血量
+                if PC.Pawn.RefreshStateMgrProperty ~= nil then
+                    PC.Pawn:RefreshStateMgrProperty(false)
+                end
                 if PlayerState.RestoreHP then
                     PlayerState:RestoreHP(PC.Pawn)
                 end
@@ -157,6 +160,9 @@ function UGCGameMode:UGC_PlayerRespawnEvent(RespawnedController)
     UGCTimerUtility.CreateLuaTimer(1, function()
         if PC and PC.Pawn then
             RestoreBackpackSnapshot(PlayerKey, PC.Pawn)
+            if PC.Pawn.RefreshStateMgrProperty ~= nil then
+                PC.Pawn:RefreshStateMgrProperty(true)
+            end
         end
     end, false)
 end
@@ -184,6 +190,9 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
             UGCGameSystem.GetPlayerControllerByPlayerKey(VictimPlayerKey)
         if RespawnedController and RespawnedController.Pawn then
             RestoreBackpackSnapshot(VictimPlayerKey, RespawnedController.Pawn)
+            if RespawnedController.Pawn.RefreshStateMgrProperty ~= nil then
+                RespawnedController.Pawn:RefreshStateMgrProperty(true)
+            end
         end
     end, false)
 end

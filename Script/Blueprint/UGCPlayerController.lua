@@ -12,6 +12,7 @@ local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
 local TitleSystem = UGCGameSystem.UGCRequire("Script.Blueprint.Title.TitleSystem")
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
+local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
     QNHH = 8310036
@@ -82,8 +83,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_EndFlyState", "Server_FlyMove", "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus",
         "Server_AddProbabilityBonus", "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm",
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
-        "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult",
-        "Client_CompensationReceived", "Server_TestCompensation"
+        "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult", "Client_RefreshProperty",
+        "Server_SetFinalMaxHp", "Server_SetFinalAttack"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -920,6 +921,16 @@ function UGCPlayerController:Client_ProbabilityBonusChanged(str)
     end
 end
 
+function UGCPlayerController:Client_RefreshProperty(baseAttack, baseMaxHp, hp, maxHp, bFillHealth)
+    if self.MainUIInstance ~= nil and self.MainUIInstance.OnRefreshProperty ~= nil then
+        self.MainUIInstance:OnRefreshProperty(baseAttack, baseMaxHp, hp, maxHp, bFillHealth)
+        return
+    end
+
+    UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty, baseAttack, baseMaxHp,
+        hp, maxHp, bFillHealth)
+end
+
 function UGCPlayerController:Client_YXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
     if self.MainUIInstance ~= nil and self.MainUIInstance.OnYXWDInvincibleBuffChanged ~= nil then
         self.MainUIInstance:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
@@ -961,6 +972,36 @@ function UGCPlayerController:Client_YXWDInvincibleActiveChanged(bActive)
     end
 end
 
+function UGCPlayerController:Server_SetFinalMaxHp(finalMaxHp, bFillHealth)
+    local pawn = self.Pawn
+    if pawn == nil then
+        return
+    end
+    finalMaxHp = tonumber(finalMaxHp) or 100
+    local oldMaxHp = UGCPawnAttrSystem.GetHealthMax(pawn) or finalMaxHp
+    local oldHp = UGCPawnAttrSystem.GetHealth(pawn) or oldMaxHp
+    UGCPawnAttrSystem.SetHealthMax(pawn, finalMaxHp)
+
+    if bFillHealth then
+        oldHp = finalMaxHp
+    else
+        local addHp = finalMaxHp - oldMaxHp
+        if addHp > 0 then
+            oldHp = oldHp + addHp
+        end
+    end
+    UGCPawnAttrSystem.SetHealth(pawn, math.min(oldHp, finalMaxHp))
+end
+
+function UGCPlayerController:Server_SetFinalAttack(finalAttack)
+    local pawn = self.Pawn
+    if pawn == nil then
+        return
+    end
+    finalAttack = tonumber(finalAttack) or 40
+    UGCAttributeSystem.SetGameAttributeValue(pawn, "AttackPower", finalAttack)
+end
+
 local AUTO_PICK_RANGE = 600
 local AUTO_PICK_INTERVAL = 0.5
 function UGCPlayerController:Server_SetAutoPickEnabled(bEnabled)
@@ -981,8 +1022,8 @@ function UGCPlayerController:Server_SetAutoPickEnabled(bEnabled)
     end, true, TimerName)
 
     --[[--------------------这边测试加战力--------------------------]] --
-    local pawn = self.Pawn or self:K2_GetPawn()
-    L_Com.UseHunHuan(pawn, 8310055, 100)
+    -- local pawn = self.Pawn or self:K2_GetPawn()
+    -- L_Com.UseHunHuan(pawn, 8310055, 100)
 end
 
 --[[----------------------自动攻击------------------------]] --

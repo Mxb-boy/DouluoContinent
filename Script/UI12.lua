@@ -15,11 +15,10 @@
 ---@field NewUGCWidgetBlueprint2_C_6 NewUGCWidgetBlueprint2_C
 ---@field ScrollBox_82 UScrollBox
 ---@field TextBlock_75 UTextBlock
---Edit Below--
+-- Edit Below--
 local UI12 = {}
 
 local TeleportConfig = UGCGameSystem.UGCRequire("Script.TeleportConfig")
-local Property = UGCGameSystem.UGCRequire("Script.property.property")
 
 -- 显式加载子控件模块，确保 UnLua 绑定生效
 UGCGameSystem.UGCRequire("Script.NewUGCWidgetBlueprint2")
@@ -55,7 +54,8 @@ local function DoTeleport(pointIndex, worldContext)
     end
 
     UnrealNetwork.CallUnrealRPC(pc, pc, "Server_TeleportToLocation", loc.x, loc.y, loc.z + 100)
-    ugcprint("[UI12] Teleport to point " .. tostring(pointIndex) .. " at (" .. loc.x .. "," .. loc.y .. "," .. loc.z .. ")")
+    ugcprint("[UI12] Teleport to point " .. tostring(pointIndex) .. " at (" .. loc.x .. "," .. loc.y .. "," .. loc.z ..
+                 ")")
 end
 
 function UI12:Construct()
@@ -77,8 +77,9 @@ function UI12:RefreshList()
     local playerPawn = UGCGameSystem.GetLocalPlayerPawn()
     local currentPower = 0
     if playerPawn then
-        local snapshot = Property.GetSnapshot(playerPawn, playerPawn)
-        currentPower = snapshot.CombatPower or 0
+        local attack = UGCAttributeSystem.GetGameAttributeValue(playerPawn, "AttackPower") or 0
+        local maxHp = UGCPawnAttrSystem.GetHealthMax(playerPawn) or 0
+        currentPower = attack + maxHp
     end
     ugcprint("[UI12] RefreshList, currentPower=" .. tostring(currentPower))
 
@@ -88,8 +89,7 @@ function UI12:RefreshList()
     end
 
     -- 加载 NewUGCWidgetBlueprint2 类
-    local itemPath = UGCMapInfoLib.GetRootLongPackagePath()
-        .. "Asset/NewUGCWidgetBlueprint2.NewUGCWidgetBlueprint2_C"
+    local itemPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/NewUGCWidgetBlueprint2.NewUGCWidgetBlueprint2_C"
     local itemClass = UE.LoadClass(itemPath)
     if itemClass == nil then
         ugcprint("[UI12] NewUGCWidgetBlueprint2 class load failed: " .. itemPath)
@@ -122,7 +122,8 @@ function UI12:RefreshList()
             if not ok then
                 ugcprint("[UI12] Setup error at index " .. tostring(i) .. ": " .. tostring(err))
             else
-                ugcprint("[UI12] item " .. tostring(i) .. " OK: " .. point.name .. " " .. powerText .. " enabled=" .. tostring(canEnter))
+                ugcprint("[UI12] item " .. tostring(i) .. " OK: " .. point.name .. " " .. powerText .. " enabled=" ..
+                             tostring(canEnter))
             end
         end
     end
