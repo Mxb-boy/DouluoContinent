@@ -1,12 +1,18 @@
- --[[-------------------这里放角色状态，重连后可以恢复数据---------------------------]]--
+--[[-------------------这里放角色状态，重连后可以恢复数据---------------------------]] --
 local UGCPlayerState = {
-    HunHuan=1,--大魂环
-    HunHuan_Little=1,--小等级
-    Probability_Bonus=0,--掉落加成，比如本来掉落概率是20%,这个值是20，那就是20*1.2
-    RegenPercent=5,--战场回血：每秒恢复百分比（默认5%）
-    HP=-1,--上一次离场时保存的血量，-1 表示从未存档
- -- 跨对局存档: 被 SaveToArchive 消费
-    ArchiveUID=nil,
+    HunHuan = 1, -- 大魂环
+    Probability_Bonus = 0, -- 掉落加成，比如本来掉落概率是20%,这个值是20，那就是20*1.2
+    RegenPercent = 5, -- 战场回血：每秒恢复百分比（默认5%）
+    HP = -1, -- 上一次离场时保存的血量，-1 表示从未存档
+    -- 跨对局存档: 被 SaveToArchive 消费
+    YXWD_InvincibleBuff = 0,
+    YXWD_InvincibleBuffActive = false,
+    YXWD_InvincibleBuffToken = 0,
+    LotteryState = {},
+    ArchiveUID = nil,
+
+    BaseAttack = 40, -- 基础攻击力
+    BaseMaxHp = 100 -- 基础最大血量
 }
 
 -- ============================================================
@@ -14,22 +20,40 @@ local UGCPlayerState = {
 -- 新增持久化数据只需在下面加一行即可：
 --   { key = "存档键名", field = "PlayerState 字段名", default = 默认值 }
 -- ============================================================
-local ARCHIVE_KEYS = {
-    { key = "HunHuan", field = "HunHuan", default = 1 },
-    { key = "HunHuan_Little", field = "HunHuan_Little", default = 1 },
-    { key = "RegenPercent", field = "RegenPercent", default = 5 },
-    { key = "HP", field = "HP", default = -1 },
-    -- 示例: { key = "Gold",    field = "Gold",    default = 0 },
+local ARCHIVE_KEYS = {{
+    key = "HunHuan",
+    field = "HunHuan",
+    default = 1
+}, {
+    key = "RegenPercent",
+    field = "RegenPercent",
+    default = 5
+}, {
+    key = "HP",
+    field = "HP",
+    default = -1
+}, {
+    key = "YXWD_InvincibleBuff",
+    field = "YXWD_InvincibleBuff",
+    default = 0
+}, {
+    key = "LotteryState",
+    field = "LotteryState",
+    default = {}
+}, {
+    key = "BaseAttack",
+    field = "BaseAttack",
+    default = 40
+}, {
+    key = "BaseMaxHp",
+    field = "BaseMaxHp",
+    default = 100
+} -- 示例: { key = "Gold",    field = "Gold",    default = 0 },
 }
 
 function UGCPlayerState:GetReplicatedProperties()
-    return {
-        "HunHuan",
-        "HunHuan_Little",
-        "Probability_Bonus",
-        "RegenPercent",
-        "HP",
-    }
+    return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "BaseAttack",
+            "BaseMaxHp"}
 end
 
 -- ------ 跨对局存档 ------ --
@@ -84,18 +108,7 @@ function UGCPlayerState:GetHunHuan()
 end
 
 function UGCPlayerState:SetHunHuan(value)
-     self.HunHuan=value
-    self:CallRefreshZhanli()
-    self:SaveToArchive()
-end
-
-function UGCPlayerState:GetHunHuan_Little()
-    return self.HunHuan_Little
-end
-
-function UGCPlayerState:SetHunHuan_Little(value)
-     self.HunHuan_Little=value
-    self:CallRefreshZhanli()
+    self.HunHuan = value
     self:SaveToArchive()
 end
 
@@ -117,8 +130,57 @@ function UGCPlayerState:SetHP(value)
     self:SaveToArchive()
 end
 
---- 从 Pawn 读取当前血量并写入存档
 ---@param playerPawn userdata 玩家 Pawn
+function UGCPlayerState:GetBaseAttack()
+    return self.BaseAttack
+end
+
+function UGCPlayerState:SetBaseAttack(value)
+    self.BaseAttack = tonumber(value) or 40
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetBaseMaxHp()
+    return self.BaseMaxHp
+end
+
+function UGCPlayerState:SetBaseMaxHp(value)
+    self.BaseMaxHp = tonumber(value) or 100
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetYXWD_InvincibleBuff()
+    return tonumber(self.YXWD_InvincibleBuff) == 1
+end
+
+function UGCPlayerState:SetYXWD_InvincibleBuff(value)
+    self.YXWD_InvincibleBuff = (value == true or tonumber(value) == 1) and 1 or 0
+    if self.YXWD_InvincibleBuff == 1 then
+        self.YXWD_InvincibleBuffActive = true
+    end
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:SetYXWD_InvincibleBuffActive(value)
+    self.YXWD_InvincibleBuffActive = (value == true or tonumber(value) == 1)
+end
+
+function UGCPlayerState:IsYXWDInvincibleBuffActive()
+    return self.YXWD_InvincibleBuffActive == true
+end
+
+function UGCPlayerState:GetLotteryState()
+    if self.LotteryState == nil then
+        self.LotteryState = {}
+    end
+    return self.LotteryState
+end
+
+function UGCPlayerState:SetLotteryState(value)
+    self.LotteryState = value or {}
+    self:SaveToArchive()
+end
+
 function UGCPlayerState:SaveCurrentHP(playerPawn)
     if playerPawn == nil then
         return
@@ -153,17 +215,8 @@ function UGCPlayerState:GetProbability_Bonus()
 end
 
 function UGCPlayerState:AddProbability_Bonus(value)
-     self.Probability_Bonus=math.min((self.Probability_Bonus or 0)+(value or 0),100)
+    self.Probability_Bonus = math.min((self.Probability_Bonus or 0) + (value or 0), 100)
 
 end
-
-
-function  UGCPlayerState:CallRefreshZhanli()
-    local playerPawn = UGCGameSystem.GetLocalPlayerPawn()
-    if playerPawn ~= nil then
-        UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(playerPawn, L_Enum_Event.Enum.ReFreshZhanLi_01)
-    end
-end
-
 
 return UGCPlayerState

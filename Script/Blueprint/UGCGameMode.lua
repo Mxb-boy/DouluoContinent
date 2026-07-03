@@ -6,68 +6,10 @@ local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelCon
 -- 保存玩家死亡前的背包快照，键为 PlayerKey。
 local PlayerBackpackSnapshots = {};
 
-local WingActorClassPaths = {
-    "Asset/ChiBang/Models/Model1/cb_1.cb_1_C",
-    "Asset/ChiBang/Models/Model10/CB_2.CB_2_C",
-    "Asset/ChiBang/Models/Model11/CB_3.CB_3_C",
-    "Asset/ChiBang/Models/Model12/CB_4.CB_4_C",
-    "Asset/ChiBang/Models/Model8/CB_T5.CB_T5_C",
-    "Asset/ChiBang/Models/Model9/cb_6.cb_6_C",
-}
-local WingDestroyDistanceSq = 200 * 200
-
-local function IsActorNearPawn(Actor, PlayerPawn)
-    if Actor == nil or PlayerPawn == nil or Actor.K2_GetActorLocation == nil or PlayerPawn.K2_GetActorLocation == nil then
-        return false
-    end
-
-    local ActorOk, ActorLocation = pcall(Actor.K2_GetActorLocation, Actor)
-    local PawnOk, PawnLocation = pcall(PlayerPawn.K2_GetActorLocation, PlayerPawn)
-    if not ActorOk or not PawnOk or ActorLocation == nil or PawnLocation == nil then
-        return false
-    end
-
-    local DX = (ActorLocation.X or 0) - (PawnLocation.X or 0)
-    local DY = (ActorLocation.Y or 0) - (PawnLocation.Y or 0)
-    local DZ = (ActorLocation.Z or 0) - (PawnLocation.Z or 0)
-    return DX * DX + DY * DY + DZ * DZ <= WingDestroyDistanceSq
-end
-
-local function IsActorOwnedByPawn(Actor, PlayerPawn)
-    if Actor == nil or PlayerPawn == nil then
-        return false
-    end
-
-    if Actor.OwnerPawn == PlayerPawn then
-        return true
-    end
-
-    if UGCActorComponentUtility ~= nil and UGCActorComponentUtility.GetOwner ~= nil then
-        local Success, Owner = pcall(UGCActorComponentUtility.GetOwner, Actor)
-        if Success and Owner == PlayerPawn then
-            return true
-        end
-    end
-
-    return IsActorNearPawn(Actor, PlayerPawn)
-end
-
-local function DestroyPlayerWingActors(PlayerPawn)
-    if PlayerPawn == nil or UGCActorComponentUtility == nil or UGCActorComponentUtility.GetAllActorsOfClass == nil then
-        return
-    end
-
-    local RootPath = UGCMapInfoLib.GetRootLongPackagePath()
-    for _, ClassPath in ipairs(WingActorClassPaths) do
-        local WingClass = UE.LoadClass(RootPath .. ClassPath)
-        if WingClass ~= nil then
-            local WingActors = UGCActorComponentUtility.GetAllActorsOfClass(PlayerPawn, WingClass)
-            for _, WingActor in ipairs(WingActors or {}) do
-                if IsActorOwnedByPawn(WingActor, PlayerPawn) then
-                    WingActor:K2_DestroyActor()
-                end
-            end
-        end
+local function AddV2ItemIfMissing(PlayerPawn, ItemID, Count)
+    local CurrentCount = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID) or 0
+    if CurrentCount <= 0 then
+        UGCBackpackSystemV2.AddItemV2(PlayerPawn, ItemID, Count)
     end
 end
 
@@ -76,13 +18,13 @@ local function SaveBackpackSnapshot(PlayerKey, PlayerPawn)
         return
     end
 
-    local AllItemData = UGCBackPackSystem.GetAllItemData(PlayerPawn)
+    local AllItemData = UGCBackpackSystemV2.GetAllItemDefineIDsV2(PlayerPawn)
     local Snapshot = {}
 
     if AllItemData then
-        for _, ItemData in pairs(AllItemData) do
-            local ItemID = tonumber(ItemData.ItemID)
-            local Count = tonumber(ItemData.Count) or 0
+        for _, ItemDefineID in pairs(AllItemData) do
+            local ItemID = tonumber(ItemDefineID.TypeSpecificID)
+            local Count = tonumber(UGCBackpackSystemV2.GetItemCountByDefineIDV2(PlayerPawn, ItemDefineID)) or 0
             if ItemID and Count > 0 then
                 Snapshot[ItemID] = (Snapshot[ItemID] or 0) + Count
             end
@@ -101,10 +43,10 @@ local function RestoreBackpackSnapshot(PlayerKey, PlayerPawn)
 
     -- 只补回新背包中缺少的数量，防止引擎已经保留的物品被重复添加。
     for ItemID, SavedCount in pairs(Snapshot) do
-        local CurrentCount = UGCBackPackSystem.GetItemCount(PlayerPawn, ItemID) or 0
+        local CurrentCount = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID) or 0
         local MissingCount = SavedCount - CurrentCount
         if MissingCount > 0 then
-            UGCBackPackSystem.AddItem(PlayerPawn, ItemID, MissingCount)
+            UGCBackpackSystemV2.AddItemV2(PlayerPawn, ItemID, MissingCount)
         end
     end
 
@@ -140,6 +82,9 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                     UnrealNetwork.CallUnrealRPC(PC, PC, "Client_YXWDInvincibleBuffChanged", 1, -2)
                 end
                 -- 恢复上次存档的血量
+                if PC.Pawn.RefreshStateMgrProperty ~= nil then
+                    PC.Pawn:RefreshStateMgrProperty(false)
+                end
                 if PlayerState.RestoreHP then
                     PlayerState:RestoreHP(PC.Pawn)
                 end
@@ -150,10 +95,10 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
 
             -- 2. 发初始武器
             for _, ItemID in ipairs(WeaponLevelConfig.GetAllBaseItemIDs()) do
-                UGCBackpackSystemV2.AddItemV2(PC.Pawn, ItemID, 1)
+                AddV2ItemIfMissing(PC.Pawn, ItemID, 1)
             end
             if HTCLv2ItemID ~= nil then
-                UGCBackpackSystemV2.AddItemV2(PC.Pawn, HTCLv2ItemID, 1)
+                AddV2ItemIfMissing(PC.Pawn, HTCLv2ItemID, 1)
             end
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310046, 1)
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310047, 1)
@@ -182,6 +127,8 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310052, 99)
             -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310050, 99)
 
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310008, 1000)
+
             if PC.Pawn.RefreshWeaponAttackBonus ~= nil then
                 PC.Pawn:RefreshWeaponAttackBonus(true)
                 if PC.Pawn.ForceRefreshPropertySnapshot ~= nil then
@@ -196,7 +143,6 @@ end
 -- 此事件提供死亡前的旧 Pawn，必须在这里读取背包和血量。
 function UGCGameMode:UGC_PlayerKilledEvent(Killer, VictimPlayer, VictimPawn, DamageType)
     if VictimPlayer and VictimPawn then
-        DestroyPlayerWingActors(VictimPawn)
         SaveBackpackSnapshot(VictimPlayer.PlayerKey, VictimPawn)
         -- 保存死亡前的血量到跨对局存档
         local PS = VictimPlayer.PlayerState
@@ -214,6 +160,9 @@ function UGCGameMode:UGC_PlayerRespawnEvent(RespawnedController)
     UGCTimerUtility.CreateLuaTimer(1, function()
         if PC and PC.Pawn then
             RestoreBackpackSnapshot(PlayerKey, PC.Pawn)
+            if PC.Pawn.RefreshStateMgrProperty ~= nil then
+                PC.Pawn:RefreshStateMgrProperty(true)
+            end
         end
     end, false)
 end
@@ -224,7 +173,6 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
     if not PlayerBackpackSnapshots[VictimPlayerKey] then
         local VictimController = UGCGameSystem.GetPlayerControllerByPlayerKey(VictimPlayerKey)
         if VictimController and VictimController.Pawn then
-            DestroyPlayerWingActors(VictimController.Pawn)
             SaveBackpackSnapshot(VictimPlayerKey, VictimController.Pawn)
             -- 保存死亡前的血量
             local PS = VictimController.PlayerState
@@ -242,6 +190,9 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
             UGCGameSystem.GetPlayerControllerByPlayerKey(VictimPlayerKey)
         if RespawnedController and RespawnedController.Pawn then
             RestoreBackpackSnapshot(VictimPlayerKey, RespawnedController.Pawn)
+            if RespawnedController.Pawn.RefreshStateMgrProperty ~= nil then
+                RespawnedController.Pawn:RefreshStateMgrProperty(true)
+            end
         end
     end, false)
 end
