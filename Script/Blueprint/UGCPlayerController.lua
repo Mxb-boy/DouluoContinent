@@ -84,7 +84,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_AddProbabilityBonus", "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm",
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult", "Client_RefreshProperty",
-        "Server_SetFinalMaxHp", "Server_SetFinalAttack"
+        "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
+        "Client_SetAutoFeatureButtonHidden"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -1044,6 +1045,27 @@ function UGCPlayerController:StartAutoMeleeAttack()
     UGCTimerUtility.CreateLuaTimer(Auto_Melee_Attack, function()
         self:TryAutoMeleeAttack()
     end, true, "AutoMeleeAttack")
+end
+
+function UGCPlayerController:Client_StartAutoMeleeAttack()
+    self:StartAutoMeleeAttack()
+    if self.MainUIInstance ~= nil then
+        self.MainUIInstance.bAutoMeleeAttackEnabled = true
+    end
+end
+
+function UGCPlayerController:Client_SetAutoFeatureButtonHidden(FeatureName)
+    if self.PlayerState ~= nil then
+        if FeatureName == "AutoPick" then
+            self.PlayerState.AutoPickButtonHidden = 1
+        elseif FeatureName == "AutoAttack" then
+            self.PlayerState.AutoAttackButtonHidden = 1
+        end
+    end
+
+    if self.MainUIInstance ~= nil and self.MainUIInstance.RefreshYXWDPurchaseButton ~= nil then
+        self.MainUIInstance:RefreshYXWDPurchaseButton()
+    end
 end
 
 function UGCPlayerController:TryAutoMeleeAttack()

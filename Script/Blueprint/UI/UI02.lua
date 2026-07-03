@@ -35,6 +35,84 @@
 ---@field Image_2 UImage
 ---@field Image_3 UImage
 ---@field Image_4 UImage
+---@field Image_5 UImage
+---@field Image_6 UImage
+---@field Image_7 UImage
+---@field Image_8 UImage
+---@field Image_9 UImage
+---@field Image_10 UImage
+---@field Image_11 UImage
+---@field Image_12 UImage
+---@field Image_13 UImage
+---@field Image_14 UImage
+---@field Image_109 UImage
+---@field Image_169 UImage
+---@field Image_225 UImage
+---@field Image_246 UImage
+---@field Image_302 UImage
+---@field Image_303 UImage
+---@field Image_386 UImage
+---@field Image_387 UImage
+---@field Image_388 UImage
+---@field Image_389 UImage
+---@field Image_392 UImage
+---@field Image_393 UImage
+---@field Image_395 UImage
+---@field Image_396 UImage
+---@field Image_397 UImage
+---@field Image_398 UImage
+---@field Image_542 UImage
+---@field ProgressBar_0 UProgressBar
+---@field ProgressBar_1 UProgressBar
+---@field ProgressBar_2 UProgressBar
+---@field ProgressBar_122 UProgressBar
+---@field TextBlock_0 UTextBlock
+---@field TextBlock_1 UTextBlock
+---@field TextBlock_49 UTextBlock
+---@field TextBlock_50 UTextBlock
+---@field TextBlock_109 UTextBlock
+---@field TextBlock_110 UTextBlock
+---@field TextBlock_112 UTextBlock
+---@field TextBlock_114 UTextBlock
+---@field TextBlock_303 UTextBlock
+--Edit Below--
+---@class UI02_C:UUserWidget
+---@field Button_0 UButton
+---@field Button_2 UButton
+---@field Button_3 UButton
+---@field Button_4 UButton
+---@field Button_5 UButton
+---@field Button_92 UButton
+---@field Button_93 UButton
+---@field Button_94 UButton
+---@field Button_95 UButton
+---@field Button_97 UButton
+---@field Button_99 UButton
+---@field Button_134 UButton
+---@field Button_135 UButton
+---@field Button_144 UButton
+---@field Button_145 UButton
+---@field Button_147 UButton
+---@field Button_149 UButton
+---@field Button_150 UButton
+---@field Button_151 UButton
+---@field Button_152 UButton
+---@field Button_153 UButton
+---@field Button_154 UButton
+---@field Button_155 UButton
+---@field Button_156 UButton
+---@field Button_157 UButton
+---@field Button_158 UButton
+---@field Button_226 UButton
+---@field Button_227 UButton
+---@field Button_228 UButton
+---@field gjl UTextBlock
+---@field hp UTextBlock
+---@field Image_0 UImage
+---@field Image_1 UImage
+---@field Image_2 UImage
+---@field Image_3 UImage
+---@field Image_4 UImage
 ---@field Image_109 UImage
 ---@field Image_169 UImage
 ---@field Image_225 UImage
@@ -211,6 +289,20 @@ local YXWDItemID = 1024
 local YXWDPrice = 640
 local AutoSoulRingItemID = 1027
 local AutoAttackItemID = 1026
+local MainButtonRedDots = {
+    Button_144 = "Image_5",
+    Button_145 = "Image_6",
+    Button_147 = "Image_7",
+    Button_149 = "Image_8",
+    Button_157 = "Image_9",
+    Button_150 = "Image_10",
+    Button_151 = "Image_11",
+    Button_152 = "Image_12",
+    Button_153 = "Image_13",
+    Button_158 = "Image_14",
+}
+local MainFoldImages = {"Image_386", "Image_387", "Image_388", "Image_389", "Image_397", "Image_392", "Image_393",
+                        "Image_395", "Image_396", "Image_398"}
 
 function UI02:Construct()
     self:LuaInit()
@@ -228,8 +320,10 @@ function UI02:LuaInit()
     self.bInitDoOnce = true
 
     self.Button_145.OnClicked:Add(self.Button_145_OnClicked, self)
+    self.Button_134.OnClicked:Add(self.Button_134_OnClicked, self)
     self.Button_157.OnClicked:Add(self.Button_157_OnClicked, self)
     self.Button_144.OnClicked:Add(self.Button_144_OnClicked, self)
+    self.Button_147.OnClicked:Add(self.Button_147_OnClicked, self)
     self.Button_150.OnClicked:Add(self.Button_150_OnClicked, self)
     self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
     self.Button_5.OnClicked:Add(self.Button_1_OnClicked, self)
@@ -240,6 +334,7 @@ function UI02:LuaInit()
     self.Button_151.OnClicked:Add(self.Button_151_OnClicked, self)
     self.Button_155.OnClicked:Add(self.Button_155_OnClicked, self)
     self.Button_227.OnClicked:Add(self.Button_227_OnClicked, self)
+    self.Button_93.OnClicked:Add(self.Button_93_OnClicked, self)
     self.Button_3.OnClicked:Add(self.Button_3_OnClicked, self)
     self.Button_4.OnClicked:Add(self.Button_4_OnClicked, self)
     self.Button_158.OnClicked:Add(self.Button_158_OnClicked, self)
@@ -249,6 +344,8 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_2)
     self:ApplyButtonEffect(self.Button_3)
     self:ApplyButtonEffect(self.Button_4)
+    self:ApplyButtonEffect(self.Button_93)
+    self:ApplyButtonEffect(self.Button_134)
     self:ApplyButtonEffect(self.Button_144)
     self:ApplyButtonEffect(self.Button_145)
     self:ApplyButtonEffect(self.Button_147)
@@ -268,17 +365,48 @@ function UI02:LuaInit()
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
-    self:RefreshWeaponBonusText()
     self:RefreshRealmNameText()
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
     StateMgr:SetUI(self)
+    self:RefreshMainButtonRedDots()
 
+end
+
+function UI02:RefreshMainButtonRedDots()
+    self.MainButtonRedDotHidden = {}
+    for _, ImageName in pairs(MainButtonRedDots) do
+        if self[ImageName] ~= nil then
+            self[ImageName]:SetVisibility(ESlateVisibility.Visible)
+        end
+    end
+end
+
+function UI02:HideMainButtonRedDot(ButtonName)
+    local ImageName = MainButtonRedDots[ButtonName]
+    self.MainButtonRedDotHidden = self.MainButtonRedDotHidden or {}
+    self.MainButtonRedDotHidden[ButtonName] = true
+    if ImageName ~= nil and self[ImageName] ~= nil then
+        self[ImageName]:SetVisibility(ESlateVisibility.Collapsed)
+    end
+end
+
+function UI02:Button_134_OnClicked()
+    self.bHideMainButtons = not self.bHideMainButtons
+    local Visibility = self.bHideMainButtons and ESlateVisibility.Collapsed or ESlateVisibility.Visible
+    for ButtonName, ImageName in pairs(MainButtonRedDots) do
+        self[ButtonName]:SetVisibility(Visibility)
+        self[ImageName]:SetVisibility(Visibility)
+    end
+    for _, ImageName in ipairs(MainFoldImages) do
+        self[ImageName]:SetVisibility(Visibility)
+    end
 end
 
 function UI02:OnRefreshProperty(baseAttack, baseMaxHp, hp, maxHp, bFillHealth)
     if baseAttack == nil and baseMaxHp == nil then
         StateMgr:RefreshHpText(nil, maxHp or StateMgr:GetFinalMaxHp(), hp)
+        self:RefreshYXWDPurchaseButton()
         return
     end
 
@@ -368,15 +496,43 @@ function UI02:HasYXWDInvincibleBuff()
 end
 
 function UI02:RefreshYXWDPurchaseButton()
-    if self.Button_4 == nil then
-        return
+    if self.Button_5 ~= nil then
+        self.Button_5:SetVisibility(self:HasAutoPickButtonHidden() and ESlateVisibility.Collapsed or ESlateVisibility.Visible)
     end
 
-    if self:HasYXWDInvincibleBuff() then
-        self.Button_4:SetVisibility(ESlateVisibility.Collapsed)
-    else
-        self.Button_4:SetVisibility(ESlateVisibility.Visible)
+    if self.Button_2 ~= nil then
+        self.Button_2:SetVisibility(self:HasAutoAttackButtonHidden() and ESlateVisibility.Collapsed or ESlateVisibility.Visible)
     end
+
+    if self.Button_4 ~= nil then
+        self.Button_4:SetVisibility(self:HasYXWDInvincibleBuff() and ESlateVisibility.Collapsed or ESlateVisibility.Visible)
+    end
+end
+
+function UI02:HasAutoPickButtonHidden()
+    local PlayerState = self:GetLocalPlayerState()
+    if PlayerState == nil then
+        return false
+    end
+
+    if PlayerState.GetAutoPickButtonHidden ~= nil then
+        return PlayerState:GetAutoPickButtonHidden() == true
+    end
+
+    return tonumber(PlayerState.AutoPickButtonHidden) == 1
+end
+
+function UI02:HasAutoAttackButtonHidden()
+    local PlayerState = self:GetLocalPlayerState()
+    if PlayerState == nil then
+        return false
+    end
+
+    if PlayerState.GetAutoAttackButtonHidden ~= nil then
+        return PlayerState:GetAutoAttackButtonHidden() == true
+    end
+
+    return tonumber(PlayerState.AutoAttackButtonHidden) == 1
 end
 
 function UI02:HideYXWDBuffIcon()
@@ -497,26 +653,40 @@ function UI02:Button_4_OnClicked()
 end
 
 function UI02:Button_1_OnClicked()
+    if self:HasAutoPickButtonHidden() then
+        self:RefreshYXWDPurchaseButton()
+        return
+    end
+
     self:PurchaseShopItem(AutoSoulRingItemID)
 end
 
 function UI02:Button_2_OnClicked()
+    if self:HasAutoAttackButtonHidden() then
+        self:RefreshYXWDPurchaseButton()
+        return
+    end
+
     self:PurchaseShopItem(AutoAttackItemID)
 end
 
 function UI02:PurchaseShopItem(ItemID, Price)
     local ProductID = self:GetShopProductID(ItemID, Price)
     if ProductID == nil then
-        return
+        return false
     end
 
     self:EnsureShopPurchaseCallbacks()
     if ShopV2Manager.bBlockRepeatPurchase == true then
-        return
+        return false
     end
 
     ShopV2Manager.bBlockRepeatPurchase = true
     local ProductData = ShopV2Manager:GetProductConfigData(ProductID)
+    if ProductData == nil then
+        ShopV2Manager.bBlockRepeatPurchase = false
+        return false
+    end
     if ProductData.CurrencyType == ECurrencyType.OtherCoin then
         ShopV2Manager:BuyProduct(ProductID, 1, ShopV2Manager:GetDiscountPrice(ProductID))
     else
@@ -531,6 +701,7 @@ function UI02:PurchaseShopItem(ItemID, Price)
             end)
         end
     end
+    return true
 end
 
 function UI02:EnsureShopPurchaseCallbacks()
@@ -566,10 +737,12 @@ function UI02:GetShopProductID(ItemID, Price)
 end
 
 function UI02:Button_145_OnClicked()
+    self:HideMainButtonRedDot("Button_145")
     SignInEventManager:OpenMainUI()
 end
 -- 商城
 function UI02:Button_144_OnClicked()
+    self:HideMainButtonRedDot("Button_144")
     if ShopV2Manager == nil then
         return
     end
@@ -577,7 +750,12 @@ function UI02:Button_144_OnClicked()
     ShopV2Manager:OpenMainUI()
 end
 -- 排行榜
+function UI02:Button_147_OnClicked()
+    self:HideMainButtonRedDot("Button_147")
+end
+
 function UI02:Button_150_OnClicked()
+    self:HideMainButtonRedDot("Button_150")
     if RankingListManager == nil then
         return
     end
@@ -586,10 +764,12 @@ function UI02:Button_150_OnClicked()
 end
 -- 回城
 function UI02:Button_157_OnClicked()
+    self:HideMainButtonRedDot("Button_157")
     self:TeleportToHome()
 end
 -- 任务
 function UI02:Button_152_OnClicked()
+    self:HideMainButtonRedDot("Button_152")
     if TaskManager == nil then
         return
     end
@@ -604,6 +784,7 @@ end
 
 -- 称号
 function UI02:Button_149_OnClicked()
+    self:HideMainButtonRedDot("Button_149")
     if self.TitleUIInstance ~= nil then
         self.TitleUIInstance:Open()
         return
@@ -628,6 +809,7 @@ function UI02:Button_149_OnClicked()
 end
 
 function UI02:Button_153_OnClicked()
+    self:HideMainButtonRedDot("Button_153")
     if self.UI10Instance ~= nil then
         if self.UI10Instance.InitWeaponWidgets ~= nil then
             self.UI10Instance:InitWeaponWidgets()
@@ -656,6 +838,7 @@ function UI02:Button_153_OnClicked()
 end
 
 function UI02:Button_158_OnClicked()
+    self:HideMainButtonRedDot("Button_158")
     if self.UI14Instance ~= nil then
         self.UI14Instance:Open()
         return
@@ -683,6 +866,7 @@ end
 
 -- 境界
 function UI02:Button_151_OnClicked()
+    self:HideMainButtonRedDot("Button_151")
     ugcprint("[UI02:Button_151_OnClicked] Open UI08 realm panel")
 
     if self.UI08Instance ~= nil then
@@ -775,8 +959,6 @@ function UI02:Button_0_OnClicked()
             GiftPackUI:AddToViewport(12000)
         end
     end
-    StateMgr:WuQiTextShow(20)
-
 end
 
 -- 自动拾取
@@ -787,20 +969,28 @@ function UI02:Button_227_OnClicked()
     UnrealNetwork.CallUnrealRPC(PC, PC, "Server_SetAutoPickEnabled", self.bAutoPickEnabled)
 
     --[[--------------------------自动攻击--------------------]] --
-    if self.bAutoPickEnabled then
-        PC:StartAutoMeleeAttack()
-    else
-        PC:StopAutoMeleeAttack()
-    end
     self:OnhandleTest(self.bAutoPickEnabled and "自动已开启" or "自动已关闭")
 
-    StateMgr:WuQiTextShow(20)
 end
 
 function UI02:OnhandleTest(str)
     -- if self.TextBlock_303 ~= nil then
     --     self.TextBlock_303:SetText(tostring(str))
     -- end
+end
+
+function UI02:Button_93_OnClicked()
+    local PC = GameplayStatics.GetPlayerController(self, 0)
+    if PC == nil then
+        return
+    end
+
+    self.bAutoMeleeAttackEnabled = not (self.bAutoMeleeAttackEnabled == true)
+    if self.bAutoMeleeAttackEnabled then
+        PC:StartAutoMeleeAttack()
+    else
+        PC:StopAutoMeleeAttack()
+    end
 end
 
 return UI02

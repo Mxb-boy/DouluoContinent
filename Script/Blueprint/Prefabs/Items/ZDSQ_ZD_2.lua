@@ -1,6 +1,39 @@
 ---@class ZDSQ_ZD_2_C:Template_Consumable_Drink_C
 --Edit Below--
-local ZDSQ_ZD_2 = {} 
+local ZDSQ_ZD_2 = {}
+
+local function GetPlayerController(ItemHandle)
+    local OwnBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(ItemHandle)
+    if OwnBackpackComponent == nil then
+        return nil
+    end
+
+    return OwnBackpackComponent:GetOwner()
+end
+
+function ZDSQ_ZD_2:OnUseV2()
+    if ZDSQ_ZD_2.SuperClass ~= nil and ZDSQ_ZD_2.SuperClass.OnUseV2 ~= nil then
+        ZDSQ_ZD_2.SuperClass.OnUseV2(self)
+    end
+end
+
+function ZDSQ_ZD_2:UGC_OnStopUse(Reason)
+    if ZDSQ_ZD_2.SuperClass ~= nil and ZDSQ_ZD_2.SuperClass.UGC_OnStopUse ~= nil then
+        ZDSQ_ZD_2.SuperClass.UGC_OnStopUse(self, Reason)
+    end
+
+    local PlayerController = GetPlayerController(self)
+    if PlayerController == nil then
+        return
+    end
+
+    local PlayerState = PlayerController.PlayerState
+    if PlayerState ~= nil and PlayerState.SetAutoPickButtonHidden ~= nil then
+        PlayerState:SetAutoPickButtonHidden(true)
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_SetAutoFeatureButtonHidden", "AutoPick")
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_RefreshProperty")
+    end
+end
 
 --[[经典背包事件]]--
 --[[

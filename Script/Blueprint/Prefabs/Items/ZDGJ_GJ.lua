@@ -1,6 +1,40 @@
 ---@class ZDGJ_GJ_C:Template_Consumable_Drink_C
 --Edit Below--
-local ZDGJ_GJ = {} 
+local ZDGJ_GJ = {}
+
+local function GetPlayerController(ItemHandle)
+    local OwnBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(ItemHandle)
+    if OwnBackpackComponent == nil then
+        return nil
+    end
+
+    return OwnBackpackComponent:GetOwner()
+end
+
+function ZDGJ_GJ:OnUseV2()
+    if ZDGJ_GJ.SuperClass ~= nil and ZDGJ_GJ.SuperClass.OnUseV2 ~= nil then
+        ZDGJ_GJ.SuperClass.OnUseV2(self)
+    end
+end
+
+function ZDGJ_GJ:UGC_OnStopUse(Reason)
+    if ZDGJ_GJ.SuperClass ~= nil and ZDGJ_GJ.SuperClass.UGC_OnStopUse ~= nil then
+        ZDGJ_GJ.SuperClass.UGC_OnStopUse(self, Reason)
+    end
+
+    local PlayerController = GetPlayerController(self)
+    if PlayerController == nil then
+        return
+    end
+
+    local PlayerState = PlayerController.PlayerState
+    if PlayerState ~= nil and PlayerState.SetAutoAttackButtonHidden ~= nil then
+        PlayerState:SetAutoAttackButtonHidden(true)
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_StartAutoMeleeAttack")
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_SetAutoFeatureButtonHidden", "AutoAttack")
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_RefreshProperty")
+    end
+end
 
 --[[经典背包事件]]--
 --[[

@@ -2,6 +2,7 @@ local UGCPlayerPawn = {}
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
+local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
 local WEAPON_ATTACK_SOURCE_KEY = "WeaponLevel"
@@ -78,11 +79,17 @@ end
 
 local function SetWeaponBonusPercent(player, AttackPercent, bForce)
     AttackPercent = tonumber(AttackPercent) or 0
-    if not bForce and player.LastWeaponAttackPercent == AttackPercent then
+    local bNeedShowStateMgr = IsLocalPlayerPawn(player) and StateMgr ~= nil and StateMgr.UI ~= nil and
+                                  player.LastStateMgrWeaponAttackPercent ~= AttackPercent
+    if not bForce and player.LastWeaponAttackPercent == AttackPercent and not bNeedShowStateMgr then
         return
     end
 
     player.LastWeaponAttackPercent = AttackPercent
+    if bNeedShowStateMgr then
+        player.LastStateMgrWeaponAttackPercent = AttackPercent
+        StateMgr:WuQiTextShow(AttackPercent)
+    end
 end
 -- 境界加成结果生成并推送给管理器
 local function UpdateRealmBonusResult(player, HunHuan)

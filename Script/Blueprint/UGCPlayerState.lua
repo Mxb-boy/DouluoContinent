@@ -9,6 +9,8 @@ local UGCPlayerState = {
     YXWD_InvincibleBuffActive = false,
     YXWD_InvincibleBuffToken = 0,
     LotteryState = {},
+    AutoPickButtonHidden = 0,
+    AutoAttackButtonHidden = 0,
     ArchiveUID = nil,
 
     BaseAttack = 40, -- 基础攻击力
@@ -51,9 +53,12 @@ local ARCHIVE_KEYS = {{
 } -- 示例: { key = "Gold",    field = "Gold",    default = 0 },
 }
 
+table.insert(ARCHIVE_KEYS, { key = "AutoPickButtonHidden", field = "AutoPickButtonHidden", default = 0 })
+table.insert(ARCHIVE_KEYS, { key = "AutoAttackButtonHidden", field = "AutoAttackButtonHidden", default = 0 })
+
 function UGCPlayerState:GetReplicatedProperties()
     return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "BaseAttack",
-            "BaseMaxHp"}
+            "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden"}
 end
 
 -- ------ 跨对局存档 ------ --
@@ -146,6 +151,24 @@ end
 
 function UGCPlayerState:SetBaseMaxHp(value)
     self.BaseMaxHp = tonumber(value) or 100
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetAutoPickButtonHidden()
+    return tonumber(self.AutoPickButtonHidden) == 1
+end
+
+function UGCPlayerState:SetAutoPickButtonHidden(value)
+    self.AutoPickButtonHidden = (value == true or tonumber(value) == 1) and 1 or 0
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetAutoAttackButtonHidden()
+    return tonumber(self.AutoAttackButtonHidden) == 1
+end
+
+function UGCPlayerState:SetAutoAttackButtonHidden(value)
+    self.AutoAttackButtonHidden = (value == true or tonumber(value) == 1) and 1 or 0
     self:SaveToArchive()
 end
 

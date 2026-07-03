@@ -127,7 +127,7 @@ function StateMgr:CountFinalAttack(pawn)
         UnrealNetwork.CallUnrealRPC(pc, pc, "Server_SetFinalAttack", FinalAttack)
     end
     if self.UI ~= nil and self.UI.gjl ~= nil then
-        self.UI.gjl:SetText("攻击力" .. FinalAttack)
+        self.UI.gjl:SetText("攻击力:" .. math.floor(FinalAttack))
     end
     DaoJuAddNum_Atk = FinalAttack - self.BaseAttack
 end
