@@ -15,6 +15,7 @@ ELotteryMainUIType = {
 Scene_Enum = { 
     MainScene = 0,
     duplicate = 1,
+    Tower = 2,
 }; 
 
 
