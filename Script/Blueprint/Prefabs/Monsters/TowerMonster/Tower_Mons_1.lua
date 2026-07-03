@@ -4,6 +4,12 @@
 ---@field HitBox UCapsuleComponent
 ---@field TowerLevelID int32
 --Edit Below--
+---@class Tower_Mons_1_C:BP_UGC_GenericMobPawn_Base_C
+---@field InBox UBoxComponent
+---@field OutBox UBoxComponent
+---@field HitBox UCapsuleComponent
+---@field TowerLevelID int32
+-- Edit Below--
 local Tower_Mons_1 = {}
 
 local function DisableMonsterCollision(monster)
@@ -38,7 +44,7 @@ end
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- function Tower_Mons_1:PreTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
-     
+
 -- end
 
 -- ---受击后置事件
@@ -48,7 +54,7 @@ end
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- function Tower_Mons_1:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
-    
+
 -- end
 
 -- ---受击前置伤害修改
@@ -85,27 +91,6 @@ function Tower_Mons_1:BPDie(KillingDamage, EventInstigator, DamageCauser, Damage
 
     if self:HasAuthority() and self.SpawnWall ~= nil then
         self.SpawnWall:OnMonsterDied(self)
-    end
-
-    if self:HasAuthority() then
-        local DropID = self.MonsterID
-        if EventInstigator ~= nil and EventInstigator.PlayerState ~= nil then
-            local Probability_Bonus = EventInstigator.PlayerState.Probability_Bonus or 0
-            if Probability_Bonus > 100 then
-                Probability_Bonus = 100
-            end
-            DropID = Probability_Bonus * 100 + self.MonsterID
-        end
-
-        -- 只有服务端才可以掉落
-        if DropID ~= nil then
-            self.UGCPresetCommonDropItemComponent:StartDropByProduceID(
-                DropID,
-                -1,
-                EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor,
-                nil
-            )
-        end
     end
 end
 
@@ -145,25 +130,25 @@ end
 -- ---@param NewTarget AActor 新目标
 -- ---@param OldTarget AActor 旧目标
 -- function Tower_Mons_1:OnTargetChange_BP(NewTarget, OldTarget)
-    
+
 -- end
 
 -- [Editor Generated Lua] function define Begin:
 function Tower_Mons_1:LuaInit()
-	if self.bInitDoOnce then
-		return;
-	end
-	self.bInitDoOnce = true;
-	-- [Editor Generated Lua] BindingProperty Begin:
-	-- [Editor Generated Lua] BindingProperty End;
-	
-	-- [Editor Generated Lua] BindingEvent Begin:
-	self.OutBox.OnComponentHit:Add(self.OutBox_OnComponentHit, self);
-	-- [Editor Generated Lua] BindingEvent End;
+    if self.bInitDoOnce then
+        return;
+    end
+    self.bInitDoOnce = true;
+    -- [Editor Generated Lua] BindingProperty Begin:
+    -- [Editor Generated Lua] BindingProperty End;
+
+    -- [Editor Generated Lua] BindingEvent Begin:
+    self.OutBox.OnComponentHit:Add(self.OutBox_OnComponentHit, self);
+    -- [Editor Generated Lua] BindingEvent End;
 end
 
 function Tower_Mons_1:OutBox_OnComponentHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit)
-	return nil;
+    return nil;
 end
 
 -- [Editor Generated Lua] function define End;
