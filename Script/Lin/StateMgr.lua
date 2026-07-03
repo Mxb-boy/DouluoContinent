@@ -122,7 +122,7 @@ function StateMgr:CountFinalAttack(pawn)
     if self.UI ~= nil and self.UI.gjl ~= nil then
         self.UI.gjl:SetText("攻击力" .. FinalAttack)
     end
-    DaoJuAddNum_Atk = self.BaseAttack - DefaultBaseAttack
+    DaoJuAddNum_Atk = FinalAttack - self.BaseAttack
 end
 
 function StateMgr:RefreshHpText(pawn, showMaxHp, showHp)
@@ -155,7 +155,7 @@ function StateMgr:CountFinalMaxHp(pawn, showHp, showMaxHp, bFillHealth)
         local pc = GameplayStatics.GetPlayerController(self.UI, 0)
         UnrealNetwork.CallUnrealRPC(pc, pc, "Server_SetFinalMaxHp", FinalMaxHp, bFillHealth == true)
     end
-    DaoJuAddNum_Hp = self.BaseMaxHp - DefaultBaseMaxHp
+    DaoJuAddNum_Hp = FinalMaxHp - self.BaseMaxHp
     self:RefreshHpText(pawn, showMaxHp or FinalMaxHp, bFillHealth and FinalMaxHp or showHp)
 end
 
