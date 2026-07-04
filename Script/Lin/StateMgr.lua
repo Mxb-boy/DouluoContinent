@@ -33,6 +33,11 @@ function StateMgr:SyncFromPlayerState()
     end
     self.BaseAttack = playerState:GetBaseAttack()
     self.BaseMaxHp = playerState:GetBaseMaxHp()
+    if playerState.GetProbability_Bonus ~= nil then
+        self.BeiLv = playerState:GetProbability_Bonus()
+    else
+        self.BeiLv = tonumber(playerState.Probability_Bonus) or self.BeiLv
+    end
     return true
 end
 
@@ -50,7 +55,7 @@ function StateMgr:Init()
     self:WuQiTextShow(0, true)
     self:ChengHaoTextShow(0, true)
     self:JingJieTextShow(1, true)
-    self:BeiLvTextShow(0, true)
+    self:BeiLvTextShow(self.BeiLv, true)
     self:CountAll()
 end
 
@@ -98,7 +103,11 @@ function StateMgr:JingJieTextShow(Num, SkipCount)
 end
 
 function StateMgr:BeiLvTextShow(Num, SkipCount)
-    self.BeiLv = Num
+    self.BeiLv = tonumber(Num) or 100
+    local playerState = UGCGameSystem.GetLocalPlayerState()
+    if playerState ~= nil and playerState.SetProbability_Bonus ~= nil then
+        playerState:SetProbability_Bonus(self.BeiLv)
+    end
     self.UI.TextBlock_50:SetText("倍率加成:" .. self.BeiLv .. "%")
     if not SkipCount then
         self:CountAll()

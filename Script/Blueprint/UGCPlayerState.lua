@@ -1,7 +1,7 @@
 --[[-------------------这里放角色状态，重连后可以恢复数据---------------------------]] --
 local UGCPlayerState = {
     HunHuan = 1, -- 大魂环
-    Probability_Bonus = 0, -- 掉落加成，比如本来掉落概率是20%,这个值是20，那就是20*1.2
+    Probability_Bonus = 100, -- 掉落倍率
     RegenPercent = 5, -- 战场回血：每秒恢复百分比（默认5%）
     HP = -1, -- 上一次离场时保存的血量，-1 表示从未存档
     -- 跨对局存档: 被 SaveToArchive 消费
@@ -60,6 +60,7 @@ table.insert(ARCHIVE_KEYS, { key = "AutoPickButtonHidden", field = "AutoPickButt
 table.insert(ARCHIVE_KEYS, { key = "AutoAttackButtonHidden", field = "AutoAttackButtonHidden", default = 0 })
 table.insert(ARCHIVE_KEYS, { key = "UnlockedTitles", field = "UnlockedTitles", default = {} })
 table.insert(ARCHIVE_KEYS, { key = "EquippedTitleID", field = "EquippedTitleID", default = 0 })
+table.insert(ARCHIVE_KEYS, { key = "Probability_Bonus", field = "Probability_Bonus", default = 100 })
 
 function UGCPlayerState:GetReplicatedProperties()
     return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "BaseAttack",
@@ -284,12 +285,12 @@ function UGCPlayerState:RestoreHP(playerPawn)
 end
 
 function UGCPlayerState:GetProbability_Bonus()
-    return self.Probability_Bonus
+    return tonumber(self.Probability_Bonus) or 100
 end
 
-function UGCPlayerState:AddProbability_Bonus(value)
-    self.Probability_Bonus = math.min((self.Probability_Bonus or 0) + (value or 0), 100)
-
+function UGCPlayerState:SetProbability_Bonus(value)
+    self.Probability_Bonus = tonumber(value) or 100
+    self:SaveToArchive()
 end
 
 return UGCPlayerState

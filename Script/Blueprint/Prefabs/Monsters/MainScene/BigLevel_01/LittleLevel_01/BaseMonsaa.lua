@@ -90,10 +90,7 @@ function BaseMonsaa:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEv
     if self:HasAuthority() then
         local DropID = self.MonsterID
         if EventInstigator ~= nil and EventInstigator.PlayerState ~= nil then
-            local Probability_Bonus = EventInstigator.PlayerState.Probability_Bonus or 0
-            if Probability_Bonus > 100 then
-                Probability_Bonus = 100
-            end
+            local Probability_Bonus = (EventInstigator.PlayerState.Probability_Bonus or 100) - 100
             DropID = Probability_Bonus * 100 + self.MonsterID
         end
 

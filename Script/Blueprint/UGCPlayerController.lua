@@ -89,7 +89,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
         "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden",
-        "Client_SetFeiTowerButtonsHidden","Server_AddFixedBaseProperty"
+        "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -972,8 +972,10 @@ function UGCPlayerController:SyncSavedTitleState()
         return
     end
 
-    local unlockedTitles = playerState.GetUnlockedTitles and playerState:GetUnlockedTitles() or playerState.UnlockedTitles
-    local equippedTitleID = playerState.GetEquippedTitleID and playerState:GetEquippedTitleID() or playerState.EquippedTitleID
+    local unlockedTitles = playerState.GetUnlockedTitles and playerState:GetUnlockedTitles() or
+                               playerState.UnlockedTitles
+    local equippedTitleID = playerState.GetEquippedTitleID and playerState:GetEquippedTitleID() or
+                                playerState.EquippedTitleID
     equippedTitleID = tonumber(equippedTitleID) or 0
 
     local pawn = self:K2_GetPawn()
@@ -1004,7 +1006,8 @@ function UGCPlayerController:Server_EquipTitle(titleID)
         return
     end
 
-    if self.PlayerState ~= nil and self.PlayerState.IsTitleUnlocked ~= nil and not self.PlayerState:IsTitleUnlocked(titleID) then
+    if self.PlayerState ~= nil and self.PlayerState.IsTitleUnlocked ~= nil and
+        not self.PlayerState:IsTitleUnlocked(titleID) then
         return
     end
 
@@ -1061,22 +1064,18 @@ end
 
 --[[---------------------增加概率-------------------------]] --
 function UGCPlayerController:Server_AddProbabilityBonus(value)
-    value = tonumber(value) or 0
-    if value == 0 then
+    value = tonumber(value) or 100
+    if self.PlayerState == nil or self.PlayerState.SetProbability_Bonus == nil then
         return
     end
-    if self.PlayerState == nil or self.PlayerState.AddProbability_Bonus == nil then
-        return
-    end
-    self.PlayerState:AddProbability_Bonus(value)
-
-    local str = "增加" .. tostring(value) .. "%概率，是" .. tostring(self.PlayerState.Probability_Bonus) .. "%"
-    UnrealNetwork.CallUnrealRPC(self, self, "Client_ProbabilityBonusChanged", str)
+    self.PlayerState:SetProbability_Bonus(value)
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_ProbabilityBonusChanged", self.PlayerState.Probability_Bonus)
 end
 
-function UGCPlayerController:Client_ProbabilityBonusChanged(str)
-    if self.MainUIInstance ~= nil and self.MainUIInstance.OnhandleTest ~= nil then
-        self.MainUIInstance:OnhandleTest(str)
+function UGCPlayerController:Client_ProbabilityBonusChanged(value)
+    local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+    if StateMgr ~= nil and StateMgr.BeiLvTextShow ~= nil and StateMgr.UI ~= nil then
+        StateMgr:BeiLvTextShow(value)
     end
 end
 
