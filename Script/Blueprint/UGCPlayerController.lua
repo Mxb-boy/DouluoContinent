@@ -10,7 +10,7 @@ local UGCPlayerController = {}
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
-local TitleSystem = UGCGameSystem.UGCRequire("Script.Blueprint.Title.TitleSystem")
+local TitleConfig = UGCGameSystem.UGCRequire("Script.Common.TitleConfig")
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local ForgeMaterialItemIDs = {
@@ -842,7 +842,7 @@ end
 function UGCPlayerController:Server_EquipTitle(titleID)
     titleID = tonumber(titleID) or 0
 
-    if titleID < 1 or titleID > 15 then
+    if titleID < 1 or titleID > TitleConfig.MaxTitleID then
         return
     end
 
@@ -851,9 +851,7 @@ function UGCPlayerController:Server_EquipTitle(titleID)
         return
     end
 
-    local oldTitleID = pawn.EquippedTitleID or 0
-
-    if oldTitleID == titleID then
+    if (pawn.EquippedTitleID or 0) == titleID then
         return
     end
 
@@ -870,7 +868,6 @@ function UGCPlayerController:Server_EquipTitle(titleID)
     end
 
     -- 预留属性
-    TitleSystem:ApplyTitleBonus(self, oldTitleID, titleID)
 end
 
 -- WBP_RankingListBtn 更新排行榜服务端--要走官方测试按钮暂时没开

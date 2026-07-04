@@ -14,6 +14,20 @@
 local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
 local UGC_Common_Get_FX_UIBP = { bInitDoOnce = false } 
 
+local function SetItemIcon(Image, IconPath)
+    if Image == nil or IconPath == nil or IconPath == "" then
+        return
+    end
+
+    local Texture = IconPath
+    if type(IconPath) == "string" then
+        Texture = UE.LoadObject(IconPath)
+    end
+    if Texture ~= nil then
+        Image:SetBrushFromTexture(Texture)
+    end
+end
+
 function UGC_Common_Get_FX_UIBP:Construct()
 	
 end
@@ -32,7 +46,7 @@ function UGC_Common_Get_FX_UIBP:InitUI(ItemID, ItemNum)
     local LotteryAward = LotteryConfig.GetAwardByItemID(ItemID)
     if ItemInfo then
         if ItemInfo.ItemIcon then
-            self.Image_ItemGet_Item_GoodsLogo:SetBrushFromTexture(UE.LoadObject(ItemInfo.ItemIcon));
+            SetItemIcon(self.Image_ItemGet_Item_GoodsLogo, ItemInfo.ItemIcon);
         end
 
         if ItemInfo.ItemName then
@@ -41,7 +55,7 @@ function UGC_Common_Get_FX_UIBP:InitUI(ItemID, ItemNum)
     end
     if LotteryAward ~= nil then
         if LotteryAward.IconPath ~= nil and LotteryAward.IconPath ~= "" then
-            self.Image_ItemGet_Item_GoodsLogo:SetBrushFromTexture(UE.LoadObject(LotteryAward.IconPath));
+            SetItemIcon(self.Image_ItemGet_Item_GoodsLogo, LotteryAward.IconPath);
         end
         if LotteryAward.Name ~= nil then
             self.TextBlock_ItemGet_Item_GoodsName:SetText(LotteryAward.Name);

@@ -28,7 +28,6 @@ local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
 local UI14 = { bInitDoOnce = false }
 
 local LotteryType = LotteryConfig.Types
-local LotteryConfigs = LotteryConfig.Pools
 local DefaultImageColor = { R = 1.0, G = 1.0, B = 1.0, A = 1.0 }
 local AwardBgOwnedColor = { R = 0.32549, G = 0.32549, B = 0.32549, A = 1.0 }
 local AwardIconOwnedColor = { R = 0.6, G = 0.6, B = 0.6, A = 1.0 }
@@ -97,7 +96,7 @@ function UI14:Close()
 end
 
 function UI14:SelectLotteryType(Type)
-    if LotteryConfigs[Type] == nil then
+    if LotteryConfig.GetPool(Type) == nil then
         return
     end
     if self.ActiveTabType == Type then
@@ -111,7 +110,7 @@ function UI14:SelectLotteryType(Type)
 end
 
 function UI14:Refresh()
-    local Config = LotteryConfigs[self.SelectedLotteryType]
+    local Config = LotteryConfig.GetPool(self.SelectedLotteryType)
     self:RefreshLotteryTicketText()
     self:RefreshAwardPanel(Config)
     self:RefreshAwardPreview(Config and Config.GrandPrize or nil)
@@ -512,7 +511,10 @@ function UI14:SetAwardImage(Image, IconPath)
         return
     end
 
-    local Texture = UE.LoadObject(IconPath)
+    local Texture = IconPath
+    if type(IconPath) == "string" then
+        Texture = UE.LoadObject(IconPath)
+    end
     if Texture == nil then
         ugcprint("[UI14:SetAwardImage] load failed: " .. tostring(IconPath))
         return
@@ -534,7 +536,7 @@ end
 
 function UI14:RequestLottery(LotteryTypeValue)
     LotteryTypeValue = tonumber(LotteryTypeValue) or self.SelectedLotteryType
-    local Config = LotteryConfigs[LotteryTypeValue]
+    local Config = LotteryConfig.GetPool(LotteryTypeValue)
     if Config == nil then
         return
     end
@@ -601,12 +603,6 @@ function UI14:OnLotteryResult(LotteryTypeValue, SlotIndex, AwardItemID, AwardCou
         self:SetAwardOKVisible(Panel, AwardIndex, true)
     end
     self:OpenLotteryGetItemUI(ItemList)
-
-    ugcprint("[UI14:OnLotteryResult] type="
-        .. tostring(self.SelectedLotteryType)
-        .. ", slot=" .. tostring(SlotIndex)
-        .. ", item=" .. tostring(AwardItemID)
-        .. ", count=" .. tostring(AwardCount))
 end
 
 function UI14:OpenLotteryGetItemUI(ItemList)

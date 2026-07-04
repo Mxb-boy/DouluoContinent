@@ -27,6 +27,7 @@
 --Edit Below--
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
+local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 
 local UI08 = { bInitDoOnce = false }
 
@@ -286,8 +287,8 @@ function UI08:GetPlayerRealmLevel()
         PlayerState = UGCGameSystem.GetLocalPlayerState()
     end
 
-    if PlayerState ~= nil and PlayerState.RealmLevel ~= nil then
-        return math.max(1, math.min(RealmConfig.MaxLevel, tonumber(PlayerState.RealmLevel) or 1))
+    if PlayerState ~= nil and PlayerState.GetHunHuan ~= nil then
+        return math.max(1, math.min(RealmConfig.MaxLevel, tonumber(PlayerState:GetHunHuan()) or 1))
     end
 
     return math.max(1, math.min(RealmConfig.MaxLevel, tonumber(self.CurrentRealmLevel) or 1))
@@ -333,6 +334,9 @@ function UI08:OnRealmBreakResult(Success, NewLevel, TargetLevel, FailCount, Used
     self.CurrentRealmLevel = math.max(1, math.min(RealmConfig.MaxLevel, tonumber(NewLevel) or 1))
     self:Refresh()
     if Success then
+        if StateMgr ~= nil and StateMgr.UI ~= nil and StateMgr.JingJieTextShow ~= nil then
+            StateMgr:JingJieTextShow(math.max(1, math.min(9, tonumber(NewLevel) or 1)))
+        end
         self:ShowBreakHh(self.CurrentRealmLevel, true)
     else
         self:ShowBreakHh(TargetLevel, false)
