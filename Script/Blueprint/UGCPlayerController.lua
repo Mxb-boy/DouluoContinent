@@ -86,7 +86,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult", "Client_RefreshProperty",
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
-        "Server_ClaimTowerTopReward"
+        "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -1096,6 +1096,23 @@ function UGCPlayerController:Client_SetAutoFeatureButtonHidden(FeatureName)
 
     if self.MainUIInstance ~= nil and self.MainUIInstance.RefreshYXWDPurchaseButton ~= nil then
         self.MainUIInstance:RefreshYXWDPurchaseButton()
+    end
+end
+
+function UGCPlayerController:Server_SetFeiButton0Hidden(value)
+    if self.PlayerState ~= nil and self.PlayerState.SetFeiButton0Hidden ~= nil then
+        self.PlayerState:SetFeiButton0Hidden(value)
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_SetFeiButton0Hidden", value)
+    end
+end
+
+function UGCPlayerController:Client_SetFeiButton0Hidden(value)
+    if self.PlayerState ~= nil then
+        self.PlayerState.FeiButton0Hidden = (value == true or tonumber(value) == 1) and 1 or 0
+    end
+
+    if self.FeiUIInstance ~= nil and self.FeiUIInstance.RefreshButton0Visibility ~= nil then
+        self.FeiUIInstance:RefreshButton0Visibility()
     end
 end
 

@@ -11,6 +11,7 @@ local UGCPlayerState = {
     LotteryState = {},
     AutoPickButtonHidden = 0,
     AutoAttackButtonHidden = 0,
+    FeiButton0Hidden = 0,
     ArchiveUID = nil,
 
     BaseAttack = 40, -- 基础攻击力
@@ -55,10 +56,11 @@ local ARCHIVE_KEYS = {{
 
 table.insert(ARCHIVE_KEYS, { key = "AutoPickButtonHidden", field = "AutoPickButtonHidden", default = 0 })
 table.insert(ARCHIVE_KEYS, { key = "AutoAttackButtonHidden", field = "AutoAttackButtonHidden", default = 0 })
+table.insert(ARCHIVE_KEYS, { key = "FeiButton0Hidden", field = "FeiButton0Hidden", default = 0 })
 
 function UGCPlayerState:GetReplicatedProperties()
     return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "BaseAttack",
-            "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden"}
+            "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "FeiButton0Hidden"}
 end
 
 -- ------ 跨对局存档 ------ --
@@ -169,6 +171,15 @@ end
 
 function UGCPlayerState:SetAutoAttackButtonHidden(value)
     self.AutoAttackButtonHidden = (value == true or tonumber(value) == 1) and 1 or 0
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetFeiButton0Hidden()
+    return tonumber(self.FeiButton0Hidden) == 1
+end
+
+function UGCPlayerState:SetFeiButton0Hidden(value)
+    self.FeiButton0Hidden = (value == true or tonumber(value) == 1) and 1 or 0
     self:SaveToArchive()
 end
 
