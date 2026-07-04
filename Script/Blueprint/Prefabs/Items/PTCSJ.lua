@@ -12,6 +12,7 @@ function PTCSJ:OnUseV2()
     local PlayerController = OwnBackpackComponent:GetOwner()
     if PlayerController then
         PlayerController:Server_TeleportToSpawn(CSPoint)
+        UGCBackpackSystemV2.RemoveItemV2(PlayerController, tonumber(self.ItemID), 1)
     end
 end
 --[[V2背包事件]] --

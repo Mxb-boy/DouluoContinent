@@ -466,7 +466,7 @@ function UI02:LuaInit()
 end
 
 function UI02:SetTowerOutBoxImageVisible(bVisible)
-    self.Image_28:SetVisibility(bVisible and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
+    self.Image_28:SetVisibility(bVisible and ESlateVisibility.HitTestInvisible or ESlateVisibility.Collapsed)
 end
 
 function UI02:RefreshMainButtonRedDots()

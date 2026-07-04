@@ -11,11 +11,20 @@ function PTDLB:OnUseV2()
     local pawn = UGCGameSystem.GetPlayerPawnByPlayerController(player) or player
     local PlayerLoc = pawn:K2_GetActorLocation()
 
-    SpawnNearPlayer(PlayerLoc, 8310048, 1)
-    SpawnNearPlayer(PlayerLoc, 8310049, 1)
-    SpawnNearPlayer(PlayerLoc, 8310051, 1)
-    SpawnNearPlayer(PlayerLoc, 8310053, 1)
-    SpawnNearPlayer(PlayerLoc, 8310054, 1)
+    SpawnNearPlayer(PlayerLoc, 8310035, math.random(6, 10))
+    SpawnNearPlayer(PlayerLoc, 8310065, 1)
+    SpawnNearPlayer(PlayerLoc, 8310042, math.random(1, 2))
+    SpawnNearPlayer(PlayerLoc, 8310045, 1)
+
+    local ExtraDrops = {
+        { ItemID = 8310048, Count = 66 },
+        { ItemID = 8310049, Count = 22 },
+        { ItemID = 8310051, Count = 12 },
+        { ItemID = 8310053, Count = 6 },
+    }
+    local ExtraDrop = ExtraDrops[math.random(1, #ExtraDrops)]
+    SpawnNearPlayer(PlayerLoc, ExtraDrop.ItemID, ExtraDrop.Count)
+    UGCBackpackSystemV2.RemoveItemV2(player, tonumber(self.ItemID), 1)
 end
 -- 辅助函数：在玩家周围随机位置掉落
 function SpawnNearPlayer(PlayerLoc, ItemID, Count)
