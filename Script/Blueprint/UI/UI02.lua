@@ -46,6 +46,7 @@
 ---@field Image_13 UImage
 ---@field Image_14 UImage
 ---@field Image_109 UImage
+---@field Image_159 UImage
 ---@field Image_169 UImage
 ---@field Image_225 UImage
 ---@field Image_246 UImage
@@ -75,7 +76,7 @@
 ---@field TextBlock_112 UTextBlock
 ---@field TextBlock_114 UTextBlock
 ---@field TextBlock_303 UTextBlock
---Edit Below--
+-- Edit Below--
 ---@class UI02_C:UUserWidget
 ---@field Button_0 UButton
 ---@field Button_2 UButton
@@ -467,7 +468,7 @@ function UI02:LuaInit()
 end
 
 function UI02:SetTowerOutBoxImageVisible(bVisible)
-    self.Image_28:SetVisibility(bVisible and ESlateVisibility.HitTestInvisible or ESlateVisibility.Collapsed)
+    self.Image_159:SetVisibility(bVisible and ESlateVisibility.HitTestInvisible or ESlateVisibility.Collapsed)
 end
 
 function UI02:RefreshMainButtonRedDots()

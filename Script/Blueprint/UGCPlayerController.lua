@@ -13,6 +13,7 @@ local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
 local TitleConfig = UGCGameSystem.UGCRequire("Script.Common.TitleConfig")
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
+local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
 local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
     QNHH = 8310036
@@ -1154,8 +1155,61 @@ function UGCPlayerController:Server_AddFixedBaseProperty()
 end
 
 function UGCPlayerController:Client_SetTowerOutBoxVisible(bVisible)
+    local bShow = bVisible == true or bVisible == 1
     if self.MainUIInstance ~= nil and self.MainUIInstance.SetTowerOutBoxImageVisible ~= nil then
-        self.MainUIInstance:SetTowerOutBoxImageVisible(bVisible == true or bVisible == 1)
+        self.MainUIInstance:SetTowerOutBoxImageVisible(bShow)
+    end
+
+    if bShow then
+        self:PlayTowerAttentionSound()
+    else
+        self:StopTowerAttentionSound()
+    end
+end
+
+function UGCPlayerController:PlayTowerAttentionSound()
+    self.TowerAttentionSoundCount = (self.TowerAttentionSoundCount or 0) + 1
+    if self.TowerAttentionSoundID ~= nil then
+        return
+    end
+
+    local FullPath = UGCGameSystem.GetUGCResourcesFullPath(TOWER_ATTENTION_SOUND_PATH)
+    local SoundAsset = UE.LoadObject(FullPath)
+    if SoundAsset == nil then
+        self.TowerAttentionSoundCount = nil
+        return
+    end
+
+    local Pawn = GetPlayerPawn(self)
+    if Pawn == nil then
+        self.TowerAttentionSoundCount = nil
+        return
+    end
+
+    self.TowerAttentionSoundID = UGCSoundManagerSystem.PlaySoundAttachActor(SoundAsset, Pawn, true)
+end
+
+function UGCPlayerController:StopTowerAttentionSound()
+    local SoundCount = (self.TowerAttentionSoundCount or 1) - 1
+    if SoundCount > 0 then
+        self.TowerAttentionSoundCount = SoundCount
+        return
+    end
+
+    self.TowerAttentionSoundCount = nil
+    if self.TowerAttentionSoundID == nil then
+        return
+    end
+
+    UGCSoundManagerSystem.StopSoundByID(self.TowerAttentionSoundID)
+    self.TowerAttentionSoundID = nil
+end
+
+function UGCPlayerController:StopTowerAttentionSoundImmediately()
+    self.TowerAttentionSoundCount = nil
+    if self.TowerAttentionSoundID ~= nil then
+        UGCSoundManagerSystem.StopSoundByID(self.TowerAttentionSoundID)
+        self.TowerAttentionSoundID = nil
     end
 end
 
@@ -1375,6 +1429,7 @@ function UGCPlayerController:UnregisterCompensationDelegates()
 end
 
 function UGCPlayerController:ReceiveEndPlay()
+    self:StopTowerAttentionSoundImmediately()
     self:UnregisterCompensationDelegates()
 end
 
