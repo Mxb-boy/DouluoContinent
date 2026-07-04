@@ -1,4 +1,4 @@
----@class SHIBHHBL_10_C:Template_ItemHandle_C
+---@class SHIBHHBL_10_C:UGCItemHandle_ConsumeBase_C
 --Edit Below--
 local SHIBHHBL_10 = {} 
 

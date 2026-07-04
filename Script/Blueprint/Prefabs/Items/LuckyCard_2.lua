@@ -1,4 +1,4 @@
----@class LuckyCard_2_C:Template_ItemHandle_C
+---@class LuckyCard_2_C:UGCItemHandle_ConsumeBase_C
 --Edit Below--
 local LuckyCard_2 = {} 
 

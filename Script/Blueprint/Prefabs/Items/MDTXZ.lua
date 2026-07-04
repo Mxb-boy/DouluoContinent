@@ -1,4 +1,4 @@
----@class MDTXZ_C:Template_ItemHandle_C
+---@class MDTXZ_C:UGCItemHandle_ConsumeBase_C
 --Edit Below--
 local MDTXZ = {} 
 

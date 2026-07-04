@@ -1,4 +1,4 @@
----@class SBHHBL_10_C:Template_ItemHandle_C
+---@class SBHHBL_10_C:UGCItemHandle_ConsumeBase_C
 --Edit Below--
 local SBHHBL_10 = {} 
 
