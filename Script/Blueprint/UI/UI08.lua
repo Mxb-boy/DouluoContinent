@@ -177,8 +177,8 @@ function UI08:GetBackpackItemCount(ItemID)
         return 0
     end
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
-    if PlayerPawn ~= nil and UGCBackPackSystem ~= nil and UGCBackPackSystem.GetItemCount ~= nil then
-        return tonumber(UGCBackPackSystem.GetItemCount(PlayerPawn, ItemID)) or 0
+    if PlayerPawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.GetItemCountV2 ~= nil then
+        return tonumber(UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID)) or 0
     end
     return 0
 end
@@ -187,10 +187,11 @@ function UI08:RefreshNeedItems(Config)
     if Config ~= nil then
         NeedItems = Config.NeedItems or {}
     end
+    local TextBlockIndexes = { 1, 0, 2 }
     local CanBreak = true
     for Index = 1, 3 do
         local Image = self:GetWidget("Img_NeedItem_" .. tostring(Index))
-        local TextBlock = self:GetWidget("TextBlock_" .. tostring(Index - 1))
+        local TextBlock = self:GetWidget("TextBlock_" .. tostring(TextBlockIndexes[Index]))
         local Item = NeedItems[Index]
         local HasItem = Item ~= nil
         if HasItem then

@@ -144,9 +144,25 @@ function UI06:LuaInit()
     self:ApplyButtonEffect(self.Btn_Title_15)
     self:ApplyButtonEffect(self.Btn_Equip)
     self:ApplyButtonEffect(self.Btn_Close)
-    --测试解锁称号1、2
-    self:UnlockTitle(1)
-    self:UnlockTitle(2)
+    local playerController = UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+    local unlockedTitles = nil
+    if playerController ~= nil then
+        self.EquippedTitleID = tonumber(playerController.EquippedTitleID) or self.EquippedTitleID
+        unlockedTitles = playerController.UnlockedTitles
+        local playerState = playerController.PlayerState
+        if unlockedTitles == nil and playerState ~= nil then
+            unlockedTitles = playerState.GetUnlockedTitles and playerState:GetUnlockedTitles() or playerState.UnlockedTitles
+            self.EquippedTitleID = tonumber(playerState.GetEquippedTitleID and playerState:GetEquippedTitleID() or playerState.EquippedTitleID) or self.EquippedTitleID
+        end
+    end
+    if unlockedTitles ~= nil then
+        for id, unlocked in pairs(unlockedTitles) do
+            if unlocked then
+                self:UnlockTitle(id)
+            end
+        end
+    end
 
     self:SelectTitle(1)
 end
@@ -204,6 +220,7 @@ function UI06:SelectTitle(titleID)
     end
 end
 function UI06:UnlockTitle(titleID)
+    titleID = tonumber(titleID) or 0
     if self.TitleConfigs[titleID] == nil then
         return
     end

@@ -9,6 +9,8 @@ local UGCPlayerState = {
     YXWD_InvincibleBuffActive = false,
     YXWD_InvincibleBuffToken = 0,
     LotteryState = {},
+    UnlockedTitles = {},
+    EquippedTitleID = 0,
     AutoPickButtonHidden = 0,
     AutoAttackButtonHidden = 0,
     FeiButton0Hidden = 0,
@@ -56,11 +58,12 @@ local ARCHIVE_KEYS = {{
 
 table.insert(ARCHIVE_KEYS, { key = "AutoPickButtonHidden", field = "AutoPickButtonHidden", default = 0 })
 table.insert(ARCHIVE_KEYS, { key = "AutoAttackButtonHidden", field = "AutoAttackButtonHidden", default = 0 })
-table.insert(ARCHIVE_KEYS, { key = "FeiButton0Hidden", field = "FeiButton0Hidden", default = 0 })
+table.insert(ARCHIVE_KEYS, { key = "UnlockedTitles", field = "UnlockedTitles", default = {} })
+table.insert(ARCHIVE_KEYS, { key = "EquippedTitleID", field = "EquippedTitleID", default = 0 })
 
 function UGCPlayerState:GetReplicatedProperties()
     return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "BaseAttack",
-            "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "FeiButton0Hidden"}
+            "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "UnlockedTitles", "EquippedTitleID", "FeiButton0Hidden"}
 end
 
 -- ------ 跨对局存档 ------ --
@@ -212,6 +215,42 @@ end
 
 function UGCPlayerState:SetLotteryState(value)
     self.LotteryState = value or {}
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetUnlockedTitles()
+    self.UnlockedTitles = self.UnlockedTitles or {}
+    return self.UnlockedTitles
+end
+
+function UGCPlayerState:SetUnlockedTitles(value)
+    self.UnlockedTitles = value or {}
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:IsTitleUnlocked(titleID)
+    titleID = tonumber(titleID) or 0
+    local unlockedTitles = self:GetUnlockedTitles()
+    return unlockedTitles[titleID] == true or unlockedTitles[tostring(titleID)] == true
+end
+
+function UGCPlayerState:SetTitleUnlocked(titleID)
+    titleID = tonumber(titleID) or 0
+    if titleID < 1 then
+        return
+    end
+
+    local unlockedTitles = self:GetUnlockedTitles()
+    unlockedTitles[titleID] = true
+    self:SetUnlockedTitles(unlockedTitles)
+end
+
+function UGCPlayerState:GetEquippedTitleID()
+    return tonumber(self.EquippedTitleID) or 0
+end
+
+function UGCPlayerState:SetEquippedTitleID(value)
+    self.EquippedTitleID = tonumber(value) or 0
     self:SaveToArchive()
 end
 

@@ -43,7 +43,7 @@ function TitleConfig.GetUnlockedTitleBonus(unlockedTitles)
     }
 
     for id = 1, TitleConfig.MaxTitleID do
-        if unlockedTitles[id] then
+        if unlockedTitles[id] or unlockedTitles[tostring(id)] then
             local bonus = TitleConfig.GetTitleBonus(id)
             result.AttackPercent = result.AttackPercent + bonus.AttackPercent
             result.HPPercent = result.HPPercent + bonus.HPPercent

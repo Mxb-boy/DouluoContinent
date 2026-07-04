@@ -69,6 +69,7 @@ function UGCPlayerController:ReceiveBeginPlay()
 
     self.MainUIInstance:AddToViewport()
     ugcprint("[UGCPlayerController] MainUI created")
+    self:Client_RefreshTitleBonus()
 
     local FeiUIPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/Fei.Fei_C"
     local FeiUIClass = UE.LoadClass(FeiUIPath)
@@ -98,7 +99,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult", "Client_RefreshProperty",
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
-        "Server_ClaimTowerTopReward"
+        "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -907,6 +908,99 @@ function UGCPlayerController:Client_LotteryResult(LotteryType, SlotIndex, AwardI
     end
 end
 
+function UGCPlayerController:Client_UnlockTitle(titleID)
+    titleID = tonumber(titleID) or 0
+    if titleID < 1 or titleID > TitleConfig.MaxTitleID then
+        return
+    end
+
+    self.UnlockedTitles = self.UnlockedTitles or {}
+    self.UnlockedTitles[titleID] = true
+
+    local titleUI = self.MainUIInstance and self.MainUIInstance.TitleUIInstance or nil
+    if titleUI ~= nil and titleUI.UnlockTitle ~= nil then
+        titleUI:UnlockTitle(titleID)
+    end
+
+    self:Client_RefreshTitleBonus()
+end
+
+function UGCPlayerController:Client_RefreshTitleBonus()
+    local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+    if StateMgr == nil or StateMgr.ChengHaoTextShow == nil then
+        return
+    end
+    if StateMgr.UI == nil or StateMgr.UI.TextBlock_114 == nil then
+        return
+    end
+
+    local bonus = TitleConfig.GetUnlockedTitleBonus(self.UnlockedTitles)
+    StateMgr:ChengHaoTextShow(bonus.AttackPercent)
+end
+
+function UGCPlayerController:Client_SyncTitleState(unlockedTitles, equippedTitleID)
+    self.UnlockedTitles = unlockedTitles or {}
+    self.EquippedTitleID = tonumber(equippedTitleID) or 0
+
+    local titleUI = self.MainUIInstance and self.MainUIInstance.TitleUIInstance or nil
+    if titleUI ~= nil then
+        titleUI.EquippedTitleID = self.EquippedTitleID
+        for id, unlocked in pairs(self.UnlockedTitles) do
+            if unlocked and titleUI.UnlockTitle ~= nil then
+                titleUI:UnlockTitle(id)
+            end
+        end
+        if titleUI.SelectedTitleID ~= nil and titleUI.SelectTitle ~= nil then
+            titleUI:SelectTitle(titleUI.SelectedTitleID)
+        end
+    end
+
+    self:Client_RefreshTitleBonus()
+end
+
+function UGCPlayerController:UnlockTitle(titleID)
+    titleID = tonumber(titleID) or 0
+    if titleID < 1 or titleID > TitleConfig.MaxTitleID then
+        return
+    end
+
+    local playerState = self.PlayerState
+    if playerState ~= nil and playerState.IsTitleUnlocked ~= nil and playerState:IsTitleUnlocked(titleID) then
+        return
+    end
+
+    if playerState ~= nil and playerState.SetTitleUnlocked ~= nil then
+        playerState:SetTitleUnlocked(titleID)
+    end
+
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_UnlockTitle", titleID)
+end
+
+function UGCPlayerController:SyncSavedTitleState()
+    local playerState = self.PlayerState
+    if playerState == nil then
+        return
+    end
+
+    local unlockedTitles = playerState.GetUnlockedTitles and playerState:GetUnlockedTitles() or playerState.UnlockedTitles
+    local equippedTitleID = playerState.GetEquippedTitleID and playerState:GetEquippedTitleID() or playerState.EquippedTitleID
+    equippedTitleID = tonumber(equippedTitleID) or 0
+
+    local pawn = self:K2_GetPawn()
+    if pawn ~= nil and equippedTitleID > 0 then
+        pawn.EquippedTitleID = equippedTitleID
+        local titleActor = pawn.PlayerTitleActor
+        if (titleActor == nil or not UE.IsValid(titleActor)) and pawn.EnsurePlayerTitleActor ~= nil then
+            titleActor = pawn:EnsurePlayerTitleActor()
+        end
+        if titleActor and UE.IsValid(titleActor) and titleActor.SetTitle then
+            titleActor:SetTitle(equippedTitleID)
+        end
+    end
+
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncTitleState", unlockedTitles or {}, equippedTitleID)
+end
+
 -- Title equip
 function UGCPlayerController:Server_EquipTitle(titleID)
     titleID = tonumber(titleID) or 0
@@ -920,11 +1014,19 @@ function UGCPlayerController:Server_EquipTitle(titleID)
         return
     end
 
+    if self.PlayerState ~= nil and self.PlayerState.IsTitleUnlocked ~= nil and not self.PlayerState:IsTitleUnlocked(titleID) then
+        return
+    end
+
     if (pawn.EquippedTitleID or 0) == titleID then
         return
     end
 
     pawn.EquippedTitleID = titleID
+    self.EquippedTitleID = titleID
+    if self.PlayerState ~= nil and self.PlayerState.SetEquippedTitleID ~= nil then
+        self.PlayerState:SetEquippedTitleID(titleID)
+    end
 
     -- 刷新头顶称号
     local titleActor = pawn.PlayerTitleActor

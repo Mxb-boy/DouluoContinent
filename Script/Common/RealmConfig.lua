@@ -12,6 +12,10 @@ local function GetSoulRingIconPath(Level)
         .. tostring(Level)
 end
 
+local function GetMaterialIconPath(Name)
+    return ProjectRootPath .. "Asset/ui/Icon/" .. Name .. "." .. Name
+end
+
 local ItemIDs = {
     SoulRing1 = 8310048,
     SoulRing2 = 8310049,
@@ -24,8 +28,8 @@ local ItemIDs = {
     SoulRing9 = 8310052,
     SoulRing10 = 8310052,
 
-    RHY = 8310037,
-    HSZZ = 8310038,
+    RHY = 8310038,
+    HSZZ = 8310037,
     LYZH = 8310039,
     FZSP = 8310040,
     DHY = 8310041,
@@ -76,7 +80,7 @@ RealmConfig.Levels = {
         NeedItemText = "所需道具：第三魂环x1\n融魂玉x5",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing3, Count = 1, Name = "第三魂环", IconPath = GetSoulRingIconPath(3) },
-            { ItemID = ItemIDs.RHY, Count = 5, Name = "融魂玉" },
+            { ItemID = ItemIDs.RHY, Count = 5, Name = "融魂玉", IconPath = GetMaterialIconPath("rhy") },
         },
         DevConditionText = "融魂玉：海神岛副本掉落",
         SuccessRate = 80,
@@ -93,7 +97,7 @@ RealmConfig.Levels = {
         NeedItemText = "所需道具：第四魂环x1\n魂师之证x1",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing4, Count = 1, Name = "第四魂环", IconPath = GetSoulRingIconPath(4) },
-            { ItemID = ItemIDs.HSZZ, Count = 1, Name = "魂师之证" },
+            { ItemID = ItemIDs.HSZZ, Count = 1, Name = "魂师之证", IconPath = GetMaterialIconPath("hszz") },
         },
         DevConditionText = "魂师之证：副本魂兽Boss掉落",
         SuccessRate = 72,
@@ -110,7 +114,7 @@ RealmConfig.Levels = {
         NeedItemText = "所需道具：第五魂环x1\n领域之核x1",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing5, Count = 1, Name = "第五魂环", IconPath = GetSoulRingIconPath(5) },
-            { ItemID = ItemIDs.LYZH, Count = 1, Name = "领域之核" },
+            { ItemID = ItemIDs.LYZH, Count = 1, Name = "领域之核", IconPath = GetMaterialIconPath("lyzh") },
         },
         DevConditionText = "领域之核：击杀副本魂兽Boss概率掉落",
         SuccessRate = 60,
@@ -127,7 +131,7 @@ RealmConfig.Levels = {
         NeedItemText = "所需道具：第六魂环x1\n法则碎片x10",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing6, Count = 1, Name = "第六魂环", IconPath = GetSoulRingIconPath(6) },
-            { ItemID = ItemIDs.FZSP, Count = 10, Name = "法则碎片" },
+            { ItemID = ItemIDs.FZSP, Count = 10, Name = "法则碎片", IconPath = GetMaterialIconPath("fzsp") },
         },
         DevConditionText = "法则碎片：挑战“法则回廊”副本",
         SuccessRate = 48,
@@ -144,7 +148,7 @@ RealmConfig.Levels = {
         NeedItemText = "所需道具：第七魂环x1\n帝魂印x1",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing7, Count = 1, Name = "第七魂环", IconPath = GetSoulRingIconPath(7) },
-            { ItemID = ItemIDs.DHY, Count = 1, Name = "帝魂印" },
+            { ItemID = ItemIDs.DHY, Count = 1, Name = "帝魂印", IconPath = GetMaterialIconPath("dhy") },
         },
         DevConditionText = "帝魂印：集齐99个魂帝令碎片合成；魂帝令碎片掉落于所有万年魂兽",
         SuccessRate = 38,
@@ -161,7 +165,7 @@ RealmConfig.Levels = {
         NeedItemText = "所需道具：第八魂环x1\n圣魂玉x20",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing8, Count = 1, Name = "第八魂环", IconPath = GetSoulRingIconPath(8) },
-            { ItemID = ItemIDs.SHY, Count = 20, Name = "圣魂玉" },
+            { ItemID = ItemIDs.SHY, Count = 20, Name = "圣魂玉", IconPath = GetMaterialIconPath("shy") },
         },
         DevConditionText = "圣魂玉：熔炼10个年魂环合成1个，或拍卖行购买",
         SuccessRate = 28,
@@ -178,7 +182,7 @@ RealmConfig.Levels = {
         NeedItemText = "所需道具：第九魂环x1\n神兽之血x1",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing9, Count = 1, Name = "第九魂环", IconPath = GetSoulRingIconPath(9) },
-            { ItemID = ItemIDs.SSZX, Count = 1, Name = "神兽之血" },
+            { ItemID = ItemIDs.SSZX, Count = 1, Name = "神兽之血", IconPath = GetMaterialIconPath("sszx") },
         },
         DevConditionText = "神兽之血：击杀特定魂兽“九头天蛇”或“冰晶凤凰”必掉",
         SuccessRate = 15,
@@ -195,8 +199,8 @@ RealmConfig.Levels = {
         NeedItemText = "所需道具：第十魂环x1\n封号神印x1\n九色神光x9",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing10, Count = 1, Name = "第十魂环", IconPath = GetSoulRingIconPath(10) },
-            { ItemID = ItemIDs.FHSY, Count = 1, Name = "封号神印" },
-            { ItemID = ItemIDs.JSSG, Count = 9, Name = "九色神光" },
+            { ItemID = ItemIDs.FHSY, Count = 1, Name = "封号神印", IconPath = GetMaterialIconPath("w_20260630125242_2") },
+            { ItemID = ItemIDs.JSSG, Count = 9, Name = "九色神光", IconPath = GetMaterialIconPath("fhsy") },
         },
         DevConditionText = "封号神印：全服唯一掉落，刷新于“封号之巅”，可被抢夺，持有者全服公告\n九色神光：每完成一次天道试炼跑酷得1道",
         SuccessRate = 0,
