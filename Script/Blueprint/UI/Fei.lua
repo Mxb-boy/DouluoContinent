@@ -1,4 +1,5 @@
 ---@class Fei_C:UUserWidget
+---@field Button_0 UButton
 ---@field Button_84 UButton
 --Edit Below--
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
@@ -13,6 +14,8 @@ local FLY_EFFECT_OFFSET = Vector.New(0, 0, 80)
 local FLY_EFFECT_ROTATION = Rotator.New(0, 0, 0)
 local FLY_EFFECT_SCALE = Vector.New(2, 2, 2)
 local FLY_RELEASE_GRACE_TIME = 0.35
+local WingItemID = 1028
+local WingBackpackItemIDs = {8310012, 8310013, 8310014, 8310058, 8310059, 8310010}
 
 local BlockedControlWidgetNames = {
     "MainUI_FireLeft_C_0",
@@ -47,6 +50,13 @@ function Fei:LuaInit()
     self.bInitDoOnce = true
     self:SetupRootHitTest()
     self:SetupKeyboardInputMode()
+
+    if self.Button_0 ~= nil then
+        UIEffectUtil.SetButtonStateBrushSameAsNormal(self.Button_0)
+        UIEffectUtil.BindPressScale(self, self.Button_0, self.Button_0, 1.06, 1.0)
+        self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
+        self:RefreshButton0Visibility()
+    end
 
     if self.Button_84 ~= nil then
         UIEffectUtil.SetButtonStateBrushSameAsNormal(self.Button_84)
@@ -91,6 +101,133 @@ end
 
 function Fei:Button_84_OnReleased()
     self.FlyButtonReleaseGraceRemaining = FLY_RELEASE_GRACE_TIME
+end
+
+function Fei:Button_0_OnClicked()
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    local ProductID = self:GetShopProductID(WingItemID)
+    if PlayerController == nil or ProductID == nil then
+        return
+    end
+    if ShopV2Manager.bBlockRepeatPurchase == true then
+        return
+    end
+
+    local PurchaseUIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath(
+        "ExtendResource/ShopV2/OfficialPackage/Asset/ShopV2/Arts_UI/UIBP/ShopV2_PurchasePopups_UIBP.ShopV2_PurchasePopups_UIBP_C"))
+    if PurchaseUIClass == nil then
+        return
+    end
+
+    local PurchaseUI = UserWidget.NewWidgetObjectBP(PlayerController, PurchaseUIClass)
+    if PurchaseUI == nil then
+        return
+    end
+
+    self:EnsureShopPurchaseCallbacks()
+    ShopV2Manager.bBlockRepeatPurchase = true
+    PurchaseUI:AddToViewport(15000)
+    PurchaseUI:Refresh(ProductID)
+end
+
+function Fei:OnFeiAddVirtualItem(Result)
+    if Result == nil or Result.bSucceeded ~= true or Result.ItemList == nil then
+        return
+    end
+
+    if Result.ItemList[WingItemID] ~= nil or Result.ItemList[tostring(WingItemID)] ~= nil then
+        self:SetButton0Hidden(true)
+    end
+end
+
+function Fei:SetButton0Hidden(value)
+    local bHidden = value == true or tonumber(value) == 1
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil then
+        if PlayerController.PlayerState ~= nil then
+            PlayerController.PlayerState.FeiButton0Hidden = bHidden and 1 or 0
+        end
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SetFeiButton0Hidden", bHidden and 1 or 0)
+    end
+
+    if self.Button_0 ~= nil then
+        self.Button_0:SetVisibility(bHidden and ESlateVisibility.Collapsed or ESlateVisibility.Visible)
+    end
+end
+
+function Fei:RefreshButton0Visibility()
+    if self.Button_0 == nil then
+        return
+    end
+
+    if self:HasFeiButton0Hidden() or self:HasAnyWing() then
+        self.Button_0:SetVisibility(ESlateVisibility.Collapsed)
+        if not self:HasFeiButton0Hidden() then
+            self:SetButton0Hidden(true)
+        end
+    else
+        self.Button_0:SetVisibility(ESlateVisibility.Visible)
+    end
+end
+
+function Fei:HasFeiButton0Hidden()
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    local PlayerState = PlayerController and PlayerController.PlayerState
+    if PlayerState == nil then
+        return false
+    end
+
+    if PlayerState.GetFeiButton0Hidden ~= nil then
+        return PlayerState:GetFeiButton0Hidden() == true
+    end
+
+    return tonumber(PlayerState.FeiButton0Hidden) == 1
+end
+
+function Fei:HasAnyWing()
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+    local PlayerPawn = PlayerController and PlayerController.Pawn or nil
+    if PlayerPawn == nil or UGCBackpackSystemV2 == nil or UGCBackpackSystemV2.GetItemCountV2 == nil then
+        return false
+    end
+
+    for _, ItemID in ipairs(WingBackpackItemIDs) do
+        if (tonumber(UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID)) or 0) > 0 then
+            return true
+        end
+    end
+
+    return false
+end
+
+function Fei:GetShopProductID(ItemID)
+    local ProductDatas = ShopV2Manager:GetAllProductConfigData()
+    for ProductID, ProductData in pairs(ProductDatas) do
+        if tonumber(ProductData.ItemID) == ItemID then
+            return tonumber(ProductData.ProductID) or tonumber(ProductData.ProductId) or tonumber(ProductID)
+        end
+    end
+
+    return nil
+end
+
+function Fei:EnsureShopPurchaseCallbacks()
+    if ShopV2Manager.bBuyProductResultBinded ~= true then
+        ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Add(ShopV2Manager.OnBuyProductResult,
+            ShopV2Manager)
+        ShopV2Manager.bBuyProductResultBinded = true
+    end
+
+    if ShopV2Manager.bAddItemResultDelegateBinded ~= true then
+        ShopV2Manager:GetVirtualItemManager().AddItemResultDelegate:Add(ShopV2Manager.OnAddVirtualItem, ShopV2Manager)
+        ShopV2Manager.bAddItemResultDelegateBinded = true
+    end
+
+    if self.bFeiAddVirtualItemResultBinded ~= true then
+        ShopV2Manager:GetVirtualItemManager().AddItemResultDelegate:Add(self.OnFeiAddVirtualItem, self)
+        self.bFeiAddVirtualItemResultBinded = true
+    end
 end
 
 function Fei:SetupFlyButtonInputMode()
