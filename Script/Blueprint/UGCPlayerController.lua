@@ -88,7 +88,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult", "Client_RefreshProperty",
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
-        "Server_ClaimTowerTopReward"
+        "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden",
+        "Client_SetFeiTowerButtonsHidden","Server_AddFixedBaseProperty"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -1271,6 +1272,12 @@ function UGCPlayerController:Client_SetFeiButton0Hidden(value)
 
     if self.FeiUIInstance ~= nil and self.FeiUIInstance.RefreshButton0Visibility ~= nil then
         self.FeiUIInstance:RefreshButton0Visibility()
+    end
+end
+
+function UGCPlayerController:Client_SetFeiTowerButtonsHidden(value)
+    if self.FeiUIInstance ~= nil and self.FeiUIInstance.SetTowerButtonsHidden ~= nil then
+        self.FeiUIInstance:SetTowerButtonsHidden(value)
     end
 end
 

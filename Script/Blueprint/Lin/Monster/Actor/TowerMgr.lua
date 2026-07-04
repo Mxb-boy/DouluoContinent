@@ -403,6 +403,7 @@ function TowerMgr:Capsule_OnComponentBeginOverlap(OverlappedComponent, OtherActo
 
     if overlapCount <= 0 then
         self.InsidePlayerCount = self.InsidePlayerCount + 1
+        self:SetPlayerFeiTowerButtonsHidden(OtherActor, true)
     end
 
     if self.HasStarted then
@@ -451,12 +452,20 @@ function TowerMgr:Capsule_OnComponentEndOverlap(OverlappedComponent, OtherActor,
         self.InsidePlayerOverlapCounts[uid] = nil
         self.ActorToPlayerUIDs[OtherActor] = nil
         self.InsidePlayerCount = math.max(0, self.InsidePlayerCount - 1)
+        self:SetPlayerFeiTowerButtonsHidden(OtherActor, false)
 
         if self.InsidePlayerCount <= 0 then
             self:DestroyAliveMonsters()
         end
     else
         self.InsidePlayerOverlapCounts[uid] = overlapCount - 1
+    end
+end
+
+function TowerMgr:SetPlayerFeiTowerButtonsHidden(OtherActor, bHidden)
+    local PlayerController = OtherActor and OtherActor.Controller
+    if PlayerController ~= nil then
+        UnrealNetwork.CallUnrealRPC(self, PlayerController, "Client_SetFeiTowerButtonsHidden", bHidden and 1 or 0)
     end
 end
 

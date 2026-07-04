@@ -155,6 +155,26 @@ function Fei:SetButton0Hidden(value)
     end
 end
 
+function Fei:SetTowerButtonsHidden(value)
+    if value == true or tonumber(value) == 1 then
+        self.TowerButtonsHiddenCount = (self.TowerButtonsHiddenCount or 0) + 1
+    else
+        self.TowerButtonsHiddenCount = math.max(0, (self.TowerButtonsHiddenCount or 0) - 1)
+    end
+
+    local Visibility = (self.TowerButtonsHiddenCount or 0) > 0 and ESlateVisibility.Collapsed or ESlateVisibility.Visible
+    if self.Button_0 ~= nil then
+        if Visibility == ESlateVisibility.Visible then
+            self:RefreshButton0Visibility()
+        else
+            self.Button_0:SetVisibility(Visibility)
+        end
+    end
+    if self.Button_84 ~= nil then
+        self.Button_84:SetVisibility(Visibility)
+    end
+end
+
 function Fei:RefreshButton0Visibility()
     if self.Button_0 == nil then
         return

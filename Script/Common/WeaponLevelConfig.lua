@@ -71,8 +71,8 @@ WeaponLevelConfig.ForgeRateBySeries = {
     },
     XJWQ = {
         [1] = { Success = 42, Keep = 58, Down = 0 },
-        [2] = { Success = 30, Keep = 41, Down = 29 },
-        [3] = { Success = 19, Keep = 43, Down = 38 },
+        [2] = { Success = 40, Keep = 41, Down = 19},
+        [3] = { Success = 24, Keep = 48, Down = 28},
         [4] = { Success = 9, Keep = 44, Down = 47 },
     },
 }

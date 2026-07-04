@@ -25,6 +25,7 @@
 ---@field text_jj UTextBlock
 ---@field text_name_1 UTextBlock
 ---@field text_qnhh UTextBlock
+---@field TextBlock_297 UTextBlock
 --Edit Below--
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
@@ -39,6 +40,7 @@ local TextLabels = {
     Success = string.char(230, 136, 144, 229, 138, 159, 239, 188, 154),
     Keep = string.char(228, 191, 157, 230, 140, 129, 228, 184, 141, 229, 143, 152, 239, 188, 154),
     Down = string.char(233, 153, 141, 231, 186, 167, 239, 188, 154),
+    AttackBonus = string.char(230, 148, 187, 229, 135, 187, 229, 138, 160, 230, 136, 144),
     OpenParen = string.char(239, 188, 136),
     CloseParen = string.char(239, 188, 137),
 }
@@ -153,7 +155,6 @@ function UI10:GetBackpackWeaponList()
         ugcprint("[UI10:GetBackpackWeaponList] Local player pawn is nil")
         return {}
     end
-
     local BestWeaponBySeries = {}
     for SeriesKey, SeriesData in pairs(WeaponLevelConfig.Series) do
         for Level, ItemID in ipairs(SeriesData.ItemIDs) do
@@ -169,7 +170,6 @@ function UI10:GetBackpackWeaponList()
             end
         end
     end
-
     local Result = {}
     local SeriesOrder = { "XJWQ", "HWSCJ", "HTC", "LCSL", "TSSJ" }
     for _, SeriesKey in ipairs(SeriesOrder) do
@@ -183,7 +183,6 @@ function UI10:GetBackpackWeaponList()
             })
         end
     end
-
     return Result
 end
 
@@ -348,6 +347,10 @@ function UI10:RefreshForgeInfo()
     if self.text_jj ~= nil then
         self.text_jj:SetText(TextLabels.Down .. tostring(Rate.Down or 0) .. "%")
     end
+    if self.TextBlock_297 ~= nil then
+        local Attribute = WeaponLevelConfig.GetTotalAttribute(self.SelectedWeaponItemID) or { AttackPercent = 0 }
+        self.TextBlock_297:SetText(TextLabels.AttackBonus .. tostring(Attribute.AttackPercent or 0) .. "%")
+    end
 end
 
 function UI10:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID)
@@ -462,7 +465,6 @@ function UI10:ConsumeForgeItems(PlayerPawn, OldItemID, NewItemID, Cost)
         UGCBackpackSystemV2.AddItemV2(PlayerPawn, MaterialItemIDs.HGRJ, Cost.HGRJ or 0)
         return false
     end
-
     if NewItemID ~= OldItemID then
         if not self:TryRemoveBackpackItem(PlayerPawn, OldItemID, 1) then
             UGCBackpackSystemV2.AddItemV2(PlayerPawn, MaterialItemIDs.HGRJ, Cost.HGRJ or 0)
