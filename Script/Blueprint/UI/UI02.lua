@@ -45,6 +45,7 @@
 ---@field Image_12 UImage
 ---@field Image_13 UImage
 ---@field Image_14 UImage
+---@field Image_28 UImage
 ---@field Image_109 UImage
 ---@field Image_169 UImage
 ---@field Image_225 UImage
@@ -76,6 +77,84 @@
 ---@field TextBlock_114 UTextBlock
 ---@field TextBlock_303 UTextBlock
 --Edit Below--
+---@class UI02_C:UUserWidget
+---@field Button_0 UButton
+---@field Button_2 UButton
+---@field Button_3 UButton
+---@field Button_4 UButton
+---@field Button_5 UButton
+---@field Button_92 UButton
+---@field Button_93 UButton
+---@field Button_94 UButton
+---@field Button_95 UButton
+---@field Button_97 UButton
+---@field Button_99 UButton
+---@field Button_134 UButton
+---@field Button_135 UButton
+---@field Button_144 UButton
+---@field Button_145 UButton
+---@field Button_147 UButton
+---@field Button_149 UButton
+---@field Button_150 UButton
+---@field Button_151 UButton
+---@field Button_152 UButton
+---@field Button_153 UButton
+---@field Button_154 UButton
+---@field Button_155 UButton
+---@field Button_156 UButton
+---@field Button_157 UButton
+---@field Button_158 UButton
+---@field Button_226 UButton
+---@field Button_227 UButton
+---@field Button_228 UButton
+---@field gjl UTextBlock
+---@field hp UTextBlock
+---@field Image_0 UImage
+---@field Image_1 UImage
+---@field Image_2 UImage
+---@field Image_3 UImage
+---@field Image_4 UImage
+---@field Image_5 UImage
+---@field Image_6 UImage
+---@field Image_7 UImage
+---@field Image_8 UImage
+---@field Image_9 UImage
+---@field Image_10 UImage
+---@field Image_11 UImage
+---@field Image_12 UImage
+---@field Image_13 UImage
+---@field Image_14 UImage
+---@field Image_109 UImage
+---@field Image_169 UImage
+---@field Image_225 UImage
+---@field Image_246 UImage
+---@field Image_302 UImage
+---@field Image_303 UImage
+---@field Image_386 UImage
+---@field Image_387 UImage
+---@field Image_388 UImage
+---@field Image_389 UImage
+---@field Image_392 UImage
+---@field Image_393 UImage
+---@field Image_395 UImage
+---@field Image_396 UImage
+---@field Image_397 UImage
+---@field Image_398 UImage
+---@field Image_542 UImage
+---@field ProgressBar_0 UProgressBar
+---@field ProgressBar_1 UProgressBar
+---@field ProgressBar_2 UProgressBar
+---@field ProgressBar_122 UProgressBar
+---@field TextBlock_0 UTextBlock
+---@field TextBlock_1 UTextBlock
+---@field TextBlock_49 UTextBlock
+---@field TextBlock_50 UTextBlock
+---@field TextBlock_109 UTextBlock
+---@field TextBlock_110 UTextBlock
+---@field TextBlock_112 UTextBlock
+---@field TextBlock_114 UTextBlock
+---@field TextBlock_303 UTextBlock
+-- Edit Below--
 ---@class UI02_C:UUserWidget
 ---@field Button_0 UButton
 ---@field Button_2 UButton
@@ -299,13 +378,16 @@ local MainButtonRedDots = {
     Button_151 = "Image_11",
     Button_152 = "Image_12",
     Button_153 = "Image_13",
-    Button_158 = "Image_14",
+    Button_158 = "Image_14"
 }
 local MainFoldImages = {"Image_386", "Image_387", "Image_388", "Image_389", "Image_397", "Image_392", "Image_393",
                         "Image_395", "Image_396", "Image_398"}
 
 function UI02:Construct()
     self:LuaInit()
+end
+
+function UI02:Tick(MyGeometry, InDeltaTime)
 end
 
 function UI02:ApplyButtonEffect(Button)
@@ -377,8 +459,14 @@ function UI02:LuaInit()
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
     StateMgr:SetUI(self)
+
+    self:SetTowerOutBoxImageVisible(false)
     self:RefreshMainButtonRedDots()
 
+end
+
+function UI02:SetTowerOutBoxImageVisible(bVisible)
+    self.Image_28:SetVisibility(bVisible and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
 end
 
 function UI02:RefreshMainButtonRedDots()
@@ -505,15 +593,18 @@ end
 
 function UI02:RefreshYXWDPurchaseButton()
     if self.Button_5 ~= nil then
-        self.Button_5:SetVisibility(self:HasAutoPickButtonHidden() and ESlateVisibility.Collapsed or ESlateVisibility.Visible)
+        self.Button_5:SetVisibility(self:HasAutoPickButtonHidden() and ESlateVisibility.Collapsed or
+                                        ESlateVisibility.Visible)
     end
 
     if self.Button_2 ~= nil then
-        self.Button_2:SetVisibility(self:HasAutoAttackButtonHidden() and ESlateVisibility.Collapsed or ESlateVisibility.Visible)
+        self.Button_2:SetVisibility(self:HasAutoAttackButtonHidden() and ESlateVisibility.Collapsed or
+                                        ESlateVisibility.Visible)
     end
 
     if self.Button_4 ~= nil then
-        self.Button_4:SetVisibility(self:HasYXWDInvincibleBuff() and ESlateVisibility.Collapsed or ESlateVisibility.Visible)
+        self.Button_4:SetVisibility(self:HasYXWDInvincibleBuff() and ESlateVisibility.Collapsed or
+                                        ESlateVisibility.Visible)
     end
 end
 

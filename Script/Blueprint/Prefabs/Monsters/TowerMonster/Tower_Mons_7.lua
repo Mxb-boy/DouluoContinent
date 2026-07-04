@@ -2,6 +2,19 @@
 --Edit Below--
 local Tower_Mons_7 = {}
 
+local SHAKE_TYPE_RANDOM = 0 -- EPESkillCameraShakeType::Random
+local SHAKE_SCALE = 0.3
+local SHAKE_DURATION = 0
+
+function Tower_Mons_7:ReceiveBeginPlay()
+    Tower_Mons_7.SuperClass.ReceiveBeginPlay(self)
+    self.ShakingPlayers = {}
+    self.OutBox.OnComponentHit:Add(self.OutBox_OnComponentHit, self);
+    self.InBox.OnComponentBeginOverlap:Add(self.InBox_OnComponentBeginOverlap, self);
+    self.InBox.OnComponentEndOverlap:Add(self.InBox_OnComponentEndOverlap, self);
+    self.OutBox.OnComponentBeginOverlap:Add(self.OutBox_OnComponentBeginOverlap, self);
+    self.OutBox.OnComponentEndOverlap:Add(self.OutBox_OnComponentEndOverlap, self);
+end
 -- function Tower_Mons_7:ReceiveBeginPlay()
 --     Tower_Mons_7.SuperClass.ReceiveBeginPlay(self)
 -- end
@@ -115,4 +128,61 @@ end
     
 -- end
 
+function Tower_Mons_7:OutBox_OnComponentHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit)
+    return nil;
+end
+
+function Tower_Mons_7:InBox_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex,
+    bFromSweep, SweepResult)
+    if not self:HasAuthority() then
+        return
+    end
+
+    local pc = UGCGameSystem.GetPlayerControllerByPlayerPawn(OtherActor)
+    if pc == nil then
+        return
+    end
+
+    UGCGameSystem.ApplyDamage(OtherActor, 99999999999999999, pc, self, {})
+end
+
+function Tower_Mons_7:InBox_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
+    return nil;
+end
+
+function Tower_Mons_7:OutBox_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex,
+    bFromSweep, SweepResult)
+    if not self:HasAuthority() then
+        return
+    end
+
+    local pc = UGCGameSystem.GetPlayerControllerByPlayerPawn(OtherActor)
+    if pc == nil then
+        return
+    end
+
+    if self.ShakingPlayers[pc] then
+        return
+    end
+
+    UnrealNetwork.CallUnrealRPC(pc, pc, "Client_SetTowerOutBoxVisible", true)
+    UGCGameSystem.ClientPlayCameraShake(pc, SHAKE_TYPE_RANDOM, SHAKE_SCALE, SHAKE_DURATION)
+    self.ShakingPlayers[pc] = true
+end
+
+function Tower_Mons_7:OutBox_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
+    if not self:HasAuthority() then
+        return
+    end
+
+    local pc = UGCGameSystem.GetPlayerControllerByPlayerPawn(OtherActor)
+    if pc == nil then
+        return
+    end
+
+    self.ShakingPlayers[pc] = nil
+
+    UnrealNetwork.CallUnrealRPC(pc, pc, "Client_SetTowerOutBoxVisible", false)
+    UGCGameSystem.ClientStopCameraShake(pc, SHAKE_TYPE_RANDOM)
+end
 return Tower_Mons_7

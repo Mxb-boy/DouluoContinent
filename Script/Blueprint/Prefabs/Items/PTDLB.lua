@@ -1,8 +1,33 @@
 ---@class PTDLB_C:UGCItemHandle_ConsumeBase_C
---Edit Below--
-local PTDLB = {} 
+-- Edit Below--
+local PTDLB = {}
 
---[[经典背包事件]]--
+function PTDLB:OnUseV2()
+    PTDLB.SuperClass.OnUseV2(self);
+
+    --[[-------------------测试生成掉落---------------------------]] --
+    local ownBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(self)
+    local player = ownBackpackComponent:GetOwner()
+    local pawn = UGCGameSystem.GetPlayerPawnByPlayerController(player) or player
+    local PlayerLoc = pawn:K2_GetActorLocation()
+
+    SpawnNearPlayer(PlayerLoc, 8310048, 1)
+    SpawnNearPlayer(PlayerLoc, 8310049, 1)
+    SpawnNearPlayer(PlayerLoc, 8310051, 1)
+    SpawnNearPlayer(PlayerLoc, 8310053, 1)
+    SpawnNearPlayer(PlayerLoc, 8310054, 1)
+end
+-- 辅助函数：在玩家周围随机位置掉落
+function SpawnNearPlayer(PlayerLoc, ItemID, Count)
+    local angle = math.random() * 2 * math.pi
+    local dist = math.random(500, 1000) -- 这个是随机的范围
+    local x = PlayerLoc.X + math.cos(angle) * dist
+    local y = PlayerLoc.Y + math.sin(angle) * dist
+    local z = PlayerLoc.Z
+    local pos = Vector.New(x, y, z)
+    return UGCItemSystemV2.SpawnPickupWrapper(pos, ItemID, Count)
+end
+--[[经典背包事件]] --
 --[[
 --- func 处理物品的拾取(服务端生效)
 ---@return bool @是否拾取该物品, 返回true才能拾取进背包
@@ -50,9 +75,9 @@ local PTDLB = {}
 -- function PTDLB:HanldeCleared()
 --    return PTDLB.SuperClass.HanldeCleared(self)
 -- end
-]]--
+]] --
 
---[[V2背包事件]]--
+--[[V2背包事件]] --
 --[[
 --- func 能否创建物品Handle(服务端生效)
 ---@return bool @是否允许创建物品Handle, 若不允许，物品也将创建失败
@@ -116,6 +141,6 @@ local PTDLB = {}
 -- function PTDLB:UGC_OnStopUse(Reason)
     PTDLB.SuperClass.UGC_OnStopUse(self, Reason)
 -- end
-]]--
+]] --
 
 return PTDLB

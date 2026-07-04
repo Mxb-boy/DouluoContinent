@@ -1,5 +1,5 @@
 ---@class UGCGameMode_C:BP_UGCGameBase_C
---Edit Below--
+-- Edit Below--
 local UGCGameMode = {};
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 
@@ -55,12 +55,8 @@ local function RestoreBackpackSnapshot(PlayerKey, PlayerPawn)
 end
 
 function UGCGameMode:ReceiveBeginPlay()
-    UGCGenericMessageSystem.ListenGlobalMessage(
-        self,
-        UGCGenericMessageSystem.Messages.UGC.PlayerPawn.PawnDefeat,
-        self,
-        self.OnPawnDefeat
-    )
+    UGCGenericMessageSystem.ListenGlobalMessage(self, UGCGenericMessageSystem.Messages.UGC.PlayerPawn.PawnDefeat, self,
+        self.OnPawnDefeat)
 end
 
 -- 玩家登录时: 先加载跨对局存档, 再发初始武器（Pawn可能还没好，等1秒）
@@ -100,15 +96,15 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             if HTCLv2ItemID ~= nil then
                 AddV2ItemIfMissing(PC.Pawn, HTCLv2ItemID, 1)
             end
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310046, 1)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310064, 10)
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310047, 1)
-            --锻造材料
+            -- 锻造材料
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310035, 1000)
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310036, 1000)
             -- --境界升级材料先发背包
-             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310037, 10)
-             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310038, 10)
-             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310039, 10)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310037, 10)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310038, 10)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310039, 10)
             -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310040, 99)
             -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310041, 99)
             -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310042, 99)
@@ -167,7 +163,6 @@ function UGCGameMode:UGC_PlayerRespawnEvent(RespawnedController)
     end, false)
 end
 
-
 function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageType)
     -- 某些死亡方式不会触发 UGC_PlayerKilledEvent，尝试从 Controller 再保存一次。
     if not PlayerBackpackSnapshots[VictimPlayerKey] then
@@ -186,8 +181,7 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
 
     -- 防止个别情况下 UGC_PlayerRespawnEvent 未回调，重生完成后再尝试恢复一次。
     UGCTimerUtility.CreateLuaTimer(3, function()
-        local RespawnedController =
-            UGCGameSystem.GetPlayerControllerByPlayerKey(VictimPlayerKey)
+        local RespawnedController = UGCGameSystem.GetPlayerControllerByPlayerKey(VictimPlayerKey)
         if RespawnedController and RespawnedController.Pawn then
             RestoreBackpackSnapshot(VictimPlayerKey, RespawnedController.Pawn)
             if RespawnedController.Pawn.RefreshStateMgrProperty ~= nil then
@@ -196,4 +190,4 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
         end
     end, false)
 end
-return UGCGameMode; 
+return UGCGameMode;

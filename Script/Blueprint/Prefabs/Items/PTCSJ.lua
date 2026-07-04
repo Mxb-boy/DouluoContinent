@@ -1,8 +1,20 @@
 ---@class PTCSJ_C:UGCItemHandle_ConsumeBase_C
---Edit Below--
-local PTCSJ = {} 
+-- Edit Below--
+local PTCSJ = {}
 
---[[V2背包事件]]--
+function PTCSJ:OnUseV2()
+    PTCSJ.SuperClass.OnUseV2(self);
+
+    --[[----------------------执行传送逻辑，传送到塔------------------------]] --
+
+    local CSPoint = 201
+    local OwnBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(self)
+    local PlayerController = OwnBackpackComponent:GetOwner()
+    if PlayerController then
+        PlayerController:Server_TeleportToSpawn(CSPoint)
+    end
+end
+--[[V2背包事件]] --
 --[[
 --- func 能否创建物品Handle(服务端生效)
 ---@return bool @是否允许创建物品Handle, 若不允许，物品也将创建失败
@@ -66,6 +78,6 @@ local PTCSJ = {}
 -- function PTCSJ:UGC_OnStopUse(Reason)
     PTCSJ.SuperClass.UGC_OnStopUse(self, Reason)
 -- end
-]]--
+]] --
 
 return PTCSJ

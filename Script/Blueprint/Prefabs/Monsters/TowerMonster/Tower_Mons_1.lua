@@ -12,6 +12,19 @@
 -- Edit Below--
 local Tower_Mons_1 = {}
 
+local SHAKE_TYPE_RANDOM = 0 -- EPESkillCameraShakeType::Random
+local SHAKE_SCALE = 0.3
+local SHAKE_DURATION = 0
+
+function Tower_Mons_1:ReceiveBeginPlay()
+    Tower_Mons_1.SuperClass.ReceiveBeginPlay(self)
+    self.ShakingPlayers = {}
+    self.OutBox.OnComponentHit:Add(self.OutBox_OnComponentHit, self);
+    self.InBox.OnComponentBeginOverlap:Add(self.InBox_OnComponentBeginOverlap, self);
+	self.InBox.OnComponentEndOverlap:Add(self.InBox_OnComponentEndOverlap, self);
+	self.OutBox.OnComponentBeginOverlap:Add(self.OutBox_OnComponentBeginOverlap, self);
+	self.OutBox.OnComponentEndOverlap:Add(self.OutBox_OnComponentEndOverlap, self);
+end
 local function DisableMonsterCollision(monster)
     if monster.HitBox ~= nil then
         monster.HitBox:SetCollisionEnabled(ECollisionEnabled.NoCollision)
@@ -87,6 +100,12 @@ end
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
 function Tower_Mons_1:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
+    if self:HasAuthority() and self.ShakingPlayers ~= nil then
+        for pc, _ in pairs(self.ShakingPlayers) do
+            UGCGameSystem.ClientStopCameraShake(pc, SHAKE_TYPE_RANDOM)
+        end
+    end
+
     DisableMonsterCollision(self)
 
     if self:HasAuthority() and self.SpawnWall ~= nil then
@@ -143,11 +162,6 @@ function Tower_Mons_1:LuaInit()
     -- [Editor Generated Lua] BindingProperty End;
 
     -- [Editor Generated Lua] BindingEvent Begin:
-    self.OutBox.OnComponentHit:Add(self.OutBox_OnComponentHit, self);
-    self.InBox.OnComponentBeginOverlap:Add(self.InBox_OnComponentBeginOverlap, self);
-	self.InBox.OnComponentEndOverlap:Add(self.InBox_OnComponentEndOverlap, self);
-	self.OutBox.OnComponentBeginOverlap:Add(self.OutBox_OnComponentBeginOverlap, self);
-	self.OutBox.OnComponentEndOverlap:Add(self.OutBox_OnComponentEndOverlap, self);
 	-- [Editor Generated Lua] BindingEvent End;
 end
 
@@ -156,7 +170,16 @@ function Tower_Mons_1:OutBox_OnComponentHit(HitComponent, OtherActor, OtherComp,
 end
 
 function Tower_Mons_1:InBox_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
-	return nil;
+    if not self:HasAuthority() then
+        return
+    end
+
+    local pc = UGCGameSystem.GetPlayerControllerByPlayerPawn(OtherActor)
+    if pc == nil then
+        return
+    end
+
+    UGCGameSystem.ApplyDamage(OtherActor, 99999999999999999, pc, self, {})
 end
 
 function Tower_Mons_1:InBox_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
@@ -164,11 +187,38 @@ function Tower_Mons_1:InBox_OnComponentEndOverlap(OverlappedComponent, OtherActo
 end
 
 function Tower_Mons_1:OutBox_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
-	return nil;
+    if not self:HasAuthority() then
+        return
+    end
+
+    local pc = UGCGameSystem.GetPlayerControllerByPlayerPawn(OtherActor)
+    if pc == nil then
+        return
+    end
+
+    if self.ShakingPlayers[pc] then
+        return
+    end
+
+    UnrealNetwork.CallUnrealRPC(pc, pc, "Client_SetTowerOutBoxVisible", true)
+    UGCGameSystem.ClientPlayCameraShake(pc, SHAKE_TYPE_RANDOM, SHAKE_SCALE, SHAKE_DURATION)
+    self.ShakingPlayers[pc] = true
 end
 
 function Tower_Mons_1:OutBox_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
-	return nil;
+    if not self:HasAuthority() then
+        return
+    end
+
+    local pc = UGCGameSystem.GetPlayerControllerByPlayerPawn(OtherActor)
+    if pc == nil then
+        return
+    end
+
+    self.ShakingPlayers[pc] = nil
+
+    UnrealNetwork.CallUnrealRPC(pc, pc, "Client_SetTowerOutBoxVisible", false)
+    UGCGameSystem.ClientStopCameraShake(pc, SHAKE_TYPE_RANDOM)
 end
 
 -- [Editor Generated Lua] function define End;

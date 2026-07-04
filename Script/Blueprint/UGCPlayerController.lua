@@ -85,7 +85,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult", "Client_RefreshProperty",
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
-        "Client_SetAutoFeatureButtonHidden"
+        "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
+        "Server_ClaimTowerTopReward"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -116,6 +117,33 @@ end
 
 function UGCPlayerController:Server_TeleportToSpawn(bornPointID)
     TeleportToSpawn(self, bornPointID)
+end
+
+--- 打开通关奖励UI
+function UGCPlayerController:Client_OpenTowerTopUI()
+    if self.TowerTopUIInstance ~= nil then
+        self.TowerTopUIInstance:AddToViewport(11000)
+        return
+    end
+
+    local UIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath('Asset/Blueprint/UI/TowerTopUI.TowerTopUI_C'))
+    if UIClass == nil then
+        ugcprint("[UGCPlayerController] TowerTopUI class load failed")
+        return
+    end
+
+    self.TowerTopUIInstance = UserWidget.NewWidgetObjectBP(self, UIClass)
+    if self.TowerTopUIInstance ~= nil then
+        self.TowerTopUIInstance:AddToViewport(11000)
+    end
+end
+
+function UGCPlayerController:Server_ClaimTowerTopReward()
+    local pawn = self.Pawn or self:K2_GetPawn()
+    if pawn ~= nil then
+        UGCBackpackSystemV2.AddItemV2(pawn, 8310071, 1)
+    end
+    TeleportToSpawn(self, 1)
 end
 
 --- 传送玩家到指定坐标
@@ -331,7 +359,7 @@ local function RemoveItem(PlayerController, ItemID, Count)
     local Pawn = GetPlayerPawn(PlayerController)
     if Pawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.RemoveItemV2 ~= nil then
         local Success, Result = pcall(UGCBackpackSystemV2.RemoveItemV2, Pawn, ItemID, Count)
-            if Success and Result ~= false and Result ~= 0 then
+        if Success and Result ~= false and Result ~= 0 then
             return true
         end
     end
@@ -929,6 +957,12 @@ function UGCPlayerController:Client_RefreshProperty(baseAttack, baseMaxHp, hp, m
         hp, maxHp, bFillHealth)
 end
 
+function UGCPlayerController:Client_SetTowerOutBoxVisible(bVisible)
+    if self.MainUIInstance ~= nil and self.MainUIInstance.SetTowerOutBoxImageVisible ~= nil then
+        self.MainUIInstance:SetTowerOutBoxImageVisible(bVisible == true or bVisible == 1)
+    end
+end
+
 function UGCPlayerController:Client_YXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
     if self.MainUIInstance ~= nil and self.MainUIInstance.OnYXWDInvincibleBuffChanged ~= nil then
         self.MainUIInstance:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
@@ -1092,8 +1126,8 @@ function UGCPlayerController:RegisterCompensationDelegates()
             UGCCommoditySystem.CompensateUGCCommodityBatchDelegate:Add(self.OnCompensateUGCCommodityBatch, self)
         end
         if UGCCommoditySystem.BuyUGCCommodityResultBetweenGamesDelegate ~= nil then
-            UGCCommoditySystem.BuyUGCCommodityResultBetweenGamesDelegate:Add(
-                self.OnBuyUGCCommodityResultBetweenGames, self)
+            UGCCommoditySystem.BuyUGCCommodityResultBetweenGamesDelegate:Add(self.OnBuyUGCCommodityResultBetweenGames,
+                self)
         end
     end
 
@@ -1132,7 +1166,8 @@ end
 ---@param Count number 补偿数量
 ---@param ProductID number 商品ID（对应UGCShop表）
 function UGCPlayerController:OnCompensateUGCCommodity(PlayerKey, UID, CommodityID, Count, ProductID)
-    print(string.format("[Compensation] OnCompensateUGCCommodity: PlayerKey=%s UID=%s CommodityID=%s Count=%s ProductID=%s",
+    print(string.format(
+        "[Compensation] OnCompensateUGCCommodity: PlayerKey=%s UID=%s CommodityID=%s Count=%s ProductID=%s",
         tostring(PlayerKey), tostring(UID), tostring(CommodityID), tostring(Count), tostring(ProductID)))
 
     -- 服务器收到后转发给对应客户端
@@ -1159,8 +1194,8 @@ function UGCPlayerController:OnCompensateUGCCommodityBatch(PlayerKey, UID, Commo
 
     -- 逐个转发给客户端
     for _, item in ipairs(CommodityList) do
-        UnrealNetwork.CallUnrealRPC(self, TargetPC, "Client_CompensationReceived",
-            item.CommodityID, item.Count, item.ProductID or 0)
+        UnrealNetwork.CallUnrealRPC(self, TargetPC, "Client_CompensationReceived", item.CommodityID, item.Count,
+            item.ProductID or 0)
     end
 end
 
@@ -1170,7 +1205,8 @@ end
 ---@param CommodityID number 物品ID
 ---@param Count number 新增的差异数量
 function UGCPlayerController:OnBuyUGCCommodityResultBetweenGames(PlayerKey, UID, CommodityID, Count)
-    print(string.format("[Compensation] OnBuyUGCCommodityResultBetweenGames: PlayerKey=%s UID=%s CommodityID=%s Count=%s",
+    print(string.format(
+        "[Compensation] OnBuyUGCCommodityResultBetweenGames: PlayerKey=%s UID=%s CommodityID=%s Count=%s",
         tostring(PlayerKey), tostring(UID), tostring(CommodityID), tostring(Count)))
 
     local TargetPC = UGCGameSystem.GetPlayerControllerByPlayerKey(PlayerKey)
@@ -1210,18 +1246,23 @@ function UGCPlayerController:Server_TestCompensation(TestType, CommodityID, Coun
     CommodityID = tonumber(CommodityID) or 1001
     Count = tonumber(Count) or 5
 
-    print(string.format("[Compensation][GM] Server_TestCompensation: type=%d item=%d count=%d",
-        TestType, CommodityID, Count))
+    print(string.format("[Compensation][GM] Server_TestCompensation: type=%d item=%d count=%d", TestType, CommodityID,
+        Count))
 
     if TestType == 1 then
         -- 模拟单笔补偿
         self:OnCompensateUGCCommodity(self.PlayerKey, 0, CommodityID, Count, 9000001)
     elseif TestType == 2 then
         -- 模拟批量补偿
-        local list = {
-            {CommodityID = CommodityID, Count = Count, ProductID = 9000001},
-            {CommodityID = CommodityID + 1, Count = Count + 2, ProductID = 9000002}
-        }
+        local list = {{
+            CommodityID = CommodityID,
+            Count = Count,
+            ProductID = 9000001
+        }, {
+            CommodityID = CommodityID + 1,
+            Count = Count + 2,
+            ProductID = 9000002
+        }}
         self:OnCompensateUGCCommodityBatch(self.PlayerKey, 0, list)
     elseif TestType == 3 then
         -- 模拟跨局商品变化

@@ -10,8 +10,6 @@ function HunHuan_01:OnUseV2()
     local pawn = UGCGameSystem.GetPlayerPawnByPlayerController(player) or player
     local count = UGCBackpackSystemV2.GetItemCountV2(player, itemID)
 
-    --[[-------------------测试加baseatk---------------------------]] --
-
     local ok, newBaseAttack, newBaseMaxHp = L_Com.UseHunHuan(pawn, itemID, count)
     if not ok then
         return
@@ -22,8 +20,8 @@ function HunHuan_01:OnUseV2()
     end
 
     UGCBackpackSystemV2.RemoveItemV2(player, itemID, count)
-end
 
+end
 --[[经典背包事件]] --
 --[[
 --- func 处理物品的拾取(服务端生效)
