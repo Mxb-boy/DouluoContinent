@@ -62,6 +62,18 @@ function CreateMonsWall:GetBossClass()
     return MonsterSpawnMgr.GetCachedClass(bossPath)
 end
 
+function CreateMonsWall:GetBossClassByIndex(index)
+    local bossPath = UGCGameSystem.GetUGCResourcesFullPath(
+        string.format(
+            'Asset/Blueprint/Prefabs/Monsters/Dungeon/Boss_%d.Boss_%d_C',
+            index,
+            index
+        )
+    )
+
+    return MonsterSpawnMgr.GetCachedClass(bossPath)
+end
+
 function CreateMonsWall:ResumeWaveLoop()
     if self:HasPlayerInside() == false then
         self.IsCheckingWave = false
@@ -97,7 +109,6 @@ function CreateMonsWall:SpawnWave()
     if self.Scene == Scene_Enum.duplicate then
         self.AliveMonsters = {}
 
-        local bossClass = self:GetBossClass()
         local points = MonsterSpawnMgr.GetCachedLevelPoints(
             UGCGameSystem.GameMode,
             self.Scene,
@@ -105,19 +116,39 @@ function CreateMonsWall:SpawnWave()
             self.LittleLevel
         )
 
-        for _, point in ipairs(points or {}) do
-            if point.StartPoint == 1 then
-                local boss = MonsterSpawnMgr.SpawnAtPointWithClass(
-                    UGCGameSystem.GameMode,
-                    bossClass,
-                    point,
-                    nil
-                )
+        if self.BigLevel == 1 and self.LittleLevel == 1 then
+            for _, point in ipairs(points or {}) do
+                local startPoint = point.StartPoint or 0
+                if startPoint >= 1 and startPoint <= 5 then
+                    local boss = MonsterSpawnMgr.SpawnAtPointWithClass(
+                        UGCGameSystem.GameMode,
+                        self:GetBossClassByIndex(startPoint),
+                        point,
+                        nil
+                    )
 
-                if boss then
-                    table.insert(self.AliveMonsters, boss)
+                    if boss then
+                        table.insert(self.AliveMonsters, boss)
+                    end
                 end
-                break
+            end
+        else
+            local bossClass = self:GetBossClass()
+
+            for _, point in ipairs(points or {}) do
+                if point.StartPoint == 1 then
+                    local boss = MonsterSpawnMgr.SpawnAtPointWithClass(
+                        UGCGameSystem.GameMode,
+                        bossClass,
+                        point,
+                        nil
+                    )
+
+                    if boss then
+                        table.insert(self.AliveMonsters, boss)
+                    end
+                    break
+                end
             end
         end
     else
@@ -263,9 +294,14 @@ function CreateMonsWall:ScheduleMonsterRespawn(monster)
         wall.SpawnPointRespawnTokens[spawnPoint] = nil
         local newMonster = nil
         if wall.Scene == Scene_Enum.duplicate then
+            local bossClass = wall:GetBossClass()
+            if wall.BigLevel == 1 and wall.LittleLevel == 1 then
+                bossClass = wall:GetBossClassByIndex(spawnPoint.StartPoint or 1)
+            end
+
             newMonster = MonsterSpawnMgr.SpawnAtPointWithClass(
                 UGCGameSystem.GameMode,
-                wall:GetBossClass(),
+                bossClass,
                 spawnPoint,
                 nil
             )
