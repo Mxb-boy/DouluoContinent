@@ -1,6 +1,21 @@
----@class CH_best_C:UGCItemHandle_ConsumeBase_C
+---@class CH_best_2_C:UGCItemHandle_ConsumeBase_C
 --Edit Below--
-local CH_best_2 = {} 
+local CH_best_2 = {}
+
+function CH_best_2:OnUseV2()
+    local itemID = tonumber(self.ItemID)
+    local ownBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(self)
+    local player = ownBackpackComponent and ownBackpackComponent:GetOwner() or nil
+    if player ~= nil then
+        local count = UGCBackpackSystemV2.GetItemCountV2(player, itemID)
+        if player.UnlockTitle ~= nil then
+            player:UnlockTitle(6)
+        else
+            UnrealNetwork.CallUnrealRPC(player, player, "Client_UnlockTitle", 6)
+        end
+        UGCBackpackSystemV2.RemoveItemV2(player, itemID, count)
+    end
+end
 
 --[[经典背包事件]]--
 --[[

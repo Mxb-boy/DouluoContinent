@@ -87,6 +87,9 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                 if PC.Pawn.RefreshSoulMesh ~= nil and PlayerState.GetHunHuan ~= nil then
                     PC.Pawn:RefreshSoulMesh(PlayerState:GetHunHuan(), true)
                 end
+                if PC.SyncSavedTitleState ~= nil then
+                    PC:SyncSavedTitleState()
+                end
             end
 
             -- 2. 发初始武器
