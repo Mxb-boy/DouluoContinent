@@ -144,11 +144,31 @@ function Tower_Mons_1:LuaInit()
 
     -- [Editor Generated Lua] BindingEvent Begin:
     self.OutBox.OnComponentHit:Add(self.OutBox_OnComponentHit, self);
-    -- [Editor Generated Lua] BindingEvent End;
+    self.InBox.OnComponentBeginOverlap:Add(self.InBox_OnComponentBeginOverlap, self);
+	self.InBox.OnComponentEndOverlap:Add(self.InBox_OnComponentEndOverlap, self);
+	self.OutBox.OnComponentBeginOverlap:Add(self.OutBox_OnComponentBeginOverlap, self);
+	self.OutBox.OnComponentEndOverlap:Add(self.OutBox_OnComponentEndOverlap, self);
+	-- [Editor Generated Lua] BindingEvent End;
 end
 
 function Tower_Mons_1:OutBox_OnComponentHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit)
     return nil;
+end
+
+function Tower_Mons_1:InBox_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
+	return nil;
+end
+
+function Tower_Mons_1:InBox_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
+	return nil;
+end
+
+function Tower_Mons_1:OutBox_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
+	return nil;
+end
+
+function Tower_Mons_1:OutBox_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
+	return nil;
 end
 
 -- [Editor Generated Lua] function define End;
