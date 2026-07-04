@@ -1,4 +1,6 @@
 ---@class HunHuan_01_C:UGCItemHandle_ConsumeBase_C
+--Edit Below--
+---@class HunHuan_01_C:UGCItemHandle_ConsumeBase_C
 -- Edit Below--
 local HunHuan_01 = {}
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
