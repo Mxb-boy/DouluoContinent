@@ -35,7 +35,7 @@ function NewUGCWidgetBlueprint:ShowBreakResult(IconPath, bSuccess)
         self:SetTextBlockColor(self.text_dzcg, bSuccess and BreakSuccessColor or BreakFailColor)
     end
     self:SetResultIcon(IconPath)
-    self:AutoHideAfterDelay(2.0)
+    self:AutoHideAfterDelay(3.0)
 end
 function NewUGCWidgetBlueprint:ShowBreakSuccess(IconPath)
     self:ShowBreakResult(IconPath, true)
