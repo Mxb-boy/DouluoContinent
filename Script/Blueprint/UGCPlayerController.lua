@@ -17,18 +17,7 @@ local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
     QNHH = 8310036
 }
-local SoulRingItemIDs = {
-    8310048,
-    8310049,
-    8310051,
-    8310053,
-    8310054,
-    8310055,
-    8310056,
-    8310057,
-    8310052,
-    8310050
-}
+local SoulRingItemIDs = {8310048, 8310049, 8310051, 8310053, 8310054, 8310055, 8310056, 8310057, 8310052, 8310050}
 
 function UGCPlayerController:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
@@ -98,7 +87,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult", "Client_RefreshProperty",
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
-        "Server_ClaimTowerTopReward"
+        "Server_ClaimTowerTopReward", "Server_AddFixedBaseProperty"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -996,6 +985,32 @@ function UGCPlayerController:Client_RefreshProperty(baseAttack, baseMaxHp, hp, m
 
     UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty, baseAttack, baseMaxHp,
         hp, maxHp, bFillHealth)
+end
+
+--[[-------------------------固定添加属性---------------------]] --
+function UGCPlayerController:Server_AddFixedBaseProperty()
+    local playerState = self.PlayerState
+    if playerState == nil then
+        return
+    end
+
+    local baseAttack = playerState:GetBaseAttack()
+    local baseMaxHp = playerState:GetBaseMaxHp()
+    local addAttack = 1
+    local addMaxHp = 5
+
+    if baseMaxHp >= 10000 then
+        addAttack = baseAttack * 0.0001
+        addMaxHp = baseMaxHp * 0.0005
+    end
+
+    local newBaseAttack = baseAttack + addAttack
+    local newBaseMaxHp = baseMaxHp + addMaxHp
+
+    playerState:SetBaseAttack(newBaseAttack)
+    playerState:SetBaseMaxHp(newBaseMaxHp)
+
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_RefreshProperty", newBaseAttack, newBaseMaxHp)
 end
 
 function UGCPlayerController:Client_SetTowerOutBoxVisible(bVisible)
