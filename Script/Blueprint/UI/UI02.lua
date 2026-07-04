@@ -45,7 +45,6 @@
 ---@field Image_12 UImage
 ---@field Image_13 UImage
 ---@field Image_14 UImage
----@field Image_28 UImage
 ---@field Image_109 UImage
 ---@field Image_169 UImage
 ---@field Image_225 UImage

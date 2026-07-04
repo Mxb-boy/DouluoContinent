@@ -6,6 +6,15 @@
 ---@field Image_34 UImage
 ---@field Image_35 UImage
 ---@field Image_36 UImage
+--Edit Below--
+---@class TowerTopUI_C:UUserWidget
+---@field Button_107 UButton
+---@field Button_109 UButton
+---@field Image_31 UImage
+---@field Image_32 UImage
+---@field Image_34 UImage
+---@field Image_35 UImage
+---@field Image_36 UImage
 -- Edit Below--
 local TowerTopUI = {
     bInitDoOnce = false
