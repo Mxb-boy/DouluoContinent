@@ -425,6 +425,7 @@ function UI02:LuaInit()
     self.Button_3.OnClicked:Add(self.Button_3_OnClicked, self)
     self.Button_4.OnClicked:Add(self.Button_4_OnClicked, self)
     self.Button_158.OnClicked:Add(self.Button_158_OnClicked, self)
+    self.Button_154.OnClicked:Add(self.Button_154_OnClicked, self)
 
     self:ApplyButtonEffect(self.Button_0)
     self:ApplyButtonEffect(self.Button_5)
@@ -1101,6 +1102,12 @@ function UI02:Button_94_OnClicked()
     end
 
     UnrealNetwork.CallUnrealRPC(PC, PC, "Server_EatAllSoulRings")
+end
+
+-- 挂机传送
+function UI02:Button_154_OnClicked()
+    local pc = GameplayStatics.GetPlayerController(self, 0)
+    UnrealNetwork.CallUnrealRPC(pc, pc, "Server_TeleportToLocation", 30328, -15585, 25231)
 end
 
 return UI02
