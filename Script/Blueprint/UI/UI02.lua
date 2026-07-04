@@ -421,6 +421,7 @@ function UI02:LuaInit()
     self.Button_155.OnClicked:Add(self.Button_155_OnClicked, self)
     self.Button_227.OnClicked:Add(self.Button_227_OnClicked, self)
     self.Button_93.OnClicked:Add(self.Button_93_OnClicked, self)
+    self.Button_94.OnClicked:Add(self.Button_94_OnClicked, self)
     self.Button_3.OnClicked:Add(self.Button_3_OnClicked, self)
     self.Button_4.OnClicked:Add(self.Button_4_OnClicked, self)
     self.Button_158.OnClicked:Add(self.Button_158_OnClicked, self)
@@ -432,6 +433,7 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_4)
     self:ApplyButtonEffect(self.Button_92)
     self:ApplyButtonEffect(self.Button_93)
+    self:ApplyButtonEffect(self.Button_94)
     self:ApplyButtonEffect(self.Button_95)
     self:ApplyButtonEffect(self.Button_97)
     self:ApplyButtonEffect(self.Button_99)
@@ -1090,6 +1092,15 @@ function UI02:Button_93_OnClicked()
     else
         PC:StopAutoMeleeAttack()
     end
+end
+
+function UI02:Button_94_OnClicked()
+    local PC = GameplayStatics.GetPlayerController(self, 0)
+    if PC == nil then
+        return
+    end
+
+    UnrealNetwork.CallUnrealRPC(PC, PC, "Server_EatAllSoulRings")
 end
 
 return UI02

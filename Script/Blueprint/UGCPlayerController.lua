@@ -17,6 +17,18 @@ local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
     QNHH = 8310036
 }
+local SoulRingItemIDs = {
+    8310048,
+    8310049,
+    8310051,
+    8310053,
+    8310054,
+    8310055,
+    8310056,
+    8310057,
+    8310052,
+    8310050
+}
 
 function UGCPlayerController:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
@@ -86,7 +98,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult", "Client_RefreshProperty",
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
-        "Server_ClaimTowerTopReward"
+        "Server_ClaimTowerTopReward", "Server_EatAllSoulRings"
 end
 
 local function TeleportToSpawn(self, bornPointID)
@@ -385,6 +397,35 @@ local function RemoveItem(PlayerController, ItemID, Count)
     end
 
     return false
+end
+
+--- 一键吃掉背包里的魂环
+function UGCPlayerController:Server_EatAllSoulRings()
+    local Pawn = GetPlayerPawn(self)
+    if Pawn == nil then
+        return
+    end
+
+    local LastBaseAttack = nil
+    local LastBaseMaxHp = nil
+
+    for _, ItemID in ipairs(SoulRingItemIDs) do
+        local Count = GetItemCount(self, ItemID)
+        if Count > 0 and RemoveItem(self, ItemID, Count) then
+            local Success, _, NewBaseAttack, NewBaseMaxHp = pcall(L_Com.UseHunHuan, Pawn, ItemID, Count)
+            if Success then
+                LastBaseAttack = NewBaseAttack
+                LastBaseMaxHp = NewBaseMaxHp
+            else
+                AddItem(self, ItemID, Count)
+                ugcprint("[UGCPlayerController:Server_EatAllSoulRings] UseHunHuan failed: " .. tostring(ItemID))
+            end
+        end
+    end
+
+    if LastBaseAttack ~= nil and LastBaseMaxHp ~= nil then
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_RefreshProperty", LastBaseAttack, LastBaseMaxHp)
+    end
 end
 
 --- 商城购买后通过 V2 API 把物品加到背包，并清理虚拟物品（必须在服务端执行）
