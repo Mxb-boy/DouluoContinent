@@ -2,6 +2,48 @@
 --Edit Below--
 local LuckyCard_2 = {} 
 
+local function GetPlayerController(self)
+    local OwnBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(self)
+    if OwnBackpackComponent == nil then
+        return nil
+    end
+    return OwnBackpackComponent:GetOwner()
+end
+
+local function RemoveSelfItem(self, PlayerController)
+    if UGCBackpackSystemV2 == nil or UGCBackpackSystemV2.RemoveItemV2 == nil then
+        return
+    end
+    UGCBackpackSystemV2.RemoveItemV2(PlayerController, tonumber(self.ItemID) or 8310062, 1)
+end
+
+function LuckyCard_2:CanUseV2()
+    if LuckyCard_2.SuperClass ~= nil and LuckyCard_2.SuperClass.CanUseV2 ~= nil
+        and not LuckyCard_2.SuperClass.CanUseV2(self) then
+        return false
+    end
+
+    local PlayerController = GetPlayerController(self)
+    if PlayerController ~= nil and PlayerController.CanUseRealmLuckyCard ~= nil then
+        return PlayerController:CanUseRealmLuckyCard()
+    end
+
+    return true
+end
+
+function LuckyCard_2:OnUseV2()
+    local PlayerController = GetPlayerController(self)
+    if PlayerController == nil or PlayerController.UseRealmLuckyCard == nil then
+        return
+    end
+
+    if not PlayerController:UseRealmLuckyCard() then
+        return
+    end
+
+    RemoveSelfItem(self, PlayerController)
+end
+
 --[[V2背包事件]]--
 --[[
 --- func 能否创建物品Handle(服务端生效)

@@ -553,6 +553,43 @@ local function SetRealmFailCount(PlayerController, Level, Count)
     PlayerController.RealmFailCounts[Level] = math.max(0, tonumber(Count) or 0)
 end
 
+function UGCPlayerController:CanUseRealmLuckyCard()
+    if GetRealmLevel(self) >= RealmConfig.MaxLevel then
+        return false
+    end
+    if tonumber(self.RealmLuckyTargetLevel) ~= nil and tonumber(self.RealmLuckyTargetLevel) <= GetRealmLevel(self) then
+        self.RealmLuckyExtraRate = 0
+        self.RealmLuckyTargetLevel = nil
+    end
+    return (tonumber(self.RealmLuckyExtraRate) or 0) <= 0
+end
+
+function UGCPlayerController:UseRealmLuckyCard()
+    if not self:CanUseRealmLuckyCard() then
+        return false
+    end
+
+    self.RealmLuckyExtraRate = 15
+    self.RealmLuckyTargetLevel = math.min(RealmConfig.MaxLevel, GetRealmLevel(self) + 1)
+    ugcprint("[UGCPlayerController:UseRealmLuckyCard] target=" .. tostring(self.RealmLuckyTargetLevel) .. ", rate=15")
+    return true
+end
+
+local function TakeRealmLuckyExtraRate(PlayerController, TargetLevel)
+    if tonumber(PlayerController.RealmLuckyTargetLevel) ~= tonumber(TargetLevel) then
+        if tonumber(PlayerController.RealmLuckyExtraRate) ~= nil then
+            PlayerController.RealmLuckyExtraRate = 0
+            PlayerController.RealmLuckyTargetLevel = nil
+        end
+        return 0
+    end
+
+    local ExtraRate = tonumber(PlayerController.RealmLuckyExtraRate) or 0
+    PlayerController.RealmLuckyExtraRate = 0
+    PlayerController.RealmLuckyTargetLevel = nil
+    return math.max(0, ExtraRate)
+end
+
 local function HasRealmNeedItems(PlayerController, Config)
     for _, Item in ipairs(Config.NeedItems or {}) do
         local ItemID = tonumber(Item.ItemID)
@@ -624,7 +661,8 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
         return
     end
 
-    local Success, IsGuaranteed, UsedRate = RealmConfig.RollBreakResult(TargetLevel, FailCount, 0)
+    local ExtraRate = TakeRealmLuckyExtraRate(self, TargetLevel)
+    local Success, IsGuaranteed, UsedRate = RealmConfig.RollBreakResult(TargetLevel, FailCount, ExtraRate)
     local NewLevel = CurrentLevel
 
     if Success then
@@ -650,7 +688,7 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
 
     ugcprint("[UGCPlayerController:Server_BreakRealm] target=" .. tostring(TargetLevel) .. ", success=" ..
                  tostring(Success) .. ", rate=" .. tostring(UsedRate) .. ", guaranteed=" .. tostring(IsGuaranteed) ..
-                 ", failCount=" .. tostring(FailCount))
+                 ", failCount=" .. tostring(FailCount) .. ", extraRate=" .. tostring(ExtraRate))
 end
 
 function UGCPlayerController:Client_BreakRealmResult(Success, NewLevel, TargetLevel, FailCount, UsedRate, IsGuaranteed)
