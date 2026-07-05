@@ -782,6 +782,12 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     local NormalizedAttackPercent = NormalizePercent(AttackPercent)
     local FinalAttack = BaseAttack * (1 + NormalizedAttackPercent)
     SetWeaponBonusPercent(self, AttackPercent, bForce)
+    local bSetBaseAttackSuccess = false
+    if self:HasAuthority() and UGCAttributeSystem ~= nil and UGCAttributeSystem.SetGameAttributeValue ~= nil then
+        UGCAttributeSystem.SetGameAttributeValue(self, "AttackPower", FinalAttack)
+        self.LastAppliedWeaponAttackPower = FinalAttack
+        bSetBaseAttackSuccess = true
+    end
 
     local WeaponAttackKey = tostring(ItemID or "none") .. "|" .. tostring(SeriesKey or "none") .. "|" ..
                                 tostring(ItemName or "none") .. "|" .. tostring(Level or "none") .. "|" ..
@@ -791,10 +797,6 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     end
 
     self.LastWeaponAttackKey = WeaponAttackKey
-    local bSetBaseAttackSuccess = false
-    -- if bSetBaseAttackSuccess then
-    --     self.LastAppliedWeaponAttackPower = FinalAttack
-    -- end
 
     ugcprint(
         "[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID) .. ", series=" .. tostring(SeriesKey) ..
