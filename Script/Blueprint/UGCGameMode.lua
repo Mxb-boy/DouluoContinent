@@ -5,11 +5,69 @@ local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelCon
 
 -- 保存玩家死亡前的背包快照，键为 PlayerKey。
 local PlayerBackpackSnapshots = {};
+local WingItemIDs = {
+    [8310012] = true,
+    [8310013] = true,
+    [8310014] = true,
+    [8310058] = true,
+    [8310059] = true,
+    [8310010] = true
+}
+local DisuseItemFunctionNames = {"DisuseItemV2", "UnUseItemV2", "CancelUseItemV2", "StopUseItemV2"}
 
 local function AddV2ItemIfMissing(PlayerPawn, ItemID, Count)
     local CurrentCount = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID) or 0
     if CurrentCount <= 0 then
         UGCBackpackSystemV2.AddItemV2(PlayerPawn, ItemID, Count)
+    end
+end
+
+local function TryDisuseItem(PlayerPawn, ItemDefineID)
+    for _, FunctionName in ipairs(DisuseItemFunctionNames) do
+        local Func = UGCBackpackSystemV2[FunctionName]
+        if Func ~= nil then
+            local Success, Result = pcall(Func, PlayerPawn, ItemDefineID)
+            if Success and Result ~= false then
+                return true
+            end
+        end
+    end
+
+    local BackpackComponent = PlayerPawn.BackpackComponent or PlayerPawn.BackpackComponentV2 or PlayerPawn.BP_BackpackComponentV2
+    if BackpackComponent == nil and PlayerPawn.Controller ~= nil then
+        BackpackComponent = PlayerPawn.Controller.BackpackComponent or PlayerPawn.Controller.BackpackComponentV2 or
+                                PlayerPawn.Controller.BP_BackpackComponentV2
+    end
+    if BackpackComponent ~= nil then
+        for _, FunctionName in ipairs(DisuseItemFunctionNames) do
+            local Func = BackpackComponent[FunctionName]
+            if Func ~= nil then
+                local Success, Result = pcall(Func, BackpackComponent, ItemDefineID)
+                if Success and Result ~= false then
+                    return true
+                end
+            end
+        end
+    end
+
+    return false
+end
+
+local function DisuseEquippedWings(PlayerPawn)
+    if PlayerPawn == nil or UGCBackpackSystemV2 == nil or UGCBackpackSystemV2.GetAllItemDefineIDsV2 == nil then
+        return
+    end
+
+    local AllItemData = UGCBackpackSystemV2.GetAllItemDefineIDsV2(PlayerPawn)
+    if AllItemData == nil then
+        return
+    end
+
+    for _, ItemDefineID in pairs(AllItemData) do
+        local ItemID = tonumber(ItemDefineID.TypeSpecificID)
+        if WingItemIDs[ItemID] then
+            TryDisuseItem(PlayerPawn, ItemDefineID)
+        end
     end
 end
 
@@ -143,6 +201,7 @@ end
 function UGCGameMode:UGC_PlayerKilledEvent(Killer, VictimPlayer, VictimPawn, DamageType)
     if VictimPlayer and VictimPawn then
         SaveBackpackSnapshot(VictimPlayer.PlayerKey, VictimPawn)
+        DisuseEquippedWings(VictimPawn)
         -- 保存死亡前的血量到跨对局存档
         local PS = VictimPlayer.PlayerState
         if PS and PS.SaveCurrentHP then
@@ -159,6 +218,7 @@ function UGCGameMode:UGC_PlayerRespawnEvent(RespawnedController)
     UGCTimerUtility.CreateLuaTimer(1, function()
         if PC and PC.Pawn then
             RestoreBackpackSnapshot(PlayerKey, PC.Pawn)
+            DisuseEquippedWings(PC.Pawn)
             if PC.Pawn.RefreshStateMgrProperty ~= nil then
                 PC.Pawn:RefreshStateMgrProperty(true)
             end
@@ -172,6 +232,7 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
         local VictimController = UGCGameSystem.GetPlayerControllerByPlayerKey(VictimPlayerKey)
         if VictimController and VictimController.Pawn then
             SaveBackpackSnapshot(VictimPlayerKey, VictimController.Pawn)
+            DisuseEquippedWings(VictimController.Pawn)
             -- 保存死亡前的血量
             local PS = VictimController.PlayerState
             if PS and PS.SaveCurrentHP then
@@ -187,6 +248,7 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
         local RespawnedController = UGCGameSystem.GetPlayerControllerByPlayerKey(VictimPlayerKey)
         if RespawnedController and RespawnedController.Pawn then
             RestoreBackpackSnapshot(VictimPlayerKey, RespawnedController.Pawn)
+            DisuseEquippedWings(RespawnedController.Pawn)
             if RespawnedController.Pawn.RefreshStateMgrProperty ~= nil then
                 RespawnedController.Pawn:RefreshStateMgrProperty(true)
             end

@@ -456,6 +456,27 @@ local function DestroySoulMesh(player)
     end
 end
 
+local function DestroyAttachedActors(player)
+    if player == nil or player.K2_GetAttachedActors == nil then
+        return
+    end
+
+    local Success, AttachedActors = pcall(player.K2_GetAttachedActors, player)
+    if not Success or AttachedActors == nil then
+        return
+    end
+
+    for _, Actor in pairs(AttachedActors) do
+        if Actor ~= nil and Actor ~= player then
+            UGCActorComponentUtility.DestroyActor(Actor)
+        end
+    end
+
+    player.SoulMeshActor = nil
+    player.PlayerTitleActor = nil
+    player.__SubObjectRepList = nil
+end
+
 local function CreateSoulMesh(player, HunHuan)
     if player == nil then
         return
@@ -853,6 +874,7 @@ end
 
 function UGCPlayerPawn:UGC_PlayerDeadEvent(Killer, DamageType)
     DestroySoulMesh(self)
+    DestroyAttachedActors(self)
     self:NotifyPropertyChangedIfNeeded(true)
 end
 
@@ -882,6 +904,7 @@ function UGCPlayerPawn:ReceiveEndPlay()
     end
 
     DestroySoulMesh(self)
+    DestroyAttachedActors(self)
 
     -- Pawn 重生或离场时，主动清理附属称号 Actor。
     if self:HasAuthority() and self.PlayerTitleActor and UE.IsValid(self.PlayerTitleActor) then

@@ -39,6 +39,17 @@ local BlockedControlWidgetNames = {
 
 local Fei = { bInitDoOnce = false } 
 
+local function GetEnumValue(Enum, Names)
+    for _, Name in ipairs(Names) do
+        local Success, Value = pcall(function()
+            return Enum[Name]
+        end)
+        if Success and Value ~= nil then
+            return Value
+        end
+    end
+end
+
 function Fei:Construct()
     self:LuaInit()
 end
@@ -260,14 +271,14 @@ function Fei:SetupFlyButtonInputMode()
     end
 
     if self.Button_84.SetTouchMethod ~= nil and EButtonTouchMethod ~= nil then
-        local TouchMethod = EButtonTouchMethod.Down or EButtonTouchMethod.DownAndUp
+        local TouchMethod = GetEnumValue(EButtonTouchMethod, {"Down", "DownAndUp"})
         if TouchMethod ~= nil then
             pcall(self.Button_84.SetTouchMethod, self.Button_84, TouchMethod)
         end
     end
 
     if self.Button_84.SetClickMethod ~= nil and EButtonClickMethod ~= nil then
-        local ClickMethod = EButtonClickMethod.MouseDown or EButtonClickMethod.DownAndUp
+        local ClickMethod = GetEnumValue(EButtonClickMethod, {"MouseDown", "DownAndUp"})
         if ClickMethod ~= nil then
             pcall(self.Button_84.SetClickMethod, self.Button_84, ClickMethod)
         end

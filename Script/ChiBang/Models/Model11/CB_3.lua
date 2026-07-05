@@ -5,6 +5,14 @@
 local CB_3 = {}
 local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 
+local function DestroyIfOwnerInvalid(actor)
+    actor.OwnerPawn = actor.OwnerPawn or UGCActorComponentUtility.GetOwner(actor)
+    local ownerPawn = actor.OwnerPawn
+    if ownerPawn == nil or (UE ~= nil and UE.IsValid ~= nil and not UE.IsValid(ownerPawn)) then
+        actor:K2_DestroyActor()
+    end
+end
+
 function CB_3:ReceiveBeginPlay()
     CB_3.SuperClass.ReceiveBeginPlay(self)
     if StateMgr ~= nil and StateMgr.UI ~= nil then
@@ -12,11 +20,10 @@ function CB_3:ReceiveBeginPlay()
     end
 end
 
---[[
 function CB_3:ReceiveTick(DeltaTime)
     CB_3.SuperClass.ReceiveTick(self, DeltaTime)
+    DestroyIfOwnerInvalid(self)
 end
---]]
 
 function CB_3:ReceiveEndPlay()
     CB_3.SuperClass.ReceiveEndPlay(self) 

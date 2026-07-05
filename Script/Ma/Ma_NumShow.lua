@@ -19,7 +19,7 @@ function Ma_NumShow.GetNumShowData(value)
         end
     end
 
-    return tostring(number), nil, nil
+    return string.format("%.0f", number), nil, nil
 end
 
 function Ma_NumShow.Format(value)
