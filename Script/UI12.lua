@@ -19,6 +19,7 @@
 local UI12 = {}
 
 local TeleportConfig = UGCGameSystem.UGCRequire("Script.TeleportConfig")
+local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 
 -- 显式加载子控件模块，确保 UnLua 绑定生效
 UGCGameSystem.UGCRequire("Script.NewUGCWidgetBlueprint2")
@@ -61,6 +62,8 @@ end
 function UI12:Construct()
     -- 关闭按钮
     if self.Button_151 then
+        UIEffectUtil.SetButtonStateBrushSameAsNormal(self.Button_151)
+        UIEffectUtil.BindPressScale(self, self.Button_151, self.Button_151, 1.06, 1.0)
         self.Button_151.OnClicked:Add(self.OnCloseClicked, self)
     end
     self:RefreshList()

@@ -1129,18 +1129,18 @@ end
 
 -- 礼包
 function UI02:Button_0_OnClicked()
-    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    -- local PlayerController = GameplayStatics.GetPlayerController(self, 0)
 
-    local GiftPackUIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath(
-        "ExtendResource/GiftPack/OfficialPackage/Asset/GiftPack/Blueprint/WBP_GiftPackBtn.WBP_GiftPackBtn_C"))
+    -- local GiftPackUIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath(
+    --     "ExtendResource/GiftPack/OfficialPackage/Asset/GiftPack/Blueprint/WBP_GiftPackBtn.WBP_GiftPackBtn_C"))
 
-    if PlayerController and GiftPackUIClass then
-        local GiftPackUI = UserWidget.NewWidgetObjectBP(PlayerController, GiftPackUIClass)
+    -- if PlayerController and GiftPackUIClass then
+    --     local GiftPackUI = UserWidget.NewWidgetObjectBP(PlayerController, GiftPackUIClass)
 
-        if GiftPackUI then
-            GiftPackUI:AddToViewport(12000)
-        end
-    end
+    --     if GiftPackUI then
+    --         GiftPackUI:AddToViewport(12000)
+    --     end
+    -- end
 end
 
 -- 自动拾取

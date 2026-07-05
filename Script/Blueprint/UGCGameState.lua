@@ -41,10 +41,10 @@ function UGCGameState:ReceiveBeginPlay()
     TaskBtn:AddToViewport();
     --]]
 
-    if not self:HasAuthority() then
-        local btnClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath('ExtendResource/Lottery/OfficialPackage/Asset/Lottery/Blueprint/WBP_OpenLotteryButton.WBP_OpenLotteryButton_C'))
-        local btnUI = UserWidget.NewWidgetObjectBP(self, btnClass)
-        btnUI:AddToViewport(100)
-    end
+    -- if not self:HasAuthority() then
+    --     local btnClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath('ExtendResource/Lottery/OfficialPackage/Asset/Lottery/Blueprint/WBP_OpenLotteryButton.WBP_OpenLotteryButton_C'))
+    --     local btnUI = UserWidget.NewWidgetObjectBP(self, btnClass)
+    --     btnUI:AddToViewport(100)
+    -- end
 end
 return UGCGameState;

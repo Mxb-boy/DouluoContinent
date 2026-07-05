@@ -8,6 +8,7 @@
 ---@field TextBlock_263 UTextBlock
 --Edit Below--
 local NewUGCWidgetBlueprint2 = {}
+local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 
 function NewUGCWidgetBlueprint2:Construct()
 end
@@ -35,6 +36,8 @@ function NewUGCWidgetBlueprint2:Setup(index, name, powerText, enabled, onTelepor
 
     if self.Button_74 then
         self.Button_74:SetIsEnabled(enabled)
+        UIEffectUtil.SetButtonStateBrushSameAsNormal(self.Button_74)
+        UIEffectUtil.BindPressScale(self, self.Button_74, self.Button_74, 1.06, 1.0)
         -- 不调用 Clear()，UnLua 中可能不存在该方法
         -- 直接 Add 即可，因为 widget 是每次新建的
         self.Button_74.OnClicked:Add(self.OnButtonClicked, self)
