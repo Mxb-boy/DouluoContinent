@@ -346,41 +346,38 @@ local function GetItemIDFromObject(Object)
     return nil
 end
 
--- 成功方法名缓存（weak-keyed 表，避免阻止 GC）
--- key: player, value: 上次拿到武器的时间戳
-local PlayerNoWeaponCache = setmetatable({}, {__mode = "k"})
--- 无武器缓存过期间隔（秒），期间直接返回 nil
-local NO_WEAPON_CACHE_TTL = 1.0
-
 local function GetCurrentHeldWeapon(player)
     if player == nil then
         return nil
     end
 
-    -- 主路径：使用官方 UGC API（UGCPlayerController:TryAutoMeleeAttack 也在用）
-    if UGCWeaponManagerSystem ~= nil and UGCWeaponManagerSystem.GetCurrentWeapon ~= nil then
-        local Weapon = UGCWeaponManagerSystem.GetCurrentWeapon(player)
-        if Weapon ~= nil then
-            PlayerNoWeaponCache[player] = nil
-            return Weapon
-        end
-
-        -- 无武器：用 TTL 缓存避免每 tick 高频重试
-        local LastNilTime = PlayerNoWeaponCache[player]
-        if LastNilTime ~= nil and (os.clock() - LastNilTime) < NO_WEAPON_CACHE_TTL then
-            return nil
-        end
-        PlayerNoWeaponCache[player] = os.clock()
-        return nil
-    end
-
-    -- 兜底：武管组件直调（无 UGCWeaponManagerSystem 时，理论上不可达）
     local WeaponManager = TryCall(player, "GetWeaponManager") or player.WeaponManager
     if WeaponManager ~= nil then
-        local Weapon = TryCall(WeaponManager, "GetCurrentWeapon") or TryCall(WeaponManager, "GetEquippedWeapon")
+        local FunctionNames = {"GetCurrentWeapon", "GetCurrentWeaponActor", "GetCurrentActiveWeapon",
+                               "GetCurrentInventoryWeapon", "GetEquippedWeapon"}
+        for _, FunctionName in ipairs(FunctionNames) do
+            local Weapon = TryCall(WeaponManager, FunctionName)
+            if Weapon ~= nil then
+                return Weapon
+            end
+        end
+        local Weapon = TryCall(WeaponManager, "GetCurrentUsingWeapon", true) or
+                           TryCall(WeaponManager, "GetCurrentUsingWeapon", false)
         if Weapon ~= nil then
             return Weapon
         end
+    end
+
+    local PawnFunctionNames = {"GetCurrentWeapon", "GetCurrentWeaponActor", "GetEquippedWeapon"}
+    for _, FunctionName in ipairs(PawnFunctionNames) do
+        local Weapon = TryCall(player, FunctionName)
+        if Weapon ~= nil then
+            return Weapon
+        end
+    end
+    local Weapon = TryCall(player, "GetCurrentUsingWeapon", true) or TryCall(player, "GetCurrentUsingWeapon", false)
+    if Weapon ~= nil then
+        return Weapon
     end
 
     return nil
