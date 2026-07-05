@@ -126,7 +126,7 @@ function UI08:RefreshNextRealm(CurrentConfig, NextConfig)
     local CurrentBonuses = CurrentConfig.SuccessBonuses or CurrentConfig.Bonuses or {}
     local Bonuses = NextConfig.SuccessBonuses or NextConfig.Bonuses or {}
     self:SetText(self:GetWidget("Text_NextName"), RealmConfig.GetDisplayName(NextConfig))
-    self:SetText(self:GetWidget("Text_NowValue"), self:BuildCompareLeftText(CurrentBonuses))
+    self:SetText(self:GetWidget("Text_NowValue"), self:BuildCompareLeftText(CurrentBonuses, Bonuses))
     self:SetText(self:GetWidget("Text_NextValue"), self:BuildCompareRightText(Bonuses))
     self:SetText(self:GetWidget("TextZhanli"), self:BuildNeedPowerText(NextConfig))
     self:SetButtonEnabled(self.Btn_Break, self:RefreshNeedItems(NextConfig))
@@ -140,11 +140,16 @@ function UI08:BuildCurrentBonusText(Bonuses)
     end
     return table.concat(Lines, "\n")
 end
-function UI08:BuildCompareLeftText(Bonuses)
+function UI08:BuildCompareLeftText(Bonuses, NextBonuses)
     local Lines = {}
+    local CurrentValues = {}
     for _, BonusText in ipairs(Bonuses or {}) do
         local Label, Value = self:ParseBonusText(BonusText)
-        table.insert(Lines, Label .. "加成" .. Value .. "→")
+        CurrentValues[Label] = Value
+    end
+    for _, BonusText in ipairs(NextBonuses or Bonuses or {}) do
+        local Label = self:ParseBonusText(BonusText)
+        table.insert(Lines, Label .. "加成" .. tostring(CurrentValues[Label] or "0%") .. "→")
     end
     return table.concat(Lines, "\n")
 end
@@ -365,6 +370,7 @@ function UI08:OnRealmBreakResult(Success, NewLevel, TargetLevel, FailCount, Used
         self:ShowBreakHh(self.CurrentRealmLevel, true)
     else
         self:ShowBreakHh(TargetLevel, false)
+        self:RefreshNeedItemsAfterDelay()
     end
     ugcprint("[UI08:OnRealmBreakResult] success="
         .. tostring(Success)
@@ -373,6 +379,17 @@ function UI08:OnRealmBreakResult(Success, NewLevel, TargetLevel, FailCount, Used
         .. ", failCount=" .. tostring(FailCount)
         .. ", rate=" .. tostring(UsedRate)
         .. ", guaranteed=" .. tostring(IsGuaranteed))
+end
+function UI08:RefreshNeedItemsAfterDelay()
+    local TimerName = "UI08_RefreshNeedItemsAfterFail_" .. tostring(self)
+    UGCTimerUtility.RemoveLuaTimerByName(TimerName)
+    UGCTimerUtility.CreateLuaTimer(0.3, function()
+        if self == nil then
+            return
+        end
+        local NextConfig = RealmConfig.GetNext(self.CurrentRealmLevel)
+        self:SetButtonEnabled(self.Btn_Break, self:RefreshNeedItems(NextConfig))
+    end, false, TimerName)
 end
 function UI08:HideBreakHh()
     local BreakHh = self:GetWidget("BreakHh")
