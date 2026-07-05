@@ -19,8 +19,8 @@ bOpenSkillEditorV1=0
 bOpenParticleEditorV1=0
 
 [MatchSetting]
-NumberOfTeams=5
-TeamPlayers=4
+NumberOfTeams=12
+TeamPlayers=1
 bIsAllowStageMatching=0
 TeamSettings="{\"TeamSettings\": []}"
 bEnableChat=1
