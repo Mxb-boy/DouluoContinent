@@ -139,6 +139,10 @@ function Boss_5:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent,
         else
             SpawnDrop(self, 8310036, math.random(2, 5))
         end
+
+        if math.random(1, 100) <= 5 then
+            SpawnDrop(self, 8310036, 1)
+        end
     end
 end
 

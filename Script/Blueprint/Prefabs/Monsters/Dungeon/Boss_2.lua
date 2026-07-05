@@ -136,6 +136,10 @@ function Boss_2:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent,
             HasDrop = true
         end
 
+        if math.random(1, 100) <= 5 then
+            SpawnDrop(self, 8310036, 1)
+        end
+
         if not HasDrop then
             local GuaranteeIndex = math.random(1, 3)
             if GuaranteeIndex == 1 then
