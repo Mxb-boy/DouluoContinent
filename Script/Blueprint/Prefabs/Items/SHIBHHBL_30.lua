@@ -2,6 +2,9 @@
 --Edit Below--
 local SHIBHHBL_30 = {} 
 
+local BUFF_VALUE = 1000
+local DURATION_SECONDS = 1800
+
 --[[V2背包事件]]--
 --[[
 --- func 能否创建物品Handle(服务端生效)
@@ -67,5 +70,25 @@ local SHIBHHBL_30 = {}
     SHIBHHBL_30.SuperClass.UGC_OnStopUse(self, Reason)
 -- end
 ]]--
+
+function SHIBHHBL_30:CanUseV2()
+    return SHIBHHBL_30.SuperClass.CanUseV2(self)
+end
+
+function SHIBHHBL_30:OnUseV2()
+    SHIBHHBL_30.SuperClass.OnUseV2(self)
+
+    local OwnBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(self)
+    if OwnBackpackComponent == nil then
+        return
+    end
+
+    local PlayerController = OwnBackpackComponent:GetOwner()
+    if PlayerController == nil then
+        return
+    end
+
+    PlayerController:Server_AddProbabilityBonusDuration(BUFF_VALUE, DURATION_SECONDS)
+end
 
 return SHIBHHBL_30

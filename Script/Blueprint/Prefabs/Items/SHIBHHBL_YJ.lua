@@ -2,6 +2,8 @@
 --Edit Below--
 local SHIBHHBL_YJ = {} 
 
+local BUFF_VALUE = 1000
+
 --[[V2背包事件]]--
 --[[
 --- func 能否创建物品Handle(服务端生效)
@@ -67,5 +69,25 @@ local SHIBHHBL_YJ = {}
     SHIBHHBL_YJ.SuperClass.UGC_OnStopUse(self, Reason)
 -- end
 ]]--
+
+function SHIBHHBL_YJ:CanUseV2()
+    return SHIBHHBL_YJ.SuperClass.CanUseV2(self)
+end
+
+function SHIBHHBL_YJ:OnUseV2()
+    SHIBHHBL_YJ.SuperClass.OnUseV2(self)
+
+    local OwnBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(self)
+    if OwnBackpackComponent == nil then
+        return
+    end
+
+    local PlayerController = OwnBackpackComponent:GetOwner()
+    if PlayerController == nil then
+        return
+    end
+
+    PlayerController:Server_SetProbabilityBonusPermanent(BUFF_VALUE)
+end
 
 return SHIBHHBL_YJ

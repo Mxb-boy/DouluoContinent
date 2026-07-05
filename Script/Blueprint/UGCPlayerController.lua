@@ -1121,6 +1121,88 @@ function UGCPlayerController:Server_AddProbabilityBonus(value)
     UnrealNetwork.CallUnrealRPC(self, self, "Client_ProbabilityBonusChanged", self.PlayerState.Probability_Bonus)
 end
 
+function UGCPlayerController:Server_AddProbabilityBonusDuration(value, durationSeconds)
+    local Duration = tonumber(durationSeconds) or 0
+    if Duration <= 0 then
+        return
+    end
+
+    if self.ProbabilityBonusPermanent == true then
+        local PermanentValue = tonumber(self.ProbabilityBonusPermanentValue) or 100
+        if (tonumber(value) or 100) > PermanentValue then
+            self.ProbabilityBonusPermanentValue = tonumber(value) or 100
+        end
+        self:Server_AddProbabilityBonus(self.ProbabilityBonusPermanentValue)
+        return
+    end
+
+    local CurrentValue = 100
+    if self.PlayerState ~= nil then
+        if self.PlayerState.GetProbability_Bonus ~= nil then
+            CurrentValue = tonumber(self.PlayerState:GetProbability_Bonus()) or 100
+        else
+            CurrentValue = tonumber(self.PlayerState.Probability_Bonus) or 100
+        end
+    end
+
+    if (tonumber(self.ProbabilityBonusRemainingSeconds) or 0) <= 0 and CurrentValue > 100 and CurrentValue >= (tonumber(value) or 100) then
+        self.ProbabilityBonusPermanent = true
+        self.ProbabilityBonusPermanentValue = CurrentValue
+        self:Server_AddProbabilityBonus(CurrentValue)
+        return
+    end
+
+    self.ProbabilityBonusRemainingSeconds = (tonumber(self.ProbabilityBonusRemainingSeconds) or 0) + Duration
+    self.ProbabilityBonusTimedValue = math.max(tonumber(self.ProbabilityBonusTimedValue) or 100, tonumber(value) or 100)
+    self:Server_AddProbabilityBonus(self.ProbabilityBonusTimedValue)
+
+    local PlayerKey = self.PlayerKey or tostring(self)
+    local TimerName = "ProbabilityBonus_" .. tostring(PlayerKey)
+
+    UGCTimerUtility.RemoveLuaTimerByName(TimerName)
+    UGCTimerUtility.CreateLuaTimer(1, function()
+        if self.ProbabilityBonusPermanent == true then
+            self.ProbabilityBonusRemainingSeconds = 0
+            UGCTimerUtility.RemoveLuaTimerByName(TimerName)
+            return
+        end
+
+        self.ProbabilityBonusRemainingSeconds = (tonumber(self.ProbabilityBonusRemainingSeconds) or 0) - 1
+        if self.ProbabilityBonusRemainingSeconds <= 0 then
+            self.ProbabilityBonusRemainingSeconds = 0
+            self.ProbabilityBonusTimedValue = nil
+            UGCTimerUtility.RemoveLuaTimerByName(TimerName)
+            self:Server_AddProbabilityBonus(100)
+        end
+    end, true, TimerName)
+end
+
+function UGCPlayerController:Server_SetProbabilityBonusPermanent(value)
+    value = tonumber(value) or 100
+    if self.PlayerState ~= nil then
+        if self.PlayerState.GetProbability_Bonus ~= nil then
+            value = math.max(value, tonumber(self.PlayerState:GetProbability_Bonus()) or 100)
+        else
+            value = math.max(value, tonumber(self.PlayerState.Probability_Bonus) or 100)
+        end
+    end
+
+    local PermanentValue = tonumber(self.ProbabilityBonusPermanentValue) or 100
+    if value < PermanentValue then
+        value = PermanentValue
+    end
+
+    self.ProbabilityBonusPermanent = true
+    self.ProbabilityBonusPermanentValue = value
+    self.ProbabilityBonusRemainingSeconds = 0
+    self.ProbabilityBonusTimedValue = nil
+
+    local PlayerKey = self.PlayerKey or tostring(self)
+    UGCTimerUtility.RemoveLuaTimerByName("ProbabilityBonus_" .. tostring(PlayerKey))
+
+    self:Server_AddProbabilityBonus(value)
+end
+
 function UGCPlayerController:Client_ProbabilityBonusChanged(value)
     local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
     if StateMgr ~= nil and StateMgr.BeiLvTextShow ~= nil and StateMgr.UI ~= nil then
