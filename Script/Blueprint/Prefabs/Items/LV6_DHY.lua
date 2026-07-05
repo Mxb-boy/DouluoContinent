@@ -1,4 +1,4 @@
----@class LV6_DHY_C:Template_ItemHandle_C
+---@class LV6_DHY_C:UGCItemHandle_ConsumeBase_C
 --Edit Below--
 local LV6_DHY = {} 
 
