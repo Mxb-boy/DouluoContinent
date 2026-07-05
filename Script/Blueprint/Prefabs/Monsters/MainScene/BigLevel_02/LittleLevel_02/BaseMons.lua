@@ -1,5 +1,4 @@
----@class BaseMons_C:BP_UGC_GenericStaticMeshMob_C
----@field StaticMesh UStaticMeshComponent
+---@class BaseMons_C:BP_UGC_GenericMobPawn_Base_C
 ---@field HitBox UCapsuleComponent
 ---@field MonsterID int32
 --Edit Below--
