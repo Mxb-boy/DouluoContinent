@@ -4,6 +4,37 @@
 --Edit Below--
 local Boss_5 = {}
 
+local DROP_SCATTER_RANGE = 300
+
+local function GetDropBaseLoc(monster)
+    local BaseLoc = monster:K2_GetActorLocation()
+    if monster.CapsuleComponent ~= nil and monster.CapsuleComponent.K2_GetComponentLocation ~= nil and monster.CapsuleComponent.GetScaledCapsuleHalfHeight ~= nil then
+        local CapsuleLoc = monster.CapsuleComponent:K2_GetComponentLocation()
+        local HalfHeight = monster.CapsuleComponent:GetScaledCapsuleHalfHeight()
+        return Vector.New(CapsuleLoc.X, CapsuleLoc.Y, CapsuleLoc.Z - HalfHeight)
+    end
+
+    return BaseLoc
+end
+
+local function MakeDropLoc(BaseLoc)
+    if BaseLoc == nil then
+        return nil
+    end
+
+    return Vector.New(
+        BaseLoc.X + math.random(-DROP_SCATTER_RANGE, DROP_SCATTER_RANGE),
+        BaseLoc.Y + math.random(-DROP_SCATTER_RANGE, DROP_SCATTER_RANGE),
+        BaseLoc.Z
+    )
+end
+
+local function SpawnDrop(monster, ItemID, Count)
+    local BaseLoc = GetDropBaseLoc(monster)
+    local DropLoc = MakeDropLoc(BaseLoc)
+    return UGCItemSystemV2.SpawnPickupWrapper(DropLoc, ItemID, Count)
+end
+
 local function DisableMonsterCollision(monster)
     if monster.HitBox ~= nil then
         monster.HitBox:SetCollisionEnabled(ECollisionEnabled.NoCollision)
@@ -87,23 +118,26 @@ function Boss_5:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent,
     end
 
     if self:HasAuthority() then
-        local DropID = self.MonsterID
-        if EventInstigator ~= nil and EventInstigator.PlayerState ~= nil then
-            local Probability_Bonus = EventInstigator.PlayerState.Probability_Bonus or 0
-            if Probability_Bonus > 100 then
-                Probability_Bonus = 100
-            end
-            DropID = Probability_Bonus * 100 + self.MonsterID
+        -- 只有服务端才可以掉落
+        if math.random(1, 100) <= 80 then
+            SpawnDrop(self, 8310041, math.random(3, 10))
+        else
+            SpawnDrop(self, 8310001, 1)
         end
 
-        -- 只有服务端才可以掉落
-        if DropID ~= nil then
-            self.UGCPresetCommonDropItemComponent:StartDropByProduceID(
-                DropID,
-                -1,
-                EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor,
-                nil
-            )
+        SpawnDrop(self, 8310036, 1)
+
+        local RandomValue = math.random(1, 100)
+        if RandomValue <= 30 then
+            SpawnDrop(self, 8310040, math.random(5, 12))
+        elseif RandomValue <= 55 then
+            SpawnDrop(self, 8310039, math.random(1, 2))
+        elseif RandomValue <= 75 then
+            SpawnDrop(self, 8310037, 1)
+        elseif RandomValue <= 90 then
+            SpawnDrop(self, 8310038, math.random(5, 10))
+        else
+            SpawnDrop(self, 8310036, math.random(2, 5))
         end
     end
 end

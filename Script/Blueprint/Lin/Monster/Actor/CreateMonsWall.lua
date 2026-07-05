@@ -276,6 +276,9 @@ function CreateMonsWall:ScheduleMonsterRespawn(monster)
     if self.LittleLevel == 10 then
         respawnDelay = 5
     end
+    if self.Scene == Scene_Enum.duplicate then
+        respawnDelay = 10
+    end
 
     local wall = self
     UGCTimerUtility.CreateLuaTimer(respawnDelay, function()
