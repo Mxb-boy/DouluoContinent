@@ -107,6 +107,8 @@ end
 function UI08:Refresh()
     local CurrentConfig = RealmConfig.Get(self.CurrentRealmLevel) or RealmConfig.Get(1)
     local NextConfig = RealmConfig.GetNext(self.CurrentRealmLevel)
+    self:PreloadRealmIcon(CurrentConfig)
+    self:PreloadRealmIcon(NextConfig)
     self:SetText(self.Text_CurrentName, RealmConfig.GetDisplayName(CurrentConfig))
     self:SetImage(self.Img_Current, CurrentConfig.IconPath)
     self:RefreshNextRealm(CurrentConfig, NextConfig)
@@ -156,9 +158,6 @@ function UI08:BuildCompareRightText(Bonuses)
 end
 function UI08:ParseBonusText(BonusText)
     local Label, Value = RealmConfig.ParseBonusText(BonusText)
-    if Value <= 0 then
-        return Label, ""
-    end
     return Label, tostring(Value) .. "%"
 end
 function UI08:BuildNeedPowerText(Config)
@@ -249,7 +248,11 @@ function UI08:SetText(TextBlock, Text)
 end
 
 function UI08:SetImage(Image, IconPath)
-    if Image == nil or IconPath == nil or IconPath == "" then
+    if Image == nil then
+        return
+    end
+    if IconPath == nil or IconPath == "" then
+        self:ClearImage(Image)
         return
     end
     local Texture = UE.LoadObject(IconPath)
@@ -259,6 +262,27 @@ function UI08:SetImage(Image, IconPath)
     end
     Image:SetBrushFromTexture(Texture)
     self:ResetImageColor(Image)
+end
+function UI08:PreloadRealmIcon(Config)
+    if Config == nil or Config.IconPath == nil or Config.IconPath == "" then
+        return
+    end
+    self.RealmIconCache = self.RealmIconCache or {}
+    if self.RealmIconCache[Config.IconPath] ~= nil then
+        return
+    end
+    self.RealmIconCache[Config.IconPath] = UE.LoadObject(Config.IconPath)
+end
+function UI08:ClearImage(Image)
+    if Image == nil then
+        return
+    end
+    if Image.SetColorAndOpacity ~= nil then
+        pcall(Image.SetColorAndOpacity, Image, { R = 1.0, G = 1.0, B = 1.0, A = 0.0 })
+    end
+    if Image.Brush ~= nil and Image.Brush.TintColor ~= nil then
+        Image.Brush.TintColor = { SpecifiedColor = { R = 1.0, G = 1.0, B = 1.0, A = 0.0 } }
+    end
 end
 function UI08:ResetImageColor(Image)
     if Image == nil then
@@ -336,7 +360,7 @@ function UI08:OnRealmBreakResult(Success, NewLevel, TargetLevel, FailCount, Used
     self:Refresh()
     if Success then
         if StateMgr ~= nil and StateMgr.UI ~= nil and StateMgr.JingJieTextShow ~= nil then
-            StateMgr:JingJieTextShow(math.max(1, math.min(9, tonumber(NewLevel) or 1)))
+            StateMgr:JingJieTextShow(math.max(1, math.min(RealmConfig.MaxLevel, tonumber(NewLevel) or 1)))
         end
         self:ShowBreakHh(self.CurrentRealmLevel, true)
     else

@@ -99,7 +99,7 @@ local function UpdateRealmBonusResult(player, HunHuan)
 
     local Bonuses = RealmConfig.GetAttrBonuses(HunHuan)
     player.RealmBonusResult = {
-        Level = math.max(1, math.min(10, tonumber(HunHuan) or 1)),
+        Level = math.max(1, math.min(RealmConfig.MaxLevel, tonumber(HunHuan) or 1)),
         HPPercent = tonumber(Bonuses.HPPercent) or 0,
         AttackPercent = tonumber(Bonuses.AttackPercent) or 0
     }
@@ -463,8 +463,13 @@ local function CreateSoulMesh(player, HunHuan)
 
     DestroySoulMesh(player)
 
-    local SoulPath = UGCMapInfoLib.GetRootLongPackagePath() .. SOUL_MESH_PATH .. "M_" .. tostring(HunHuan) .. ".M_" ..
-                         tostring(HunHuan)
+    local SoulLevel = (tonumber(HunHuan) or 1) - 1
+    if SoulLevel <= 0 then
+        return
+    end
+
+    local SoulPath = UGCMapInfoLib.GetRootLongPackagePath() .. SOUL_MESH_PATH .. "M_" .. tostring(SoulLevel) .. ".M_" ..
+                         tostring(SoulLevel)
     local soulMesh = UE.LoadObject(SoulPath)
     if soulMesh == nil then
         print("CreateSoulMesh load failed:", SoulPath)
@@ -900,7 +905,7 @@ function UGCPlayerPawn:InitPlayerState()
 end
 
 function UGCPlayerPawn:RefreshSoulMesh(HunHuan, bFillHealth)
-    HunHuan = math.max(1, math.min(10, tonumber(HunHuan) or 1))
+    HunHuan = math.max(1, math.min(RealmConfig.MaxLevel, tonumber(HunHuan) or 1))
     UpdateRealmBonusResult(self, HunHuan)
     CreateSoulMesh(self, HunHuan)
 end

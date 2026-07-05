@@ -537,7 +537,15 @@ function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, Res
 end
 -- 突破
 local function GetRealmLevel(PlayerController)
-    return tonumber(PlayerController.RealmLevel) or 1
+    if PlayerController.RealmLevel ~= nil then
+        return tonumber(PlayerController.RealmLevel) or 1
+    end
+
+    if PlayerController.PlayerState ~= nil and PlayerController.PlayerState.GetHunHuan ~= nil then
+        return tonumber(PlayerController.PlayerState:GetHunHuan()) or 1
+    end
+
+    return 1
 end
 
 local function SetRealmLevel(PlayerController, Level)
