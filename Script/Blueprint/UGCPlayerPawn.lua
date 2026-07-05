@@ -348,7 +348,9 @@ end
 
 -- 成功方法名缓存（weak-keyed 表，避免阻止 GC）
 -- key: player, value: 上次拿到武器的时间戳
-local PlayerNoWeaponCache = setmetatable({}, {__mode = "k"})
+local PlayerNoWeaponCache = setmetatable({}, {
+    __mode = "k"
+})
 -- 无武器缓存过期间隔（秒），期间直接返回 nil
 local NO_WEAPON_CACHE_TTL = 1.0
 
@@ -645,7 +647,6 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi_01)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenObjectMessage(self, L_Enum_Event.Enum.ReFreshZhanLi_01, self, self.InitPlayerState)
-    UGCPawnAttrSystem.SetSpeedScale(self, 3)
 
     self.EquippedTitleID = self.EquippedTitleID or 0
     self.PropertyWatchElapsed = 0
@@ -867,8 +868,7 @@ function UGCPlayerPawn:NotifyPropertyChangedIfNeeded(bForce)
         self.LastPropertyWatchKey = propertyWatchKey
         local hp = UGCPawnAttrSystem.GetHealth(self)
         local maxHp = UGCPawnAttrSystem.GetHealthMax(self)
-        UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty, nil, nil, hp,
-            maxHp)
+        UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty, nil, nil, hp, maxHp)
     end
 end
 
@@ -891,8 +891,7 @@ function UGCPlayerPawn:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser
                 maxHp)
         end
     else
-        UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty, nil, nil, hp,
-            maxHp)
+        UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty, nil, nil, hp, maxHp)
     end
 end
 
