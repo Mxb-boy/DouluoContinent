@@ -1,4 +1,6 @@
 ---@class PTDLB_C:UGCItemHandle_ConsumeBase_C
+--Edit Below--
+---@class PTDLB_C:UGCItemHandle_ConsumeBase_C
 -- Edit Below--
 local PTDLB = {}
 

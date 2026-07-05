@@ -1,4 +1,6 @@
 ---@class PTCSJ_C:UGCItemHandle_ConsumeBase_C
+--Edit Below--
+---@class PTCSJ_C:UGCItemHandle_ConsumeBase_C
 -- Edit Below--
 local PTCSJ = {}
 
