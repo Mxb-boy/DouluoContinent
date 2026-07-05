@@ -11,6 +11,7 @@ local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelCon
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
 local TitleConfig = UGCGameSystem.UGCRequire("Script.Common.TitleConfig")
+local Ma_NumShow = UGCGameSystem.UGCRequire("Script.Ma.Ma_NumShow")
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
@@ -90,6 +91,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
         "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden",
+        "Client_ShowMonsterDamageNumber",
         "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty"
 end
 
@@ -1378,6 +1380,38 @@ function UGCPlayerController:Client_SetFeiTowerButtonsHidden(value)
     if self.FeiUIInstance ~= nil and self.FeiUIInstance.SetTowerButtonsHidden ~= nil then
         self.FeiUIInstance:SetTowerButtonsHidden(value)
     end
+end
+
+local function SetDamageNumberItemText(Item, Text)
+    Item.Text = Text
+end
+
+local function SetDamageNumberItemImage(Item, ImagePath)
+    Item.Text = ""
+    Item.ImagePath = ImagePath
+    Item.ImageScaleX = 3
+    Item.ImageScaleY = 4
+end
+
+function UGCPlayerController:Client_ShowMonsterDamageNumber(TargetActor, Damage)
+    if TargetActor == nil then
+        return
+    end
+
+    local Params = UGCGameSystem.MakeCustomDamageNumberParams()
+    local TextItem = {}
+    local NumberText, _, UnitImagePath = Ma_NumShow.GetNumShowData(Damage)
+    SetDamageNumberItemText(TextItem, NumberText)
+
+    if UnitImagePath ~= nil then
+        local UnitItem = {}
+        SetDamageNumberItemImage(UnitItem, UnitImagePath)
+        Params.Items = { TextItem, UnitItem }
+    else
+        Params.Items = { TextItem }
+    end
+
+    UGCGameSystem.AddUGCCustomDamageNumber(self, TargetActor, Params)
 end
 
 function UGCPlayerController:TryAutoMeleeAttack()

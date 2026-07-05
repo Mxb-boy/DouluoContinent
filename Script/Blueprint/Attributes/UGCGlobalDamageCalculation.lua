@@ -56,6 +56,10 @@ local function IsIncomingDamage(CauserActor, VictimActor)
     return CauserActor ~= VictimActor
 end
 
+local function HasAuthority(Object)
+    return Object ~= nil and Object.HasAuthority ~= nil and Object:HasAuthority()
+end
+
 function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     local VictimActor = UGCAttributeSystem.GetVictimFromContext(Context)
     local InstigatorController = UGCAttributeSystem.GetInstigatorFromContext(Context)
@@ -92,6 +96,11 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     local bIsIncomingDamage = IsIncomingDamage(CauserActor, VictimActor)
     if bHasYXWDBuff and bIsIncomingDamage then
         return 1, ExtraResult
+    end
+
+    if bCauserIsPlayer and not bVictimIsPlayer and HasAuthority(InstigatorController) then
+        UnrealNetwork.CallUnrealRPC(InstigatorController, InstigatorController, "Client_ShowMonsterDamageNumber",
+            VictimActor, SkillAttack)
     end
 
     return SkillAttack, ExtraResult
