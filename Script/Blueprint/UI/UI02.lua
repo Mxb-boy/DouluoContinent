@@ -561,10 +561,10 @@ function UI02:LuaInit()
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
     self:RefreshToggleButtonColors()
-    self:RefreshRealmNameText()
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
     StateMgr:SetUI(self)
+    self:RefreshRealmNameText()
 
     self:SetTowerOutBoxImageVisible(false)
     self:RefreshMainButtonRedDots()
@@ -620,21 +620,16 @@ function UI02:OnRefreshProperty(baseAttack, baseMaxHp, hp, maxHp, bFillHealth)
 end
 
 function UI02:RefreshRealmNameText()
-    -- if self.TextBlock_49 == nil then
-    --     return
-    -- end
+    local Level = 1
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil and PlayerController.RealmLevel ~= nil then
+        Level = tonumber(PlayerController.RealmLevel) or Level
+    elseif PlayerController ~= nil and PlayerController.PlayerState ~= nil and PlayerController.PlayerState.GetHunHuan ~=
+        nil then
+        Level = tonumber(PlayerController.PlayerState:GetHunHuan()) or Level
+    end
 
-    -- local Level = 1
-    -- local PlayerController = GameplayStatics.GetPlayerController(self, 0)
-    -- if PlayerController ~= nil and PlayerController.RealmLevel ~= nil then
-    --     Level = tonumber(PlayerController.RealmLevel) or Level
-    -- elseif PlayerController ~= nil and PlayerController.PlayerState ~= nil and PlayerController.PlayerState.GetHunHuan ~=
-    --     nil then
-    --     Level = tonumber(PlayerController.PlayerState:GetHunHuan()) or Level
-    -- end
-
-    -- local Config = RealmConfig.Get(Level)
-    -- self.TextBlock_49:SetText("境界：" .. RealmConfig.GetDisplayName(Config))
+    StateMgr:JingJieTextShow(Level, true)
 end
 
 function UI02:RefreshWeaponBonusText()

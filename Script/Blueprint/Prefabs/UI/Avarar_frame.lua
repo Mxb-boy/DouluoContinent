@@ -56,9 +56,10 @@ function Avarar_frame:SetHeadImageByPlayerKey(PlayerKey)
 	local PS = UGCGameSystem.GetPlayerStateByPlayerKey(PlayerKey):GetTeamMatePlayerStateFromPlayerKey(PlayerKey)
 	local AccountInfo = UGCPlayerStateSystem.GetPlayerAccountInfo(PlayerKey)
 	local UID = PS:GetInt64UID()
-	local IconURL = PS.IconURL
+	local IconURL = AccountInfo.IconURL
 	self:print(string.format("UID:%d,IconURL:%s,playerlevel:%d", UID, IconURL, AccountInfo.PlayerLevel))
-	self.Avatar:InitView(1, UID, IconURL, nil, nil, AccountInfo.PlayerLevel, true)
+	self.Avatar:UseAsyncLoad(true)
+	self.Avatar:InitView(2, UID, IconURL, AccountInfo.Gender, 0, AccountInfo.PlayerLevel, false, false)
 end
 function Avarar_frame:ResetHeadImagePath(NewPath)
 	self.HeadImagePath = NewPath

@@ -112,6 +112,7 @@ end
 function UI14:Refresh()
     local Config = LotteryConfig.GetPool(self.SelectedLotteryType)
     self:RefreshLotteryTicketText()
+    self:RefreshLotteryTabButtons()
     self:RefreshAwardPanel(Config)
     self:RefreshAwardPreview(Config and Config.GrandPrize or nil)
 end
@@ -136,7 +137,8 @@ end
 
 function UI14:RefreshLotteryTabButtons()
     for Type, Button in pairs(self:GetLotteryTabButtons()) do
-        self:SetButtonTint(Button, Type == self.ActiveTabType and TabButtonDarkColor or TabButtonBrightColor)
+        local bDark = Type == self.ActiveTabType or self:IsLotteryCompleted(Type)
+        self:SetButtonTint(Button, bDark and TabButtonDarkColor or TabButtonBrightColor)
     end
 end
 
