@@ -72,6 +72,12 @@ end
 function BP_UGC_ZipLineChild:ActivityFakePossess_OnUnPossess(PC)
     print("BP_UGC_Ladder:OnUnPossess")
     UGCTimerUtility.RemoveLuaTimerByName("CheckBlockTimer")
+    if UGCGameSystem.IsServer() then
+        local PlayerCharacter = PC:GetPlayerCharacterSafety()
+        for _, State in ipairs(self.DisableState) do
+            UGCPawnSystem.DisabledPawnState(PlayerCharacter, State, false)
+        end
+    end
     UGCTimerUtility.CreateLuaTimer(0.1, function()
         self:K2_DestroyActor()
     end,false)
