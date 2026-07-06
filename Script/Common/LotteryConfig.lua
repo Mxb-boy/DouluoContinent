@@ -65,7 +65,7 @@ local HardcodedIcons = {
     [8310053] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_4.Pic_4"),            -- 万年魂环
     [8310049] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_2.Pic_2"),            -- 百年魂环
     -- Wing pool
-    [8310058] = ToHardcodedPath("/Douluo/Asset/ChiBang/Icon/CB_2T.CB_2T"),                                -- 星澜幻彩羽翼
+    [8310010] = ToHardcodedPath("/Douluo/Asset/ChiBang/Icon/CB_2T.CB_2T"),                                -- 星澜幻彩羽翼
     [8310036] = ToHardcodedPath("/Game/Arts/UI/TableIcons/ItemIcon/Inkjet/2021newyear_128.2021newyear_128"), -- 千年魂核
     [8310004] = ToHardcodedPath("/Douluo/Asset/cs/LCSL/LCSL_T.LCSL_T"),                                   -- 影罗夺命镰
     [8310066] = ToHardcodedPath("/Douluo/Asset/ui/Icon/fx2.fx2"),                                         -- 30分钟双倍药水
