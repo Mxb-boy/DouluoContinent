@@ -258,6 +258,12 @@ function UGCPlayerController:Server_UpdateWeaponAttackBonus(ItemID)
         return
     end
 
+    -- 存档加载前拒绝客户端 RPC，防止用默认 AttackPower 覆盖服务器正确属性
+    local playerState = self.PlayerState
+    if playerState ~= nil and playerState.bArchiveLoaded ~= true then
+        return
+    end
+
     local pawn = self:K2_GetPawn()
     if pawn == nil or pawn.ApplyWeaponAttackBonusByItemID == nil then
         return
@@ -1351,6 +1357,11 @@ function UGCPlayerController:Server_SetFinalMaxHp(finalMaxHp, bFillHealth)
     if pawn == nil then
         return
     end
+    -- 存档加载前拒绝客户端 RPC，防止默认值覆盖服务器正确属性
+    local playerState = self.PlayerState
+    if playerState ~= nil and playerState.bArchiveLoaded ~= true then
+        return
+    end
     finalMaxHp = tonumber(finalMaxHp) or 100
     local oldMaxHp = UGCPawnAttrSystem.GetHealthMax(pawn) or finalMaxHp
     local oldHp = UGCPawnAttrSystem.GetHealth(pawn) or oldMaxHp
@@ -1370,6 +1381,11 @@ end
 function UGCPlayerController:Server_SetFinalAttack(finalAttack)
     local pawn = self.Pawn
     if pawn == nil then
+        return
+    end
+    -- 存档加载前拒绝客户端 RPC，防止默认值覆盖服务器正确属性
+    local playerState = self.PlayerState
+    if playerState ~= nil and playerState.bArchiveLoaded ~= true then
         return
     end
     finalAttack = tonumber(finalAttack) or 40

@@ -15,6 +15,7 @@ local UGCPlayerState = {
     AutoAttackButtonHidden = 0,
     FeiButton0Hidden = 0,
     ArchiveUID = nil,
+    bArchiveLoaded = false, -- 服务器侧标志：LoadFromArchive 成功后置 true
 
     BaseAttack = 40, -- 基础攻击力
     BaseMaxHp = 100 -- 基础最大血量
@@ -78,27 +79,44 @@ function UGCPlayerState:LoadFromArchive(UID)
     end
 
     self.ArchiveUID = UID
+    self.bArchiveLoaded = true
 
     local ArchiveData = UGCPlayerStateSystem.GetPlayerArchiveData(UID, 1)
     if ArchiveData == nil then
         return
     end
 
+    -- 加载过程中锁定 SaveToArchive，防止 Setter 中尚未还原的字段默认值被写入存档造成数据损坏
+    self.bLoadingArchive = true
+
     for _, entry in ipairs(ARCHIVE_KEYS) do
         local val = ArchiveData[entry.key]
         if val ~= nil then
-            -- 走 Setter 触发 CallRefreshZhanli 等副作用，同时 Setter 内会调用 SaveToArchive 写回
             local setterName = "Set" .. entry.field
             if self[setterName] then
-                self[setterName](self, val)
+                -- pcall 保护：单个 Setter 失败不影响其他字段加载，且确保锁一定能释放
+                local ok, err = pcall(self[setterName], self, val)
+                if not ok then
+                    print(string.format("[UGCPlayerState] LoadFromArchive: %s failed for key %s: %s",
+                        setterName, entry.key, tostring(err)))
+                end
             end
         end
     end
+
+    -- 无论循环中是否出错，都必须释放锁，否则后续所有 SaveToArchive 会被永久拦截
+    self.bLoadingArchive = false
+    self:SaveToArchive()
 end
 
 --- 将注册表中所有字段的最新值写入官方存档系统（chunk 1）
 --- 自动使用 LoadFromArchive 时缓存的 UID
 function UGCPlayerState:SaveToArchive()
+    -- 加载存档期间禁止写入，防止 Setter 将尚未还原的字段默认值写入存档，导致数据损坏
+    if self.bLoadingArchive then
+        return
+    end
+
     local UID = self.ArchiveUID
     if UID == nil or UID == 0 then
         return
@@ -106,7 +124,12 @@ function UGCPlayerState:SaveToArchive()
 
     local data = {}
     for _, entry in ipairs(ARCHIVE_KEYS) do
-        data[entry.key] = self[entry.field] or entry.default
+        -- 显式 nil 检查，避免 `or` 将合法的 false 值误覆盖为默认值
+        local v = self[entry.field]
+        if v == nil then
+            v = entry.default
+        end
+        data[entry.key] = v
     end
 
     UGCPlayerStateSystem.SavePlayerArchiveData(UID, data, 1)
@@ -215,7 +238,16 @@ function UGCPlayerState:GetLotteryState()
 end
 
 function UGCPlayerState:SetLotteryState(value)
-    self.LotteryState = value or {}
+    -- 浅拷贝断开与存档系统内部 table 的引用，避免后续修改影响存档缓存
+    if type(value) == "table" then
+        local copy = {}
+        for k, v in pairs(value) do
+            copy[k] = v
+        end
+        self.LotteryState = copy
+    else
+        self.LotteryState = {}
+    end
     self:SaveToArchive()
 end
 
@@ -225,7 +257,16 @@ function UGCPlayerState:GetUnlockedTitles()
 end
 
 function UGCPlayerState:SetUnlockedTitles(value)
-    self.UnlockedTitles = value or {}
+    -- 浅拷贝断开引用
+    if type(value) == "table" then
+        local copy = {}
+        for k, v in pairs(value) do
+            copy[k] = v
+        end
+        self.UnlockedTitles = copy
+    else
+        self.UnlockedTitles = {}
+    end
     self:SaveToArchive()
 end
 
@@ -257,6 +298,9 @@ end
 
 function UGCPlayerState:SaveCurrentHP(playerPawn)
     if playerPawn == nil then
+        return
+    end
+    if not self.bArchiveLoaded then
         return
     end
     local hp = UGCPawnAttrSystem.GetHealth(playerPawn)

@@ -118,9 +118,12 @@ function UGCGameMode:ReceiveBeginPlay()
 end
 
 -- 玩家登录时: 先加载跨对局存档, 再发初始武器（Pawn可能还没好，等1秒）
+-- 若 Pawn 在 1 秒后仍未就绪，则重试（最多 10 次），避免 LoadFromArchive 被整体跳过导致存档丢失
 function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
     local PC = PlayerController
-    UGCTimerUtility.CreateLuaTimer(1, function()
+    local RetryCount = 0
+    local MaxRetries = 10
+    local function OnLoginDeferred()
         if PC.Pawn then
             -- 1. 加载跨对局存档（注入 UID → 恢复所有注册字段）
             local PlayerState = PC.PlayerState
@@ -196,8 +199,15 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                 end
             end
 
+        elseif RetryCount < MaxRetries then
+            -- Pawn 尚未就绪，1 秒后重试
+            RetryCount = RetryCount + 1
+            UGCTimerUtility.CreateLuaTimer(1, OnLoginDeferred, false)
+        else
+            print("[UGCGameMode] UGC_PlayerLoginEvent: Pawn not ready after " .. MaxRetries .. " retries, giving up.")
         end
-    end, false)
+    end
+    UGCTimerUtility.CreateLuaTimer(1, OnLoginDeferred, false)
 end
 
 -- 此事件提供死亡前的旧 Pawn，必须在这里读取背包和血量。

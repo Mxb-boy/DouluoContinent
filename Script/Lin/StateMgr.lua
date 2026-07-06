@@ -9,7 +9,8 @@ local StateMgr = {
     JingJieName = "",
     JingJieAddMaxHp = 0,
     JingJieAddAtk = 0,
-    BeiLv = 100
+    BeiLv = 100,
+    bServerSynced = false -- 客户端侧标志：收到服务器首次属性同步后才允许 RPC，防止用默认值覆盖服务器
 }
 
 local FinalAttack = 0
@@ -23,6 +24,7 @@ local L_Com = UGCGameSystem.UGCRequire('Script.Lin.L_Com')
 
 function StateMgr:SetUI(ui)
     self.UI = ui
+    self.bServerSynced = false -- 新 UI/新对局时重置，等待服务器首次同步
     self:Init()
 end
 
@@ -42,6 +44,7 @@ function StateMgr:SyncFromPlayerState()
 end
 
 function StateMgr:RefreshFromPlayerState(pawn, baseAttack, baseMaxHp, hp, maxHp, bFillHealth)
+    self.bServerSynced = true -- 服务器已推送属性同步，后续 RPC 可安全发送
     self:SyncFromPlayerState()
     self.BaseAttack = tonumber(baseAttack) or self.BaseAttack
     self.BaseMaxHp = tonumber(baseMaxHp) or self.BaseMaxHp
@@ -131,7 +134,8 @@ function StateMgr:CountFinalAttack(pawn)
     end
     if pawn.HasAuthority ~= nil and pawn:HasAuthority() then
         UGCAttributeSystem.SetGameAttributeValue(pawn, "AttackPower", FinalAttack)
-    else
+    elseif self.bServerSynced then
+        -- 仅在服务器首次同步后才 RPC，避免用默认 BaseAttack 覆盖服务器正确值
         local pc = GameplayStatics.GetPlayerController(self.UI, 0)
         UnrealNetwork.CallUnrealRPC(pc, pc, "Server_SetFinalAttack", FinalAttack)
     end
@@ -167,7 +171,8 @@ function StateMgr:CountFinalMaxHp(pawn, showHp, showMaxHp, bFillHealth)
         if bFillHealth then
             UGCPawnAttrSystem.SetHealth(pawn, FinalMaxHp)
         end
-    else
+    elseif self.bServerSynced then
+        -- 仅在服务器首次同步后才 RPC，避免用默认 BaseMaxHp 覆盖服务器正确值
         local pc = GameplayStatics.GetPlayerController(self.UI, 0)
         UnrealNetwork.CallUnrealRPC(pc, pc, "Server_SetFinalMaxHp", FinalMaxHp, bFillHealth == true)
     end
