@@ -356,6 +356,15 @@ local PlayerNoWeaponCache = setmetatable({}, {
 -- 无武器缓存过期间隔（秒），期间直接返回 nil
 local NO_WEAPON_CACHE_TTL = 1.0
 
+local function GetWeaponManagerHeldWeapon(player)
+    local WeaponManager = TryCall(player, "GetWeaponManager") or player.WeaponManager
+    if WeaponManager == nil then
+        return nil
+    end
+
+    return TryCall(WeaponManager, "GetCurrentWeapon") or TryCall(WeaponManager, "GetEquippedWeapon")
+end
+
 local function GetCurrentHeldWeapon(player)
     if player == nil then
         return nil
@@ -372,19 +381,16 @@ local function GetCurrentHeldWeapon(player)
         -- 无武器：用 TTL 缓存避免每 tick 高频重试
         local LastNilTime = PlayerNoWeaponCache[player]
         if LastNilTime ~= nil and (os.clock() - LastNilTime) < NO_WEAPON_CACHE_TTL then
-            return nil
+            return GetWeaponManagerHeldWeapon(player)
         end
         PlayerNoWeaponCache[player] = os.clock()
-        return nil
     end
 
     -- 兜底：武管组件直调（无 UGCWeaponManagerSystem 时，理论上不可达）
-    local WeaponManager = TryCall(player, "GetWeaponManager") or player.WeaponManager
-    if WeaponManager ~= nil then
-        local Weapon = TryCall(WeaponManager, "GetCurrentWeapon") or TryCall(WeaponManager, "GetEquippedWeapon")
-        if Weapon ~= nil then
-            return Weapon
-        end
+    local Weapon = GetWeaponManagerHeldWeapon(player)
+    if Weapon ~= nil then
+        PlayerNoWeaponCache[player] = nil
+        return Weapon
     end
 
     return nil
@@ -692,6 +698,13 @@ function UGCPlayerPawn:RefreshWeaponAttackBonus(bForce)
     if not self:HasAuthority() then
         if WeaponLevelConfig.GetWeaponInfo(ItemID) == nil then
             SetWeaponBonusPercent(self, 0, bForce)
+            if self.LastWeaponAttackKey ~= "none" then
+                self.LastWeaponAttackKey = "none"
+                local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+                if PlayerController ~= nil then
+                    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_UpdateWeaponAttackBonus", 0)
+                end
+            end
             return
         end
 
@@ -713,8 +726,12 @@ function UGCPlayerPawn:RefreshWeaponAttackBonus(bForce)
     end
 
     if WeaponLevelConfig.GetWeaponInfo(ItemID) == nil and self.LastClientWeaponAttackItemID ~= nil then
-        SetWeaponBonusPercent(self, 0, bForce)
-        return
+        ItemID = self.LastClientWeaponAttackItemID
+        local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+        if WeaponInfo ~= nil then
+            SeriesKey = WeaponInfo.SeriesKey
+            Level = WeaponInfo.Level
+        end
     end
 
     self:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemName, Level, bForce)
@@ -785,11 +802,6 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     local FinalAttack = BaseAttack * (1 + NormalizedAttackPercent)
     SetWeaponBonusPercent(self, AttackPercent, bForce)
     local bSetBaseAttackSuccess = false
-    if self:HasAuthority() and UGCAttributeSystem ~= nil and UGCAttributeSystem.SetGameAttributeValue ~= nil then
-        UGCAttributeSystem.SetGameAttributeValue(self, "AttackPower", FinalAttack)
-        self.LastAppliedWeaponAttackPower = FinalAttack
-        bSetBaseAttackSuccess = true
-    end
 
     local WeaponAttackKey = tostring(ItemID or "none") .. "|" .. tostring(SeriesKey or "none") .. "|" ..
                                 tostring(ItemName or "none") .. "|" .. tostring(Level or "none") .. "|" ..

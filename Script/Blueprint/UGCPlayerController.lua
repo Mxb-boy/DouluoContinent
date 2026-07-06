@@ -254,7 +254,8 @@ end
 
 function UGCPlayerController:Server_UpdateWeaponAttackBonus(ItemID)
     ItemID = tonumber(ItemID)
-    if WeaponLevelConfig.GetWeaponInfo(ItemID) == nil then
+    local pawn = self:K2_GetPawn()
+    if pawn == nil or pawn.ApplyWeaponAttackBonusByItemID == nil then
         return
     end
 
@@ -264,8 +265,13 @@ function UGCPlayerController:Server_UpdateWeaponAttackBonus(ItemID)
         return
     end
 
-    local pawn = self:K2_GetPawn()
-    if pawn == nil or pawn.ApplyWeaponAttackBonusByItemID == nil then
+    if ItemID == 0 then
+        pawn.LastClientWeaponAttackItemID = nil
+        pawn:ApplyWeaponAttackBonusByItemID(nil, nil, nil, nil, true)
+        return
+    end
+
+    if WeaponLevelConfig.GetWeaponInfo(ItemID) == nil then
         return
     end
 
