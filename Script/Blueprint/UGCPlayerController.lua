@@ -95,6 +95,14 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty"
 end
 
+local function StopCurrentZipLine(self)
+    local ZipLineChild = self.CurrentZipLineChild
+    if UGCObjectUtility.IsObjectValid(ZipLineChild) then
+        ZipLineChild.ActivityFakePossess:FakeUnPossessWithDettach(EUnPossessReason.Finished)
+    end
+    self.CurrentZipLineChild = nil
+end
+
 local function TeleportToSpawn(self, bornPointID)
     local pawn = self:K2_GetPawn()
     if not pawn then
@@ -117,6 +125,7 @@ local function TeleportToSpawn(self, bornPointID)
     end
 
     local loc = PlayerStart:K2_GetActorLocation()
+    StopCurrentZipLine(self)
     UGCPlayerControllerSystem.TeleportTo(self, loc.X, loc.Y, loc.Z + 100)
     return true
 end
@@ -157,6 +166,7 @@ end
 ---@param y number
 ---@param z number
 function UGCPlayerController:Server_TeleportToLocation(x, y, z)
+    StopCurrentZipLine(self)
     UGCPlayerControllerSystem.TeleportTo(self, x, y, z)
 end
 

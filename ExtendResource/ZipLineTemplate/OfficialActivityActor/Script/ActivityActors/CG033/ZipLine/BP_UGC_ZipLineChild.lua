@@ -58,6 +58,7 @@ function BP_UGC_ZipLineChild:PossessWithAttach(PC,StartLocation,EndLocation)
     print("BP_UGC_ZipLineChild:PossessWithAttach")
     self.ActivityFakePossess:FakePossessWithAttach(PC,self.Scene,"None")
     self.PlayerController = PC
+    PC.CurrentZipLineChild = self
     self.CustomActorMove:SetPosition(StartLocation, EndLocation)
     --print("BP_LadderChild:OnClickUpUI--ClimbSpeed = "..tostring(self.ClimbSpeed))
     self.CustomActorMove:SetMoveSpeed(self.ClimbSpeed)
@@ -72,6 +73,9 @@ end
 function BP_UGC_ZipLineChild:ActivityFakePossess_OnUnPossess(PC)
     print("BP_UGC_Ladder:OnUnPossess")
     UGCTimerUtility.RemoveLuaTimerByName("CheckBlockTimer")
+    if PC.CurrentZipLineChild == self then
+        PC.CurrentZipLineChild = nil
+    end
     if UGCGameSystem.IsServer() then
         local PlayerCharacter = PC:GetPlayerCharacterSafety()
         for _, State in ipairs(self.DisableState) do
@@ -96,7 +100,7 @@ function BP_UGC_ZipLineChild:ReceiveBeginPlay()
         local bBlock = self:AreaBlockadeDetect(self.Scene:K2_GetComponentLocation(),self.SkeletalMesh:K2_GetComponentLocation())
         print_dev("BP_UGC_ZipLineChild:ReceiveBeginPlay--bBlock = "..tostring(bBlock))
         if bBlock then
-            self.ActivityFakePossess:FakeUnPossessWithDettach(self.PlayerController,EUnPossessReason.Finished)
+            self.ActivityFakePossess:FakeUnPossessWithDettach(EUnPossessReason.Finished)
         end
     end,true,"CheckBlockTimer")
 end
@@ -129,7 +133,7 @@ end
 -- [Editor Generated Lua] function define Begin:
 function BP_UGC_ZipLineChild:CustomActorMove_ActorMoveEvent(bIsMove)
     if not bIsMove then
-        self.ActivityFakePossess:FakeUnPossessWithDettach(self.PlayerController,EUnPossessReason.Finished)
+        self.ActivityFakePossess:FakeUnPossessWithDettach(EUnPossessReason.Finished)
     end
 	return nil;
 end
