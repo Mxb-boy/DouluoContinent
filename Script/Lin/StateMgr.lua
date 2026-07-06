@@ -21,6 +21,7 @@ local DefaultBaseAttack = 40
 local DefaultBaseMaxHp = 100
 
 local L_Com = UGCGameSystem.UGCRequire('Script.Lin.L_Com')
+local Ma_NumShow = UGCGameSystem.UGCRequire("Script.Ma.Ma_NumShow")
 
 function StateMgr:SetUI(ui)
     self.UI = ui
@@ -140,7 +141,7 @@ function StateMgr:CountFinalAttack(pawn)
         UnrealNetwork.CallUnrealRPC(pc, pc, "Server_SetFinalAttack", FinalAttack)
     end
     if self.UI ~= nil and self.UI.gjl ~= nil then
-        self.UI.gjl:SetText("攻击力:" .. math.floor(FinalAttack))
+        self.UI.gjl:SetText("攻击力:" .. Ma_NumShow.Format(FinalAttack))
     end
     DaoJuAddNum_Atk = FinalAttack - self.BaseAttack
 end
@@ -154,7 +155,7 @@ function StateMgr:RefreshHpText(pawn, showMaxHp, showHp)
     local hp = tonumber(showHp) or UGCPawnAttrSystem.GetHealth(pawn) or 0
     local maxHp = tonumber(showMaxHp) or UGCPawnAttrSystem.GetHealthMax(pawn) or 0
     if self.UI ~= nil and self.UI.hp ~= nil then
-        self.UI.hp:SetText("生命值:" .. math.floor(hp) .. "/" .. math.floor(maxHp))
+        self.UI.hp:SetText("生命值:" .. Ma_NumShow.Format(hp) .. "/" .. Ma_NumShow.Format(maxHp))
     end
 end
 
@@ -181,7 +182,8 @@ function StateMgr:CountFinalMaxHp(pawn, showHp, showMaxHp, bFillHealth)
 end
 
 function StateMgr:DaoJuAddTextShow(SkipCount)
-    self.UI.TextBlock_0:SetText("HP" .. math.floor(DaoJuAddNum_Hp) .. "/ATK" .. math.floor(DaoJuAddNum_Atk))
+    self.UI.TextBlock_0:SetText("HP" .. Ma_NumShow.Format(DaoJuAddNum_Hp) .. "/ATK" ..
+                                    Ma_NumShow.Format(DaoJuAddNum_Atk))
     if not SkipCount then
         self:CountAll()
     end
@@ -190,7 +192,7 @@ end
 function StateMgr:CountFinalZhanLi()
     local FinalZhanLi = FinalAttack + FinalMaxHp
     self.FinalZhanLi = FinalZhanLi
-    self.UI.TextBlock_303:SetText("战力" .. FinalZhanLi)
+    self.UI.TextBlock_303:SetText("战力" .. Ma_NumShow.Format(FinalZhanLi))
 end
 
 function StateMgr:GetFinalZhanLi()
