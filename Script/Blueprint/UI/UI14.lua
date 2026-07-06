@@ -212,7 +212,8 @@ function UI14:RefreshSummonCostText(Panel, LotteryTypeValue)
         return
     end
 
-    local NextRound = self:GetLotteryRound(LotteryTypeValue) + 1
+    local Round = self:GetLotteryRound(LotteryTypeValue)
+    local NextRound = self:IsLotteryCompleted(LotteryTypeValue) and Round or Round + 1
     Panel.TextNum:SetText("x" .. tostring(LotteryConfig.GetRoundCost(NextRound)) .. "召唤")
 end
 

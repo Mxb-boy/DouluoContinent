@@ -251,6 +251,14 @@ function UGCPlayerState:SetLotteryState(value)
     self:SaveToArchive()
 end
 
+function UGCPlayerState:OnRep_LotteryState()
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    local UI14Instance = PlayerController and PlayerController.MainUIInstance and PlayerController.MainUIInstance.UI14Instance
+    if UI14Instance ~= nil and UI14Instance.Refresh ~= nil then
+        UI14Instance:Refresh()
+    end
+end
+
 function UGCPlayerState:GetUnlockedTitles()
     self.UnlockedTitles = self.UnlockedTitles or {}
     return self.UnlockedTitles
