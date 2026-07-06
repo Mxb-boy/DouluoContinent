@@ -22,9 +22,9 @@ local function SetYXWDInvincibleBuffActive(PlayerState, DurationSeconds)
     local BuffToken = PlayerState.YXWD_InvincibleBuffToken
 
     if PlayerState.SetYXWD_InvincibleBuff ~= nil then
-        PlayerState:SetYXWD_InvincibleBuff(Duration == -2)
+        PlayerState:SetYXWD_InvincibleBuff(true)
     else
-        PlayerState.YXWD_InvincibleBuff = Duration == -2 and 1 or 0
+        PlayerState.YXWD_InvincibleBuff = 1
         if PlayerState.SaveToArchive ~= nil then
             PlayerState:SaveToArchive()
         end

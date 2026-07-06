@@ -462,6 +462,8 @@ local MainButtonRedDots = {
 }
 local MainFoldImages = {"Image_386", "Image_387", "Image_388", "Image_389", "Image_397", "Image_392", "Image_393",
                         "Image_395", "Image_396", "Image_398"}
+local ToggleButtonNormalColor = {R = 1.0, G = 1.0, B = 1.0, A = 1.0}
+local ToggleButtonGrayColor = {R = 0.45, G = 0.45, B = 0.45, A = 1.0}
 
 function UI02:Construct()
     self:LuaInit()
@@ -473,6 +475,25 @@ end
 function UI02:ApplyButtonEffect(Button)
     UIEffectUtil.SetButtonStateBrushSameAsNormal(Button)
     UIEffectUtil.BindPressScale(self, Button, Button, 1.06, 1.0)
+end
+
+function UI02:SetToggleButtonGray(Button, bGray)
+    if Button == nil then
+        return
+    end
+
+    local Color = bGray and ToggleButtonGrayColor or ToggleButtonNormalColor
+    if Button.SetColorAndOpacity ~= nil then
+        pcall(Button.SetColorAndOpacity, Button, Color)
+    elseif Button.SetRenderOpacity ~= nil then
+        Button:SetRenderOpacity(bGray and 0.55 or 1.0)
+    end
+end
+
+function UI02:RefreshToggleButtonColors()
+    self:SetToggleButtonGray(self.Button_227, self.bAutoPickEnabled ~= true)
+    self:SetToggleButtonGray(self.Button_3, self.YXWDInvincibleActive ~= true)
+    self:SetToggleButtonGray(self.Button_93, self.bAutoMeleeAttackEnabled ~= true)
 end
 
 function UI02:LuaInit()
@@ -500,6 +521,7 @@ function UI02:LuaInit()
     self.Button_151.OnClicked:Add(self.Button_151_OnClicked, self)
     self.Button_155.OnClicked:Add(self.Button_155_OnClicked, self)
     self.Button_227.OnClicked:Add(self.Button_227_OnClicked, self)
+    self.Button_228.OnClicked:Add(self.Button_3_OnClicked, self)
     self.Button_93.OnClicked:Add(self.Button_93_OnClicked, self)
     self.Button_94.OnClicked:Add(self.Button_94_OnClicked, self)
     self.Button_3.OnClicked:Add(self.Button_3_OnClicked, self)
@@ -538,6 +560,7 @@ function UI02:LuaInit()
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
+    self:RefreshToggleButtonColors()
     self:RefreshRealmNameText()
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
@@ -724,9 +747,11 @@ function UI02:HideYXWDBuffIcon()
     self.YXWDBuffIconExpireToken = (self.YXWDBuffIconExpireToken or 0) + 1
 
     if self.Button_228 ~= nil then
-        self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
+        self.Button_228:SetVisibility(self:HasYXWDInvincibleBuff() and ESlateVisibility.Visible or
+                                          ESlateVisibility.Collapsed)
     end
     self:RefreshYXWDPurchaseButton()
+    self:RefreshToggleButtonColors()
 end
 
 function UI02:ShowYXWDBuffIcon(DurationSeconds)
@@ -754,6 +779,7 @@ function UI02:ShowYXWDBuffIcon(DurationSeconds)
 
     self.Button_228:SetVisibility(ESlateVisibility.Visible)
     self:RefreshYXWDPurchaseButton()
+    self:RefreshToggleButtonColors()
 
     if Duration == -2 then
         return
@@ -784,6 +810,7 @@ function UI02:RefreshYXWDBuffIcon()
         self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
     end
     self:RefreshYXWDPurchaseButton()
+    self:RefreshToggleButtonColors()
 end
 
 function UI02:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
@@ -798,16 +825,19 @@ function UI02:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
         self:HideYXWDBuffIcon()
     end
     self:RefreshYXWDPurchaseButton()
+    self:RefreshToggleButtonColors()
 end
 
 function UI02:OnYXWDInvincibleActiveChanged(bActive)
     if self:HasYXWDInvincibleBuff() ~= true then
         self.YXWDInvincibleActive = false
+        self:RefreshToggleButtonColors()
         return
     end
 
     self.YXWDInvincibleActive = bActive == true or tonumber(bActive) == 1
     self:ShowYXWDBuffIcon(self.YXWDBuffIconDurationSeconds or -2)
+    self:RefreshToggleButtonColors()
 end
 
 function UI02:Button_3_OnClicked()
@@ -821,6 +851,8 @@ function UI02:Button_3_OnClicked()
     end
 
     local bNextActive = not (self.YXWDInvincibleActive == true)
+    self.YXWDInvincibleActive = bNextActive
+    self:RefreshToggleButtonColors()
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SetYXWDInvincibleBuffActive",
         bNextActive and 1 or 0)
 end
@@ -1149,6 +1181,7 @@ function UI02:Button_227_OnClicked()
     self.bAutoPickEnabled = not self.bAutoPickEnabled
 
     UnrealNetwork.CallUnrealRPC(PC, PC, "Server_SetAutoPickEnabled", self.bAutoPickEnabled)
+    self:RefreshToggleButtonColors()
 
     --[[--------------------------自动攻击--------------------]] --
     self:OnhandleTest(self.bAutoPickEnabled and "自动已开启" or "自动已关闭")
@@ -1173,6 +1206,7 @@ function UI02:Button_93_OnClicked()
     else
         PC:StopAutoMeleeAttack()
     end
+    self:RefreshToggleButtonColors()
 end
 
 function UI02:Button_94_OnClicked()
