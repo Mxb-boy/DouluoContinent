@@ -485,7 +485,8 @@ function UI02:SetToggleButtonGray(Button, bGray)
     local Color = bGray and ToggleButtonGrayColor or ToggleButtonNormalColor
     if Button.SetColorAndOpacity ~= nil then
         pcall(Button.SetColorAndOpacity, Button, Color)
-    elseif Button.SetRenderOpacity ~= nil then
+    end
+    if Button.SetRenderOpacity ~= nil then
         Button:SetRenderOpacity(bGray and 0.55 or 1.0)
     end
 end
