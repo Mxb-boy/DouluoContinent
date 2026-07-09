@@ -271,14 +271,14 @@ function Fei:SetupFlyButtonInputMode()
     end
 
     if self.Button_84.SetTouchMethod ~= nil and EButtonTouchMethod ~= nil then
-        local TouchMethod = GetEnumValue(EButtonTouchMethod, {"Down", "DownAndUp"})
+        local TouchMethod = GetEnumValue(EButtonTouchMethod, {"DownAndUp"})
         if TouchMethod ~= nil then
             pcall(self.Button_84.SetTouchMethod, self.Button_84, TouchMethod)
         end
     end
 
     if self.Button_84.SetClickMethod ~= nil and EButtonClickMethod ~= nil then
-        local ClickMethod = GetEnumValue(EButtonClickMethod, {"MouseDown", "DownAndUp"})
+        local ClickMethod = GetEnumValue(EButtonClickMethod, {"DownAndUp"})
         if ClickMethod ~= nil then
             pcall(self.Button_84.SetClickMethod, self.Button_84, ClickMethod)
         end
@@ -676,9 +676,7 @@ function Fei:DestroyFlyEffect()
         return
     end
 
-    if EffectComponent.DeactivateSystem ~= nil then
-        pcall(EffectComponent.DeactivateSystem, EffectComponent)
-    elseif EffectComponent.Deactivate ~= nil then
+    if EffectComponent.Deactivate ~= nil then
         pcall(EffectComponent.Deactivate, EffectComponent)
     end
 
