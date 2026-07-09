@@ -1,6 +1,7 @@
 ---@class UI02_C:UUserWidget
 ---@field Avarar_frame varar_frame_C
 ---@field Button_0 UButton
+---@field Button_1 UButton
 ---@field Button_2 UButton
 ---@field Button_3 UButton
 ---@field Button_4 UButton
