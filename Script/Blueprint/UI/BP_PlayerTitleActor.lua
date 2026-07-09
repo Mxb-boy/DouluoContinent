@@ -3,18 +3,23 @@
 ---@field DefaultSceneRoot USceneComponent
 --Edit Below--
 local BP_PlayerTitleActor = {}
+local TITLE_CHECK_INTERVAL = 2
  
 function BP_PlayerTitleActor:ReceiveBeginPlay()
     BP_PlayerTitleActor.SuperClass.ReceiveBeginPlay(self)
     self.CurrentTitleID = self.CurrentTitleID or 0
+    self.TitleCheckElapsed = TITLE_CHECK_INTERVAL
     local ownerPawn = UGCActorComponentUtility.GetOwner(self)
     self.OwnerPawn = ownerPawn
     if ownerPawn and ownerPawn:IsLocallyControlled() then
         self.IsLocalTitle = true
-        self.Widget:SetVisibility(false)
     else
         self.IsLocalTitle = false
-        self.Widget:SetVisibility(true)
+    end
+
+    self.ShouldShowTitle = (not self.IsLocalTitle) and self.CurrentTitleID > 0
+    if self.Widget then
+        self.Widget:SetVisibility(self.ShouldShowTitle)
     end
 end
 
@@ -56,35 +61,44 @@ end
 function BP_PlayerTitleActor:ReceiveTick(DeltaTime)
     BP_PlayerTitleActor.SuperClass.ReceiveTick(self, DeltaTime)
 
-    local ownerPawn = self.OwnerPawn or UGCActorComponentUtility.GetOwner(self)
-    self.OwnerPawn = ownerPawn
-    self.IsLocalTitle = ownerPawn and ownerPawn:IsLocallyControlled() or false
+    local safeDeltaTime = tonumber(DeltaTime) or 0.016
+    self.TitleCheckElapsed = (self.TitleCheckElapsed or TITLE_CHECK_INTERVAL) + safeDeltaTime
 
-    local titleID = self.CurrentTitleID or 0
-    if titleID == 0 then
-        titleID = ownerPawn and ownerPawn.EquippedTitleID or 0
-    end
+    if self.TitleCheckElapsed >= TITLE_CHECK_INTERVAL then
+        self.TitleCheckElapsed = 0
 
-    local shouldShow = (not self.IsLocalTitle) and titleID > 0
-    if self.Widget then
-        self.Widget:SetVisibility(shouldShow)
+        local ownerPawn = self.OwnerPawn or UGCActorComponentUtility.GetOwner(self)
+        self.OwnerPawn = ownerPawn
+        self.IsLocalTitle = ownerPawn and ownerPawn:IsLocallyControlled() or false
+
+        local titleID = self.CurrentTitleID or 0
+        if titleID == 0 then
+            titleID = ownerPawn and ownerPawn.EquippedTitleID or 0
+        end
+
+        local shouldShow = (not self.IsLocalTitle) and titleID > 0
+        self.ShouldShowTitle = shouldShow
+        if self.Widget then
+            self.Widget:SetVisibility(shouldShow)
+        end
+
+        if shouldShow and titleID ~= self.LastAppliedTitleID then
+            if self:ApplyTitleToWidget(titleID) then
+                self.LastAppliedTitleID = titleID
+            end
+        end
     end
 
     -- 自己看不到自己的称号；没装备称号时也不显示整个Widget。
-    if not shouldShow then
+    if not self.ShouldShowTitle then
         return
-    end
-
-    if titleID ~= self.LastAppliedTitleID then
-        if self:ApplyTitleToWidget(titleID) then
-            self.LastAppliedTitleID = titleID
-        end
     end
 
     if not self.Widget then
         return
     end
 
+    local ownerPawn = self.OwnerPawn
     if ownerPawn then
         local pawnLocation = ownerPawn:K2_GetActorLocation()
         local titleLocation = {

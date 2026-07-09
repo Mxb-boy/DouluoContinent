@@ -188,23 +188,6 @@ function CreateMonsWall:CheckWaveCleared()
             table.remove(self.AliveMonsters, index)
         end
     end
-
-    if self.IsCheckingWave then
-        return
-    end
-
-    self.IsCheckingWave = true
-
-    local wall = self
-    UGCTimerUtility.CreateLuaTimer(0.1, function()
-        if wall ~= nil and UE.IsValid(wall) then
-            wall.IsCheckingWave = false
-        end
-
-        if wall ~= nil and UE.IsValid(wall) and wall:HasPlayerInside() then
-            wall:CheckWaveCleared()
-        end
-    end, false)
 end
 
 function CreateMonsWall:IsMonsterAlive(monster)

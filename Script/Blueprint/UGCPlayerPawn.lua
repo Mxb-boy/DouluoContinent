@@ -8,7 +8,8 @@ local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
 local WEAPON_ATTACK_SOURCE_KEY = "WeaponLevel"
-local WEAPON_ATTACK_CHECK_INTERVAL = 0.2
+local WEAPON_ATTACK_CHECK_INTERVAL = 2
+local PROPERTY_WATCH_CHECK_INTERVAL = 2
 local FLY_INTERRUPT_TAGS = {"PawnState.Movement.Walk", "PawnState.Movement.Run", "PawnState.Action.Jump",
                             "PawnState.Action.Crouch", "PawnState.Action.Prone", "PawnState.Action.Reload",
                             "PawnState.Action.Fire", "PawnState.Action.HoldWeapon", "PawnState.Movement.Fall"}
@@ -671,7 +672,7 @@ function UGCPlayerPawn:ReceiveTick(DeltaTime)
     end
 
     self.PropertyWatchElapsed = (self.PropertyWatchElapsed or 0) + SafeDeltaTime
-    if self.PropertyWatchElapsed >= 0.1 then
+    if self.PropertyWatchElapsed >= PROPERTY_WATCH_CHECK_INTERVAL then
         self.PropertyWatchElapsed = 0
         self:NotifyPropertyChangedIfNeeded(false)
     end
