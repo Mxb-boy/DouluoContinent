@@ -2,30 +2,23 @@
 --Edit Below--
 local HWSCJ_05 = {}
 
-local function SetOwnerSocketVisible(Skill, bVisible)
-    local owner = nil
-    if Skill.GetOwner ~= nil then
-        owner = Skill:GetOwner()
-    else
-        owner = Skill.Owner or Skill.Instigator or Skill.Caster
-    end
+local function SetOwnerSocketVisible(self)
 
-    if owner ~= nil and owner.SetSocketVisible ~= nil then
-        owner:SetSocketVisible("item_r", bVisible)
-    end
 end
   
 function HWSCJ_05:OnEnableSkill_BP()
     HWSCJ_05.SuperClass.OnEnableSkill_BP(self)
 end
 
-function HWSCJ_05:OnDisableSkill_BP()
-    HWSCJ_05.SuperClass.OnDisableSkill_BP(self)
-end
+pcall(function()
+    if owner ~= nil and owner.SetSocketVisible ~= nil then
+        owner:SetSocketVisible("item_r", bVisible)
+    end
+end)
 
 function HWSCJ_05:OnActivateSkill_BP()
     HWSCJ_05.SuperClass.OnActivateSkill_BP(self)
-    SetOwnerSocketVisible(self, false)
+    SetOwnerSocketVisible(self, false) 
 end
 
 function HWSCJ_05:OnDeActivateSkill_BP()
