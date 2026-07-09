@@ -472,7 +472,6 @@ function ShopV2Manager:OnAddVirtualItem(Result)
 
     -- 虚拟物品ID → 背包物品ID 映射（后续新增商品在此扩展）
     local VIRTUAL_TO_BACKPACK = {
-        [1002] = 8310001,  -- 核子可乐
         [1013] = 8310038,  -- 融魂玉
         [1014] = 8310037,  -- 魂师之证
         [1015] = 8310039,  -- 领域之核
