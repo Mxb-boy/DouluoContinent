@@ -24,6 +24,11 @@ local SoulRingItemIDs = {8310048, 8310049, 8310051, 8310053, 8310054, 8310055, 8
 function UGCPlayerController:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
 
+    -- 临时修复：官方公告模块未加载时，防止引擎框架报 nil 索引警告
+    if UpdateNoticeInGameUI == nil then
+        UpdateNoticeInGameUI = {}
+    end
+
     -- 注册补偿系统委托
     self:RegisterCompensationDelegates()
 

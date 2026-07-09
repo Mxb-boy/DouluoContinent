@@ -6,6 +6,12 @@ UGCGameSystem.UGCRequire('Script.Common.ue_enum_custom')
 local MonsterSpawnMgr =UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 local UGCGameState = {}; 
 
+-- 临时修复：官方公告模块未加载时，防止引擎框架报 nil 索引警告
+if UpdateNoticeInGameUI == nil then
+    UpdateNoticeInGameUI = {}
+end
+
+
 function UGCGameState:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
 
