@@ -1,6 +1,5 @@
 ---@class BaseMons_C:BP_UGC_GenericMobPawn_Base_C
 ---@field HitBox UCapsuleComponent
----@field SK_CH_UGC_Titan_weapon UStaticMeshComponent
 ---@field MonsterID int32
 --Edit Below--
 local BaseMons = {}
