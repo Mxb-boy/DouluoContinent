@@ -25,6 +25,16 @@ local SignInEventComponent =
     VirtualItemManager = nil;
 }
 
+local function NormalizeEventDataKeys(EventData)
+    for EventID, Data in pairs(EventData) do
+        local NumericEventID = tonumber(EventID)
+        if NumericEventID ~= nil and NumericEventID ~= EventID then
+            EventData[NumericEventID] = Data
+            EventData[EventID] = nil
+        end
+    end
+end
+
 function SignInEventComponent:ReceiveBeginPlay()
 
     local Authority = self:GetOwner():HasAuthority();
@@ -273,33 +283,11 @@ function SignInEventComponent:ReadData()
         return self.CachedEventData
     end
 
-    local UID = self:GetOwner():GetInt64UID();
+    local PlayerState = self:GetOwner().PlayerState
+    local SignInEventData = PlayerState:GetSignInEvent()
 
-    print(string.format("SignInEventComponent: Begin read UID:%d PlayerData", UID));
-
-    local PlayerData = UGCPlayerStateSystem.GetPlayerArchiveData(UID);
-
-    if PlayerData == nil then
-        print(string.format("SignInEventComponent:UID:%d PlayerData is empty, creating new one.", UID))
-
-        PlayerData = {
-            SignInEvent = {}
-        };
-
-        UGCPlayerStateSystem.SavePlayerArchiveData(UID, PlayerData);
-    end
-
-    if PlayerData["SignInEvent"] == nil then
-        print(string.format("SignInEventComponent:UID:%d SignInEvent data is empty, creating new one.", UID))
-        
-        PlayerData["SignInEvent"] = {};
-
-        UGCPlayerStateSystem.SavePlayerArchiveData(UID, PlayerData);
-    end
-
-    print(string.format("SignInEventComponent:Read UID:%d PlayerData Success", UID));
-
-    self.CachedEventData = PlayerData["SignInEvent"]
+    NormalizeEventDataKeys(SignInEventData)
+    self.CachedEventData = SignInEventData
 
     -- return PlayerData["SignInEvent"];
     return self.CachedEventData
@@ -307,19 +295,10 @@ end
 
 function SignInEventComponent:WriteData(Data)
     
-    local UID = self:GetOwner():GetInt64UID();
-    local PlayerData = UGCPlayerStateSystem.GetPlayerArchiveData(UID);
-    PlayerData["SignInEvent"] = Data;
+    local PlayerState = self:GetOwner().PlayerState
 
-    print(string.format("SignInEventComponent: Begin write UID:%d PlayerData", UID));
-
-    local bSuccess = UGCPlayerStateSystem.SavePlayerArchiveData(UID, PlayerData);
-    if bSuccess == true then
-        print(string.format("SignInEventComponent: Write UID:%d PlayerData Success", UID));
-        self.CachedEventData = Data
-    else
-        print(string.format("SignInEventComponent: Write UID:%d PlayerData Failed", UID));
-    end
+    PlayerState:SetSignInEvent(Data)
+    self.CachedEventData = Data
 end
 
 function SignInEventComponent:SetSignInEventData(EventData)

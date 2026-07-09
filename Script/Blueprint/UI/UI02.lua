@@ -452,17 +452,15 @@ local AutoAttackItemID = 1026
 local MainButtonRedDots = {
     Button_144 = "Image_5",
     Button_145 = "Image_6",
-    Button_147 = "Image_7",
     Button_149 = "Image_8",
-    Button_157 = "Image_9",
     Button_150 = "Image_10",
     Button_151 = "Image_11",
     Button_152 = "Image_12",
     Button_153 = "Image_13",
     Button_158 = "Image_14"
 }
-local MainFoldImages = {"Image_386", "Image_387", "Image_388", "Image_389", "Image_397", "Image_392", "Image_393",
-                        "Image_395", "Image_396", "Image_398"}
+local MainFoldImages = {"Image_386", "Image_387", "Image_389", "Image_392", "Image_393", "Image_395", "Image_396",
+                        "Image_398"}
 local ToggleButtonNormalColor = {R = 1.0, G = 1.0, B = 1.0, A = 1.0}
 local ToggleButtonGrayColor = {R = 0.45, G = 0.45, B = 0.45, A = 1.0}
 
@@ -509,7 +507,7 @@ function UI02:LuaInit()
     self.Button_97.OnClicked:Add(self.Button_153_OnClicked, self)
     self.Button_99.OnClicked:Add(self.Button_149_OnClicked, self)
     self.Button_134.OnClicked:Add(self.Button_134_OnClicked, self)
-    self.Button_157.OnClicked:Add(self.Button_157_OnClicked, self)
+    self.Button_1.OnClicked:Add(self.Button_157_OnClicked, self)
     self.Button_144.OnClicked:Add(self.Button_144_OnClicked, self)
     self.Button_147.OnClicked:Add(self.Button_147_OnClicked, self)
     self.Button_150.OnClicked:Add(self.Button_150_OnClicked, self)
@@ -531,6 +529,7 @@ function UI02:LuaInit()
     self.Button_154.OnClicked:Add(self.Button_154_OnClicked, self)
 
     self:ApplyButtonEffect(self.Button_0)
+    self:ApplyButtonEffect(self.Button_1)
     self:ApplyButtonEffect(self.Button_5)
     self:ApplyButtonEffect(self.Button_2)
     self:ApplyButtonEffect(self.Button_3)
@@ -553,7 +552,6 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_154)
     self:ApplyButtonEffect(self.Button_155)
     self:ApplyButtonEffect(self.Button_156)
-    self:ApplyButtonEffect(self.Button_157)
     self:ApplyButtonEffect(self.Button_158)
     self:ApplyButtonEffect(self.Button_227)
     self:ApplyButtonEffect(self.Button_228)

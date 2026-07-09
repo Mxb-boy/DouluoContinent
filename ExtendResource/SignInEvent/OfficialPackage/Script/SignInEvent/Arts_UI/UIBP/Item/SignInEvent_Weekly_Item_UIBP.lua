@@ -10,6 +10,8 @@
 ---@field StateSwitcher UWidgetSwitcher
 ---@field ShowTipPressTime float
 --Edit Below--
+local SignInAwardDisplayName = UGCGameSystem.UGCRequire("Script.Common.SignInAwardDisplayName");
+
 local SignInEvent_Weekly_Item_UIBP = 
 { 
     bInitDoOnce = false;
@@ -43,7 +45,8 @@ function SignInEvent_Weekly_Item_UIBP:Refresh(EventID, DayIndex, SupplementDay)
 
     self.DayText:SetText(Awards[DayIndex].DayName);
     self.QuantityText:SetText(Awards[DayIndex].ItemNum);
-    self.NameText:SetText(ItemData.ItemName);
+    local DisplayName = SignInAwardDisplayName[EventID] and SignInAwardDisplayName[EventID][DayIndex];
+    self.NameText:SetText(DisplayName or ItemData.ItemName);
 
     local IconPath = ItemData.ItemIcon;
     Common.LoadObjectAsync(IconPath, 

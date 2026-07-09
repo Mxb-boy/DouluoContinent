@@ -9,6 +9,7 @@ local UGCPlayerState = {
     YXWD_InvincibleBuffActive = false,
     YXWD_InvincibleBuffToken = 0,
     LotteryState = {},
+    SignInEvent = {},
     UnlockedTitles = {},
     EquippedTitleID = 0,
     AutoPickButtonHidden = 0,
@@ -62,6 +63,7 @@ table.insert(ARCHIVE_KEYS, { key = "AutoAttackButtonHidden", field = "AutoAttack
 table.insert(ARCHIVE_KEYS, { key = "UnlockedTitles", field = "UnlockedTitles", default = {} })
 table.insert(ARCHIVE_KEYS, { key = "EquippedTitleID", field = "EquippedTitleID", default = 0 })
 table.insert(ARCHIVE_KEYS, { key = "Probability_Bonus", field = "Probability_Bonus", default = 100 })
+table.insert(ARCHIVE_KEYS, { key = "SignInEvent", field = "SignInEvent", default = {} })
 
 function UGCPlayerState:GetReplicatedProperties()
     return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "BaseAttack",
@@ -247,6 +249,22 @@ function UGCPlayerState:SetLotteryState(value)
         self.LotteryState = copy
     else
         self.LotteryState = {}
+    end
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetSignInEvent()
+    if self.SignInEvent == nil then
+        self.SignInEvent = {}
+    end
+    return self.SignInEvent
+end
+
+function UGCPlayerState:SetSignInEvent(value)
+    if type(value) == "table" then
+        self.SignInEvent = value
+    else
+        self.SignInEvent = {}
     end
     self:SaveToArchive()
 end

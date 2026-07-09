@@ -12,6 +12,8 @@ local Avarar_frame = {
 	PlayerKey = nil,
 	Character = nil,
 	Size = 100,
+	AvatarRefreshRetryCount = 0,
+	MaxAvatarRefreshRetryCount = 5,
 }
 function Avarar_frame:print(msg)
 	print(string.format("[Avarar_frame]: %s", msg))
@@ -33,11 +35,18 @@ function Avarar_frame:ShowUI(InCharacter)
 		if UE.IsValid(InCharacter) then
 			Character = InCharacter
 		else
-			Character = GameplayStatics.GetPlayerController(self, 0):GetPlayerCharacterSafety()
+			local PC = GameplayStatics.GetPlayerController(self, 0)
+			Character = PC and PC:GetPlayerCharacterSafety() or nil
+		end
+		if not UE.IsValid(Character) then
+			self:ScheduleRefreshAvatar()
+			return
 		end
 		self.Character = Character
 		self:GetPlayerKeyByCharacter(Character)
-		self:SetHeadImageByPlayerKey(self.PlayerKey)
+		if not self:SetHeadImageByPlayerKey(self.PlayerKey) then
+			self:ScheduleRefreshAvatar()
+		end
 	elseif self.HeadImageType == 1 then --根据Asset路径设置头像
 		self:print("set head image by asset path")
 		self:SetHeadImageByAssetPath()
@@ -52,14 +61,33 @@ function Avarar_frame:GetPlayerKeyByCharacter(Character)
 	end
 end
 function Avarar_frame:SetHeadImageByPlayerKey(PlayerKey)
+	if PlayerKey == nil then
+		return false
+	end
 	self:print("SetHeadImageByPlayerKey --" .. PlayerKey)
-	local PS = UGCGameSystem.GetPlayerStateByPlayerKey(PlayerKey):GetTeamMatePlayerStateFromPlayerKey(PlayerKey)
 	local AccountInfo = UGCPlayerStateSystem.GetPlayerAccountInfo(PlayerKey)
-	local UID = PS:GetInt64UID()
+	if AccountInfo == nil or AccountInfo.UID == nil then
+		return false
+	end
+	local UID = AccountInfo.UID
 	local IconURL = AccountInfo.IconURL
-	self:print(string.format("UID:%d,IconURL:%s,playerlevel:%d", UID, IconURL, AccountInfo.PlayerLevel))
+	self:print(string.format("UID:%s,IconURL:%s,playerlevel:%s", tostring(UID), tostring(IconURL), tostring(AccountInfo.PlayerLevel)))
 	self.Avatar:UseAsyncLoad(true)
 	self.Avatar:InitView(2, UID, IconURL, AccountInfo.Gender, 0, AccountInfo.PlayerLevel, false, false)
+	if IconURL == nil or IconURL == "" then
+		return false
+	end
+	self.AvatarRefreshRetryCount = 0
+	return true
+end
+function Avarar_frame:ScheduleRefreshAvatar()
+	if self.AvatarRefreshRetryCount >= self.MaxAvatarRefreshRetryCount then
+		return
+	end
+	self.AvatarRefreshRetryCount = self.AvatarRefreshRetryCount + 1
+	UGCTimerUtility.CreateLuaTimer(1, function()
+		self:ShowUI(self.Character)
+	end, false)
 end
 function Avarar_frame:ResetHeadImagePath(NewPath)
 	self.HeadImagePath = NewPath
