@@ -11,6 +11,7 @@
 ---@field ShowTipPressTime float
 --Edit Below--
 local SignInAwardDisplayName = UGCGameSystem.UGCRequire("Script.Common.SignInAwardDisplayName");
+local IconTextureCache = {};
 
 local SignInEvent_Weekly_Item_UIBP = 
 { 
@@ -49,13 +50,20 @@ function SignInEvent_Weekly_Item_UIBP:Refresh(EventID, DayIndex, SupplementDay)
     self.NameText:SetText(DisplayName or ItemData.ItemName);
 
     local IconPath = ItemData.ItemIcon;
-    Common.LoadObjectAsync(IconPath, 
-        function (IconTexture)
-            if self ~= nil and UE.IsValid(self) then
-                self.Icon:SetBrushFromTexture(IconTexture);
+    local IconTexture = IconTextureCache[IconPath] or UE.LoadObject(IconPath);
+    if IconTexture ~= nil then
+        IconTextureCache[IconPath] = IconTexture;
+        self.Icon:SetBrushFromTexture(IconTexture);
+    else
+        Common.LoadObjectAsync(IconPath, 
+            function (IconTexture)
+                if self ~= nil and UE.IsValid(self) then
+                    IconTextureCache[IconPath] = IconTexture;
+                    self.Icon:SetBrushFromTexture(IconTexture);
+                end
             end
-        end
-    );
+        );
+    end
 
     if DayIndex % 7 == 0 and Config.Highlight7thDay == true then
         self.HighLightSwitcher:SetActiveWidgetIndex(1);

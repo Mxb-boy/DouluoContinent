@@ -197,9 +197,8 @@ end
 function SignInEventComponent:OpenUI()
     
     if self.MainUI ~= nil then
-        self.MainUI:SetVisibility(ESlateVisibility.SelfHitTestInvisible);
-        -- self.MainUI:RefreshContent();
         self.MainUI:Refresh();
+        self.MainUI:SetVisibility(ESlateVisibility.SelfHitTestInvisible);
 
         self:CheckEventDurationTime(false);
         self.OnUpdateSignInEventDataDelegate:Add(self.RefreshMainUI, self);

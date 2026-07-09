@@ -457,10 +457,11 @@ local MainButtonRedDots = {
     Button_151 = "Image_11",
     Button_152 = "Image_12",
     Button_153 = "Image_13",
-    Button_158 = "Image_14"
+    Button_158 = "Image_7"
 }
-local MainFoldImages = {"Image_386", "Image_387", "Image_389", "Image_392", "Image_393", "Image_395", "Image_396",
-                        "Image_398"}
+local MainFoldImages = {"Image_386", "Image_387", "Image_388", "Image_389", "Image_392", "Image_393", "Image_395",
+                        "Image_396"}
+local HiddenMainWidgets = {"Button_147", "Button_156", "Button_157", "Image_9", "Image_14", "Image_397", "Image_398"}
 local ToggleButtonNormalColor = {R = 1.0, G = 1.0, B = 1.0, A = 1.0}
 local ToggleButtonGrayColor = {R = 0.45, G = 0.45, B = 0.45, A = 1.0}
 
@@ -509,7 +510,6 @@ function UI02:LuaInit()
     self.Button_134.OnClicked:Add(self.Button_134_OnClicked, self)
     self.Button_1.OnClicked:Add(self.Button_157_OnClicked, self)
     self.Button_144.OnClicked:Add(self.Button_144_OnClicked, self)
-    self.Button_147.OnClicked:Add(self.Button_147_OnClicked, self)
     self.Button_150.OnClicked:Add(self.Button_150_OnClicked, self)
     self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
     self.Button_5.OnClicked:Add(self.Button_1_OnClicked, self)
@@ -543,7 +543,6 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_134)
     self:ApplyButtonEffect(self.Button_144)
     self:ApplyButtonEffect(self.Button_145)
-    self:ApplyButtonEffect(self.Button_147)
     self:ApplyButtonEffect(self.Button_149)
     self:ApplyButtonEffect(self.Button_150)
     self:ApplyButtonEffect(self.Button_151)
@@ -551,7 +550,6 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_153)
     self:ApplyButtonEffect(self.Button_154)
     self:ApplyButtonEffect(self.Button_155)
-    self:ApplyButtonEffect(self.Button_156)
     self:ApplyButtonEffect(self.Button_158)
     self:ApplyButtonEffect(self.Button_227)
     self:ApplyButtonEffect(self.Button_228)
@@ -567,7 +565,16 @@ function UI02:LuaInit()
 
     self:SetTowerOutBoxImageVisible(false)
     self:RefreshMainButtonRedDots()
+    self:HideHiddenMainWidgets()
 
+end
+
+function UI02:HideHiddenMainWidgets()
+    for _, WidgetName in ipairs(HiddenMainWidgets) do
+        if self[WidgetName] ~= nil then
+            self[WidgetName]:SetVisibility(ESlateVisibility.Collapsed)
+        end
+    end
 end
 
 function UI02:SetTowerOutBoxImageVisible(bVisible)
@@ -602,6 +609,7 @@ function UI02:Button_134_OnClicked()
     for _, ImageName in ipairs(MainFoldImages) do
         self[ImageName]:SetVisibility(Visibility)
     end
+    self:HideHiddenMainWidgets()
 end
 
 function UI02:OnRefreshProperty(baseAttack, baseMaxHp, hp, maxHp, bFillHealth)

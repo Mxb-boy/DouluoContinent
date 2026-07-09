@@ -72,7 +72,6 @@ function Avarar_frame:SetHeadImageByPlayerKey(PlayerKey)
 	local UID = AccountInfo.UID
 	local IconURL = AccountInfo.IconURL
 	self:print(string.format("UID:%s,IconURL:%s,playerlevel:%s", tostring(UID), tostring(IconURL), tostring(AccountInfo.PlayerLevel)))
-	self.Avatar:UseAsyncLoad(true)
 	self.Avatar:InitView(2, UID, IconURL, AccountInfo.Gender, 0, AccountInfo.PlayerLevel, false, false)
 	if IconURL == nil or IconURL == "" then
 		return false
