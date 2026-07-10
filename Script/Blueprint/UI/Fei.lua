@@ -14,6 +14,7 @@ local FLY_EFFECT_OFFSET = Vector.New(0, 0, 80)
 local FLY_EFFECT_ROTATION = Rotator.New(0, 0, 0)
 local FLY_EFFECT_SCALE = Vector.New(2, 2, 2)
 local FLY_RELEASE_GRACE_TIME = 0.35
+local FLY_MOVE_RPC_INTERVAL = 0.1
 local WingItemID = 1028
 local WingBackpackItemIDs = {8310012, 8310013, 8310014, 8310058, 8310059, 8310010}
 
@@ -291,6 +292,7 @@ function Fei:StartFly()
     end
 
     self.bFlying = true
+    self.FlyMoveRpcElapsed = FLY_MOVE_RPC_INTERVAL
     self:BeginFly()
     self:PlayFlyAnimation()
     self:SpawnFlyEffect()
@@ -704,15 +706,19 @@ function Fei:ApplyFlyMovement(InDeltaTime)
 
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
     if PlayerController ~= nil then
-        UnrealNetwork.CallUnrealRPC(
-            PlayerController,
-            PlayerController,
-            "Server_FlyMove",
-            ForwardVector.X or 0,
-            ForwardVector.Y or 0,
-            ForwardVector.Z or 0,
-            InDeltaTime or 0.016
-        )
+        self.FlyMoveRpcElapsed = (self.FlyMoveRpcElapsed or 0) + (tonumber(InDeltaTime) or 0.016)
+        if self.FlyMoveRpcElapsed >= FLY_MOVE_RPC_INTERVAL then
+            self.FlyMoveRpcElapsed = 0
+            UnrealNetwork.CallUnrealRPC(
+                PlayerController,
+                PlayerController,
+                "Server_FlyMove",
+                ForwardVector.X or 0,
+                ForwardVector.Y or 0,
+                ForwardVector.Z or 0,
+                FLY_MOVE_RPC_INTERVAL
+            )
+        end
     end
 end
 
@@ -852,8 +858,8 @@ function Fei:HideControlWidget(Widget)
     Widget:SetVisibility(ESlateVisibility.Collapsed)
 end
 
--- function Fei:Destruct()
-
--- end
+function Fei:Destruct()
+    self:StopFly()
+end
 
 return Fei
