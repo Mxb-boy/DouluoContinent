@@ -101,7 +101,6 @@ function UI08:Btn_Break_OnClicked()
         )
         return
     end
-    ugcprint("[UI08:Btn_Break_OnClicked] Server_BreakRealm is nil")
 end
 
 function UI08:Refresh()
@@ -262,7 +261,6 @@ function UI08:SetImage(Image, IconPath)
     end
     local Texture = UE.LoadObject(IconPath)
     if Texture == nil then
-        ugcprint("[UI08] Load realm icon failed: " .. tostring(IconPath))
         return
     end
     Image:SetBrushFromTexture(Texture)
@@ -372,13 +370,6 @@ function UI08:OnRealmBreakResult(Success, NewLevel, TargetLevel, FailCount, Used
         self:ShowBreakHh(TargetLevel, false)
         self:RefreshNeedItemsAfterDelay()
     end
-    ugcprint("[UI08:OnRealmBreakResult] success="
-        .. tostring(Success)
-        .. ", newLevel=" .. tostring(NewLevel)
-        .. ", targetLevel=" .. tostring(TargetLevel)
-        .. ", failCount=" .. tostring(FailCount)
-        .. ", rate=" .. tostring(UsedRate)
-        .. ", guaranteed=" .. tostring(IsGuaranteed))
 end
 function UI08:RefreshNeedItemsAfterDelay()
     local TimerName = "UI08_RefreshNeedItemsAfterFail_" .. tostring(self)

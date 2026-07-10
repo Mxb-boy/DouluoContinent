@@ -132,7 +132,6 @@ function LotteryConfig.LoadFromTables()
     local SuccessPool, PoolTable = pcall(UGCGameSystem.GetTableData, PoolTablePath)
     local SuccessAward, AwardTable = pcall(UGCGameSystem.GetTableData, AwardTablePath)
     if not SuccessPool or not SuccessAward or PoolTable == nil or AwardTable == nil then
-        ugcprint("[LotteryConfig] Load table failed")
         return false
     end
 
@@ -152,7 +151,6 @@ function LotteryConfig.LoadFromTables()
     end
 
     if PoolCount <= 0 then
-        ugcprint("[LotteryConfig] No open lottery pool")
         return false
     end
 
@@ -188,7 +186,6 @@ function LotteryConfig.LoadFromTables()
 
     for PoolID, Pool in pairs(Pools) do
         if Pool.GrandPrize == nil then
-            ugcprint("[LotteryConfig] Pool missing grand prize: " .. tostring(PoolID))
             Pools[PoolID] = nil
         end
     end

@@ -25,19 +25,16 @@ function UGC_Growing_SignPoint_UIBP:Construct()
 end
 
 function UGC_Growing_SignPoint_UIBP:SelectTask()
-    print(string.format("[UGC_Growing_SignPoint_UIBP:SelectTask] Index: %d", self.LevelIdx));
     TaskManager:SelectLevelItem(self.TaskLineName, self.LevelIdx);
     TaskManager:ShowLevelInfo(self.TaskLineName, self.LevelIdx);
 end
 
 function UGC_Growing_SignPoint_UIBP:Select()
-    print(string.format("[UGC_Growing_SignPoint_UIBP:Select] Index: %d", self.LevelIdx));
     self.sign_ring_select:SetVisibility(ESlateVisibility.Visible);
     self:UpdateLevelAwardState();
 end
 
 function UGC_Growing_SignPoint_UIBP:UnSelect()
-    print(string.format("[UGC_Growing_SignPoint_UIBP:UnSelect] Index: %d", self.LevelIdx));
     self.sign_ring_select:SetVisibility(ESlateVisibility.Collapsed);
     self:UpdateLevelAwardState();
 end
@@ -110,7 +107,6 @@ function UGC_Growing_SignPoint_UIBP:InitUI(LevelIdx, TaskLineName)
 end
 
 function UGC_Growing_SignPoint_UIBP:UpdateLevelAwardState()
-    print(string.format("[UGC_Growing_SignPoint_UIBP:UpdateLevelAwardState] TaskLineName: %s LevelIdx: %d", self.TaskLineName, self.LevelIdx));
     local TaskLineProgress = TaskManager:GetTaskLineProgress(self.TaskLineName);
     local TaskLineConfig = TaskManager:GetTaskLineConfig(self.TaskLineName);
     if TaskLineConfig and

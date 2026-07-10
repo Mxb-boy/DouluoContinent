@@ -19,20 +19,17 @@ function WBP_TaskMainUIButton:Construct()
 end
 
 function WBP_TaskMainUIButton:OpenTaskMainUI()
-    print("WBP_TaskMainUIButton:OpenTaskMainUI");
     TaskManager:OpenTaskMainUI();
 end
 
 function WBP_TaskMainUIButton:UpdateTaskLineProgress()
     local TaskLineName = self.TaskLineName.Text;
     local TaskLineProgress = tonumber(self.TaskLineProgress.Text);
-    print(string.format("[WBP_TaskMainUIButton:UpdateTaskLineProgress] TaskLineName: %s TaskLineProgress: %d", TaskLineName, TaskLineProgress));
     TaskManager:SetTaskLineProgress(TaskLineName, TaskLineProgress);
 end
 
 function WBP_TaskMainUIButton:ResetPercentTaskLine()
     local TaskLineName = self.TaskLineName.Text;
-    print(string.format("[WBP_TaskMainUIButton:ResetPercentTaskLine] TaskLineName: %s", TaskLineName));
     TaskManager:ResetPercentTaskLine(TaskLineName);
 end
 
@@ -46,7 +43,6 @@ function WBP_TaskMainUIButton:UpdateTaskProgress()
     };
     local PlayerController = STExtraGameplayStatics.GetFirstPlayerController(self);
     log_tree("[WBP_TaskMainUIButton:UpdateTaskProgress] TaskIndex", TaskIndex);
-    print(string.format("[WBP_TaskMainUIButton:UpdateTaskProgress] TaskProgress: %s", TaskProgress));
     TaskManager:UpdateTaskProgress(TaskIndex, PlayerController, TaskProgress);
 end
 

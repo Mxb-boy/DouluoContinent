@@ -35,7 +35,6 @@ end
 ---@param Item Lottery_Exchange_Item_UIBP_C
 ---@param Index int32
 function Lottery_Exchange_Main_UIBP:InitItem(Item, Index)
-    print(string.format("Lottery_Exchange_Main_UIBP:InitItem Index: %d", Index));
     local ProductID = self.ItemList[Index + 1];
     self.ExchangeItem[ProductID] = Item;
     Item:Init(ProductID);
@@ -47,11 +46,9 @@ function Lottery_Exchange_Main_UIBP:GetExchangeProduct()
     for Index, Data in pairs(ItemList) do
         -- 判断是否上架
         if LotteryManager:IsProductShelves(Data.ProductID) then
-            print(string.format("Lottery_Exchange_Main_UIBP:GetExchangeProduct ProductID: %d", Data.ProductID));
             table.insert(self.ItemList, Data.ProductID);
         end
     end
-    print(string.format("Lottery_Exchange_Main_UIBP:InitData Num: %d", #self.ItemList));
 end
 
 function Lottery_Exchange_Main_UIBP:InitUI()
@@ -62,13 +59,11 @@ end
 
 --- 重新获取可购买的商品(商品上架)
 function Lottery_Exchange_Main_UIBP:RefreshExchangeInfo()
-    print("[Lottery_Exchange_Main_UIBP]: RefreshExchangeInfo");
     self:GetExchangeProduct();
     self.Lottery_Exchange_List:Reload(#self.ItemList);
 end
 
 function Lottery_Exchange_Main_UIBP:RefreshPurchaseLimitInfo()
-    print("[Lottery_Exchange_Main_UIBP]: RefreshPurchaseLimitInfo");
     -- 刷新兑换道具的状态
     for ProductID, Item in pairs(self.ExchangeItem) do
         Item:RefreshPurchaseTime();

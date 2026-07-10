@@ -63,7 +63,6 @@ function NewUGCWidgetBlueprint:SetResultIcon(IconPath)
         self.IconTextureCache[IconPath] = IconTexture
     end
     if IconTexture == nil then
-        ugcprint("[NewUGCWidgetBlueprint:SetResultIcon] Icon load failed: " .. tostring(IconPath))
         return
     end
     self.Img_Hh:SetBrushFromTexture(IconTexture)

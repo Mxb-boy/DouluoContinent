@@ -44,19 +44,15 @@ end
 local function DoTeleport(pointIndex, worldContext)
     local loc = TeleportConfig.GetLocation(pointIndex)
     if loc == nil then
-        ugcprint("[UI12] No location for point " .. tostring(pointIndex))
         return
     end
 
     local pc = GameplayStatics.GetPlayerController(worldContext, 0)
     if pc == nil then
-        ugcprint("[UI12] GetPlayerController failed")
         return
     end
 
     UnrealNetwork.CallUnrealRPC(pc, pc, "Server_TeleportToLocation", loc.x, loc.y, loc.z + 100)
-    ugcprint("[UI12] Teleport to point " .. tostring(pointIndex) .. " at (" .. loc.x .. "," .. loc.y .. "," .. loc.z ..
-                 ")")
 end
 
 function UI12:Construct()
@@ -84,7 +80,6 @@ function UI12:RefreshList()
         local maxHp = UGCPawnAttrSystem.GetHealthMax(playerPawn) or 0
         currentPower = attack + maxHp
     end
-    ugcprint("[UI12] RefreshList, currentPower=" .. tostring(currentPower))
 
     -- 清空 ScrollBox
     if self.ScrollBox_82 then
@@ -95,22 +90,17 @@ function UI12:RefreshList()
     local itemPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/NewUGCWidgetBlueprint2.NewUGCWidgetBlueprint2_C"
     local itemClass = UE.LoadClass(itemPath)
     if itemClass == nil then
-        ugcprint("[UI12] NewUGCWidgetBlueprint2 class load failed: " .. itemPath)
         return
     end
-    ugcprint("[UI12] itemClass loaded OK")
 
     local pc = GameplayStatics.GetPlayerController(self, 0)
-    ugcprint("[UI12] pc=" .. tostring(pc) .. " ScrollBox_82=" .. tostring(self.ScrollBox_82))
 
     -- 为每个传送点创建子控件
     local count = TeleportConfig.GetCount()
-    ugcprint("[UI12] teleport point count=" .. tostring(count))
     for i = 1, count do
         local point = TeleportConfig.GetPoint(i)
         local widget = UserWidget.NewWidgetObjectBP(pc, itemClass)
         if widget == nil then
-            ugcprint("[UI12] FAILED to create widget at index " .. tostring(i))
         else
             local powerText = FormatPowerText(point.power)
             local canEnter = CanEnter(currentPower, point.power)
@@ -123,14 +113,10 @@ function UI12:RefreshList()
                 end)
             end)
             if not ok then
-                ugcprint("[UI12] Setup error at index " .. tostring(i) .. ": " .. tostring(err))
             else
-                ugcprint("[UI12] item " .. tostring(i) .. " OK: " .. point.name .. " " .. powerText .. " enabled=" ..
-                             tostring(canEnter))
             end
         end
     end
-    ugcprint("[UI12] RefreshList done")
 end
 
 return UI12

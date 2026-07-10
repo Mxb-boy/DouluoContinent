@@ -9,7 +9,6 @@ function WBP_GiftPackBtn:Construct()
 end
 
 function WBP_GiftPackBtn:ApplyGiftPack()
-    print("WBP_GiftPackBtn:ApplyGiftPack");
     local GiftPackID = math.modf(self.GiftPackInput:GetValue());
     --点击“使用礼包”且礼包成功打开后，测试 UI 会自动隐藏
     local bOpened = GiftPackManager:OpenGiftPack(GiftPackID);

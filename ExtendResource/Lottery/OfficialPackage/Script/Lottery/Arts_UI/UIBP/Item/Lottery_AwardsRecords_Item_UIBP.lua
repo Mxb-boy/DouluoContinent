@@ -19,7 +19,6 @@ end
 -- end
 
 function Lottery_AwardsRecords_Item_UIBP:InitUI(ItemID, ItemNum, GetTime)
-    print(string.format("[Lottery_AwardsRecords_Item_UIBP] InitUI ItemID: %d", ItemID or -1));
     local ItemInfo = LotteryManager:GetItemConfigData(ItemID);
     if ItemInfo then
         -- 道具名称

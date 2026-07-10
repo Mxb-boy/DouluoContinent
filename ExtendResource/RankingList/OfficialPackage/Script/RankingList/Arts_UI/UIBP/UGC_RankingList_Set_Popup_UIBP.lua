@@ -20,9 +20,7 @@ function UGC_RankingList_Set_Popup_UIBP:Construct()
 end
 
 function UGC_RankingList_Set_Popup_UIBP:Select()
-    print("UGC_RankingList_Set_Popup_UIBP:Select");
     local Index = self.WidgetSwitcher_But:GetActiveWidgetIndex();
-    print(string.format("%s", self.IsNoname));
     if Index == 0 then
         self.WidgetSwitcher_But:SetActiveWidgetIndex(1);
         self.IsNoname = 0; 

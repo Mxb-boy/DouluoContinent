@@ -55,19 +55,16 @@ end
 -- end
 
 function UGC_DailyTask_List_UIBP:Destruct()
-    print("[UGC_DailyTask_List_UIBP:Destruct]");
     self.Button_Daily_Get.OnClicked:RemoveAll();
     self.Button_Daily_Go.OnClicked:RemoveAll();
 end
 
 function UGC_DailyTask_List_UIBP:CliamTaskAward()
-    print(string.format("[UGC_DailyTask_List_UIBP:CliamTaskAward] TaskLineName: %s TaskIndex: %d", self.TaskLineName or "", self.Index or -1));
     ---阻塞，等DS能同步UObject后再完善
     TaskManager:ClaimPercentTaskAward(self.TaskLineName, self.Index);
 end
 
 function UGC_DailyTask_List_UIBP:InitUI(TaskID, Index, TaskLineName)
-    print(string.format("[UGC_DailyTask_List_UIBP:InitUI] Index: %d TaskLineName: %s", Index or 0, TaskLineName or ""));
     --先清除一下监听，避免Item服用导致监听多个任务
     self.TaskID = TaskID;
     self.TaskLineName = TaskLineName;
@@ -117,14 +114,12 @@ end
 -- end
 
 function UGC_DailyTask_List_UIBP:UpdateTaskInfo(TaskID)
-    print(string.format("[UGC_DailyTask_List_UIBP:UpdateTaskInfo] TaskID: %d", TaskID));
     if TaskID == self.TaskID then
         local Progress = TaskManager:GetPercentTaskProgress(self.TaskLineName, self.Index);
         local State = TaskManager:GetPercentTaskState(self.TaskLineName, self.Index);
         self.TextBlock_TaskNum:SetText(tostring(Progress));
         self:SetTaskState(State);
     else
-        print(string.format("[UGC_DailyTask_List_UIBP:UpdateTaskInfo] UpdateTaskID: %d TaskID: %d", TaskID or 0, self.TaskID or 0));
     end
 end
 

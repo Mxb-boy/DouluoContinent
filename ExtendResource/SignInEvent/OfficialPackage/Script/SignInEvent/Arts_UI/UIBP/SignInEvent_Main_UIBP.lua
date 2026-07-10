@@ -114,7 +114,6 @@ end
 
 function SignInEvent_Main_UIBP:Refresh()
     
-    print("[SignInEvent_Main_UIBP:Refresh] Start Refresh");
 
     self.ValidTabs = {};
 
@@ -130,7 +129,6 @@ function SignInEvent_Main_UIBP:Refresh()
     end
 
     if #self.ValidTabs == 0 then
-        print("[SignInEvent_Main_UIBP:Refresh] No SignInEvent yet!");
         self:SetVisibility(ESlateVisibility.Collapsed);
     end
 

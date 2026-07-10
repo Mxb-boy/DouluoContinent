@@ -17,7 +17,6 @@ UGCGameSystem.UGCRequire("ExtendResource.RankingList.OfficialPackage." .. "Scrip
 UGCGameSystem.UGCRequire("ExtendResource.RankingList.OfficialPackage." .. "Script.Common.Common");
 
 function RankingListComponent:ReceiveBeginPlay()
-    print("[RankingListComponent] ReceiveBeginPlay")
     RankingListComponent.SuperClass.ReceiveBeginPlay(self)
     RankingListManager:RegisterComponentClass(GameplayStatics.GetObjectClass(self));
 
@@ -87,7 +86,6 @@ end
 --]]
 
 function RankingListComponent:ReceiveEndPlay()
-    print("[RankingListComponent] ReceiveEndPlay");
     RankingListComponent.SuperClass.ReceiveEndPlay(self);
 
     local PC = self:GetOwner();
@@ -122,7 +120,6 @@ end
 ---生效范围:客户端&&服务端
 ---@param GamePartName string
 function RankingListComponent:InitGamePart(GamePartName)
-    print(string.format("[RankingListComponent] InitGamePart GamePartName: %s", GamePartName or ""));
     local PlayerController = self:GetOwner();
     if GamePartName == "VirtualItemManager" then
         if UE.IsValid(self:GetVirtualItemManager()) then
@@ -130,7 +127,6 @@ function RankingListComponent:InitGamePart(GamePartName)
                 self:GetVirtualItemManager().AddItemResultDelegate:Add(self.OnAddVirtualItem, self);
             end
         end
-        print(string.format("[RankingListComponent] VirtualItemManager is Nil: %s", self.VirtualItemManager == nil));
     elseif GamePartName == "RankingListManager" then
         if self.RankingListPlayerComponent == nil then
             self.RankingListPlayerComponent = UGCBlueprintFunctionLibrary.GetGamePartPlayerComponent(PlayerController, "RankingListManager", PlayerController, "RankingList");
@@ -143,7 +139,6 @@ function RankingListComponent:InitGamePart(GamePartName)
                 self:GetRankingListGlobalActor().ShowPlayerRankDataChangeDelegate:Add(self.UpdateShowPlayerRankData, self);
             end
         end
-        print(string.format("[RankingListComponent] RankingListPlayerComponent is Nil: %s", self.RankingListPlayerComponent == nil));
     end
 end
 
@@ -178,7 +173,6 @@ end
 --请求所有排行榜数据
 --生效范围：服务端
 function RankingListComponent:RequestAllRankListData()
-    print("[RankingListComponent] RequestAllRankListData")
     --- 清空UID
     local RankListTableData = RankingListManager:GetLegalRankListTableData();
     for Index, Data in pairs(RankListTableData) do
@@ -307,7 +301,6 @@ end
 ---@param UID number
 ---@return number
 function RankingListComponent:GetPrivacySettingByUID(UID)
-    print(string.format("[RankingListComponent] GetPrivacySettingByUID UID: %d", UID or -1));
     if UE.IsValid(self:GetRankingListGlobalActor()) then
         return self:GetRankingListGlobalActor():GetRankListPrivacyByUID(UID);
     end
@@ -319,7 +312,6 @@ end
 ---@return number
 function RankingListComponent:GetSelfUID()
     if self.PlayerAccountInfo and self.PlayerAccountInfo.UID then
-        print(string.format("[RankingListComponent] SelfUID: %d", self.PlayerAccountInfo.UID));
         return self.PlayerAccountInfo.UID;
     end
     return 0;
@@ -387,7 +379,6 @@ function RankingListComponent:OnAddVirtualItem(Result)
     local PlayerKey = Result.PlayerKey;
     local RequestMark = Result.RequestMark;
     local SelfPlayerKey = PlayerController:GetInt64PlayerKey();
-    print(string.format("[RankingListComponent] OnAddVirtualItem PlayerKey: %d SelfPlayerKey: %d", PlayerKey, SelfPlayerKey));
     if bSucceeded and PlayerKey == SelfPlayerKey and RequestMark == self.RequestMark then
         local AwardList = {};
         for ItemID, ItemNum in pairs(ItemList) do
@@ -541,7 +532,6 @@ end
 ---@param Rank number
 ---@return string
 function RankingListComponent:GetRankPic(Rank)
-    print(string.format("[RankingListComponent] GetRankPic Rank: %d", Rank));
     if Rank == 1 then
         return self.GoldIconPath.AssetPathName;
     elseif Rank == 2 then
@@ -576,7 +566,6 @@ end
 --生效范围：客户端&&服务端
 ---@param Success boolean
 function RankingListComponent:AddRankListAwardsDelegate(RankID, Success)
-    print(string.format("[RankingListComponent] AddRankListAwardsDelegate RankID: %d Success: %s", RankID or 0, tostring(Success or false)));
     if self:GetOwner():HasAuthority() == false then
         if Success then
             local PC = UGCGameSystem.GetLocalPlayerController();
@@ -652,7 +641,6 @@ function RankingListComponent:GetRankingListGlobalActor()
 end
 
 function RankingListComponent:UpdateShowRankData(RankID, RankingCycles)
-    print(string.format("[RankingListComponent] UpdateShowRankData RankID: %d RankingCycles: %d", RankID or -1, RankingCycles or -1));
     if self.RankingListMainUI and self.RankingListMainUI:GetVisibility() ~= ESlateVisibility.Collapsed then
         self.RankingListMainUI:RefreshRankData(RankID, RankingCycles);
     end
@@ -682,7 +670,6 @@ function RankingListComponent:GetRedPointState()
 end
 
 function RankingListComponent:UpdateShowPlayerRankData(RankID, RankingCycles)
-    print(string.format("[RankingListComponent] UpdateShowPlayerRankData RankID: %d RankingCycles: %d", RankID or -1, RankingCycles or -1));
     if self.RankingListMainUI and self.RankingListMainUI:GetVisibility() ~= ESlateVisibility.Collapsed then
         self.RankingListMainUI:RefreshPlayerRankData(RankID, RankingCycles);
     end
@@ -715,7 +702,6 @@ function RankingListComponent:UpdateShowPlayerRankData(RankID, RankingCycles)
 end
 
 function RankingListComponent:UpdateProfileData(RankID)
-    print(string.format("[RankingListComponent] UpdateProfileData RankID: %d", RankID or -1));
     if self.RankingListMainUI and self.RankingListMainUI:GetVisibility() ~= ESlateVisibility.Collapsed then
         self.RankingListMainUI:RefreshProfileData(RankID);
     end

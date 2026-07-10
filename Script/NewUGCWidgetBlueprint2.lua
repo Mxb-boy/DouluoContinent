@@ -20,11 +20,9 @@ end
 ---@param enabled     boolean  是否可点击
 ---@param onTeleport  function 点击回调 function(index)
 function NewUGCWidgetBlueprint2:Setup(index, name, powerText, enabled, onTeleport)
-    ugcprint("[NewItem] Setup called: index=" .. tostring(index) .. " name=" .. tostring(name))
     self.TeleportIndex = index
     self.OnTeleport = onTeleport
 
-    ugcprint("[NewItem] TextBlock_77=" .. tostring(self.TextBlock_77) .. " TextBlock_262=" .. tostring(self.TextBlock_262) .. " Button_74=" .. tostring(self.Button_74))
 
     if self.TextBlock_77 then
         self.TextBlock_77:SetText(name)
@@ -42,7 +40,6 @@ function NewUGCWidgetBlueprint2:Setup(index, name, powerText, enabled, onTelepor
         -- 直接 Add 即可，因为 widget 是每次新建的
         self.Button_74.OnClicked:Add(self.OnButtonClicked, self)
     end
-    ugcprint("[NewItem] Setup done: index=" .. tostring(index))
 end
 
 function NewUGCWidgetBlueprint2:OnButtonClicked()

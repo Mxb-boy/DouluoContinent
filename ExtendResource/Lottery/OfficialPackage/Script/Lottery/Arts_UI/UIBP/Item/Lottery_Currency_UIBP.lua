@@ -23,7 +23,6 @@ end
 
 function Lottery_Currency_UIBP:Refresh()
     local CoinNum = LotteryManager:GetPlayerOwnedItemNum(self.ItemID)
-    print(string.format("[Lottery_Currency_UIBP] ItemNum: %d", CoinNum or -1));
     self.AmountText:SetText(tostring(CoinNum));
 end
 

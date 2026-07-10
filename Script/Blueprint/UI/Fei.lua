@@ -457,7 +457,6 @@ function Fei:SetOtherBlueprintUIHidden(bHidden)
         self.HiddenBlueprintWidgets = {}
         if PlayerController.MainUIInstance ~= nil
             and PlayerController.MainUIInstance.YXWDBuffIconActive == true then
-            ugcprint("[Fei:SetOtherBlueprintUIHidden] keep MainUIInstance visible for YXWD icon")
         else
             self:HideWidget(PlayerController.MainUIInstance)
         end
@@ -536,12 +535,10 @@ function Fei:GetFlyAnimation()
         if AnimAsset ~= nil then
             self.FlyAnimation = AnimAsset
             self.FlyAnimationPath = AnimPath
-            ugcprint("[Fei] Fly animation loaded: " .. tostring(AnimPath))
             return AnimAsset
         end
     end
 
-    ugcprint("[Fei] Fly animation load failed")
     return nil
 end
 
@@ -606,13 +603,11 @@ function Fei:GetFlyEffectTemplate()
         self.FlyEffectTemplate = UE.LoadObject(EffectPath)
         if self.FlyEffectTemplate ~= nil then
             self.FlyEffectPath = EffectPath
-            ugcprint("[Fei] Fly effect loaded: " .. tostring(EffectPath))
             return self.FlyEffectTemplate
         end
     end
 
     if self.FlyEffectTemplate == nil then
-        ugcprint("[Fei] Fly effect load failed: " .. tostring(FLY_EFFECT_RELATIVE_PATH))
     end
 
     return self.FlyEffectTemplate
@@ -664,9 +659,7 @@ function Fei:SpawnFlyEffect()
 
     if Success and EffectComponent ~= nil then
         self.FlyEffectComponent = EffectComponent
-        ugcprint("[Fei] Fly effect spawned")
     else
-        ugcprint("[Fei] Fly effect spawn failed")
     end
 end
 

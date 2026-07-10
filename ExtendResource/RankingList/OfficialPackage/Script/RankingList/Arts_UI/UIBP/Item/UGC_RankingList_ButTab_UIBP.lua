@@ -12,7 +12,6 @@ function UGC_RankingList_ButTab_UIBP:Construct()
 end
 
 function UGC_RankingList_ButTab_UIBP:TabClick()
-    print("UGC_RankingList_ButTab_UIBP:TabClick")
     ---取消其他tab的选中态
     ---切换选中态
     RankingListManager:SelectRank(self.RankID);
@@ -20,12 +19,10 @@ function UGC_RankingList_ButTab_UIBP:TabClick()
 end
 
 function UGC_RankingList_ButTab_UIBP:Select()
-    print("UGC_RankingList_ButTab_UIBP:Select");
     self.WidgetSwitcher_Tab:SetActiveWidgetIndex(0);
 end
 
 function UGC_RankingList_ButTab_UIBP:UnSelect()
-    print("UGC_RankingList_ButTab_UIBP:UnSelect");
     self.WidgetSwitcher_Tab:SetActiveWidgetIndex(1);
 end
 
@@ -39,7 +36,6 @@ end
 
 function UGC_RankingList_ButTab_UIBP:InitUI(RankID)
     self.RankID = RankID;
-    print(string.format("UGC_RankingList_ButTab_UIBP:InitUI RankID: %d", RankID));
     local RankInfo = RankingListManager:GetRankConfigData(RankID);
     local hasIllegalChar, unitLen, TabName, isTruncate = FuncUtil:CheckName(RankInfo.TabName, true, 5, 1);
     self.TextBlock_Tab:SetText(TabName);
@@ -47,12 +43,10 @@ function UGC_RankingList_ButTab_UIBP:InitUI(RankID)
 end
 
 function UGC_RankingList_ButTab_UIBP:ShowRedPoint()
-    print(string.format("UGC_RankingList_ButTab_UIBP:ShowRedPoint RankID: %d", self.RankID));
     self.Image_Bg_Default:SetVisibility(ESlateVisibility.SelfHitTestInvisible);
 end
 
 function UGC_RankingList_ButTab_UIBP:HideRedPoint()
-    print(string.format("UGC_RankingList_ButTab_UIBP:HideRedPoint RankID: %d", self.RankID));
     self.Image_Bg_Default:SetVisibility(ESlateVisibility.Collapsed);
 end
 

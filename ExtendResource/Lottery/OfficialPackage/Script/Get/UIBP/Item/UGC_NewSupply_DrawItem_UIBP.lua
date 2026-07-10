@@ -46,7 +46,6 @@ function UGC_NewSupply_DrawItem_UIBP:SetItemInfo(ItemID, ItemNum)
         self.WidgetSwitcher_Thing:SetActiveWidgetIndex(0);
     end
 
-    print(string.format("UGC_NewSupply_DrawItem_UIBP:SetItemInfo ID: %d Num: %d", ItemID, ItemNum));
 end
 
 function UGC_NewSupply_DrawItem_UIBP:TrunOverItem()

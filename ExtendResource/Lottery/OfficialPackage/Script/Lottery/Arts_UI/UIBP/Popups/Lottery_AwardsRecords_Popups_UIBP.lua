@@ -38,7 +38,6 @@ function Lottery_AwardsRecords_Popups_UIBP:Close()
 end
 
 function Lottery_AwardsRecords_Popups_UIBP:InitAwardsRecords(Item, Index)
-    print(string.format("Lottery_AwardsRecords_Popups_UIBP:InitAwardsRecords Index: %d", Index));
     local RecordInfo = self.LotteryRecord[#self.LotteryRecord - Index];
     local ItemID = RecordInfo.ItemInfo.ID;
     local ItemNum = RecordInfo.ItemInfo.Num;

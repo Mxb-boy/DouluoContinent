@@ -51,7 +51,6 @@ function UGC_NewSupply_OneDraw_UIBP:SetItemInfo(LotteryID, ItemList)
 
     local ItemID = ItemList[1].ItemID or -1;
     local ItemNum = ItemList[1].ItemNum or 0;
-    print(string.format("UGC_NewSupply_OneDraw_UIBP:SetItemInfo ID: %d Num: %d", ItemID, ItemNum));
     self.NewSupply_DrawItem_UIBP:SetItemInfo(ItemID, ItemNum, self);
     self.NewSupply_DrawItem_UIBP:JumpAnimToStart();
 

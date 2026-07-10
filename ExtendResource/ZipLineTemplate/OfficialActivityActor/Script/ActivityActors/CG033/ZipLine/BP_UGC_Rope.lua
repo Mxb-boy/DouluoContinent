@@ -6,7 +6,6 @@
 local BP_UGC_Rope = {}
  
 function BP_UGC_Rope:PrintVector(Vector)
-    print("BP_UGC_Rope:PrintVector(Vector)--X = "..tostring(Vector.X).." Y = "..tostring(Vector.Y).." Z = "..tostring(Vector.Z))
 end
 function BP_UGC_Rope:ReceiveBeginPlay()
     BP_UGC_Rope.SuperClass.ReceiveBeginPlay(self)

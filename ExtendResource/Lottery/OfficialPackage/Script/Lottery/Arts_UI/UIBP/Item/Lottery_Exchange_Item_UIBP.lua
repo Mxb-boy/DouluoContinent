@@ -176,7 +176,6 @@ function Lottery_Exchange_Item_UIBP:RefreshPurchaseTime()
             local CurBuyNum = LotteryManager:GetProductRedeemedTimes(self.ProductID);
             local LimitBuyNum = ProductData.PurchaseLimit;
             self.TextBlock_Exchange_Item_Limit:SetText(string.format("%d/%d", CurBuyNum, LimitBuyNum));
-            print(string.format("[Lottery_Exchange_Item_UIBP] RefreshPurchaseTime CurBuyNum: %d LimitBuyNum: %d", CurBuyNum or -1, LimitBuyNum or -1));
         end
     end
 end

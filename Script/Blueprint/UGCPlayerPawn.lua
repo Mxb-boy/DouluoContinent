@@ -488,7 +488,6 @@ local function CreateSoulMesh(player, HunHuan)
                          tostring(SoulLevel)
     local soulMesh = UE.LoadObject(SoulPath)
     if soulMesh == nil then
-        print("CreateSoulMesh load failed:", SoulPath)
         return
     end
 
@@ -544,7 +543,6 @@ function UGCPlayerPawn:EnsurePlayerTitleActor()
     end
 
     if self.PlayerTitleActor and UE.IsValid(self.PlayerTitleActor) then
-        AddReplicatedSubObject(self, self.PlayerTitleActor)
         return self.PlayerTitleActor
     end
 
@@ -552,7 +550,6 @@ function UGCPlayerPawn:EnsurePlayerTitleActor()
                                         "Asset/Blueprint/UI/BP_PlayerTitleActor.BP_PlayerTitleActor_C")
 
     if titleClass == nil then
-        ugcprint("[UGCPlayerPawn] Title class load failed")
         return nil
     end
 
@@ -569,7 +566,6 @@ function UGCPlayerPawn:EnsurePlayerTitleActor()
     }, self)
 
     if self.PlayerTitleActor == nil then
-        ugcprint("[UGCPlayerPawn] PlayerTitleActor spawn failed")
         return nil
     end
 
@@ -607,7 +603,6 @@ function UGCPlayerPawn:BeginFly()
 
     if not UGCPersistEffectSystem.HasDynamicState(self, FLY_STATE_TAG) then
         UGCPersistEffectSystem.EnterDynamicState(self, FLY_STATE_TAG)
-        ugcprint("[UGCPlayerPawn] Enter fly state")
 
         for _, Tag in ipairs(FLY_INTERRUPT_TAGS) do
             InterruptStateSafe(self, Tag)
@@ -625,7 +620,6 @@ function UGCPlayerPawn:EndFly()
 
     if UGCPersistEffectSystem.HasDynamicState(self, FLY_STATE_TAG) then
         UGCPersistEffectSystem.LeaveDynamicState(self, FLY_STATE_TAG)
-        ugcprint("[UGCPlayerPawn] Leave fly state")
     end
 
     for _, Tag in ipairs(FLY_DISABLE_TAGS) do
@@ -660,27 +654,67 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     self:EnsurePlayerTitleActor()
 end
 
---- 注册武器切换事件委托（事件驱动，替代 2 秒轮询）
-function UGCPlayerPawn:RegisterWeaponChangeDelegate()
+--- 注册武器切换事件委托（事件驱动，带延迟重试确保组件就绪）
+function UGCPlayerPawn:RegisterWeaponChangeDelegate(retryCount)
+    retryCount = retryCount or 0
     local WeaponManagerComponent = self:GetWeaponManager()
     if WeaponManagerComponent == nil then
-        self.bWeaponDelegateRegistered = false
+        if retryCount < 5 then
+            local pawn = self
+            local count = retryCount + 1
+            UGCTimerUtility.CreateLuaTimer(1, function()
+                if pawn and UE.IsValid(pawn) then
+                    pawn:RegisterWeaponChangeDelegate(count)
+                end
+            end, false)
+        end
         return
     end
 
     if WeaponManagerComponent.ChangeCurrentUsingWeaponDelegate ~= nil then
-        WeaponManagerComponent.ChangeCurrentUsingWeaponDelegate:Add(self.OnWeaponChanged, self)
+        self.SavedWeaponManager = WeaponManagerComponent
+        WeaponManagerComponent.ChangeCurrentUsingWeaponDelegate:Add(UGCPlayerPawn.OnWeaponChanged, self)
         self.bWeaponDelegateRegistered = true
     else
-        self.bWeaponDelegateRegistered = false
     end
 end
 
 --- 武器切换回调：武器变化时刷新攻击加成
 function UGCPlayerPawn:OnWeaponChanged(WeaponSlot)
+    if self == nil or not UE.IsValid(self) then
+        return
+    end
     self.LastWeaponAttackKey = nil
     self.LastLocalWeaponAttackDisplayKey = nil
     self:RefreshWeaponAttackBonus(true)
+
+    -- 服务端 RPC 兜底：客户端委托失效时通过 RPC 触发客户端刷新
+    if self:HasAuthority() then
+        local pc = self.Controller
+        if pc ~= nil then
+            UGCTimerUtility.CreateLuaTimer(0.5, function()
+                if pc and UE.IsValid(pc) and pc.Pawn then
+                    UnrealNetwork.CallUnrealRPC(pc, pc, "Client_RefreshWeaponAttack")
+                end
+            end, false)
+        end
+    end
+end
+
+--- 反注册武器切换事件委托（Pawn 销毁/重生时调用，防止委托泄漏）
+function UGCPlayerPawn:UnregisterWeaponChangeDelegate()
+    if self.bWeaponDelegateRegistered ~= true then
+        return
+    end
+    local WeaponManagerComponent = self.SavedWeaponManager
+    if WeaponManagerComponent ~= nil and WeaponManagerComponent.ChangeCurrentUsingWeaponDelegate ~= nil then
+        local ok, err = pcall(function()
+            WeaponManagerComponent.ChangeCurrentUsingWeaponDelegate:Remove(UGCPlayerPawn.OnWeaponChanged, self)
+        end)
+    else
+    end
+    self.bWeaponDelegateRegistered = false
+    self.SavedWeaponManager = nil
 end
 
 function UGCPlayerPawn:ReceiveTick(DeltaTime)
@@ -825,11 +859,6 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     self.LastWeaponAttackKey = WeaponAttackKey
 
     -- 性能优化：日志移到 key 比对之后，只有真正变化时才打印，避免每 2s 一次的周期检查产生大量 I/O
-    ugcprint(
-        "[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID) .. ", series=" .. tostring(SeriesKey) ..
-            ", name=" .. tostring(ItemName) .. ", level=" .. tostring(Level) .. ", attackPercent=" ..
-            tostring(AttackPercent) .. ", baseAttack=" .. tostring(BaseAttack) .. ", finalAttack=" ..
-            tostring(FinalAttack) .. ", setBaseAttackSuccess=" .. tostring(bSetBaseAttackSuccess))
 
     -- self:ForceRefreshPropertySnapshot()
 end
@@ -905,6 +934,24 @@ function UGCPlayerPawn:UGC_PlayerDeadEvent(Killer, DamageType)
     DestroySoulMesh(self)
     DestroyAttachedActors(self)
     self:NotifyPropertyChangedIfNeeded(true)
+
+    -- 防止 DeadEvent 重复调用导致委托重复注册
+    if self.bDeadEventWeaponProcessed then
+        return
+    end
+    self.bDeadEventWeaponProcessed = true
+
+    -- 先反注册旧委托，延迟2秒（等重生完成）再重新注册
+    self:UnregisterWeaponChangeDelegate()
+    local pawn = self
+    local timerName = "WPN_ReRegister_" .. tostring(pawn)
+    UGCTimerUtility.RemoveLuaTimerByName(timerName)
+    UGCTimerUtility.CreateLuaTimer(2, function()
+        if pawn and UE.IsValid(pawn) then
+            pawn.bDeadEventWeaponProcessed = false
+            pawn:RegisterWeaponChangeDelegate()
+        end
+    end, false, timerName)
 end
 
 function UGCPlayerPawn:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
@@ -921,15 +968,18 @@ function UGCPlayerPawn:ReceiveEndPlay()
         playerState:SaveCurrentHP(self)
     end
 
-    DestroySoulMesh(self)
-    DestroyAttachedActors(self)
+    -- 先反注册武器委托，防止 WeaponManagerComponent 上残留旧 Pawn 的回调
+    self:UnregisterWeaponChangeDelegate()
 
-    -- Pawn 重生或离场时，主动清理附属称号 Actor。
+    -- 先清理称号 Actor 和复制列表（在 DestroyAttachedActors 把 list 置 nil 之前）
     if self:HasAuthority() and self.PlayerTitleActor and UE.IsValid(self.PlayerTitleActor) then
         RemoveReplicatedSubObject(self, self.PlayerTitleActor)
         self.PlayerTitleActor:K2_DestroyActor()
         self.PlayerTitleActor = nil
     end
+
+    DestroySoulMesh(self)
+    DestroyAttachedActors(self)
 
     UGCPlayerPawn.SuperClass.ReceiveEndPlay(self)
 end

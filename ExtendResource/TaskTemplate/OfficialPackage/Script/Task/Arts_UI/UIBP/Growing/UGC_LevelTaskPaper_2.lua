@@ -8,13 +8,11 @@
 local UGC_LevelTaskPaper_2 = { bInitDoOnce = false } 
 
 function UGC_LevelTaskPaper_2:Construct()
-    print("[UGC_LevelTaskPaper_2:Construct]");
 	self.Task_Item.OnUpdateItem:Add(self.InitTaskItem, self);
     self.Task_BG.OnUpdateItem:Add(self.InitBg, self);
 end
 
 function UGC_LevelTaskPaper_2:InitTaskItem(Item, Index)
-    print(string.format("[UGC_LevelTaskPaper_2:InitTaskItem] Index: %d",Index));
     local TaskMinIndex = Index * 2 + 1;
     local TaskMaxIndex = (Index + 1) * 2;
     local IsEnd = false;
@@ -30,11 +28,9 @@ function UGC_LevelTaskPaper_2:InitTaskItem(Item, Index)
 end
 
 function UGC_LevelTaskPaper_2:InitBg(Item, Index)
-    print(string.format("[UGC_LevelTaskPaper_2:InitBg] Index: %d", Index));
 end
 
 function UGC_LevelTaskPaper_2:GotoAward(Index)
-    print(string.format("[UGC_LevelTaskPaper_2:GotoAward] Index: %d", Index));
     self.Task_Item:JumpByIdxStyle((Index - 1) // 2, EReuseListJumpStyle.Begin);
 end
 
@@ -48,7 +44,6 @@ function UGC_LevelTaskPaper_2:Destruct()
 end
 
 function UGC_LevelTaskPaper_2:InitUI(TaskLineName)
-    print("[UGC_LevelTaskPaper_2:InitUI]");
     self.TaskLineName = TaskLineName;
     local TaskLineConfig = TaskManager:GetTaskLineConfig(TaskLineName);
     if TaskLineConfig and TaskLineConfig.TaskLineType == EUGCTaskLineType.LevelTaskLine then

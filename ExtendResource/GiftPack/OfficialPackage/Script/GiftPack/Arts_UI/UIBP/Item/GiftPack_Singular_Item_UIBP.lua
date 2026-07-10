@@ -23,7 +23,6 @@ end
 -- end
 
 function GiftPack_Singular_Item_UIBP:SelectItem()
-    print("GiftPack_Singular_Item_UIBP:SelectItem");
     GiftPackManager:SelectItemByIndex(self.Index);
     self:Select();
 end
@@ -41,11 +40,9 @@ function GiftPack_Singular_Item_UIBP:GetSelect()
 end
 
 function GiftPack_Singular_Item_UIBP:OnPress()
-    print("GiftPack_Singular_Item_UIBP:OnPress");
     self.PressTimerHandle = Timer.InsertTimer(
         0, 
         function ()
-            print("GiftPack_Singular_Item_UIBP: LongPress");
             local AbsPosition = SlateBlueprintLibrary.GetAbsolutePosition(self:GetCachedGeometry());
             local Position = SlateBlueprintLibrary.AbsoluteToLocal(WidgetLayoutLibrary.GetViewportWidgetGeometry(self), AbsPosition);
             GiftPackManager:ShowItemTip(self.ItemID , Position);
@@ -64,7 +61,6 @@ function GiftPack_Singular_Item_UIBP:OnRelease()
 end
 
 function GiftPack_Singular_Item_UIBP:InitUI(Index, ItemID, ItemMinNum, ItemMaxNum)
-    print("GiftPack_Singular_Item_UIBP:InitUI");
     self.ItemID = ItemID;
     self.Index = Index;
     local ItemInfo = GiftPackManager:GetItemInfoByItemID(ItemID);

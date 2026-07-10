@@ -1084,7 +1084,6 @@ end
 -- 境界
 function UI02:Button_151_OnClicked()
     self:HideMainButtonRedDot("Button_151")
-    ugcprint("[UI02:Button_151_OnClicked] Open UI08 realm panel")
 
     if self.UI08Instance ~= nil then
         if self.UI08Instance.Open ~= nil then
@@ -1097,20 +1096,17 @@ function UI02:Button_151_OnClicked()
 
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
     if PlayerController == nil then
-        ugcprint("[UI02:Button_151_OnClicked] PlayerController is nil")
         return
     end
 
     local UI08Path = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI08.UI08_C"
     local UI08Class = UE.LoadClass(UI08Path)
     if UI08Class == nil then
-        ugcprint("[UI02:Button_151_OnClicked] UI08 class load failed: " .. UI08Path)
         return
     end
 
     self.UI08Instance = UserWidget.NewWidgetObjectBP(PlayerController, UI08Class)
     if self.UI08Instance == nil then
-        ugcprint("[UI02:Button_151_OnClicked] UI08 create failed")
         return
     end
 
@@ -1139,13 +1135,11 @@ function UI02:Button_155_OnClicked()
     local UI12Path = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/UI12.UI12_C"
     local UI12Class = UE.LoadClass(UI12Path)
     if UI12Class == nil then
-        ugcprint("[UI02:Button_155] UI12 class load failed: " .. UI12Path)
         return
     end
 
     self.TeleportUIInstance = UserWidget.NewWidgetObjectBP(PlayerController, UI12Class)
     if self.TeleportUIInstance == nil then
-        ugcprint("[UI02:Button_155] UI12 create failed")
         return
     end
 

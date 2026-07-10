@@ -12,21 +12,17 @@ GiftPackageType = {
 }
 
 function GiftPackManager:GetClass(SoftClassPath)
-    print("GiftPackManager:GetClass")
     if SoftClassPath == nil then
-        print("GiftPackManager: SoftClassPath is not valid");
         return nil;
     end
     local Path = KismetSystemLibrary.BreakSoftClassPath(SoftClassPath);
     if Path == nil then
-        print("GiftPackManager: Path is nil");
         return nil;
     end
     return UE.LoadClass(Path);
 end
 
 function GiftPackManager:RegisterComponentClass(ComponentClassPath)
-    print("GiftPackManager:RegisterComponentClass")
     if self.GiftPackComponentClass == nil then
         self.GiftPackComponentClass = self:GetClass(ComponentClassPath);
     end
@@ -43,7 +39,6 @@ function GiftPackManager:GetGiftPackComponent(PlayerController)
                 local PlayerController = STExtraGameplayStatics.GetFirstPlayerController(UGCGameSystem.GameState);
                 self.GiftPackComponent = PlayerController:GetComponentByClass(self.GiftPackComponentClass);
             else
-                print("[GiftPackManager:GetGiftPackComponent] Cannot get local component!");
             end
         end
         return self.GiftPackComponent;
@@ -52,13 +47,11 @@ function GiftPackManager:GetGiftPackComponent(PlayerController)
     if self.GiftPackComponentClass ~= nil then
         return PlayerController:GetComponentByClass(self.GiftPackComponentClass);
     else
-        print("[GiftPackManager:GetGiftPackComponent] ComponentClass is nil!");
         return nil;
     end
 end
 
 function GiftPackManager:GetGiftPackData()
-    print("GiftPackManager:GetGiftPackData");
     if self.GiftPackDatas ~= nil then
         return self.GiftPackDatas; 
     end
@@ -82,7 +75,6 @@ function GiftPackManager:GetGiftPackData()
 end
 
 function GiftPackManager:GetObjectData()
-    print("GiftPackManager:GetObjectData");
     if self.ObjectDatas ~= nil then
         return self.ObjectDatas;
     end
@@ -95,7 +87,6 @@ function GiftPackManager:GetObjectData()
 end
 
 function GiftPackManager:GetGiftPackDataByID(GiftPackID)
-    print(string.format("GiftPackManager:GetGiftPackDataByID GiftPackID: %d", GiftPackID));
     if self.GiftPackDatas == nil then
         self:GetGiftPackData(); 
     end
@@ -104,7 +95,6 @@ function GiftPackManager:GetGiftPackDataByID(GiftPackID)
 end
 
 function GiftPackManager:GetItemInfoByItemID(ItemID)
-    print(string.format("GiftPackManager:GetItemInfoByItemID ItemID: %d", ItemID));
     if self.ObjectDatas == nil then
         self:GetObjectData(); 
     end
@@ -148,7 +138,6 @@ function GiftPackManager:GetDropGroupData()
     self.DropGroupDatas = {};
     local DropGroupTable = UGCGameSystem.GetTableData("Data/Table/UGCDropGroup");
 
-    print("LotteryManager:GetDropGroupData");
     if DropGroupTable then
         for ID, Value in pairs(DropGroupTable) do
             ID = tonumber(ID);
@@ -156,7 +145,6 @@ function GiftPackManager:GetDropGroupData()
             if Value.DropGroupItemInfo then
                 for Index, Info in pairs(Value.DropGroupItemInfo) do
                     local DropID = Info.DropID;
-                    print(DropID);
                     local ItemList = self:GetDropDataByID(DropID);
                     table.move(ItemList, 1, #ItemList, #self.DropGroupDatas[ID] + 1, self.DropGroupDatas[ID]);
                 end
@@ -178,7 +166,6 @@ function GiftPackManager:GetItemListByGiftPackID(GiftPackID)
     local GiftPackData = self:GetGiftPackDataByID(GiftPackID);
     local DropID = GiftPackData.DropID;
     local DropGroupID = GiftPackData.DropGroupID;
-    print(string.format("GiftPackManager:GetItemListByGiftPackID DropID: %d, DropGroupID: %d", DropID, DropGroupID));
 
     local DropTable = GiftPackManager:GetDropData();
     if DropTable and DropTable[DropID] then
@@ -226,9 +213,7 @@ function GiftPackManager:OpenGiftPack(GiftPackID)
     local GiftPackData = self:GetGiftPackDataByID(GiftPackID);
     if GiftPackData then
         local GiftPackNum = self:GetItemNum(GiftPackData.ItemID);
-        print(string.format("GiftPackManager:OpenGiftPack GiftPackID: %d GiftPackNum: %d", GiftPackID, GiftPackNum));
         if GiftPackNum <= 0 then
-            print("暂无礼包可用！");
             return false;
         end
         if GiftPackData.GiftPackType == EGiftPackType.Normal then
@@ -243,7 +228,6 @@ function GiftPackManager:OpenGiftPack(GiftPackID)
         end
         return true;
     else
-        print("礼包不存在！");
         return false;
     end
 end

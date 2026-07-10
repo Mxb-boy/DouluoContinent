@@ -24,7 +24,6 @@ function UGC_Taskgrade_Item_UIBP:Construct()
 end
 
 function UGC_Taskgrade_Item_UIBP:SignAward()
-    print(string.format("[UGC_Taskgrade_Item_UIBP:SignAward] TaskLineName: %s LevelIndex: %d TaskIndex: %d", self.TaskLineName, self.LevelIndex, self.TaskIndex));
     TaskManager:ClaimLevelTaskAward(self.TaskLineName, self.LevelIndex, self.TaskIndex);
 end
 
@@ -43,13 +42,11 @@ function UGC_Taskgrade_Item_UIBP:Destruct()
 end
 
 function UGC_Taskgrade_Item_UIBP:InitUI(TaskID, LevelIndex, TaskIndex, TaskLineName)
-    print("[UGC_Taskgrade_Item_UIBP:InitUI]");
     self.TaskID = TaskID;
     self.LevelIndex = LevelIndex;
     self.TaskIndex = TaskIndex;
     self.TaskLineName = TaskLineName;
     local TaskDesc = TaskManager:GetTaskDesc(TaskID);
-    print(TaskDesc);
     self.Text_LevelDetails:SetText(tostring(TaskDesc));
     local Progress = TaskManager:GetLevelTaskProgress(TaskLineName, LevelIndex, TaskIndex);
     local Target = TaskManager:GetTaskTarget(TaskID);
@@ -86,7 +83,6 @@ function UGC_Taskgrade_Item_UIBP:HideTask()
 end
 
 function UGC_Taskgrade_Item_UIBP:SetTaskState(TaskState)
-    print(string.format("[UGC_Taskgrade_Item_UIBP:SetTaskState] LevelIndex: %d TaskIndex: %d TaskState: %d", self.LevelIndex or 0, self.TaskIndex or 0, TaskState or 0));
     ---先判断是否过期
     if TaskState == EUGCTaskState.Lock then
         self.WidgetSwitcher_TaskBut:SetActiveWidgetIndex(4);
@@ -106,7 +102,6 @@ function UGC_Taskgrade_Item_UIBP:SetTaskState(TaskState)
 end
 
 function UGC_Taskgrade_Item_UIBP:UpdateTaskInfo(TaskID)
-    print(string.format("[UGC_Taskgrade_Item_UIBP:UpdateTaskInfo] UpdateTaskID: %d TaskID: %d", TaskID or 0, self.TaskID or 0));
     if TaskID == self.TaskID then
         local Progress = TaskManager:GetLevelTaskProgress(self.TaskLineName, self.LevelIndex, self.TaskIndex);
         local Target = TaskManager:GetTaskTarget(TaskID);
@@ -114,7 +109,6 @@ function UGC_Taskgrade_Item_UIBP:UpdateTaskInfo(TaskID)
         local State = TaskManager:GetLevelTaskState(self.TaskLineName, self.LevelIndex, self.TaskIndex);
         self:SetTaskState(State);
     else
-        print(string.format("[UGC_Taskgrade_Item_UIBP:UpdateTaskInfo] UpdateTaskID: %d TaskID: %d", TaskID or 0, self.TaskID or 0));
     end
 end
 

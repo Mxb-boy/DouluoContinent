@@ -29,7 +29,6 @@ local LotteryComponent = {
 }
 
 function LotteryComponent:ReceiveBeginPlay()
-    print("LotteryComponent:ReceiveBeginPlay");
     LotteryComponent.SuperClass.ReceiveBeginPlay(self);
     LotteryManager:RegisterComponentClass(GameplayStatics.GetObjectClass(self));
     LotteryManager:GetLotteryData();
@@ -114,13 +113,11 @@ end
 --生效范围：客户端&&服务端
 ---@param GamePartName string
 function LotteryComponent:InitGamePart(GamePartName)
-    print(string.format("[LotteryComponent:InitGamePart] GamePartName: %s", GamePartName or ""));
     local PlayerController = self:GetOwner();
     if GamePartName == "VirtualItemManager" then
         if self.VirtualItemManager == nil then
             self.VirtualItemManager = UGCBlueprintFunctionLibrary.GetGamePartGlobalActor(UGCGameSystem.GameState, "VirtualItemManager");
         end
-        print(string.format("[LotteryComponent:InitGamePart] VirtualItemManager Is Nil: %s", self:GetVirtualItemManager() == nil));
         if UE.IsValid(self:GetVirtualItemManager()) and self.VirtualItemInited == nil then
             self.VirtualItemInited = true
             if PlayerController:HasAuthority() == true then
@@ -134,7 +131,6 @@ function LotteryComponent:InitGamePart(GamePartName)
         if self.CommodityManager == nil then
             self.CommodityManager = UGCBlueprintFunctionLibrary.GetGamePartGlobalActor(UGCGameSystem.GameState, "CommodityOperationManager");
         end
-        print(string.format("[LotteryComponent:InitGamePart] CommodityManager Is Nil: %s", self.CommodityManager == nil));
         if PlayerController:HasAuthority() == false and self.CommodityInited == nil then
             self.CommodityInited = true
             if UE.IsValid(self:GetCommodityManager()) then
@@ -148,7 +144,6 @@ end
 --初始化抽奖数据
 --生效范围：服务端
 function LotteryComponent:LoadData()
-    print("LotteryComponent:LoadData");
     local PlayerData = self:ReadPlayerData();
     self.LotteryDrawInfo = PlayerData.Lottery.Lottery;
     self.LotteryGroupDrawInfo = PlayerData.Lottery.LotteryGroup;
@@ -174,7 +169,6 @@ function LotteryComponent:LoadData()
             if CurDate.hour == 0 and CurDate.min == 0 and CurDate.sec == 0 then
                 NeedReset = true
             end
-            print(string.format("[RefreshTodayDrawTimesTimer] ServerTime: %d", ServerTime or -1));
             local PlayerData = self:ReadPlayerData();
             local LotteryDrawInfo = PlayerData.Lottery.Lottery;
             for LotteryID, Data in pairs(LotteryDrawInfo) do
@@ -213,7 +207,6 @@ function LotteryComponent:CheckTodayDrawTimes()
     local CurDate = os.date("*t", ServerTime);
     local TodayTimeStamp = os.time({year=CurDate.year, month=CurDate.month, day=CurDate.day, hour=0, min=0, sec=0});
     local HasReset = false
-    print(string.format("LotteryComponent:CheckTodayDrawTimes ServerTime: %d", ServerTime or -1));
     local PlayerData = self:ReadPlayerData();
     local LotteryDrawInfo = PlayerData.Lottery.Lottery;
     for LotteryID, Data in pairs(LotteryDrawInfo) do
@@ -252,25 +245,21 @@ function LotteryComponent:PreLoadAsset()
     local Path = UGCGameSystem.GetUGCResourcesFullPath('Asset/Data/Table/UGCLottery.UGCLottery');
     Common.LoadObjectAsync(Path, 
         function (Object)
-            print("[LotteryComponent] Preload UGCLottery Table Success!");
         end
     );
     Path = UGCGameSystem.GetUGCResourcesFullPath('Asset/Data/Table/UGCDrop.UGCDrop');
     Common.LoadObjectAsync(Path, 
         function (Object)
-            print("[LotteryComponent] Preload UGCDrop Table Success!");
         end
     );
     Path = UGCGameSystem.GetUGCResourcesFullPath('Asset/Data/Table/UGCDropGroup.UGCDropGroup');
     Common.LoadObjectAsync(Path, 
         function (Object)
-            print("[LotteryComponent] Preload UGCDropGroup Table Success!");
         end
     );
     Path = "/Game/WwiseEvent/UI_hall/Play_UI_hall_Shopping_Get.Play_UI_hall_Shopping_Get";
     Common.LoadObjectAsync(Path, 
     function (Object)
-        print("[LotteryComponent] Preload Item Get Sound Success!");
     end
     );
 
@@ -300,7 +289,6 @@ function LotteryComponent:PreLoadAsset()
     for ImagePath, _ in pairs(ImageList) do
         Common.LoadObjectAsync(ImagePath, 
         function (Object)
-                print(string.format("[LotteryComponent] Preload ItemIcon: %s Success!", ImagePath));
             end
         );
     end
@@ -309,7 +297,6 @@ end
 --预加载UI
 --生效范围：客户端
 function LotteryComponent:PreLoadUI()
-    print("LotteryComponent:PreLoadUI");
     local PlayerController = self:GetOwner();
     Common.LoadObjectWithSoftPathAsync(self.LotteryMainUIPath, function(Object)
         if self ~= nil and Object ~= nil then
@@ -423,7 +410,6 @@ function LotteryComponent:OnRep_LotteryDrawInfo()
             --- 刷新进度礼包的总抽取数量和礼包状态
             if self.IsUseLotteryGiftProgress then
                 local TotalDrawTimes = self:GetTotalDrawTimes(LotteryID);
-                print(string.format("累计开启次数: %d", TotalDrawTimes));
                 self.LotteryMainUI:RefreshTotalDrawTimes(TotalDrawTimes);
                 self.LotteryMainUI:RefreshGiftProgress();
             end
@@ -431,7 +417,6 @@ function LotteryComponent:OnRep_LotteryDrawInfo()
             if LotteryData then
                 if LotteryData.DailyDrawLimit > 0 then
                     local TodayDrawTimes = self:GetTodayDrawTimes(LotteryID);
-                    print(string.format("今日开启次数: %d", TodayDrawTimes));
                     self.LotteryMainUI:RefreshTodayDrawTimes(TodayDrawTimes);
                 end
                 if LotteryData.IsFirstDrawDiscountOpen and self.LotteryMainUI then
@@ -451,7 +436,6 @@ function LotteryComponent:OnRep_LotteryGroupDrawInfo()
             --- 刷新进度礼包的总抽取数量和礼包状态
             if self.IsUseLotteryGiftProgress then
                 local TotalDrawTimes = self:GetTotalDrawTimes(LotteryID);
-                print(string.format("累计开启次数: %d", TotalDrawTimes));
                 self.LotteryMainUI:RefreshTotalDrawTimes(TotalDrawTimes);
                 self.LotteryMainUI:RefreshGiftProgress();
             end
@@ -459,7 +443,6 @@ function LotteryComponent:OnRep_LotteryGroupDrawInfo()
             if LotteryData then
                 if LotteryData.DailyDrawLimit > 0 then
                     local TodayDrawTimes = self:GetTodayDrawTimes(LotteryID);
-                    print(string.format("今日开启次数: %d", TodayDrawTimes));
                     self.LotteryMainUI:RefreshTodayDrawTimes(TodayDrawTimes);
                 end
                 if LotteryData.IsFirstDrawDiscountOpen and self.LotteryMainUI then
@@ -796,7 +779,6 @@ function LotteryComponent:DrawOnce(LotteryID)
     if PlayerController:HasAuthority() == true then
         return;
     end
-    print("LotteryComponent:DrawOnce");
     ---上次抽奖结算后才能再次抽奖
     if self.IsDrawing == true then
         return;
@@ -816,7 +798,6 @@ function LotteryComponent:DrawOnce(LotteryID)
         end
         -- 3. 货币不足，跳充值界面
         local CurCurencyNum = self:GetItemNum(self:GetItemIDByProduct(LotteryData.DrawCostID));
-        print(string.format("CurCurencyNum: %d CostNum: %d", CurCurencyNum, CostNum));
         if CurCurencyNum < CostNum then
             -- 直接弹出抽奖券购买窗口
             self:OpenPurchaseProductUI(LotteryData.DrawCostID);
@@ -827,7 +808,6 @@ function LotteryComponent:DrawOnce(LotteryID)
                 ---比较价格
                 self:CloseLotteryConfirmUI();
                 local CurCostNum = self:GetDrawCostNum(LotteryID, false);
-                print(string.format("CostNum: %d CurCostNum: %d", self.DrawCostNum, CurCostNum));
                 if self.DrawCostNum == CurCostNum then
                     self.IsDrawing = true;
                     UnrealNetwork.CallUnrealRPC(PlayerController, self, "Server_DrawOnce", LotteryID);
@@ -847,7 +827,6 @@ function LotteryComponent:DrawTenth(LotteryID)
     if PlayerController:HasAuthority() == true then
         return;
     end
-    print("LotteryComponent:DrawTenth");
     --- 上次抽奖结算后才能再次抽奖
     if self.IsDrawing == true then
         return;
@@ -886,7 +865,6 @@ end
 --生效范围：服务端
 ---@param LotteryID number
 function LotteryComponent:Server_DrawOnce(LotteryID)
-    print("LotteryComponent: Server_DrawOnce Excute");
     local PlayerController = self:GetOwner();
     if PlayerController:HasAuthority() == false then
         return;
@@ -905,7 +883,6 @@ end
 --生效范围：服务端
 ---@param LotteryID number
 function LotteryComponent:Server_DrawTenth(LotteryID)
-    print("LotteryComponent: Server_DrawTenth Excute");
     local PlayerController = self:GetOwner();
     if PlayerController:HasAuthority() == false then
         return;
@@ -918,7 +895,6 @@ function LotteryComponent:Server_DrawTenth(LotteryID)
     end
     -- 扣款
     self:UseCurrencyToDraw(LotteryID, CostNum, true);
-    print("LotteryComponent: Server_DrawTenth Done");
 end
 
 --进行一次掉落
@@ -926,7 +902,6 @@ end
 ---@param LotteryID number
 ---@return any
 function LotteryComponent:DoOneDrop(LotteryID)
-    print("LotteryComponent:DoOneDrop");
     ---@type FUGCLotteryData
     local DropRecords = {};
     local LotteryData = LotteryManager:GetLotteryConfigData(LotteryID);
@@ -960,7 +935,6 @@ end
 ---@param LotteryID number
 ---@return any
 function LotteryComponent:DoTenDrop(LotteryID)
-    print("LotteryComponent:DoTenDrop");
     local DropRecords = {};
     local TempLotteryRecord = {};
     local LotteryData = LotteryManager:GetLotteryConfigData(LotteryID);
@@ -971,12 +945,10 @@ function LotteryComponent:DoTenDrop(LotteryID)
             local DropType = "";
             if self:IsGuarantDrop(LotteryData.OverrideGuarantDropID, LotteryData.GuarantDropGroupID, LotteryData.ID, TempLotteryRecord) then
                 -- 十连保底
-                print("LotteryComponent: GuarantDrop!!!")
                 OneResult = self:DoDrop(LotteryData.OverrideGuarantDropID, LotteryData.GuarantDropGroupID);
                 DropType = "十连保底";
             else
                 -- 普通掉落
-                print("LotteryComponent: NormalDrop")
                 OneResult = self:DoDrop( LotteryData.OverrideDropID, LotteryData.DropGroupID);
                 DropType = "普通掉落";
             end
@@ -1014,10 +986,8 @@ function LotteryComponent:GetDrawCostNum(LotteryID, IsDrawTenth)
         else
             -- 判断是否有折扣
             if self:CheckHasFirstDrawDiscount(LotteryID, LotteryData.FirstDrawDiscountResetType) then
-                print(string.format("存在首抽折扣 CostNum: %d", LotteryData.FirstDrawDiscountCost));
                 return LotteryData.FirstDrawDiscountCost;
             else
-                print(string.format("不存在首抽折扣 CostNum: %d", LotteryData.OneDrawCostNum));
                 return LotteryData.OneDrawCostNum;
             end
         end
@@ -1037,7 +1007,6 @@ function LotteryComponent:CheckHasFirstDrawDiscount(LotteryID, ResetType)
         if LotteryData.IsFirstDrawDiscountOpen == false then
             return;
         end
-        print(string.format("检查是否存在首抽折扣 LotteryID: %d, ResetType: %d NotReset: %d DailyReset: %d MonthlyReset: %d WeeklyReset: %d", LotteryID, ResetType, ELotteryResetType.NotReset, ELotteryResetType.DailyReset, ELotteryResetType.MonthlyReset, ELotteryResetType.WeeklyReset));
         --  如果是抽奖组的话应该仅读取当前奖池的抽奖记录
         local Records = self:GetLotteryRecords(LotteryID, false);
         if next(Records) == nil then
@@ -1074,7 +1043,6 @@ function LotteryComponent:CheckHasFirstDrawDiscount(LotteryID, ResetType)
             local ResetTimeStamp;
             -- 刷新时间是今天凌晨零点
             ResetTimeStamp = os.time({year=CurDate.year, month=CurDate.month, day=CurDate.day, hour=0});
-            print(string.format("刷新时间是今天凌晨零点: %d 当前时间: %d 抽奖时间: %d", ResetTimeStamp, CurTimeStamp, LatestDrawTime));
             if ResetTimeStamp > LatestDrawTime then
                 return true;
             else
@@ -1085,7 +1053,6 @@ function LotteryComponent:CheckHasFirstDrawDiscount(LotteryID, ResetType)
             local ResetTimeStamp;
             -- 刷新时间是本月1号凌晨零点
             ResetTimeStamp = os.time({year=CurDate.year, month=CurDate.month, day=1, hour=0});
-            print(string.format("刷新时间是本月1号凌晨零点: %d 当前时间: %d", ResetTimeStamp, CurTimeStamp));
             if ResetTimeStamp > LatestDrawTime then
                 return true;
             else
@@ -1099,7 +1066,6 @@ function LotteryComponent:CheckHasFirstDrawDiscount(LotteryID, ResetType)
             local ResetTimeStamp;
             -- 刷新时间是本周一零点
             ResetTimeStamp = os.time({year=CurDate.year, month=CurDate.month, day=CurDate.day - Offset, hour=0});
-            print(string.format("刷新时间是本周一零点: %d 当前时间: %d", ResetTimeStamp, CurTimeStamp));
             if ResetTimeStamp > LatestDrawTime then
                 return true;    
             else
@@ -1115,7 +1081,6 @@ end
 ---@param LotteryID number
 ---@return boolean
 function LotteryComponent:HasFirstDrawGuarant(LotteryID)
-    print("LotteryComponent:HasFirstDrawGuarant");
     local LotteryData = LotteryManager:GetLotteryConfigData(LotteryID);
     if LotteryData then
         local FirstDrawGuarantResetType = LotteryData.FirstDrawGuarantResetType;
@@ -1139,12 +1104,10 @@ end
 ---@return boolean
 function LotteryComponent:IsUseGuarantDrop(GuarantDropID, GuarantDropGroupID)
     if GuarantDropID == nil and GuarantDropGroupID == nil then
-        print("LotteryComponent DropID and DropGroupID nil !")
         return false;
     else
         local isLegal, _ = self:IsUseDropGroup(GuarantDropID, GuarantDropGroupID);
         if isLegal == nil then
-            print("LotteryComponent DropID and DropGroupID illegal !")
             return false;
         else
             return true;
@@ -1223,7 +1186,6 @@ end
 ---@param UseGroup boolean
 ---@return boolean
 function LotteryComponent:IsGuarantItem(ItemID, GuarantDropOrDropGroupID, UseGroup)
-    print(string.format("LotteryComponent:IsGuarantItem ItemID: %d DropID: %d", ItemID, GuarantDropOrDropGroupID));
     local DropGroupTable = LotteryManager:GetDropGroupData();
     local DropTable = LotteryManager:GetDropData();
     if UseGroup then
@@ -1253,7 +1215,6 @@ end
 ---@param DropGroupID number
 ---@return number, boolean
 function LotteryComponent:IsUseDropGroup(DropID, DropGroupID)
-    print(string.format("LotteryComponent:IsUseDropGroup DropID: %d, DropGroupID: %d", DropID, DropGroupID));
     local DropGroupTable = LotteryManager:GetDropGroupData();
     local DropTable = LotteryManager:GetDropData();
     if DropTable and DropTable[DropID] then
@@ -1336,7 +1297,6 @@ function LotteryComponent:WriteOneLotteryRecord(LotteryID, DropRecord, DrawRecor
     local ServerTimeSec = UGCGameSystem.GetServerTimeSec();
     local CurDate = os.date("*t", ServerTimeSec);
     local TodayTimeStamp = os.time({year=CurDate.year, month=CurDate.month, day=CurDate.day, hour=0, min=0, sec=0});
-    print(string.format("服务器拿到的当前抽奖时间: %d", ServerTimeSec));
 
     -- 先判断是不是抽奖组
     local LotteryData = LotteryManager:GetLotteryConfigData(LotteryID);
@@ -1487,7 +1447,6 @@ function LotteryComponent:WriteTenLotteryRecord(LotteryID, TenDropRecord, DrawRe
     local LotteryData = LotteryManager:GetLotteryConfigData(LotteryID);
     local ServerTimeSec = UGCGameSystem.GetServerTimeSec();
     local CurDate = os.date("*t", ServerTimeSec);
-    print(string.format("服务器拿到的当前抽奖时间: %d", ServerTimeSec));
     local TodayTimeStamp = os.time({year=CurDate.year, month=CurDate.month, day=CurDate.day, hour=0, min=0, sec=0});
     if LotteryData then
         local LotteryGroupID = LotteryData.DailyDrawGroup;
@@ -1666,9 +1625,7 @@ function LotteryComponent:WritePlayerData(PlayerData)
 
     if bSuccess == true then
         self.LotteryPlayerData = PlayerData;
-        print(string.format("LotteryComponent:Write UID: %d PlayerData Success", UID));
     else
-        print(string.format("LotteryComponent:Write UID: %d PlayerData Failed", UID));
     end
 
     return bSuccess;
@@ -1678,7 +1635,6 @@ end
 ---生效范围: 服务端
 ---@return any
 function LotteryComponent:ReadPlayerData()
-    print("LotteryComponent:ReadPlayerData")
     local PlayerController = self:GetOwner();
     if PlayerController:HasAuthority() == false then
         return;
@@ -1723,13 +1679,11 @@ function LotteryComponent:GetTotalDrawTimes(LotteryID)
     if IsUseLotteryGroup then
         local DrawInfo = self.LotteryGroupDrawInfo;
         if DrawInfo[GroupID] then
-            print(string.format("LotteryComponent:GetTotalDrawTimes LotteryGroupID: %d, TotalDrawTimes: %d",GroupID, DrawInfo[GroupID].TotalDrawTimes));
             return DrawInfo[GroupID].TotalDrawTimes;
         end
     else
         local DrawInfo = self.LotteryDrawInfo;
         if DrawInfo[LotteryID] then
-            print(string.format("LotteryComponent:GetTotalDrawTimes LotteryID: %d, TotalDrawTimes: %d",LotteryID, DrawInfo[LotteryID].TotalDrawTimes));
             return DrawInfo[LotteryID].TotalDrawTimes;
         end
     end
@@ -1746,13 +1700,11 @@ function LotteryComponent:GetTodayDrawTimes(LotteryID)
     if IsUseLotteryGroup then
         local DrawInfo = self.LotteryGroupDrawInfo;
         if DrawInfo[GroupID] then
-            print(string.format("LotteryComponent:GetTodayDrawTimes LotteryGroupID: %d, TotalDrawTimes: %d",GroupID, DrawInfo[GroupID].TodayDrawTimes));
             return DrawInfo[GroupID].TodayDrawTimes;
         end
     else
         local DrawInfo = self.LotteryDrawInfo;
         if DrawInfo[LotteryID] then
-            print(string.format("LotteryComponent:GetTodayDrawTimes LotteryID: %d, TotalDrawTimes: %d",LotteryID, DrawInfo[LotteryID].TodayDrawTimes));
             return DrawInfo[LotteryID].TodayDrawTimes;
         end
     end
@@ -1794,7 +1746,6 @@ end
 ---@param LotteryID number
 ---@return boolean, number
 function LotteryComponent:IsUseLotteryGroup(LotteryID)
-    print(string.format("LotteryComponent:IsUseLotteryGroup LotteryID: %d", LotteryID));
     local LotteryData = LotteryManager:GetLotteryConfigData(LotteryID);
     if LotteryData and LotteryData.DailyDrawGroup then
         if LotteryData.DailyDrawGroup == 0 then
@@ -1865,7 +1816,6 @@ end
 ---@param ProductID number
 ---@param ExchangeNum number
 function LotteryComponent:ExchangeProduct(ProductID, ExchangeNum)
-    print("LotteryComponent:ExchangeProduct");
     local PlayerController = self:GetOwner();
     if PlayerController:HasAuthority() == true then
         return;
@@ -1905,7 +1855,6 @@ end
 ---@param Price number
 ---@param PurchasNum number
 function LotteryComponent:PurchaseProduct(ProductID, Price, PurchasNum)
-    print("LotteryComponent:PurchaseProduct");
     local PlayerController = self:GetOwner();
     if PlayerController:HasAuthority() == true then
         return;
@@ -2074,7 +2023,6 @@ end
 --初始化抽奖主界面
 --生效范围：客户端
 function LotteryComponent:InitLotteryMainUI()
-    print("LotteryComponent:InitLotteryMainUI");
     local PlayerController = self:GetOwner();
     if PlayerController:HasAuthority() == true then
         return;
@@ -2089,7 +2037,6 @@ end
 --打开抽奖主界面
 --生效范围：客户端
 function LotteryComponent:OpenPanel()
-    print("LotteryComponent:OpenPanel");
     local PlayerController = self:GetOwner();
     if PlayerController:HasAuthority() == true then
         return;
@@ -2114,7 +2061,6 @@ function LotteryComponent:OpenPanel()
                 local ServerTime = UGCGameSystem.GetServerTimeSec();
                 local CurrentTime = os.date("*t", ServerTime);
 
-                print(string.format("[LotteryComponent] 计时器 ServerTime: %d NextRefreshTime: %d ProductRefreshTime: %d", ServerTime, self.NextRefreshTime, self.ProductRefreshTime));
                 if ServerTime >= self.NextRefreshTime then
                     -- 计算下一次刷新时间
                     -- 下一次刷新时间是明天的零点
@@ -2148,7 +2094,6 @@ function LotteryComponent:ClosePanel()
     if PlayerController:HasAuthority() == true then
         return;
     end
-    print("LotteryComponent:ClosePanel");
     if self.LotteryMainUI then
         -- 关闭抽奖界面
         self.LotteryMainUI:SetVisibility(ESlateVisibility.Collapsed);
@@ -2170,7 +2115,6 @@ end
 --生效范围：客户端
 ---@param LotteryID number
 function LotteryComponent:SelectLottery(LotteryID)
-    print("LotteryComponent:SelectLottery");
     local PlayerController = self:GetOwner();
     if PlayerController:HasAuthority() == true then
         return;
@@ -2541,14 +2485,12 @@ function LotteryComponent:OnBuyProduct(Result)
         local ItemList = {[1] = {ItemID = ProductData.ItemID, ItemNum = Num * ProductData.ItemNum}};
         self:OpenGetItemUI(ItemList);
     else
-        print(string.format("购买商品失败, 错误码: %d", Validation));
     end
 end
 
 --商品购买数量更新回调
 --生效范围：客户端&&服务端
 function LotteryComponent:OnLimitProductUpdate()
-    print("LotteryComponent:OnLimitProductUpdate");
     ---刷新限购状态
     if self.LotteryExchangeUI then
         ---需要存到DS上发给客户端
@@ -2648,7 +2590,6 @@ end
 --生效范围：客户端&&服务端
 ---@param ItemList any
 function LotteryComponent:DrawLotteryOnceDelegate(ItemList)
-    print("[LotteryComponent] DrawLotteryOnceDelegate");
     log_tree("DrawLotteryOnceDelegate ItemList:", ItemList);
     LotteryManager.OnDrawLotteryOnceDelegate(ItemList);
 end
@@ -2672,7 +2613,6 @@ end
 --生效范围：客户端&&服务端
 ---@param ItemList any
 function LotteryComponent:DrawLotteryTenTimesDelegate(ItemList)
-    print("[LotteryComponent] DrawLotteryTenTimesDelegate");
     log_tree("DrawLotteryTenTimesDelegate ItemList:", ItemList);
     LotteryManager.OnDrawLotteryTenTimesDelegate(ItemList);
 end
@@ -2697,7 +2637,6 @@ end
 --生效范围：客户端&&服务端
 ---@param Success boolean
 function LotteryComponent:AddGiftPackageDelegate(Success)
-    print(string.format("[LotteryComponent] AddGiftPackageDelegate Success: %s", Success or false));
     LotteryManager.OnAddGiftPackageDelegate(Success);
 end
 

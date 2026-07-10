@@ -16,7 +16,6 @@ local Avarar_frame = {
 	MaxAvatarRefreshRetryCount = 5,
 }
 function Avarar_frame:print(msg)
-	print(string.format("[Avarar_frame]: %s", msg))
 end
 
 function Avarar_frame:Construct()

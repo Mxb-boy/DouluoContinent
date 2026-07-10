@@ -17,17 +17,14 @@ function UGC_Task_TabBut_UIBP:InitBindEvent()
 end
 
 function UGC_Task_TabBut_UIBP:SelectTaskLine()
-    print(string.format("[UGC_Task_TabBut_UIBP:SelectTaskLine] Index: %d", self.Index));
     TaskManager:SelectTaskLine(self.Index);
 end
 
 function UGC_Task_TabBut_UIBP:Select()
-    print(string.format("[UGC_Task_TabBut_UIBP:Select] Index: %d", self.Index));
     self.WidgetSwitcher_TaskBut:SetActiveWidgetIndex(1);
 end
 
 function UGC_Task_TabBut_UIBP:UnSelect()
-    print(string.format("[UGC_Task_TabBut_UIBP:UnSelect] Index: %d", self.Index));
     self.WidgetSwitcher_TaskBut:SetActiveWidgetIndex(0);
 end
 
@@ -48,7 +45,6 @@ function UGC_Task_TabBut_UIBP:Destruct()
 end
 
 function UGC_Task_TabBut_UIBP:RefreshRedPoint()
-    print(string.format("[UGC_Task_TabBut_UIBP:RefreshRedPoint] TaskLineName: %s", self.TaskLineName));
     log_tree("[UGC_Task_TabBut_UIBP:RefreshRedPoint] TaskInfoList", TaskInfoList);
     local TaskLineConfig = TaskManager:GetTaskLineConfig(self.TaskLineName);
     local ShowRedPoint = false;

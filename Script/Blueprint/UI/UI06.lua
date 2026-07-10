@@ -190,7 +190,6 @@ function UI06:RefreshTitleImage(titleID)
         string.format("Btn_Title_%02d", titleID)
     )
     if sourceButton == nil or self.ImgShow == nil then
-        ugcprint("[UI06] RefreshTitleImage: sourceButton or ImgShow nil for " .. titleID)
         return
     end
 
@@ -198,7 +197,6 @@ function UI06:RefreshTitleImage(titleID)
         sourceButton.WidgetStyle.Normal
     )
     if texture == nil then
-        ugcprint("[UI06] RefreshTitleImage: button texture nil for " .. titleID)
         return
     end
 
@@ -235,12 +233,10 @@ function UI06:ApplyEquippedTitleToHead(titleID)
     local playerController = UGCGameSystem.GetLocalPlayerController()
         or GameplayStatics.GetPlayerController(self, 0)
     if playerController == nil then
-        ugcprint("[UI06] ApplyEquippedTitleToHead failed: local playerController is nil")
         return
     end
 
     if playerController.Server_EquipTitle == nil then
-        ugcprint("[UI06] ApplyEquippedTitleToHead failed: Server_EquipTitle is nil")
         return
     end
 

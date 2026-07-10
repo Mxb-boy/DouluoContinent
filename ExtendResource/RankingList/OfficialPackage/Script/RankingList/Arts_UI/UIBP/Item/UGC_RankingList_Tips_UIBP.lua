@@ -46,23 +46,17 @@ function UGC_RankingList_Tips_UIBP:InitUI(ItemID, Position)
 
     --#TODO 使用GamePart获取Item数
     local ItemNum = RankingListManager:GetItemNum(ItemID) or 0;
-    print(string.format("UGC_RankingList_ItemTips_UIBP:InitUI ItemNum: %d", ItemNum));
     self.NumText:SetText(string.format("已拥有%d个", ItemNum));
     self:SetPosition(Position);
 end
 
 function UGC_RankingList_Tips_UIBP:SetPosition(Position)
-    print(Position.X);
-    print(Position.Y);
     local ViewportSize = WidgetLayoutLibrary.GetViewportSize(self);
     local ViewportScale = WidgetLayoutLibrary.GetViewportScale(self);
     local MaxX = ViewportSize.X;
     local MaxY = ViewportSize.Y;
-    print(string.format("ViewportSize X: %d, Y: %d", tonumber(ViewportSize.X), tonumber(ViewportSize.Y)));
-    print(string.format("ViewportScale %s", tostring(ViewportScale)));
 
     local TipSize = self.BasePanel.Slots[2]:GetSize();
-    print(string.format("TipSize X: %d, Y: %d", tonumber(TipSize.X), tonumber(TipSize.Y)));
     local DesireX = (Position.X + TipSize.X) * ViewportScale;
     local DesireY = (Position.Y + TipSize.Y) * ViewportScale;
 

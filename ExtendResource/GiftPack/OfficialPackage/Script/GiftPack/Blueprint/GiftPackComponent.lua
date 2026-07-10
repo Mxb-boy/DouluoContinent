@@ -44,7 +44,6 @@ end
 --]]
 
 function GiftPackComponent:ReceiveBeginPlay()
-    print("GiftPackComponent:ReceiveBeginPlay");
     GiftPackComponent.SuperClass.ReceiveBeginPlay(self)
 
     GiftPackManager:RegisterComponentClass(self.GiftPackComponentClassPath);
@@ -127,17 +126,14 @@ function GiftPackComponent:PreLoad()
     local Path = UGCGameSystem.GetUGCResourcesFullPath('Asset/Data/Table/UGCGiftPack.UGCGiftPack');
     Common.LoadObjectAsync(Path,
         function (Object)
-            print("[LotteryComponent] Preload UGCGiftPack Table Success!");
         end
     );
 end
 
 function GiftPackComponent:InitGamePart(GamePartName)
-    print("[GiftPackComponent:InitGamePart] Start Init GamePart");
     local PlayerController = self:GetOwner();
     if GamePartName == "VirtualItemManager" then
         self.VirtualItemManager = UGCBlueprintFunctionLibrary.GetGamePartGlobalActor(UGCGameSystem.GameState, "VirtualItemManager");
-        print(string.format("self.VirtualItemManager %s", self.VirtualItemManager == nil));
     
         if PlayerController:HasAuthority() == false and UE.IsValid(self.VirtualItemManager) then
             self.VirtualItemManager.AddItemResultDelegate:Add(self.OnAddVirtualItem, self);
@@ -181,28 +177,24 @@ function GiftPackComponent:ShowItemTip(ItemID, Position)
 end
 
 function GiftPackComponent:SelectItemByIndex(Index)
-    print(string.format("GiftPackComponent:SelectItemByID Index: %d", Index));
     if self.GiftPackSingleUI then
         self.GiftPackSingleUI:SelectItemByIndex(Index);
     end
 end
 
 function GiftPackComponent:IncreaseItem(ItemID)
-    print(string.format("GiftPackComponent:IncreaseItem"));
     if self.GiftPackComplexUI then
         self.GiftPackComplexUI:IncreaseItem(ItemID);
     end
 end
 
 function GiftPackComponent:ReduceItem(ItemID)
-    print(string.format("GiftPackComponent:ReduceItem"));
     if self.GiftPackComplexUI then
         self.GiftPackComplexUI:ReduceItem(ItemID);
     end
 end
 
 function GiftPackComponent:GetComplexSelectNum()
-    print(string.format("GiftPackComponent:GetComplexSelectNum"));
     if self.GiftPackComplexUI then
         return self.GiftPackComplexUI:GetComplexSelectNum();
     end
@@ -216,24 +208,20 @@ function GiftPackComponent:CloseApplyGiftPackUI()
 end
 
 function GiftPackComponent:UseGiftPack(GiftPackID, UseNum, ItemList)
-    print(string.format("GiftPackComponent:UseGiftPack GiftPackID: %d UseNum: %d", GiftPackID, UseNum));
     local PlayerController = self:GetOwner();
     -- 判断是否拥有对应的礼包
     local GiftPackData = GiftPackManager:GetGiftPackDataByID(GiftPackID);
     if GiftPackData then
         local GiftPackNum = self:GetItemNum(GiftPackData.ItemID);
         if GiftPackNum < UseNum then
-            print("礼包数量不足！");
             return;
         end
     else
-        print("礼包不存在！");
         return;
     end
 
     -- 防连点
     if self.IsUsing == true then
-        print("上一次使用礼包的流程还未结束！");
         return false; 
     end
     self.IsUsing = true;
@@ -241,7 +229,6 @@ function GiftPackComponent:UseGiftPack(GiftPackID, UseNum, ItemList)
 end
 
 function GiftPackComponent:Server_UseGiftPack(PlayerController, GiftPackID, UseNum, ItemList)
-    print(string.format("GiftPackComponent:Server_UseGiftPack GiftPackID: %d UseNum: %d", GiftPackID, UseNum));
     if PlayerController:HasAuthority() == false then
         return; 
     end
@@ -259,20 +246,17 @@ function GiftPackComponent:Server_UseGiftPack(PlayerController, GiftPackID, UseN
             self:ConsumeGiftPack(PlayerController, ItemID, UseNum, ItemList);
         end
     end
-    print("GiftPackComponent:Server_UseGiftPack Done");
 end
 
 function GiftPackComponent:ReadPlayerData(PlayerKey)
     if self:GetOwner():HasAuthority() == false then
         return;
     end
-    print(string.format("GiftPackComponent:Begin read PlayerKey:%d PlayerData", PlayerKey));
 
     local UID = STExtraGameplayStatics.FindPlayerControllerWithPlayerKey(self, PlayerKey):GetInt64UID();
     local PlayerData = UGCPlayerStateSystem.GetPlayerArchiveData(UID);
 
     if PlayerData == nil then
-        print(string.format("GiftPackComponent:UID:%d PlayerData is empty, creating new one.", UID))
 
         PlayerData = {
             Shop = 
@@ -285,7 +269,6 @@ function GiftPackComponent:ReadPlayerData(PlayerKey)
     end
 
     if PlayerData["Shop"] == nil then
-        print(string.format("GiftPackComponent:UID:%d ShopData is empty, creating new one.", UID))
         
         PlayerData["Shop"] = {
             PurchasedList = {},
@@ -294,7 +277,6 @@ function GiftPackComponent:ReadPlayerData(PlayerKey)
         UGCPlayerStateSystem.SavePlayerArchiveData(UID, PlayerData);
     end
 
-    print(string.format("GiftPackComponent:Read UID:%d PlayerData Success", UID));
     return PlayerData;
 end
 
@@ -303,27 +285,22 @@ function GiftPackComponent:WritePlayerData(PlayerKey, PlayerData)
         return;
     end
 
-    print(string.format("GiftPackComponent:Begin write PlayerKey:%d PlayerData", PlayerKey));
 
     local UID = STExtraGameplayStatics.FindPlayerControllerWithPlayerKey(self, PlayerKey):GetInt64UID();
     local bSuccess = UGCPlayerStateSystem.SavePlayerArchiveData(UID, PlayerData);
 
     if bSuccess == true then
-        print(string.format("GiftPackComponent:Write UID:%d PlayerData Success", UID));
     else
-        print(string.format("GiftPackComponent:Write UID:%d PlayerData Failed", UID));
     end
 end
 
 function GiftPackComponent:ConsumeGiftPack(PlayerController, ItemID, UseNum, ItemList)
-    print(string.format("GiftPackComponent:UseGiftPack ItemID: %d UseNum: %d", ItemID, UseNum));
     if PlayerController:HasAuthority() == false then
         return;
     end
 
     local AwardList = {};
     for AwardID, ItemNum in pairs(ItemList) do
-        print(string.format("ItemID: %d ItemNum: %d", AwardID, ItemNum));
         table.insert(AwardList, {ItemID = AwardID, ItemNum = ItemNum});
     end
 
@@ -342,7 +319,6 @@ function GiftPackComponent:AutoUseGiftPack(PlayerController, GiftPackID, ItemID,
     end
 
     local ItemList = GiftPackManager:GetAllGiftPackDropList(GiftPackID, UseNum);
-    print(string.format("GiftPackComponent:AutoUseGiftPack ItemList: %d", #ItemList));
     self:ConsumeGiftPack(PlayerController, ItemID, UseNum, ItemList);
 end
 
@@ -353,7 +329,6 @@ function GiftPackComponent:OnAddVirtualItem(Result)
     end
     -- 礼包使用完毕，可以进行下一次使用
     self.IsUsing = false;
-    print(string.format("GiftPackComponent:OnAddVirtualItem"));
     local bSucceeded = Result.bSucceeded;
     local PlayerKey = Result.PlayerKey;
     local RequestMark = Result.RequestMark;

@@ -99,8 +99,6 @@ function UGCPlayerState:LoadFromArchive(UID)
                 -- pcall 保护：单个 Setter 失败不影响其他字段加载，且确保锁一定能释放
                 local ok, err = pcall(self[setterName], self, val)
                 if not ok then
-                    print(string.format("[UGCPlayerState] LoadFromArchive: %s failed for key %s: %s",
-                        setterName, entry.key, tostring(err)))
                 end
             end
         end

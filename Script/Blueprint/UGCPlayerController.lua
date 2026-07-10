@@ -53,36 +53,30 @@ function UGCPlayerController:ReceiveBeginPlay()
     local MainUIClass = UE.LoadClass(MainUIPath)
 
     if MainUIClass == nil then
-        ugcprint("[UGCPlayerController] MainUI class load failed: " .. MainUIPath)
         return
     end
 
     self.MainUIInstance = UserWidget.NewWidgetObjectBP(self, MainUIClass)
     if self.MainUIInstance == nil then
-        ugcprint("[UGCPlayerController] MainUI create failed")
         return
     end
 
     self.MainUIInstance:AddToViewport()
-    ugcprint("[UGCPlayerController] MainUI created")
     self:Client_RefreshTitleBonus()
 
     local FeiUIPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/Fei.Fei_C"
     local FeiUIClass = UE.LoadClass(FeiUIPath)
 
     if FeiUIClass == nil then
-        ugcprint("[UGCPlayerController] Fei UI class load failed: " .. FeiUIPath)
         return
     end
 
     self.FeiUIInstance = UserWidget.NewWidgetObjectBP(self, FeiUIClass)
     if self.FeiUIInstance == nil then
-        ugcprint("[UGCPlayerController] Fei UI create failed")
         return
     end
 
     self.FeiUIInstance:AddToViewport()
-    ugcprint("[UGCPlayerController] Fei UI created")
 end
 
 function UGCPlayerController:GetAvailableServerRPCs()
@@ -148,7 +142,6 @@ function UGCPlayerController:Client_OpenTowerTopUI()
 
     local UIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath('Asset/Blueprint/UI/TowerTopUI.TowerTopUI_C'))
     if UIClass == nil then
-        ugcprint("[UGCPlayerController] TowerTopUI class load failed")
         return
     end
 
@@ -348,7 +341,6 @@ local function AddItem(PlayerController, ItemID, Count)
     local Pawn = GetPlayerPawn(PlayerController)
     if Pawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.AddItemV2 ~= nil then
         local Success, Result = pcall(UGCBackpackSystemV2.AddItemV2, Pawn, ItemID, Count)
-        print("[ShopV2:SERVER] BackpackV2 path: OK=" .. tostring(Success) .. " Result=" .. tostring(Result))
         if Success and Result ~= false and Result ~= 0 then
             if WeaponLevelConfig.GetWeaponInfo(ItemID) ~= nil and Pawn.RefreshWeaponAttackBonus ~= nil then
                 Pawn:RefreshWeaponAttackBonus(true)
@@ -359,15 +351,12 @@ local function AddItem(PlayerController, ItemID, Count)
             return true
         end
     else
-        print("[ShopV2:SERVER] BackpackV2 path: UNAVAILABLE (Pawn=" .. tostring(Pawn) .. " BPS=" ..
-                  tostring(UGCBackpackSystemV2) .. ")")
     end
 
     local VirtualItemManager = GetVirtualItemManager()
     if VirtualItemManager ~= nil and VirtualItemManager.AddVirtualItem ~= nil then
         local Success, Result = pcall(VirtualItemManager.AddVirtualItem, VirtualItemManager, PlayerController, ItemID,
             Count)
-        print("[ShopV2:SERVER] Virtual path: OK=" .. tostring(Success) .. " Result=" .. tostring(Result))
         if Success and Result ~= false then
             if Pawn ~= nil and WeaponLevelConfig.GetWeaponInfo(ItemID) ~= nil and Pawn.RefreshWeaponAttackBonus ~= nil then
                 Pawn:RefreshWeaponAttackBonus(true)
@@ -379,7 +368,6 @@ local function AddItem(PlayerController, ItemID, Count)
         end
     end
 
-    print("[ShopV2:SERVER] All paths FAILED")
     return false
 end
 
@@ -439,7 +427,6 @@ function UGCPlayerController:Server_EatAllSoulRings()
                 LastBaseMaxHp = NewBaseMaxHp
             else
                 AddItem(self, ItemID, Count)
-                ugcprint("[UGCPlayerController:Server_EatAllSoulRings] UseHunHuan failed: " .. tostring(ItemID))
             end
         end
     end
@@ -460,23 +447,18 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num,
     Num = tonumber(Num) or 1
     VirtualItemID = tonumber(VirtualItemID)
     if BackpackItemID == nil or Num <= 0 then
-        print("[ShopV2:SERVER] Invalid params: " .. tostring(BackpackItemID) .. " x " .. tostring(Num))
         return
     end
     local PlayerPawn = UGCGameSystem.GetPlayerPawnByPlayerController(self)
     if PlayerPawn == nil then
-        print("[ShopV2:SERVER] PlayerPawn nil")
         return
     end
     local before = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, BackpackItemID)
-    print("[ShopV2:SERVER] BEFORE AddItemV2: ItemID=" .. tostring(BackpackItemID) .. " count=" .. tostring(before))
     local ret = UGCBackpackSystemV2.AddItemV2(PlayerPawn, BackpackItemID, Num)
     local after = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, BackpackItemID)
-    print("[ShopV2:SERVER] AFTER AddItemV2: ret=" .. tostring(ret) .. " count=" .. tostring(after))
 
     -- BugFix: 返回值为 0 表示添加失败（如背包满）
     if ret == 0 then
-        print("[ShopV2:SERVER] AddItemV2 FAILED (ret=0), keeping virtual item as fallback")
         return
     end
 
@@ -486,8 +468,6 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num,
         if VirtualItemManager then
             local rmOK, rmErr =
                 pcall(VirtualItemManager.RemoveVirtualItem, VirtualItemManager, self, VirtualItemID, Num)
-            print("[ShopV2:SERVER] RemoveVirtualItem(VItemID=" .. tostring(VirtualItemID) .. " x " .. tostring(Num) ..
-                      ") ok=" .. tostring(rmOK) .. " err=" .. tostring(rmErr))
         end
     end
 end
@@ -496,18 +476,15 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
     ItemID = tonumber(ItemID)
     local Cost = WeaponLevelConfig.GetForgeCost(ItemID)
     if ItemID == nil or Cost == nil then
-        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Invalid item: " .. tostring(ItemID))
         return
     end
 
     if GetItemCount(self, ItemID) <= 0 then
-        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Weapon not found: " .. tostring(ItemID))
         return
     end
 
     if GetItemCount(self, ForgeMaterialItemIDs.HGRJ) < (Cost.HGRJ or 0) or GetItemCount(self, ForgeMaterialItemIDs.QNHH) <
         (Cost.QNHH or 0) then
-        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Material not enough")
         return
     end
 
@@ -515,12 +492,10 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
     local ResultItemID = WeaponLevelConfig.GetResultItemID(ItemID, ResultType)
 
     if not RemoveItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0) then
-        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove HGRJ failed")
         return
     end
     if not RemoveItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0) then
         AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
-        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove QNHH failed")
         return
     end
 
@@ -528,28 +503,22 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
         if not RemoveItem(self, ItemID, 1) then
             AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
             AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
-            ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove old weapon failed")
             return
         end
         if not AddItem(self, ResultItemID, 1) then
             AddItem(self, ItemID, 1)
             AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
             AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
-            ugcprint("[UGCPlayerController:Server_ForgeWeapon] Add new weapon failed")
             return
         end
     end
 
     UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", ResultType, ItemID, ResultItemID)
 
-    ugcprint(
-        "[UGCPlayerController:Server_ForgeWeapon] result=" .. tostring(ResultType) .. ", from=" .. tostring(ItemID) ..
-            ", to=" .. tostring(ResultItemID))
 end
 
 function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, ResultItemID)
     if self.MainUIInstance == nil or self.MainUIInstance.UI10Instance == nil then
-        ugcprint("[UGCPlayerController:Client_ForgeWeaponResult] UI10 instance is nil")
         return
     end
 
@@ -611,7 +580,6 @@ function UGCPlayerController:UseRealmLuckyCard()
 
     self.RealmLuckyExtraRate = 15
     self.RealmLuckyTargetLevel = math.min(RealmConfig.MaxLevel, GetRealmLevel(self) + 1)
-    ugcprint("[UGCPlayerController:UseRealmLuckyCard] target=" .. tostring(self.RealmLuckyTargetLevel) .. ", rate=15")
     return true
 end
 
@@ -671,8 +639,6 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
     local ExpectedLevel = CurrentLevel + 1
 
     if TargetLevel ~= ExpectedLevel or TargetLevel == nil or TargetLevel > RealmConfig.MaxLevel then
-        ugcprint("[UGCPlayerController:Server_BreakRealm] invalid target=" .. tostring(TargetLevel) .. ", current=" ..
-                     tostring(CurrentLevel))
         return
     end
 
@@ -684,8 +650,6 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
     local FailCount = GetRealmFailCount(self, TargetLevel)
     local HasItems, MissingItem = HasRealmNeedItems(self, Config)
     if not HasItems then
-        ugcprint("[UGCPlayerController:Server_BreakRealm] item not enough: " ..
-                     tostring(MissingItem and MissingItem.Name or "nil") .. ", target=" .. tostring(TargetLevel))
         UnrealNetwork.CallUnrealRPC(self, self, "Client_BreakRealmResult", false, CurrentLevel, TargetLevel, FailCount,
             0, false)
         return
@@ -693,9 +657,6 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
 
     local RemoveSuccess, RemoveFailedItem = RemoveRealmNeedItems(self, Config)
     if not RemoveSuccess then
-        ugcprint("[UGCPlayerController:Server_BreakRealm] remove item failed: " ..
-                     tostring(RemoveFailedItem and RemoveFailedItem.Name or "nil") .. ", target=" ..
-                     tostring(TargetLevel))
         UnrealNetwork.CallUnrealRPC(self, self, "Client_BreakRealmResult", false, CurrentLevel, TargetLevel, FailCount,
             0, false)
         return
@@ -726,9 +687,6 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
     UnrealNetwork.CallUnrealRPC(self, self, "Client_BreakRealmResult", Success, NewLevel, TargetLevel, FailCount,
         UsedRate, IsGuaranteed)
 
-    ugcprint("[UGCPlayerController:Server_BreakRealm] target=" .. tostring(TargetLevel) .. ", success=" ..
-                 tostring(Success) .. ", rate=" .. tostring(UsedRate) .. ", guaranteed=" .. tostring(IsGuaranteed) ..
-                 ", failCount=" .. tostring(FailCount) .. ", extraRate=" .. tostring(ExtraRate))
 end
 
 function UGCPlayerController:Client_BreakRealmResult(Success, NewLevel, TargetLevel, FailCount, UsedRate, IsGuaranteed)
@@ -746,7 +704,6 @@ function UGCPlayerController:Client_BreakRealmResult(Success, NewLevel, TargetLe
     end
 
     if self.MainUIInstance == nil or self.MainUIInstance.UI08Instance == nil then
-        ugcprint("[UGCPlayerController:Client_BreakRealmResult] UI08 instance is nil")
         return
     end
 
@@ -875,7 +832,6 @@ function UGCPlayerController:Server_RequestLottery(LotteryType, SlotIndex)
     LotteryType = tonumber(LotteryType) or 0
     local Pool = LotteryConfig.GetPool(LotteryType)
     if Pool == nil then
-        ugcprint("[UGCPlayerController:Server_RequestLottery] invalid type=" .. tostring(LotteryType))
         UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, -1, 0, 0, 0, {})
         return
     end
@@ -1116,7 +1072,6 @@ end
 function UGCPlayerController:Server_UpdateRankingListScore(UID, RankID, Score, IsIncremental)
     local RankingListGlobalActor = UGCGamePartSystem.GetGamePartGlobalActor("RankingListManager")
     if RankingListGlobalActor == nil then
-        ugcprint("[UGCPlayerController:Server_UpdateRankingListScore] RankingListManager global actor is nil")
         return
     end
 
@@ -1128,7 +1083,6 @@ end
 function UGCPlayerController:Server_ClearAllRankingListData()
     local RankingListGlobalActor = UGCGamePartSystem.GetGamePartGlobalActor("RankingListManager")
     if RankingListGlobalActor == nil then
-        ugcprint("[UGCPlayerController:Server_ClearAllRankingListData] RankingListManager global actor is nil")
         return
     end
 
@@ -1247,6 +1201,15 @@ function UGCPlayerController:Client_RefreshProperty(baseAttack, baseMaxHp, hp, m
 
     UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty, baseAttack, baseMaxHp,
         hp, maxHp, bFillHealth)
+end
+
+--- 服务端武器切换委托触发后，RPC 通知客户端刷新武器加成显示（兜底机制）
+function UGCPlayerController:Client_RefreshWeaponAttack()
+    if self.Pawn ~= nil and self.Pawn.RefreshWeaponAttackBonus ~= nil then
+        self.Pawn.LastWeaponAttackKey = nil
+        self.Pawn.LastLocalWeaponAttackDisplayKey = nil
+        self.Pawn:RefreshWeaponAttackBonus(true)
+    end
 end
 
 --[[-------------------------固定添加属性---------------------]] --
@@ -1428,11 +1391,24 @@ function UGCPlayerController:Server_SetAutoPickEnabled(bEnabled)
     end
 
     UGCTimerUtility.CreateLuaTimer(AUTO_PICK_INTERVAL, function()
+        if self.Pawn == nil then
+            return
+        end
         local Location = self.Pawn:K2_GetActorLocation()
         local Wrappers = UGCItemSystemV2.FindPickupWrapperActorByRange(Location, AUTO_PICK_RANGE)
+        if Wrappers == nil then
+            return
+        end
 
-        for _, Wrappers in pairs(Wrappers) do
-            UGCItemSystemV2.TryPickupWrapperItem(self.Pawn, Wrappers, nil, Wrappers:GetItemCount(), true)
+        -- 先复制到 Lua table，防止遍历 UE TArray 时数组变化（拾取会从场景移除掉落物）
+        local wrapperCopy = {}
+        for _, w in ipairs(Wrappers) do
+            table.insert(wrapperCopy, w)
+        end
+        for _, wrapper in ipairs(wrapperCopy) do
+            if wrapper and UE.IsValid(wrapper) then
+                UGCItemSystemV2.TryPickupWrapperItem(self.Pawn, wrapper, nil, wrapper:GetItemCount(), true)
+            end
         end
     end, true, TimerName)
 
@@ -1443,7 +1419,8 @@ end
 
 --[[----------------------自动攻击------------------------]] --
 function UGCPlayerController:StopAutoMeleeAttack()
-    UGCTimerUtility.RemoveLuaTimerByName("AutoMeleeAttack")
+    local TimerName = "AutoMeleeAttack_" .. tostring(self.PlayerKey)
+    UGCTimerUtility.RemoveLuaTimerByName(TimerName)
 end
 
 local Auto_Melee_Attack = 0.45
@@ -1455,10 +1432,11 @@ local function TriggerMeleeWeaponAttack(Weapon)
 end
 
 function UGCPlayerController:StartAutoMeleeAttack()
-    UGCTimerUtility.RemoveLuaTimerByName("AutoMeleeAttack")
+    local TimerName = "AutoMeleeAttack_" .. tostring(self.PlayerKey)
+    UGCTimerUtility.RemoveLuaTimerByName(TimerName)
     UGCTimerUtility.CreateLuaTimer(Auto_Melee_Attack, function()
         self:TryAutoMeleeAttack()
-    end, true, "AutoMeleeAttack")
+    end, true, TimerName)
 end
 
 function UGCPlayerController:Client_StartAutoMeleeAttack()
@@ -1569,7 +1547,6 @@ function UGCPlayerController:RegisterCompensationDelegates()
         end
     end
 
-    print("[Compensation] RegisterCompensationDelegates: isServer=" .. tostring(self:HasAuthority()))
 end
 
 -- 注销补偿系统委托
@@ -1596,6 +1573,15 @@ end
 function UGCPlayerController:ReceiveEndPlay()
     self:StopTowerAttentionSoundImmediately()
     self:UnregisterCompensationDelegates()
+    self:CleanupPlayerTimers()
+end
+
+--- 玩家离场时统一清理所有按 PlayerKey 命名的循环定时器
+function UGCPlayerController:CleanupPlayerTimers()
+    local PlayerKey = tostring(self.PlayerKey)
+    UGCTimerUtility.RemoveLuaTimerByName("AutoPick_" .. PlayerKey)
+    UGCTimerUtility.RemoveLuaTimerByName("ProbabilityBonus_" .. PlayerKey)
+    UGCTimerUtility.RemoveLuaTimerByName("AutoMeleeAttack_" .. PlayerKey)
 end
 
 --- 单笔补偿回调（服务器&客户端都会收到）
@@ -1605,9 +1591,6 @@ end
 ---@param Count number 补偿数量
 ---@param ProductID number 商品ID（对应UGCShop表）
 function UGCPlayerController:OnCompensateUGCCommodity(PlayerKey, UID, CommodityID, Count, ProductID)
-    print(string.format(
-        "[Compensation] OnCompensateUGCCommodity: PlayerKey=%s UID=%s CommodityID=%s Count=%s ProductID=%s",
-        tostring(PlayerKey), tostring(UID), tostring(CommodityID), tostring(Count), tostring(ProductID)))
 
     -- 服务器收到后转发给对应客户端
     if self:HasAuthority() then
@@ -1623,8 +1606,6 @@ end
 ---@param UID number
 ---@param CommodityList table 补偿商品列表
 function UGCPlayerController:OnCompensateUGCCommodityBatch(PlayerKey, UID, CommodityList)
-    print(string.format("[Compensation] OnCompensateUGCCommodityBatch: PlayerKey=%s UID=%s count=%d",
-        tostring(PlayerKey), tostring(UID), #CommodityList))
 
     local TargetPC = UGCGameSystem.GetPlayerControllerByPlayerKey(PlayerKey)
     if TargetPC == nil then
@@ -1644,9 +1625,6 @@ end
 ---@param CommodityID number 物品ID
 ---@param Count number 新增的差异数量
 function UGCPlayerController:OnBuyUGCCommodityResultBetweenGames(PlayerKey, UID, CommodityID, Count)
-    print(string.format(
-        "[Compensation] OnBuyUGCCommodityResultBetweenGames: PlayerKey=%s UID=%s CommodityID=%s Count=%s",
-        tostring(PlayerKey), tostring(UID), tostring(CommodityID), tostring(Count)))
 
     local TargetPC = UGCGameSystem.GetPlayerControllerByPlayerKey(PlayerKey)
     if TargetPC == nil then
@@ -1662,14 +1640,11 @@ end
 ---@param Count number 数量
 ---@param ProductID number 商品ID（0表示跨局变化）
 function UGCPlayerController:Client_CompensationReceived(CommodityID, Count, ProductID)
-    print(string.format("[Compensation] Client_CompensationReceived: CommodityID=%s Count=%s ProductID=%s",
-        tostring(CommodityID), tostring(Count), tostring(ProductID)))
 
     -- 复用 ShopV2Manager 的弹窗
     if ShopV2Manager ~= nil and ShopV2Manager.ShowItemGetPopup ~= nil then
         ShopV2Manager:ShowItemGetPopup(CommodityID, Count)
     else
-        print("[Compensation] ShopV2Manager not available, popup skipped")
     end
 end
 
@@ -1685,8 +1660,6 @@ function UGCPlayerController:Server_TestCompensation(TestType, CommodityID, Coun
     CommodityID = tonumber(CommodityID) or 1001
     Count = tonumber(Count) or 5
 
-    print(string.format("[Compensation][GM] Server_TestCompensation: type=%d item=%d count=%d", TestType, CommodityID,
-        Count))
 
     if TestType == 1 then
         -- 模拟单笔补偿

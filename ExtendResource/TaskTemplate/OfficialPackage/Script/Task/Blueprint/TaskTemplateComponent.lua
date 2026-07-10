@@ -231,57 +231,48 @@ function TaskTemplateComponent:PreLoad(PlayerController)
     Common.LoadObjectWithSoftPathAsync(self.CopperBoxIconPath01,
         function (Object)
             self.CopperBoxIcon[1] = Object;
-            print(string.format("[TaskTemplateComponent:PreLoad] Preload CopperBoxIcon: %s Success!", self.CopperBoxIconPath01.AssetPathName));
         end
     );
     Common.LoadObjectWithSoftPathAsync(self.CopperBoxIconPath02,
         function (Object)
             self.CopperBoxIcon[2] = Object;
-            print(string.format("[TaskTemplateComponent:PreLoad] Preload CopperBoxIcon: %s Success!", self.CopperBoxIconPath02.AssetPathName));
         end
     );
     Common.LoadObjectWithSoftPathAsync(self.CopperBoxIconPath03,
         function (Object)
             self.CopperBoxIcon[3] = Object;
-            print(string.format("[TaskTemplateComponent:PreLoad] Preload CopperBoxIcon: %s Success!", self.CopperBoxIconPath03.AssetPathName));
         end
     );
 
     Common.LoadObjectWithSoftPathAsync(self.SilverBoxIconPath01,
         function (Object)
             self.SilverBoxIcon[1] = Object;
-            print(string.format("[TaskTemplateComponent:PreLoad] Preload SilverBoxIcon: %s Success!", self.SilverBoxIconPath01.AssetPathName));
         end
     );
     Common.LoadObjectWithSoftPathAsync(self.SilverBoxIconPath02,
         function (Object)
             self.SilverBoxIcon[2] = Object;
-            print(string.format("[TaskTemplateComponent:PreLoad] Preload SilverBoxIcon: %s Success!", self.SilverBoxIconPath02.AssetPathName));
         end
     );
     Common.LoadObjectWithSoftPathAsync(self.SilverBoxIconPath03,
         function (Object)
             self.SilverBoxIcon[3] = Object;
-            print(string.format("[TaskTemplateComponent:PreLoad] Preload SilverBoxIcon: %s Success!", self.SilverBoxIconPath03.AssetPathName));
         end
     );
 
     Common.LoadObjectWithSoftPathAsync(self.GoldBoxIconPath01,
         function (Object)
             self.GoldBoxIcon[1] = Object;
-            print(string.format("[TaskTemplateComponent:PreLoad] Preload GoldBoxIcon: %s Success!", self.GoldBoxIconPath01.AssetPathName));
         end
     );
     Common.LoadObjectWithSoftPathAsync(self.GoldBoxIconPath02,
         function (Object)
             self.GoldBoxIcon[2] = Object;
-            print(string.format("[TaskTemplateComponent:PreLoad] Preload GoldBoxIcon: %s Success!", self.GoldBoxIconPath02.AssetPathName));
         end
     );
     Common.LoadObjectWithSoftPathAsync(self.GoldBoxIconPath03,
         function (Object)
             self.GoldBoxIcon[3] = Object;
-            print(string.format("[TaskTemplateComponent:PreLoad] Preload GoldBoxIcon: %s Success!", self.GoldBoxIconPath03.AssetPathName));
         end
     );
 end
@@ -304,7 +295,6 @@ function TaskTemplateComponent:OnTaskInfoChange(TaskIndex)
 end
 
 function TaskTemplateComponent:OnTaskLineAwardInfoChange(TaskLineName, Index)
-    print(string.format("[TaskTemplateComponent:OnTaskLineAwardInfoChange] TaskLineName: %s Index: %d", TaskLineName, Index));
     if self.TaskMainUI then
         self.TaskMainUI:UpdateTaskLineAwardInfo(TaskLineName, Index);
         self.TaskMainUI:RefreshRedPoint();
@@ -312,7 +302,6 @@ function TaskTemplateComponent:OnTaskLineAwardInfoChange(TaskLineName, Index)
 end
 
 function TaskTemplateComponent:OnTaskLineProgressChange(TaskLineName)
-    print(string.format("[TaskTemplateComponent:OnTaskLineProgressChange] TaskLineName: %s", TaskLineName));
     if self.TaskMainUI then
         self.TaskMainUI:UpdateTaskLineProgress(TaskLineName);
     end
@@ -363,7 +352,6 @@ function TaskTemplateComponent:OnAddVirtualItem(Result)
     if PlayerController:HasAuthority() == true then
         return;
     end
-    print(string.format("[TaskTemplateComponent:OnAddVirtualItem]"));
     if Result.bSucceeded then
         self:RefreshRedPoint();
     end
@@ -374,7 +362,6 @@ function TaskTemplateComponent:ShowItemGet(ItemList)
     if self:GetOwner():HasAuthority() == true then
         return;
     end
-    print("[TaskTemplateComponent:ShowItemGet]");
     if self.TaskItemGetUI then
         self.TaskItemGetUI:InitUI(ItemList);
         self.TaskItemGetUI:SetVisibility(ESlateVisibility.SelfHitTestInvisible);
@@ -460,7 +447,6 @@ function TaskTemplateComponent:GetTaskLineConfig(TaskLineName)
     if UE.IsValid(self:GetTaskManager()) then
         return self:GetTaskManager():GetTaskLineConfig(TaskLineName)
     end
-    print(string.format("[TaskTemplateComponent:GetTaskLineConfig] TaskMgr Is Nil"));
     return nil;
 end
 
@@ -468,7 +454,6 @@ function TaskTemplateComponent:GetLevelTaskInfoList(TaskLineName)
     if UE.IsValid(self:GetTaskPlayerComponent()) then
         return self:GetTaskPlayerComponent():GetLevelTaskInfoList(TaskLineName);
     end
-    print(string.format("[TaskTemplateComponent:GetLevelTaskInfoList] UGCTaskTemplateController Is Nil"));
     return {};
 end
 
@@ -476,7 +461,6 @@ function TaskTemplateComponent:GetPercentTaskInfoList(TaskLineName)
     if UE.IsValid(self:GetTaskPlayerComponent()) then
         return self:GetTaskPlayerComponent():GetPercentTaskInfoList(TaskLineName);
     end
-    print(string.format("[TaskTemplateComponent:GetPercentTaskInfoList] UGCTaskTemplateController Is Nil"));
     return {};
 end
 
@@ -484,7 +468,6 @@ function TaskTemplateComponent:GetPercentTaskLineAwardStateList(TaskLineName)
     if UE.IsValid(self:GetTaskPlayerComponent()) then
         return self:GetTaskPlayerComponent():GetPercentTaskLineAwardStateList(TaskLineName);
     end
-    print(string.format("[TaskTemplateComponent:GetPercentTaskLineAwardStateList] UGCTaskTemplateController Is Nil"));
     return {};
 end
 
@@ -492,7 +475,6 @@ function TaskTemplateComponent:GetTaskLineProgress(TaskLineName)
     if UE.IsValid(self:GetTaskPlayerComponent()) then
         return self:GetTaskPlayerComponent():GetTaskLineProgress(TaskLineName);
     end
-    print(string.format("[TaskTemplateComponent:GetTaskLineProgress] UGCTaskTemplateController Is Nil"));
     return 0;
 end
 
@@ -500,7 +482,6 @@ function TaskTemplateComponent:GetTaskBeginTime(TaskID)
     if UE.IsValid(self:GetTaskManager()) then
         return self:GetTaskManager():GetTaskBeginTime(TaskID);
     end
-    print(string.format("[TaskTemplateComponent:GetTaskBeginTime] TaskMgr Is Nil"));
     return 0;
 end
 
@@ -508,7 +489,6 @@ function TaskTemplateComponent:GetTaskEndTime(TaskID)
     if UE.IsValid(self:GetTaskManager()) then
         return self:GetTaskManager():GetTaskEndTime(TaskID);
     end
-    print(string.format("[TaskTemplateComponent:GetTaskEndTime] TaskMgr Is Nil"));
     return 0;
 end
 
@@ -516,7 +496,6 @@ function TaskTemplateComponent:GetTaskLineBeginTime(TaskLineName)
     if UE.IsValid(self:GetTaskManager()) then
         return self:GetTaskManager():GetTaskLineBeginTime(TaskLineName);
     end
-    print(string.format("[TaskTemplateComponent:GetTaskLineBeginTime] TaskMgr Is Nil"));
     return 0;
 end
 
@@ -524,7 +503,6 @@ function TaskTemplateComponent:GetTaskLineEndTime(TaskLineName)
     if UE.IsValid(self:GetTaskManager()) then
         return self:GetTaskManager():GetTaskLineEndTime(TaskLineName);
     end
-    print(string.format("[TaskTemplateComponent:GetTaskLineEndTime] TaskMgr Is Nil"));
     return 0;
 end
 
@@ -532,7 +510,6 @@ function TaskTemplateComponent:GetTaskIsShowOutDate(TaskID)
     if UE.IsValid(self:GetTaskManager()) then
         return self:GetTaskManager():GetTaskIsShowOutDate(TaskID);
     end
-    print(string.format("[TaskTemplateComponent:GetTaskIsShowOutDate] TaskMgr Is Nil"));
     return false;
 end
 
@@ -540,7 +517,6 @@ function TaskTemplateComponent:GetPercentTaskPercent(TaskLineName, TaskID)
     if UE.IsValid(self:GetTaskManager()) then
         return self:GetTaskManager():GetPercentTaskPercent(TaskLineName, TaskID);
     end
-    print(string.format("[TaskTemplateComponent:GetPercentTaskPercent] TaskMgr Is Nil"));
     return 0;
 end
 
@@ -565,7 +541,6 @@ function TaskTemplateComponent:GetTaskAwardList(TaskID)
 end
 
 function TaskTemplateComponent:ClaimLevelTaskAward(TaskLineName, LevelIndex, TaskIndex)
-    print(string.format("[TaskTemplateComponent:ClaimLevelTaskAward]"));
     if self:GetLevelTaskState(TaskLineName, LevelIndex, TaskIndex) == EUGCTaskState.NotClaimed then
         self:AddTaskAwardToBackpack(self:GetLevelTaskID(TaskLineName, LevelIndex, TaskIndex));
     end
@@ -575,7 +550,6 @@ function TaskTemplateComponent:ClaimLevelTaskAward(TaskLineName, LevelIndex, Tas
 end
 
 function TaskTemplateComponent:ClaimPercentTaskAward(TaskLineName, TaskIndex)
-    print(string.format("[TaskTemplateComponent:ClaimPercentTaskAward]"));
     if self:GetPercentTaskState(TaskLineName, TaskIndex) == EUGCTaskState.NotClaimed then
         self:AddTaskAwardToBackpack(self:GetPercentTaskID(TaskLineName, TaskIndex));
     end

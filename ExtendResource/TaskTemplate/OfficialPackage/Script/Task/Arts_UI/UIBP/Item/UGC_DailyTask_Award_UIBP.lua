@@ -11,7 +11,6 @@ function UGC_DailyTask_Award_UIBP:Construct()
 end
 
 function UGC_DailyTask_Award_UIBP:Click()
-    print("[UGC_DailyTask_Award_UIBP:Click] 显示道具Tip");
     if self.ItemID then
         ---显示道具Tip
         local AbsPosition = SlateBlueprintLibrary.GetAbsolutePosition(self:GetCachedGeometry());
@@ -29,7 +28,6 @@ function UGC_DailyTask_Award_UIBP:Destruct()
 end
 
 function UGC_DailyTask_Award_UIBP:InitUI(ItemID, ItemNum)
-    print(string.format("[UGC_DailyTask_Award_UIBP:InitUI] ItemID: %d ItemNum: %d", ItemID or 0, ItemNum or 0));
     self.ItemID = ItemID;
     local ItemInfo = TaskManager:GetItemInfoByItemID(ItemID);
     if ItemInfo and ItemInfo.ItemIcon then

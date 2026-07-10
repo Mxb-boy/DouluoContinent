@@ -29,7 +29,6 @@ function RankingListManager:GetRankingListComponent(PlayerController)
                 local PlayerController = STExtraGameplayStatics.GetFirstPlayerController(UGCGameSystem.GameState);
                 self.RankingListComponent = PlayerController:GetComponentByClass(self.RankingListComponentClass);
             else
-                print("[RankingListManager:GetRankingListComponent] Cannot get local component!");
             end
         end
            
@@ -39,13 +38,11 @@ function RankingListManager:GetRankingListComponent(PlayerController)
     if self.RankingListComponentClass ~= nil then
         return PlayerController:GetComponentByClass(self.RankingListComponentClass);
     else
-        print("[RankingListManager:GetRankingListComponent] ComponentClass is nil!");
         return nil;
     end
 end
 
 function RankingListManager:GetRankingListTableData()
-    print("RankingListManager:GetRankingListTableData");
     if self.RankingListData ~= nil then
         return self.RankingListData; 
     end
@@ -94,7 +91,6 @@ function RankingListManager:GetRankingListTableData()
 end
 
 function RankingListManager:GetObjectData()
-    print("GiftPackManager:GetObjectData");
     if self.ObjectDatas ~= nil then
         return self.ObjectDatas;
     end
@@ -310,7 +306,6 @@ end
 ---@param ItemID number
 ---@return any
 function RankingListManager:GetItemConfigData(ItemID)
-    print(string.format("RankingListManager:GetItemConfigData ItemID: %d", ItemID));
     if self.ObjectDatas == nil then
         self:GetObjectData();
     end

@@ -29,7 +29,6 @@ function Lottery_GetBoxItem_Bar_UIBP:Construct()
     local CanvasPanelSlot = WidgetLayoutLibrary.SlotAsCanvasSlot(self.Lottery_GetBoxItem[1]);
     local Pos = CanvasPanelSlot:GetPosition();
     self.InitPos = {X = Pos.X, Y = Pos.Y};
-    print(string.format("InitPos X: %d, Y: %d", self.InitPos.X, self.InitPos.Y));
 end
 
 -- function Lottery_GetBoxItem_Bar_UIBP:Tick(MyGeometry, InDeltaTime)
@@ -66,7 +65,6 @@ function Lottery_GetBoxItem_Bar_UIBP:InitUI(LotteryID, TotalDrawTimes, ProgressR
             local CanvasPanelSlot = WidgetLayoutLibrary.SlotAsCanvasSlot(self.Lottery_GetBoxItem[index]);
             local FinalPos = {X = self.InitPos.X, Y = self.InitPos.Y};
             local Size = CanvasPanelSlot:GetSize();
-            print(string.format("Pos X: %d, Y: %d Size X: %d Y: %d", FinalPos.X, FinalPos.Y, Size.X, Size.Y));
             local Offset = Size.Y / 2;
             FinalPos.Y = self.InitPos.Y - Offset;
             local Percent = v.Progress / self.MaxProgress;

@@ -18,7 +18,6 @@ local BP_UGC_ZipLine = {
 }
  
 function BP_UGC_ZipLine:PrintVector(Vector)
-    print("BP_UGC_ZipLine:PrintVector(Vector)--X = "..tostring(Vector.X).." Y = "..tostring(Vector.Y).." Z = "..tostring(Vector.Z))
 end
 function BP_UGC_ZipLine:ReceiveBeginPlay()
     BP_UGC_ZipLine.SuperClass.ReceiveBeginPlay(self)
@@ -31,7 +30,6 @@ function BP_UGC_ZipLine:ReceiveBeginPlay()
             self.Rope.EndMesh:K2_SetWorldLocation(self.TargetZipLine.AttachScene:K2_GetComponentLocation())
         end,false)
     else
-        print("BP_UGC_ZipLine:ReceiveBeginPlay--spawn")
         UGCTimerUtility.CreateLuaTimer(0.5, function()
             self.Rope = UGCActorComponentUtility.SpawnActor(self, self.RopeClass, self.AttachScene:K2_GetComponentLocation(), self.AttachScene:K2_GetComponentRotation(), Vector.New(1, 1, 1), self)
             self:PrintVector(self.Cube1:K2_GetComponentLocation())
@@ -53,7 +51,6 @@ function BP_UGC_ZipLine:CanClickZipLineUI(ClickParams)
     return true
 end
 function BP_UGC_ZipLine:OnClickedZipLineUI(ClickParams)
-    print("BP_UGC_ZipLine:OnClickedZipLineUI(ClickParams)")
     if not UGCGameSystem.IsServer() then
         return
     end

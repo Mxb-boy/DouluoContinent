@@ -27,7 +27,6 @@ end
 
 function UGC_DailyTask_Ring_Box_UIBP:OpenBox()
     -- 播放宝箱打开动画，动画播放完毕后再领奖
-    print("[UGC_DailyTask_Ring_Box_UIBP:OpenBox]");
     if self.IsBigBox then
         self.New_TaskIcon:SetBrushFromTexture(self.BoxIcon[3]);
         if CheckObjectContainsField(self, "DX_kaixiang") then
@@ -37,7 +36,6 @@ function UGC_DailyTask_Ring_Box_UIBP:OpenBox()
 end
 
 function UGC_DailyTask_Ring_Box_UIBP:ShowItemGet()
-    print("[UGC_DailyTask_Ring_Box_UIBP:ShowItemGet]");
     TaskManager:SignWeeklyResetTaskLine(self.TaskLineName);
 end
 

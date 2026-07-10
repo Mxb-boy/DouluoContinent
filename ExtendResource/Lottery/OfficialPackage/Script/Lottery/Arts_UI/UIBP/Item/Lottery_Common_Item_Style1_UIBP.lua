@@ -66,7 +66,6 @@ function Lottery_Common_Item_Style1_UIBP:ButtonClick()
 end
     
 function Lottery_Common_Item_Style1_UIBP:ButtonLongPress()
-    print("Lottery_Common_Item_Style1_UIBP:ButtonLongPress");
     --- 弹出道具Tip
     local AbsPosition = SlateBlueprintLibrary.GetAbsolutePosition(self:GetCachedGeometry());
     local Position = SlateBlueprintLibrary.AbsoluteToLocal(WidgetLayoutLibrary.GetViewportWidgetGeometry(self), AbsPosition);
@@ -74,7 +73,6 @@ function Lottery_Common_Item_Style1_UIBP:ButtonLongPress()
 end
 
 function Lottery_Common_Item_Style1_UIBP:ButtonReleased()
-    print("Lottery_Common_Item_Style1_UIBP:ButtonReleased");
     LotteryManager:CloseLotteryItemTipUI();
 end
 
@@ -83,7 +81,6 @@ function Lottery_Common_Item_Style1_UIBP:Select()
 end
 
 function Lottery_Common_Item_Style1_UIBP:UnSelect()
-    print("Lottery_Common_Item_Style1_UIBP:UnSelect")
     self.CanvasPanel_Select:SetVisibility(ESlateVisibility.Collapsed);
 end
 

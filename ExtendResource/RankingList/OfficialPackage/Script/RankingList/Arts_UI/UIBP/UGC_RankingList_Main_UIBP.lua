@@ -25,7 +25,6 @@
 local UGC_RankingList_Main_UIBP = { bInitDoOnce = false } 
 
 function UGC_RankingList_Main_UIBP:Construct()
-    print("UGC_RankingList_Main_UIBP:Construct");
     self:InitBindEvent();
     self:PreLoadUI();
     self.RankTab = {};
@@ -37,10 +36,8 @@ function UGC_RankingList_Main_UIBP:Construct()
         function ()
             if self.SelectedRankID then
                 local ServerTime = UGCGameSystem.GetServerTimeSec();
-                print(string.format("UGC_RankingList_Main_UIBP RankID: %d CurTime: %d", self.SelectedRankID, ServerTime));
                 ---结束时刷新排行榜个数
                 if self.EndTime then
-                    print(string.format("UGC_RankingList_Main_UIBP 结束时间: %d", self.EndTime));
                     if ServerTime >= self.EndTime then
                         local RankList = RankingListManager:GetLegalRankListTableData();
                         if RankList and next(RankList) == nil then
@@ -58,7 +55,6 @@ function UGC_RankingList_Main_UIBP:Construct()
                 if self:GetVisibility() == ESlateVisibility.SelfHitTestInvisible then
                     ---有新排行榜开启，刷新UI
                     if self.BeginTime then
-                        print(string.format("UGC_RankingList_Main_UIBP 开始时间: %d", self.BeginTime));
                         if ServerTime >= self.BeginTime then
                             self:InitUI();
                         end
@@ -66,7 +62,6 @@ function UGC_RankingList_Main_UIBP:Construct()
     
                     ---结算时刷新排行榜数据
                     if self.SettleTime then
-                        print(string.format("UGC_RankingList_Main_UIBP 结算刷新时间: %d", self.SettleTime));
                         if ServerTime >= self.SettleTime then
                             self:SelectRank(self.SelectedRankID, true);
                             self:GetSettleTime();
@@ -112,7 +107,6 @@ function UGC_RankingList_Main_UIBP:SetUnname()
 end
 
 function UGC_RankingList_Main_UIBP:InitRankItem(Item, Index)
-    print(string.format("UGC_RankingList_Main_UIBP:InitRankItem Index: %d", Index));
     local RankInfo = self.ShowData[Index + 1];
     if RankInfo then
         log_tree("UGC_RankingList_Main_UIBP:InitRankItem: ", RankInfo);
@@ -123,7 +117,6 @@ function UGC_RankingList_Main_UIBP:InitRankItem(Item, Index)
 end
 
 function UGC_RankingList_Main_UIBP:InitTabItem(Item, Index)
-    print(string.format("UGC_RankingList_Main_UIBP:InitTabItem Index: %d", Index));
     local RankID = self.RankingListTableData[Index + 1].ID;
     Item:InitUI(RankID);
     self.RankTab[Item] = RankID;
@@ -155,7 +148,6 @@ function UGC_RankingList_Main_UIBP:Destruct()
 end
 
 function UGC_RankingList_Main_UIBP:OpenCurrentData()
-    print("UGC_RankingList_Main_UIBP:OpenCurrentData");
     if self.SelectedRankID then
         local RankData = RankingListManager:GetRankListData(self.SelectedRankID, 0);
         self:ShowCurrentData(RankData);
@@ -164,7 +156,6 @@ function UGC_RankingList_Main_UIBP:OpenCurrentData()
 end
 
 function UGC_RankingList_Main_UIBP:OpenHistoryData()
-    print("UGC_RankingList_Main_UIBP:OpenHistoryData");
     if self.SelectedRankID then
         local RankData = RankingListManager:GetRankListData(self.SelectedRankID, 1);
         self:ShowHistoryData(RankData);
@@ -173,7 +164,6 @@ function UGC_RankingList_Main_UIBP:OpenHistoryData()
 end
 
 function UGC_RankingList_Main_UIBP:ShowCurrentData(CurrentData)
-    print("UGC_RankingList_Main_UIBP:ShowCurrentData");
     ---显示当期数据
     self.WidgetSwitcher_Data:SetActiveWidgetIndex(1);
     self.RankingCycles = 0;
@@ -181,7 +171,6 @@ function UGC_RankingList_Main_UIBP:ShowCurrentData(CurrentData)
 end
 
 function UGC_RankingList_Main_UIBP:ShowHistoryData(HistoryData)
-    print("UGC_RankingList_Main_UIBP:ShowHistoryData");
     ---显示上期数据
     self.WidgetSwitcher_Data:SetActiveWidgetIndex(0);
     self.RankingCycles = 1;
@@ -189,7 +178,6 @@ function UGC_RankingList_Main_UIBP:ShowHistoryData(HistoryData)
 end
 
 function UGC_RankingList_Main_UIBP:RefreshRankList(RankListData, IsCurrent)
-    print("UGC_RankingList_Main_UIBP:RefreshRankList");
     if IsCurrent then
         local RankListInfo = RankingListManager:GetRankConfigData(self.SelectedRankID);
         if RankListInfo then
@@ -200,7 +188,6 @@ function UGC_RankingList_Main_UIBP:RefreshRankList(RankListData, IsCurrent)
                 ---周期榜结束时间后显示已结束
                 local CurTime = UGCGameSystem.GetServerTimeSec();
                 local EndTime = RankListInfo.EndDate:ToUnixTimestamp();
-                print(string.format("CurTime: %d EndTime: %d", CurTime, EndTime));
                 if CurTime >= EndTime then
                     self.TextBlock_9:SetText("榜单已结束");
                     self.WidgetSwitcher_Rank:SetActiveWidgetIndex(0);
@@ -238,7 +225,6 @@ function UGC_RankingList_Main_UIBP:ShowRankListData(RankListData)
 end
 
 function UGC_RankingList_Main_UIBP:InitUI()
-    print("UGC_RankingList_Main_UIBP:InitUI")
     ---排行榜配置数据
     self.RankingListTableData = RankingListManager:GetLegalRankListTableData();
     self.SelectedRankID = nil;
@@ -252,9 +238,7 @@ function UGC_RankingList_Main_UIBP:InitUI()
 end
 
 function UGC_RankingList_Main_UIBP:SelectRank(RankID, ForceRefresh)
-    print(string.format("UGC_RankingList_Main_UIBP:SelectRank RankID: %d", RankID));
     if self.SelectedRankID then
-        print(string.format("UGC_RankingList_Main_UIBP:SelectRank SelectID: %d", self.SelectedRankID));
     end
     if ForceRefresh == nil then
         ForceRefresh = false;
@@ -307,7 +291,6 @@ function UGC_RankingList_Main_UIBP:SelectRank(RankID, ForceRefresh)
                     if CurTimeStamp < RefreshTimeStamp then
                         HideHistoryData = true;
                     end
-                    print(string.format("DailyReset CurTimeStamp: %d, RefreshTimeStamp: %d", CurTimeStamp, RefreshTimeStamp));
                 elseif RankListData.PeriodType == ERankListPeriodType.WeeklyReset then
                     --- 下周一的零点
                     local WeekDay = tonumber(os.date("%w", BeginTimeStamp));
@@ -316,14 +299,12 @@ function UGC_RankingList_Main_UIBP:SelectRank(RankID, ForceRefresh)
                     if CurTimeStamp < RefreshTimeStamp then
                         HideHistoryData = true;
                     end
-                    print(string.format("WeeklyReset CurTimeStamp: %d, RefreshTimeStamp: %d", CurTimeStamp, RefreshTimeStamp));
                 elseif RankListData.PeriodType == ERankListPeriodType.MonthlyReset then
                     --- 下月一号的零点
                     local RefreshTimeStamp = os.time({year=BeginDate.year, month=BeginDate.month+1, day=1, hour=0, min=0, sec=0});
                     if CurTimeStamp < RefreshTimeStamp then
                         HideHistoryData = true;
                     end
-                    print(string.format("MonthlyReset CurTimeStamp: %d, RefreshTimeStamp: %d", CurTimeStamp, RefreshTimeStamp));
                 end
             end
 
@@ -468,15 +449,12 @@ function UGC_RankingList_Main_UIBP:SetRankListTime(ImageVal)
             end
     
             self.TextBlock_RankTime:SetText(string.format("%04d.%02d.%02d %02d:%02d:%02d-%04d.%02d.%02d %02d:%02d:%02d", BeginYear, BeginMonth, BeginDay, BeginHour, BeginMin, BeginSec, EndYear, EndMonth, EndDay, EndHour, EndMin, EndSec));
-            print(string.format("BeginYear: %d BeginMonth: %d BeginDay %d BeginHour: %d BeginMin: %d BeginSec: %d", BeginYear, BeginMonth, BeginDay, BeginHour, BeginMin, BeginSec));
-            print(string.format("EndYear: %d EndMonth: %d EndDay %d EndHour: %d EndMin: %d EndSec: %d", EndYear, EndMonth, EndDay, EndHour, EndMin, EndSec));
         end
     end
 end
 
 ---获取最近一个排行榜的结算时间
 function UGC_RankingList_Main_UIBP:GetSettleTime()
-    print("UGC_RankingList_Main_UIBP:GetSettleTime");
     self.SettleTime = nil;
     if self.RankingListTableData then
         local CurTimeStamp = UGCGameSystem.GetServerTimeSec();
@@ -512,9 +490,7 @@ function UGC_RankingList_Main_UIBP:GetSettleTime()
     end
 
     if self.SettleTime then
-        print(string.format("UGC_RankingList_Main_UIBP:GetSettleTime SettleTime: %d", self.SettleTime));
     else
-        print("UGC_RankingList_Main_UIBP:GetSettleTime SettleTime is Nil");
     end
 end
 
@@ -564,7 +540,6 @@ end
 
 ---获取最近一个排行榜的结束时间
 function UGC_RankingList_Main_UIBP:GetEndTime()
-    print("UGC_RankingList_Main_UIBP:GetEndTime");
     self.EndTime = nil;
     if self.RankingListTableData then
         local CurTimeStamp = UGCGameSystem.GetServerTimeSec();
@@ -582,15 +557,12 @@ function UGC_RankingList_Main_UIBP:GetEndTime()
     end
 
     if self.EndTime then
-        print(string.format("UGC_RankingList_Main_UIBP:GetEndTime EndTime: %d", self.EndTime));
     else
-        print("UGC_RankingList_Main_UIBP:GetEndTime EndTime is Nil");
     end
 end
 
 ---获取最近一个排行榜的开始时间
 function UGC_RankingList_Main_UIBP:GetBeginTime()
-    print("UGC_RankingList_Main_UIBP:GetBeginTime");
     --- 这里要读全部的排行榜数据
     self.BeginTime = nil;
     local RankingListTablData = RankingListManager:GetRankingListTableData();
@@ -611,9 +583,7 @@ function UGC_RankingList_Main_UIBP:GetBeginTime()
     end
 
     if self.BeginTime then
-        print(string.format("UGC_RankingList_Main_UIBP:GetBeginTime BeginTime: %d", self.BeginTime));
     else
-        print("UGC_RankingList_Main_UIBP:GetBeginTime BeginTime is Nil");
     end
 end
 

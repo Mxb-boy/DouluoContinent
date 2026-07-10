@@ -52,7 +52,6 @@ function NewUGCWidgetBlueprint:SetWeaponData(WeaponName, IconPath, OwnerUI, Item
 
     local IconTexture = UE.LoadObject(IconPath)
     if IconTexture == nil then
-        ugcprint("[NewUGCWidgetBlueprint:SetWeaponData] Icon load failed: " .. tostring(IconPath))
         return
     end
 
@@ -82,7 +81,6 @@ function NewUGCWidgetBlueprint:SetButtonTexture(Button, Texture)
     end
 
     if Button.WidgetStyle == nil then
-        ugcprint("[NewUGCWidgetBlueprint:SetButtonTexture] Button WidgetStyle is nil")
         return
     end
 

@@ -60,9 +60,7 @@ end
 -- end
 
 function GiftPack_ItemGet_UIBP:InitUI(ItemList)
-    print("GiftPack_ItemGet_UIBP:InitUI");
     if ItemList then
-        print(#ItemList);
         self.ItemUpList = ItemList;
         self.UGC_ReuseList2_Item2:SetVisibility(ESlateVisibility.Collapsed);
         self.DesText:SetVisibility(ESlateVisibility.Collapsed);
