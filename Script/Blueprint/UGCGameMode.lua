@@ -117,6 +117,69 @@ function UGCGameMode:ReceiveBeginPlay()
         self.OnPawnDefeat)
 end
 
+-- ============================================================
+-- 自动补位玩家修复：将非大厅组队的自动补位玩家踢到独立队伍
+-- ============================================================
+
+local function GetUnusedTeamID()
+    local AllTeamIDs = UGCTeamSystem.GetTeamIDs() or {}
+    local UsedIDs = {}
+    for _, tid in ipairs(AllTeamIDs) do
+        UsedIDs[tostring(tid)] = true
+    end
+    for id = 100, 999 do
+        if not UsedIDs[tostring(id)] then
+            return id
+        end
+    end
+    return nil
+end
+
+local function FixAutoMatchedPlayer(PlayerController)
+    if PlayerController == nil then
+        return
+    end
+    local PlayerKey = PlayerController.PlayerKey
+    if PlayerKey == nil then
+        return
+    end
+
+    local TeamID = UGCTeamSystem.GetTeamIDByPlayerKey(PlayerKey)
+    if TeamID == nil then
+        return
+    end
+
+    local TeamPlayerKeys = UGCTeamSystem.GetPlayerKeysByTeamID(TeamID)
+    if TeamPlayerKeys == nil or #TeamPlayerKeys <= 1 then
+        return
+    end
+
+    local LobbyMates = UGCTeamSystem.GetLobbyTeammatePlayerKeysByPlayerKey(PlayerKey)
+    local bHasLobbyMateOnTeam = false
+    if LobbyMates ~= nil then
+        for _, MatePK in ipairs(LobbyMates) do
+            for _, TeamPK in ipairs(TeamPlayerKeys) do
+                if tostring(MatePK) == tostring(TeamPK) then
+                    bHasLobbyMateOnTeam = true
+                    break
+                end
+            end
+            if bHasLobbyMateOnTeam then
+                break
+            end
+        end
+    end
+
+    if not bHasLobbyMateOnTeam then
+        local NewTeamID = GetUnusedTeamID()
+        if NewTeamID ~= nil then
+            UGCTeamSystem.ChangePlayerTeamID(PlayerKey, NewTeamID)
+            ugcprint("[UGCGameMode] Auto-matched player " .. tostring(PlayerKey) ..
+                         " reassigned from team " .. tostring(TeamID) .. " to team " .. tostring(NewTeamID))
+        end
+    end
+end
+
 -- 玩家登录时: 先加载跨对局存档, 再发初始武器（Pawn可能还没好，等1秒）
 -- 若 Pawn 在 1 秒后仍未就绪，则重试（最多 10 次），避免 LoadFromArchive 被整体跳过导致存档丢失
 function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
@@ -208,6 +271,11 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
         end
     end
     UGCTimerUtility.CreateLuaTimer(1, OnLoginDeferred, false)
+
+    -- 5秒后修复自动补位玩家（确保PlayerKey已初始化，队伍分配已完成）
+    UGCTimerUtility.CreateLuaTimer(5, function()
+        FixAutoMatchedPlayer(PC)
+    end, false)
 end
 
 -- 此事件提供死亡前的旧 Pawn，必须在这里读取背包和血量。
