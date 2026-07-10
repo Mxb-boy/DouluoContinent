@@ -57,28 +57,28 @@ end
 -- Hardcoded fallback from LotteryAwardConfig CSV
 local HardcodedIcons = {
     -- Weapon pool
-    [8310000] = ToHardcodedPath("/Douluo/Asset/cs/HWSCJ_B.HWSCJ_B"),                                      -- 海王三叉戟
+    [8310000] = ToHardcodedPath("/Douluo/Asset/cs/image/HWSCJ_T3.HWSCJ_T3"),                              -- 海王三叉戟
     [8310064] = ToHardcodedPath("/Douluo/Asset/ui/Icon/w_20260630125242_14.w_20260630125242_14"),          -- 爬塔传送券
     [8310065] = ToHardcodedPath("/Douluo/Asset/ui/Icon/lvx2.lvx2"),                                       -- 十分钟双倍药水
-    [8310035] = ToHardcodedPath("/Douluo/Asset/ui/Icon/rghj.rghj"),                                      -- 魂骨融晶
-    [8310059] = ToHardcodedPath("/Douluo/Asset/ChiBang/Icon/Chibang8Icon.Chibang8Icon"),                   -- 骸骨亡灵骨翼
-    [8310053] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_4.Pic_4"),            -- 万年魂环
-    [8310049] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_2.Pic_2"),            -- 百年魂环
+    [8310035] = ToHardcodedPath("/Douluo/Asset/ui/Icon/rghj.rghj"),                                      -- 融骨融晶
+    [8310059] = ToHardcodedPath("/Douluo/Asset/ChiBang/Icon/TP1.TP1"),                                    -- 骸骨亡灵骨翼
+    [8310053] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_4.Pic_4"),            -- 万年星环
+    [8310049] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_2.Pic_2"),            -- 百年星环
     -- Wing pool
     [8310010] = ToHardcodedPath("/Douluo/Asset/ChiBang/Icon/CB_2T.CB_2T"),                                -- 星澜幻彩羽翼
-    [8310036] = ToHardcodedPath("/Game/Arts/UI/TableIcons/ItemIcon/Inkjet/2021newyear_128.2021newyear_128"), -- 千年魂核
+    [8310036] = ToHardcodedPath("/Douluo/Asset/ui/Icon/qnhh.qnhh"),                                      -- 千年星核
     [8310004] = ToHardcodedPath("/Douluo/Asset/cs/LCSL/LCSL_T.LCSL_T"),                                   -- 影罗夺命镰
     [8310066] = ToHardcodedPath("/Douluo/Asset/ui/Icon/fx2.fx2"),                                         -- 30分钟双倍药水
-    [8310037] = ToHardcodedPath("/Douluo/Asset/ui/Icon/hszz.hszz"),                                       -- 魂师之证
+    [8310037] = ToHardcodedPath("/Douluo/Asset/ui/Icon/hszz.hszz"),                                       -- 星导师之证
     -- Title pool
     [8310061] = ToHardcodedPath("/Douluo/Asset/ui/huaban_6553688612.huaban_6553688612"),                  -- 富甲一方
-    [8310051] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_3.Pic_3"),            -- 千年魂环
+    [8310051] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_3.Pic_3"),            -- 千年星环
     [8310068] = ToHardcodedPath("/Douluo/Asset/ui/Icon/lvx10.lvx10"),                                     -- 10分钟10倍药水
     [8310039] = ToHardcodedPath("/Douluo/Asset/ui/Icon/lyzh.lyzh"),                                       -- 领域之核
     [8310060] = ToHardcodedPath("/Douluo/Asset/ui/huaban_6553688608.huaban_6553688608"),                  -- 丹青妙手
     -- FHSY pool
     [8310044] = ToHardcodedPath("/Douluo/Asset/ui/Icon/w_20260630125242_2.w_20260630125242_2"),           -- 封号神印
-    [8310042] = ToHardcodedPath("/Douluo/Asset/ui/Icon/shy.shy"),                                         -- 圣魂玉
+    [8310042] = ToHardcodedPath("/Douluo/Asset/ui/Icon/shy.shy"),                                         -- 圣星玉
     [8310045] = ToHardcodedPath("/Douluo/Asset/ui/Icon/fhsy.fhsy"),                                       -- 九色神光
     [8310043] = ToHardcodedPath("/Douluo/Asset/ui/Icon/sszx.sszx"),                                       -- 神兽之血
 }

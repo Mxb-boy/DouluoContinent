@@ -387,13 +387,19 @@ function TaskTemplateComponent:AddAwardListToBackpack(AwardList)
         return;
     end
 
+    local ShowAwardList = {};
     for _, Award in pairs(AwardList) do
         local ItemID = Award.ItemID;
         local ItemNum = Award.ItemNum;
         local BackpackItemID = GetTaskBackpackItemID(ItemID);
         if BackpackItemID ~= nil and ItemNum ~= nil then
             UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_AddShopItemToBackpackV2", BackpackItemID, ItemNum, nil);
+            table.insert(ShowAwardList, {ItemID = ItemID, ItemNum = ItemNum});
         end
+    end
+
+    if #ShowAwardList > 0 then
+        self:ShowItemGet(ShowAwardList);
     end
 end
 
@@ -436,9 +442,11 @@ function TaskTemplateComponent:GetTaskListByTaskLineName(TaskLine)
 end
 
 function TaskTemplateComponent:GetItemNum(ItemID)
-    if UE.IsValid(self:GetVirtualItemManager()) then
-        local PlayerController = self:GetOwner();
-        return self:GetVirtualItemManager():GetItemNum(ItemID, PlayerController);
+    local PlayerController = self:GetOwner();
+    local PlayerPawn = UGCGameSystem.GetPlayerPawnByPlayerController(PlayerController);
+    local BackpackItemID = GetTaskBackpackItemID(ItemID);
+    if PlayerPawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.GetItemCountV2 ~= nil then
+        return tonumber(UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, BackpackItemID)) or 0;
     end
     return 0;
 end
