@@ -122,9 +122,16 @@ function BP_PlayerTitleActor:ReceiveTick(DeltaTime)
         cameraLocation
     )
 
+    -- 性能优化：朝向变化 ≥ 1° 才更新 Widget 旋转，避免每帧都做组件写入
+    local targetYaw = lookRotation.Yaw
+    if self.LastTitleYaw ~= nil and math.abs(targetYaw - self.LastTitleYaw) < 1.0 then
+        return
+    end
+    self.LastTitleYaw = targetYaw
+
     -- Only rotate horizontally so the title faces the local camera.
     self.Widget:K2_SetWorldRotation(
-        {Pitch = 0, Yaw = lookRotation.Yaw, Roll = 0},
+        {Pitch = 0, Yaw = targetYaw, Roll = 0},
         false,
         nil,
         false

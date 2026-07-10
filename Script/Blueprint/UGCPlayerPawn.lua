@@ -797,6 +797,7 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
 
     self.LastWeaponAttackKey = WeaponAttackKey
 
+    -- 性能优化：日志移到 key 比对之后，只有真正变化时才打印，避免每 2s 一次的周期检查产生大量 I/O
     ugcprint(
         "[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID) .. ", series=" .. tostring(SeriesKey) ..
             ", name=" .. tostring(ItemName) .. ", level=" .. tostring(Level) .. ", attackPercent=" ..
@@ -880,20 +881,10 @@ function UGCPlayerPawn:UGC_PlayerDeadEvent(Killer, DamageType)
 end
 
 function UGCPlayerPawn:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
-    self:NotifyPropertyChangedIfNeeded(true)
-
-    local hp = UGCPawnAttrSystem.GetHealth(self)
-    local maxHp = UGCPawnAttrSystem.GetHealthMax(self)
-
-    if self:HasAuthority() then
-        local playerController = self.Controller
-        if playerController ~= nil then
-            UnrealNetwork.CallUnrealRPC(playerController, playerController, "Client_RefreshProperty", nil, nil, hp,
-                maxHp)
-        end
-    else
-        UGCGenericMessageSystem.BroadcastUserDefinedGlobalMessage(L_Enum_Event.Enum.ReFreshProperty, nil, nil, hp, maxHp)
-    end
+    -- 性能优化：HP/MaxHP 已通过 UGCPawnAttrSystem 自动复制，无需再走 RPC。
+    -- 这里只做本地属性变化检测：用 false 让 LastPropertyWatchKey 比对生效，
+    -- 只有数值真变化时才广播 ReFreshProperty，避免每次受击都强制全量推送。
+    self:NotifyPropertyChangedIfNeeded(false)
 end
 
 function UGCPlayerPawn:ReceiveEndPlay()

@@ -445,7 +445,9 @@ function UGCPlayerController:Server_EatAllSoulRings()
     end
 
     if LastBaseAttack ~= nil and LastBaseMaxHp ~= nil then
-        UnrealNetwork.CallUnrealRPC(self, self, "Client_RefreshProperty", LastBaseAttack, LastBaseMaxHp)
+        -- 性能优化：属性本身已通过值复制同步，UI 刷新走不可靠 RPC 即可
+        local RPCFunc = UnrealNetwork.CallUnrealRPC_Unreliable or UnrealNetwork.CallUnrealRPC
+        RPCFunc(self, self, "Client_RefreshProperty", LastBaseAttack, LastBaseMaxHp)
     end
 end
 
@@ -1270,7 +1272,9 @@ function UGCPlayerController:Server_AddFixedBaseProperty()
     playerState:SetBaseAttack(newBaseAttack)
     playerState:SetBaseMaxHp(newBaseMaxHp)
 
-    UnrealNetwork.CallUnrealRPC(self, self, "Client_RefreshProperty", newBaseAttack, newBaseMaxHp)
+    -- 性能优化：AFKZone 每 5s 触发一次，UI 刷新走不可靠 RPC 即可（属性本身已通过值复制同步）
+    local RPCFunc = UnrealNetwork.CallUnrealRPC_Unreliable or UnrealNetwork.CallUnrealRPC
+    RPCFunc(self, self, "Client_RefreshProperty", newBaseAttack, newBaseMaxHp)
 end
 
 function UGCPlayerController:Client_SetTowerOutBoxVisible(bVisible)
