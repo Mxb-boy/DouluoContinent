@@ -651,11 +651,36 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     self:RefreshWeaponAttackBonus(true)
     self:NotifyPropertyChangedIfNeeded(true)
 
+    self:RegisterWeaponChangeDelegate()
+
     if not self:HasAuthority() then
         return
     end
 
     self:EnsurePlayerTitleActor()
+end
+
+--- 注册武器切换事件委托（事件驱动，替代 2 秒轮询）
+function UGCPlayerPawn:RegisterWeaponChangeDelegate()
+    local WeaponManagerComponent = self:GetWeaponManager()
+    if WeaponManagerComponent == nil then
+        self.bWeaponDelegateRegistered = false
+        return
+    end
+
+    if WeaponManagerComponent.ChangeCurrentUsingWeaponDelegate ~= nil then
+        WeaponManagerComponent.ChangeCurrentUsingWeaponDelegate:Add(self.OnWeaponChanged, self)
+        self.bWeaponDelegateRegistered = true
+    else
+        self.bWeaponDelegateRegistered = false
+    end
+end
+
+--- 武器切换回调：武器变化时刷新攻击加成
+function UGCPlayerPawn:OnWeaponChanged(WeaponSlot)
+    self.LastWeaponAttackKey = nil
+    self.LastLocalWeaponAttackDisplayKey = nil
+    self:RefreshWeaponAttackBonus(true)
 end
 
 function UGCPlayerPawn:ReceiveTick(DeltaTime)
@@ -665,10 +690,12 @@ function UGCPlayerPawn:ReceiveTick(DeltaTime)
 
     local SafeDeltaTime = tonumber(DeltaTime) or 0.016
 
-    self.WeaponAttackElapsed = (self.WeaponAttackElapsed or 0) + SafeDeltaTime
-    if self.WeaponAttackElapsed >= WEAPON_ATTACK_CHECK_INTERVAL then
-        self.WeaponAttackElapsed = 0
-        self:RefreshWeaponAttackBonus(false)
+    if self.bWeaponDelegateRegistered ~= true then
+        self.WeaponAttackElapsed = (self.WeaponAttackElapsed or 0) + SafeDeltaTime
+        if self.WeaponAttackElapsed >= 5 then
+            self.WeaponAttackElapsed = 0
+            self:RefreshWeaponAttackBonus(false)
+        end
     end
 
     self.PropertyWatchElapsed = (self.PropertyWatchElapsed or 0) + SafeDeltaTime

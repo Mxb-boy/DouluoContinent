@@ -2,6 +2,7 @@
 -- Edit Below--
 local UGCGameMode = {};
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
+local DropCleanupSystem = UGCGameSystem.UGCRequire("Script.Common.DropCleanupSystem")
 
 -- 保存玩家死亡前的背包快照，键为 PlayerKey。
 local PlayerBackpackSnapshots = {};
@@ -115,6 +116,10 @@ end
 function UGCGameMode:ReceiveBeginPlay()
     UGCGenericMessageSystem.ListenGlobalMessage(self, UGCGenericMessageSystem.Messages.UGC.PlayerPawn.PawnDefeat, self,
         self.OnPawnDefeat)
+
+    if self:HasAuthority() then
+        DropCleanupSystem.StartSafetyValveTimer()
+    end
 end
 
 -- ============================================================

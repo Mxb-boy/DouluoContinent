@@ -108,6 +108,15 @@ function Tower_Mons_1:BPDie(KillingDamage, EventInstigator, DamageCauser, Damage
 
     DisableMonsterCollision(self)
 
+    if self:HasAuthority() then
+        local corpse = self
+        UGCTimerUtility.CreateLuaTimer(5, function()
+            if corpse and UE.IsValid(corpse) then
+                corpse:K2_DestroyActor()
+            end
+        end, false)
+    end
+
     if self:HasAuthority() and self.SpawnWall ~= nil then
         self.SpawnWall:OnMonsterDied(self)
     end
