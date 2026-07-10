@@ -27,15 +27,18 @@
 ---@field text_qnhh UTextBlock
 ---@field TextBlock_297 UTextBlock
 --Edit Below--
+-- 武器锻造 UI：负责读取背包武器、显示材料消耗，并向服务器发起锻造请求。
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local UI10 = { bInitDoOnce = false }
 
+-- 锻造材料道具 ID。
 local MaterialItemIDs = {
     HGRJ = 8310035,
     QNHH = 8310036,
 }
 
+-- UI 固定文案，使用 char 避免部分编辑器保存中文时乱码。
 local TextLabels = {
     Success = string.char(230, 136, 144, 229, 138, 159, 239, 188, 154),
     Keep = string.char(228, 191, 157, 230, 140, 129, 228, 184, 141, 229, 143, 152, 239, 188, 154),
@@ -45,6 +48,7 @@ local TextLabels = {
     CloseParen = string.char(239, 188, 137),
 }
 
+-- 武器品质显示名称。
 local LevelLabels = {
     [1] = string.char(230, 153, 174, 233, 128, 154),
     [2] = string.char(228, 188, 152, 231, 167, 128),
@@ -53,15 +57,16 @@ local LevelLabels = {
     [5] = string.char(228, 188, 160, 232, 175, 180),
 }
 
+-- 武器系列显示名称。
 local WeaponNameLabels = {
-    XJWQ = string.char(229, 185, 189, 229, 133, 137, 231, 159, 173, 229, 136, 128),
-    HWSCJ = string.char(230, 181, 183, 231, 142, 139, 228, 184, 137, 229, 143, 137, 230, 136, 159),
-    HTC = string.char(230, 152, 138, 229, 164, 169, 233, 148, 164),
-    LCSL = string.char(231, 189, 151, 229, 136, 185, 231, 165, 158, 233, 149, 176),
-    TSSJ = string.char(229, 164, 169, 228, 189, 191, 229, 156, 163, 229, 137, 145),
+    XJWQ = "血狱裁魂刃",
+    HWSCJ = "沧澜裂海戟",
+    HTC = "星陨昊锤",
+    LCSL = "影罗夺命镰",
+    TSSJ = "璀羽圣金剑",
 }
 
--- UI icon per weapon series. Name is read from backpack/item config first.
+-- 武器系列对应的展示图标。
 local WeaponUIConfig = {
     XJWQ = {
         DefaultName = "XJWQ",
@@ -89,6 +94,7 @@ function UI10:Construct()
     self:LuaInit()
 end
 
+-- 只初始化一次按钮事件和默认武器显示。
 function UI10:LuaInit()
     if self.bInitDoOnce then
         return
@@ -107,13 +113,13 @@ function UI10:LuaInit()
     self:InitWeaponWidgets()
 end
 
--- Close by hiding UI10, keeping the instance for later refresh.
+-- 关闭界面时只隐藏实例，方便下次打开复用。
 function UI10:Button_125_OnClicked()
     ugcprint("[UI10:Button_125_OnClicked] Close UI10")
     self:SetVisibility(ESlateVisibility.Collapsed)
 end
 
--- Fill bottom weapon slots from backpack and select the first weapon by default.
+-- 从背包刷新底部武器格子，并默认选中第一把可锻造武器。
 function UI10:InitWeaponWidgets()
     local Widgets = self:GetWeaponWidgets()
     local WeaponList = self:GetBackpackWeaponList()
@@ -137,7 +143,7 @@ function UI10:InitWeaponWidgets()
     end
 end
 
--- Pre-placed weapon item widgets in UI10.
+-- UI10 蓝图中预摆放的 5 个武器格子。
 function UI10:GetWeaponWidgets()
     return {
         self.NewUGCWidgetBlueprint_C_0,
@@ -148,7 +154,7 @@ function UI10:GetWeaponWidgets()
     }
 end
 
--- Read local backpack weapons. If one series has multiple levels, show the highest level.
+-- 读取本地背包武器；同系列有多把时只展示最高等级。
 function UI10:GetBackpackWeaponList()
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
     if PlayerPawn == nil then
@@ -186,13 +192,14 @@ function UI10:GetBackpackWeaponList()
     return Result
 end
 
+-- 武器名由系列名和品质名拼成，例如“星陨昊锤（史诗）”。
 function UI10:GetWeaponDisplayName(SeriesKey, Level)
     local WeaponName = WeaponNameLabels[SeriesKey] or tostring(SeriesKey)
     local LevelName = LevelLabels[tonumber(Level)] or tostring(Level)
     return WeaponName .. TextLabels.OpenParen .. LevelName .. TextLabels.CloseParen
 end
 
--- Prefer backpack/config item name; DefaultName is only fallback.
+-- 优先从背包数据或道具配置取名字，取不到才使用默认名。
 function UI10:GetBackpackItemName(ItemData, ItemID, DefaultName)
     local Name = self:GetNameFromItemData(ItemData)
     if Name == nil then
@@ -204,7 +211,7 @@ function UI10:GetBackpackItemName(ItemData, ItemID, DefaultName)
     return tostring(Name)
 end
 
--- Support several possible item data field names.
+-- 兼容不同数据表里的道具名称字段。
 function UI10:GetNameFromItemData(ItemData)
     if ItemData == nil then
         return nil
@@ -239,7 +246,7 @@ function UI10:GetNameFromItemData(ItemData)
         or NestedData.ItemNameText
 end
 
--- Try to read item config name by ItemID.
+-- 通过 ItemID 尝试读取道具配置名称。
 function UI10:GetNameFromItemConfig(ItemID)
     if ItemID == nil then
         return nil
@@ -255,7 +262,7 @@ function UI10:GetNameFromItemConfig(ItemID)
     return self:GetNameFromItemData(ConfigData)
 end
 
--- Different editor/runtime versions may expose different function names.
+-- 不同编辑器或运行时版本可能暴露不同的背包配置接口。
 function UI10:TryGetBackpackItemConfig(ItemID)
     local FunctionNames = {
         "GetItemData",
@@ -277,7 +284,7 @@ function UI10:TryGetBackpackItemConfig(ItemID)
     return nil
 end
 
--- Fallback for official virtual item data.
+-- 官方虚拟道具配置兜底读取。
 function UI10:TryGetVirtualItemConfig(ItemID)
     local VirtualItemManager = self:GetVirtualItemManager()
     if VirtualItemManager == nil or VirtualItemManager.GetItemData == nil then
@@ -292,6 +299,7 @@ function UI10:TryGetVirtualItemConfig(ItemID)
     return nil
 end
 
+-- 获取全局虚拟道具管理器。
 function UI10:GetVirtualItemManager()
     if UGCBlueprintFunctionLibrary == nil or UGCGameSystem.GameState == nil then
         return nil
@@ -300,7 +308,7 @@ function UI10:GetVirtualItemManager()
     return UGCBlueprintFunctionLibrary.GetGamePartGlobalActor(UGCGameSystem.GameState, "VirtualItemManager")
 end
 
--- Update top preview image/name and refresh forge info.
+-- 更新顶部选中武器的名字、图标，并刷新锻造信息。
 function UI10:SelectWeapon(WeaponName, IconPath, ItemID)
     self.SelectedWeaponName = WeaponName
     self.SelectedWeaponIconPath = IconPath
@@ -325,6 +333,7 @@ function UI10:SelectWeapon(WeaponName, IconPath, ItemID)
     self.Image_299:SetBrushFromTexture(IconTexture)
 end
 
+-- 刷新材料数量、成功率和当前武器属性加成。
 function UI10:RefreshForgeInfo()
     local Cost = WeaponLevelConfig.GetForgeCost(self.SelectedWeaponItemID) or { HGRJ = 0, QNHH = 0 }
     local Rate = WeaponLevelConfig.GetForgeRate(self.SelectedWeaponItemID) or { Success = 0, Keep = 0, Down = 0 }
@@ -353,6 +362,7 @@ function UI10:RefreshForgeInfo()
     end
 end
 
+-- 服务端锻造结果回调后，刷新背包列表并尽量保持当前系列选中。
 function UI10:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID)
     OldItemID = tonumber(OldItemID)
     ResultItemID = tonumber(ResultItemID) or OldItemID
@@ -378,6 +388,7 @@ function UI10:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID)
     end, false)
 end
 
+-- 显示锻造结果弹窗；旧组件没有接口时至少保证弹窗可见。
 function UI10:ShowForgeResultPopup(ResultType, IconPath)
     if self.NewUGCWidgetBlueprint == nil then
         ugcprint("[UI10:ShowForgeResultPopup] Result widget is nil")
@@ -392,6 +403,7 @@ function UI10:ShowForgeResultPopup(ResultType, IconPath)
     self.NewUGCWidgetBlueprint:SetVisibility(ESlateVisibility.SelfHitTestInvisible)
 end
 
+-- 根据武器 ItemID 找到对应系列图标。
 function UI10:GetWeaponIconPathByItemID(ItemID)
     local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
     if WeaponInfo == nil then
@@ -406,6 +418,7 @@ function UI10:GetWeaponIconPathByItemID(ItemID)
     return UIConfig.IconPath
 end
 
+-- 点击锻造：先做本地材料和武器检查，再请求服务器执行锻造。
 function UI10:Button_dz_OnClicked()
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
     local ItemID = tonumber(self.SelectedWeaponItemID)
@@ -457,6 +470,7 @@ function UI10:Button_dz_OnClicked()
     end, false)
 end
 
+-- 本地消耗锻造材料和替换武器的兜底逻辑。
 function UI10:ConsumeForgeItems(PlayerPawn, OldItemID, NewItemID, Cost)
     if not self:TryRemoveBackpackItem(PlayerPawn, MaterialItemIDs.HGRJ, Cost.HGRJ or 0) then
         return false
@@ -477,6 +491,7 @@ function UI10:ConsumeForgeItems(PlayerPawn, OldItemID, NewItemID, Cost)
     return true
 end
 
+-- 兼容背包系统和虚拟道具系统的移除接口。
 function UI10:TryRemoveBackpackItem(PlayerPawn, ItemID, Count)
     Count = tonumber(Count) or 0
     if Count <= 0 then
@@ -508,6 +523,7 @@ function UI10:TryRemoveBackpackItem(PlayerPawn, ItemID, Count)
     return false
 end
 
+-- 获取本地 PlayerController，兼容 UGCGameSystem 和 Pawn 两种路径。
 function UI10:GetLocalPlayerController()
     if UGCGameSystem.GetLocalPlayerController ~= nil then
         local Success, Result = pcall(UGCGameSystem.GetLocalPlayerController)
@@ -524,6 +540,7 @@ function UI10:GetLocalPlayerController()
     return nil
 end
 
+-- 同时读取背包数量和虚拟道具数量，取较大的值用于显示。
 function UI10:GetBackpackItemCount(PlayerPawn, ItemID)
     if ItemID == nil then
         return 0
@@ -551,6 +568,7 @@ function UI10:GetBackpackItemCount(PlayerPawn, ItemID)
     return VirtualCount
 end
 
+-- 根据 ItemID 重新选中武器；找不到时回退到第一把。
 function UI10:SelectWeaponByItemID(ItemID)
     local WeaponList = self:GetBackpackWeaponList()
     for _, WeaponInfo in ipairs(WeaponList) do
@@ -567,6 +585,7 @@ function UI10:SelectWeaponByItemID(ItemID)
     end
 end
 
+-- 根据武器系列重新选中武器；锻造升降级后用它保持选中系列不跳走。
 function UI10:SelectWeaponBySeriesKey(SeriesKey)
     local WeaponList = self:GetBackpackWeaponList()
     for _, WeaponInfo in ipairs(WeaponList) do
