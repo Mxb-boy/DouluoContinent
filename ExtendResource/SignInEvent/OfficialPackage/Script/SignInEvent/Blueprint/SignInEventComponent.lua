@@ -12,6 +12,16 @@ UGCGameSystem.UGCRequire("ExtendResource.SignInEvent.OfficialPackage." .. "Scrip
 local Delegate = UGCGameSystem.UGCRequire("common.Delegate");
 local STExtraGMDelegatesMgr = KismetLibrary.New("/Script/ShadowTrackerExtra.STExtraGMDelegatesMgr");
 
+local SignInAwardItemMap =
+{
+    [1025] = 8310008,
+    [1037] = 8310062,
+    [1039] = 8310064,
+    [1040] = 8310065,
+    [1041] = 8310066,
+    [1047] = 8310051,
+}
+
 local SignInEventComponent = 
 {
     MainUI = nil;
@@ -463,8 +473,10 @@ function SignInEventComponent:GetSignInAward(EventID, LocalEventDatas)
     self:SetSignInEventData(Data);
 
     local Award = Config.Awards[Data[EventID].DayNum];
-
-    self.VirtualItemManager:AddVirtualItem(self:GetOwner(), Award.ItemID, Award.ItemNum);
+    local AwardItemID = SignInAwardItemMap[Award.ItemID] or Award.ItemID;
+    local PlayerPawn = UGCGameSystem.GetPlayerPawnByPlayerController(self:GetOwner());
+    UGCBackpackSystemV2.AddItemV2(PlayerPawn, AwardItemID, Award.ItemNum);
+    UnrealNetwork.CallUnrealRPC(self:GetOwner(), self, "ShowItemGetPopup", Award.ItemID, Award.ItemNum);
 end
 
 function SignInEventComponent:Server_GetDailySignInAward(EventID, LocalEventDatas)
