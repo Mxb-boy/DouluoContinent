@@ -24,6 +24,54 @@ local TaskTemplateComponent = {
     RequestMark = "Task"
 }
 
+local TaskRewardItemToBackpackItem = {
+    [1011] = 8310048,
+    [1013] = 8310038,
+    [1014] = 8310037,
+    [1015] = 8310039,
+    [1016] = 8310040,
+    [1017] = 8310041,
+    [1018] = 8310042,
+    [1019] = 8310043,
+    [1020] = 8310044,
+    [1021] = 8310045,
+    [1022] = 8310035,
+    [1023] = 8310036,
+    [1024] = 8310047,
+    [1025] = 8310008,
+    [1026] = 8310007,
+    [1027] = 8310009,
+    [1028] = 8310012,
+    [1029] = 8310013,
+    [1030] = 8310014,
+    [1031] = 8310058,
+    [1032] = 8310059,
+    [1033] = 8310010,
+    [1037] = 8310062,
+    [1038] = 8310063,
+    [1039] = 8310064,
+    [1040] = 8310065,
+    [1041] = 8310066,
+    [1042] = 8310067,
+    [1043] = 8310068,
+    [1044] = 8310069,
+    [1045] = 8310070,
+    [1046] = 8310049,
+    [1047] = 8310051,
+    [1048] = 8310053,
+    [1049] = 8310054,
+    [1050] = 8310055,
+    [1051] = 8310056,
+    [1052] = 8310057,
+    [1053] = 8310052,
+    [1054] = 8310050,
+}
+
+local function GetTaskBackpackItemID(ItemID)
+    local NumericItemID = tonumber(ItemID);
+    return TaskRewardItemToBackpackItem[NumericItemID] or NumericItemID;
+end
+
 function TaskTemplateComponent:ReceiveBeginPlay()
     TaskTemplateComponent.SuperClass.ReceiveBeginPlay(self);
     local PlayerController = self:GetOwner();
@@ -239,7 +287,7 @@ function TaskTemplateComponent:PreLoad(PlayerController)
 end
 
 function TaskTemplateComponent:InitTaskOnClient()
-    ---GamePart加载完成且任务创建完成
+    ---GamePart loaded and task created
     if self.TaskCreated and self.TaskGamePartLoaded then
         if self.TaskMainUI then
             self.TaskMainUI:InitUI();
@@ -275,13 +323,15 @@ function TaskTemplateComponent:OpenTaskMainUI()
     if self.TaskMainUI then
         local PlayerController = self:GetOwner();
         if PlayerController:HasAuthority() == false then
-            if UE.IsValid(self:GetVirtualItemManager()) then
+            if self.TaskDelegateBinded ~= true and UE.IsValid(self:GetVirtualItemManager()) then
                 self:GetVirtualItemManager().AddItemResultDelegate:Add(self.OnAddVirtualItem, self);
+                self.TaskDelegateBinded = true;
             end
-            if UE.IsValid(self:GetTaskPlayerComponent()) then
+            if self.TaskInfoDelegateBinded ~= true and UE.IsValid(self:GetTaskPlayerComponent()) then
                 self:GetTaskPlayerComponent().OnTaskInfoChangeDelegate:Add(self.OnTaskInfoChange, self);
                 self:GetTaskPlayerComponent().OnTaskLineAwardInfoChangeDelegate:Add(self.OnTaskLineAwardInfoChange, self);
                 self:GetTaskPlayerComponent().OnTaskLineProgressChangeDelegate:Add(self.OnTaskLineProgressChange, self);
+                self.TaskInfoDelegateBinded = true;
             end
         end
         self.TaskMainUI:InitUI();
@@ -294,44 +344,32 @@ function TaskTemplateComponent:CloseTaskMainUI()
     if PlayerController:HasAuthority() == false then
         if UE.IsValid(self:GetVirtualItemManager()) then
             self:GetVirtualItemManager().AddItemResultDelegate:Remove(self.OnAddVirtualItem, self);
+            self.TaskDelegateBinded = false;
         end
         if UE.IsValid(self:GetTaskPlayerComponent()) then
             self:GetTaskPlayerComponent().OnTaskInfoChangeDelegate:Remove(self.OnTaskInfoChange, self);
             self:GetTaskPlayerComponent().OnTaskLineAwardInfoChangeDelegate:Remove(self.OnTaskLineAwardInfoChange, self);
             self:GetTaskPlayerComponent().OnTaskLineProgressChangeDelegate:Remove(self.OnTaskLineProgressChange, self);
+            self.TaskInfoDelegateBinded = false;
         end
     end
     self.TaskMainUI:SetVisibility(ESlateVisibility.Collapsed);
 end
 
 
---获得道具回调
---生效范围：客户端
+--Virtual item callback only refreshes task UI now.
 function TaskTemplateComponent:OnAddVirtualItem(Result)
     local PlayerController = self:GetOwner();
     if PlayerController:HasAuthority() == true then
         return;
     end
     print(string.format("[TaskTemplateComponent:OnAddVirtualItem]"));
-    local bSucceeded = Result.bSucceeded;
-    local ItemList = Result.ItemList;
-    local PlayerKey = Result.PlayerKey;
-    local RequestMark = Result.RequestMark;
-    if bSucceeded then
-        local SelfPlayerKey = PlayerController:GetInt64PlayerKey();
-        if PlayerKey == SelfPlayerKey and RequestMark == self.RequestMark then
-            local AwardList = {};
-            for ItemID, ItemNum in pairs(ItemList) do
-                table.insert(AwardList, {ItemID = ItemID, ItemNum = ItemNum});
-            end
-            self:ShowItemGet(AwardList);
-        end
-        ---刷新红点
+    if Result.bSucceeded then
         self:RefreshRedPoint();
     end
 end
 
---展示获得到道具
+--Show item get popup.
 function TaskTemplateComponent:ShowItemGet(ItemList)
     if self:GetOwner():HasAuthority() == true then
         return;
@@ -343,6 +381,44 @@ function TaskTemplateComponent:ShowItemGet(ItemList)
     end
 end
 
+function TaskTemplateComponent:AddAwardListToBackpack(AwardList)
+    local PlayerController = self:GetOwner();
+    if PlayerController:HasAuthority() == true or AwardList == nil then
+        return;
+    end
+
+    for _, Award in pairs(AwardList) do
+        local ItemID = Award.ItemID;
+        local ItemNum = Award.ItemNum;
+        local BackpackItemID = GetTaskBackpackItemID(ItemID);
+        if BackpackItemID ~= nil and ItemNum ~= nil then
+            UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_AddShopItemToBackpackV2", BackpackItemID, ItemNum, nil);
+        end
+    end
+end
+
+function TaskTemplateComponent:AddTaskAwardToBackpack(TaskID)
+    self:AddAwardListToBackpack(self:GetTaskAwardList(TaskID));
+end
+
+function TaskTemplateComponent:GetPercentTaskID(TaskLineName, TaskIndex)
+    local TaskInfoList = self:GetPercentTaskInfoList(TaskLineName);
+    local TaskInfo = TaskInfoList and TaskInfoList[TaskIndex];
+    return TaskInfo and TaskInfo.TaskID or nil;
+end
+
+function TaskTemplateComponent:GetLevelTaskID(TaskLineName, LevelIndex, TaskIndex)
+    local LevelTaskInfoList = self:GetLevelTaskInfoList(TaskLineName);
+    local LevelInfo = LevelTaskInfoList and LevelTaskInfoList[LevelIndex];
+    local TaskInfo = LevelInfo and LevelInfo.TaskInfoList and LevelInfo.TaskInfoList[TaskIndex];
+    return TaskInfo and TaskInfo.TaskID or nil;
+end
+
+function TaskTemplateComponent:GetTaskLineAwardList(TaskLineName, Index)
+    local TaskLineConfig = self:GetTaskLineConfig(TaskLineName);
+    local AwardConfig = TaskLineConfig and TaskLineConfig.PercentAwardList and TaskLineConfig.PercentAwardList[Index];
+    return AwardConfig and AwardConfig.ItemList or nil;
+end
 function TaskTemplateComponent:SelectTaskLine(Index)
     if self.TaskMainUI then
         self.TaskMainUI:SelectTaskLine(Index);
@@ -482,6 +558,9 @@ end
 
 function TaskTemplateComponent:ClaimLevelTaskAward(TaskLineName, LevelIndex, TaskIndex)
     print(string.format("[TaskTemplateComponent:ClaimLevelTaskAward]"));
+    if self:GetLevelTaskState(TaskLineName, LevelIndex, TaskIndex) == EUGCTaskState.NotClaimed then
+        self:AddTaskAwardToBackpack(self:GetLevelTaskID(TaskLineName, LevelIndex, TaskIndex));
+    end
     if UE.IsValid(self:GetTaskPlayerComponent()) then
         self:GetTaskPlayerComponent():ClaimLevelTaskAward(TaskLineName, LevelIndex, TaskIndex)
     end
@@ -489,6 +568,9 @@ end
 
 function TaskTemplateComponent:ClaimPercentTaskAward(TaskLineName, TaskIndex)
     print(string.format("[TaskTemplateComponent:ClaimPercentTaskAward]"));
+    if self:GetPercentTaskState(TaskLineName, TaskIndex) == EUGCTaskState.NotClaimed then
+        self:AddTaskAwardToBackpack(self:GetPercentTaskID(TaskLineName, TaskIndex));
+    end
     if UE.IsValid(self:GetTaskPlayerComponent()) then
         self:GetTaskPlayerComponent():ClaimPercentTaskAward(TaskLineName, TaskIndex)
     end
@@ -502,6 +584,9 @@ function TaskTemplateComponent:GetTaskLineAwardState(TaskLineName, Index)
 end
 
 function TaskTemplateComponent:ClaimTaskLineAward(TaskLineName, Index)
+    if self:GetTaskLineAwardState(TaskLineName, Index) == EUGCTaskLineAwardState.NotClaimed then
+        self:AddAwardListToBackpack(self:GetTaskLineAwardList(TaskLineName, Index));
+    end
     if UE.IsValid(self:GetTaskPlayerComponent()) then
         self:GetTaskPlayerComponent():ClaimTaskLineAward(TaskLineName, Index);
     end
@@ -614,6 +699,19 @@ function TaskTemplateComponent:ResetPercentTaskLine(TaskLineName)
 end
 
 function TaskTemplateComponent:ClaimAllAward(TaskLineName)
+    local AwardList = {};
+    local TaskInfoList = self:GetPercentTaskInfoList(TaskLineName);
+    if TaskInfoList then
+        for Index, TaskInfo in pairs(TaskInfoList) do
+            if self:GetPercentTaskState(TaskLineName, Index) == EUGCTaskState.NotClaimed then
+                local TaskAwardList = self:GetTaskAwardList(TaskInfo.TaskID);
+                for _, Award in pairs(TaskAwardList) do
+                    table.insert(AwardList, Award);
+                end
+            end
+        end
+    end
+    self:AddAwardListToBackpack(AwardList);
     if UE.IsValid(self:GetTaskPlayerComponent()) then
         self:GetTaskPlayerComponent():ClaimAllAward(TaskLineName);
     end

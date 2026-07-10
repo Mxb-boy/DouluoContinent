@@ -134,6 +134,14 @@ function SignInEvent_Main_UIBP:Refresh()
         self:SetVisibility(ESlateVisibility.Collapsed);
     end
 
+    if #self.ValidTabs > 0 then
+        if self.SelectedEventID == -1 then
+            self.SelectedEventID = self.ValidTabs[1].EventID;
+            self.bShowPeriod = self.ValidTabs[1].ShowPeriod;
+        end
+        self:RefreshContent();
+    end
+
     self.TabMenu:Reload(#self.ValidTabs);
 end
 

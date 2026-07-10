@@ -165,11 +165,27 @@ function TaskManager:GetPercentTaskPercent(TaskLineName, TaskID)
     return self:GetTaskTemplateComponent():GetPercentTaskPercent(TaskLineName, TaskID);
 end
 
+function TaskManager:CanSendClaimRequest()
+    if self.bBlockClaimRequest then
+        print("[TaskManager:CanSendClaimRequest] Too Frequent Calls");
+        return false;
+    end
+    self.bBlockClaimRequest = true;
+    UGCTimerUtility.CreateLuaTimer(1, function () self.bBlockClaimRequest = false end);
+    return true;
+end
+
 function TaskManager:ClaimLevelTaskAward(TaskLineName, LevelIndex, TaskIndex)
+    if not self:CanSendClaimRequest() then
+        return;
+    end
     return self:GetTaskTemplateComponent():ClaimLevelTaskAward(TaskLineName, LevelIndex, TaskIndex);
 end
 
 function TaskManager:ClaimPercentTaskAward(TaskLineName, TaskIndex)
+    if not self:CanSendClaimRequest() then
+        return;
+    end
     return self:GetTaskTemplateComponent():ClaimPercentTaskAward(TaskLineName, TaskIndex);
 end
 
@@ -186,6 +202,9 @@ function TaskManager:GetTaskLineAwardState(TaskLineName, Index)
 end
 
 function TaskManager:ClaimTaskLineAward(TaskLineName, Index)
+    if not self:CanSendClaimRequest() then
+        return;
+    end
     self:GetTaskTemplateComponent():ClaimTaskLineAward(TaskLineName, Index);
 end
 
@@ -258,6 +277,9 @@ function TaskManager:ResetPercentTaskLine(TaskLineName)
 end
 
 function TaskManager:ClaimAllAward(TaskLineName)
+    if not self:CanSendClaimRequest() then
+        return;
+    end
     self:GetTaskTemplateComponent():ClaimAllAward(TaskLineName);
 end
 

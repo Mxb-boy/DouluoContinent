@@ -1,4 +1,4 @@
-local RealmConfig = {}
+﻿local RealmConfig = {}
 
 RealmConfig.MaxLevel = 10
 
@@ -40,7 +40,7 @@ local ItemIDs = {
 }
 
 RealmConfig.LuckyItemText =
-    "幸运道具：突破成功率+15%，单境界单次最多叠加1张\n例：九魂基础15%，用护符后 15+15=30%"
+    "幸运道具：突破成功率+15%，单境界单次最多叠加1张\n例：基础15%，用护符后 15+15=30%"
 
 RealmConfig.Levels = {
     [1] = {
@@ -57,14 +57,14 @@ RealmConfig.Levels = {
         GuaranteeText = "",
     },
     [2] = {
-        Stage = "一魂",
-        Name = "启灵境",
+        Stage = "一环",
+        Name = "启星境",
         IconPath = GetSoulRingIconPath(1),
         NeedPowerText = "战力门槛：------",
-        NeedItemText = "所需道具：第一魂环x1\n第二魂环x1",
+        NeedItemText = "所需道具：第一星环x1\n第二星环x1",
         NeedItems = {
-            { ItemID = ItemIDs.SoulRing1, Count = 1, Name = "第一魂环", IconPath = GetSoulRingIconPath(1) },
-            { ItemID = ItemIDs.SoulRing2, Count = 1, Name = "第二魂环", IconPath = GetSoulRingIconPath(2) },
+            { ItemID = ItemIDs.SoulRing1, Count = 1, Name = "第一星环", IconPath = GetSoulRingIconPath(1) },
+            { ItemID = ItemIDs.SoulRing2, Count = 1, Name = "第二星环", IconPath = GetSoulRingIconPath(2) },
         },
         SuccessRate = 90,
         GuaranteeFailCount = 3,
@@ -73,16 +73,16 @@ RealmConfig.Levels = {
         GuaranteeText = "连续失败3次\n下一次突破必定成功\n重置失败计数",
     },
     [3] = {
-        Stage = "二魂",
-        Name = "融身境",
+        Stage = "二环",
+        Name = "融星境",
         IconPath = GetSoulRingIconPath(2),
         NeedPowerText = "战力门槛：------",
-        NeedItemText = "所需道具：第三魂环x1\n融魂玉x5",
+        NeedItemText = "所需道具：第三星环x1\n融星玉x5",
         NeedItems = {
-            { ItemID = ItemIDs.SoulRing3, Count = 1, Name = "第三魂环", IconPath = GetSoulRingIconPath(3) },
-            { ItemID = ItemIDs.RHY, Count = 5, Name = "融魂玉", IconPath = GetMaterialIconPath("rhy") },
+            { ItemID = ItemIDs.SoulRing3, Count = 1, Name = "第三星环", IconPath = GetSoulRingIconPath(3) },
+            { ItemID = ItemIDs.RHY, Count = 5, Name = "融星玉", IconPath = GetMaterialIconPath("rhy") },
         },
-        DevConditionText = "融魂玉：海神岛副本掉落",
+        DevConditionText = "融星玉：海神岛副本掉落",
         SuccessRate = 85,
         GuaranteeFailCount = 3,
         SuccessBonuses = { "生命值+22%", "攻击值+16%" },
@@ -90,16 +90,16 @@ RealmConfig.Levels = {
         GuaranteeText = "连续失败3次\n下一次突破必定成功\n重置失败计数",
     },
     [4] = {
-        Stage = "三魂",
-        Name = "魂师境",
+        Stage = "三环",
+        Name = "星导师境",
         IconPath = GetSoulRingIconPath(3),
         NeedPowerText = "战力门槛：------",
-        NeedItemText = "所需道具：第四魂环x1\n魂师之证x1",
+        NeedItemText = "所需道具：第四星环x1\n星导师之证x1",
         NeedItems = {
-            { ItemID = ItemIDs.SoulRing4, Count = 1, Name = "第四魂环", IconPath = GetSoulRingIconPath(4) },
-            { ItemID = ItemIDs.HSZZ, Count = 1, Name = "魂师之证", IconPath = GetMaterialIconPath("hszz") },
+            { ItemID = ItemIDs.SoulRing4, Count = 1, Name = "第四星环", IconPath = GetSoulRingIconPath(4) },
+            { ItemID = ItemIDs.HSZZ, Count = 1, Name = "星导师之证", IconPath = GetMaterialIconPath("hszz") },
         },
-        DevConditionText = "魂师之证：副本魂兽Boss掉落",
+        DevConditionText = "星导师之证：副本星兽Boss掉落",
         SuccessRate = 80,
         GuaranteeFailCount = 3,
         SuccessBonuses = { "生命值+30%", "攻击值+23%" },
@@ -107,16 +107,16 @@ RealmConfig.Levels = {
         GuaranteeText = "连续失败3次\n下一次突破必定成功\n重置失败计数",
     },
     [5] = {
-        Stage = "四魂",
-        Name = "魂宗境",
+        Stage = "四环",
+        Name = "星宗境",
         IconPath = GetSoulRingIconPath(4),
         NeedPowerText = "战力门槛：------",
-        NeedItemText = "所需道具：第五魂环x1\n领域之核x1",
+        NeedItemText = "所需道具：第五星环x1\n领域之核x1",
         NeedItems = {
-            { ItemID = ItemIDs.SoulRing5, Count = 1, Name = "第五魂环", IconPath = GetSoulRingIconPath(5) },
+            { ItemID = ItemIDs.SoulRing5, Count = 1, Name = "第五星环", IconPath = GetSoulRingIconPath(5) },
             { ItemID = ItemIDs.LYZH, Count = 1, Name = "领域之核", IconPath = GetMaterialIconPath("lyzh") },
         },
-        DevConditionText = "领域之核：击杀副本魂兽Boss概率掉落",
+        DevConditionText = "领域之核：击杀副本星兽Boss概率掉落",
         SuccessRate = 72,
         GuaranteeFailCount = 3,
         SuccessBonuses = { "生命值+39%", "攻击值+31%" },
@@ -124,13 +124,13 @@ RealmConfig.Levels = {
         GuaranteeText = "连续失败3次\n下一次突破必定成功\n重置失败计数",
     },
     [6] = {
-        Stage = "五魂",
-        Name = "魂王境",
+        Stage = "五环",
+        Name = "星王境",
         IconPath = GetSoulRingIconPath(5),
         NeedPowerText = "战力门槛：------",
-        NeedItemText = "所需道具：第六魂环x1\n法则碎片x10",
+        NeedItemText = "所需道具：第六星环x1\n法则碎片x10",
         NeedItems = {
-            { ItemID = ItemIDs.SoulRing6, Count = 1, Name = "第六魂环", IconPath = GetSoulRingIconPath(6) },
+            { ItemID = ItemIDs.SoulRing6, Count = 1, Name = "第六星环", IconPath = GetSoulRingIconPath(6) },
             { ItemID = ItemIDs.FZSP, Count = 10, Name = "法则碎片", IconPath = GetMaterialIconPath("fzsp") },
         },
         DevConditionText = "法则碎片：挑战“法则回廊”副本",
@@ -141,16 +141,16 @@ RealmConfig.Levels = {
         GuaranteeText = "连续失败5次\n下一次突破必定成功\n重置失败计数",
     },
     [7] = {
-        Stage = "六魂",
-        Name = "魂帝境",
+        Stage = "六环",
+        Name = "星帝境",
         IconPath = GetSoulRingIconPath(6),
         NeedPowerText = "战力门槛：------",
-        NeedItemText = "所需道具：第七魂环x1\n帝魂印x1",
+        NeedItemText = "所需道具：第七星环x1\n帝星印x1",
         NeedItems = {
-            { ItemID = ItemIDs.SoulRing7, Count = 1, Name = "第七魂环", IconPath = GetSoulRingIconPath(7) },
-            { ItemID = ItemIDs.DHY, Count = 1, Name = "帝魂印", IconPath = GetMaterialIconPath("dhy") },
+            { ItemID = ItemIDs.SoulRing7, Count = 1, Name = "第七星环", IconPath = GetSoulRingIconPath(7) },
+            { ItemID = ItemIDs.DHY, Count = 1, Name = "帝星印", IconPath = GetMaterialIconPath("dhy") },
         },
-        DevConditionText = "帝魂印：集齐99个魂帝令碎片合成；魂帝令碎片掉落于所有万年魂兽",
+        DevConditionText = "帝星印：集齐99个星帝令碎片合成；星帝令碎片掉落于所有万年星兽",
         SuccessRate = 48,
         GuaranteeFailCount = 5,
         SuccessBonuses = { "生命值+63%", "攻击值+51%" },
@@ -158,16 +158,16 @@ RealmConfig.Levels = {
         GuaranteeText = "连续失败5次\n下一次突破必定成功\n重置失败计数",
     },
     [8] = {
-        Stage = "七魂",
-        Name = "魂圣境",
+        Stage = "七环",
+        Name = "星圣境",
         IconPath = GetSoulRingIconPath(7),
         NeedPowerText = "战力门槛：------",
-        NeedItemText = "所需道具：第八魂环x1\n圣魂玉x20",
+        NeedItemText = "所需道具：第八星环x1\n圣星玉x20",
         NeedItems = {
-            { ItemID = ItemIDs.SoulRing8, Count = 1, Name = "第八魂环", IconPath = GetSoulRingIconPath(8) },
-            { ItemID = ItemIDs.SHY, Count = 20, Name = "圣魂玉", IconPath = GetMaterialIconPath("shy") },
+            { ItemID = ItemIDs.SoulRing8, Count = 1, Name = "第八星环", IconPath = GetSoulRingIconPath(8) },
+            { ItemID = ItemIDs.SHY, Count = 20, Name = "圣星玉", IconPath = GetMaterialIconPath("shy") },
         },
-        DevConditionText = "圣魂玉：熔炼10个年魂环合成1个，或拍卖行购买",
+        DevConditionText = "圣星玉：熔炼10个年星环合成1个，或拍卖行购买",
         SuccessRate = 38,
         GuaranteeFailCount = 5,
         SuccessBonuses = { "生命值+78%", "攻击值+64%" },
@@ -175,16 +175,16 @@ RealmConfig.Levels = {
         GuaranteeText = "连续失败5次\n下一次突破必定成功\n重置失败计数",
     },
     [9] = {
-        Stage = "八魂",
-        Name = "魂尊境",
+        Stage = "八环",
+        Name = "星尊境",
         IconPath = GetSoulRingIconPath(8),
         NeedPowerText = "战力门槛：------",
-        NeedItemText = "所需道具：第九魂环x1\n神兽之血x1",
+        NeedItemText = "所需道具：第九星环x1\n神兽之血x1",
         NeedItems = {
-            { ItemID = ItemIDs.SoulRing9, Count = 1, Name = "第九魂环", IconPath = GetSoulRingIconPath(9) },
+            { ItemID = ItemIDs.SoulRing9, Count = 1, Name = "第九星环", IconPath = GetSoulRingIconPath(9) },
             { ItemID = ItemIDs.SSZX, Count = 1, Name = "神兽之血", IconPath = GetMaterialIconPath("sszx") },
         },
-        DevConditionText = "神兽之血：击杀特定魂兽“九头天蛇”或“冰晶凤凰”必掉",
+        DevConditionText = "神兽之血：击杀特定星兽“九头天蛇”或“冰晶凤凰”必掉",
         SuccessRate = 28,
         GuaranteeFailCount = 8,
         SuccessBonuses = { "生命值+96%", "攻击值+79%" },
@@ -192,13 +192,13 @@ RealmConfig.Levels = {
         GuaranteeText = "连续失败8次\n下一次突破必定成功\n重置失败计数",
     },
     [10] = {
-        Stage = "九魂",
-        Name = "封号斗罗",
+        Stage = "九环",
+        Name = "星冕境",
         IconPath = GetSoulRingIconPath(9),
         NeedPowerText = "战力门槛：------",
-        NeedItemText = "所需道具：第十魂环x1\n封号神印x1\n九色神光x9",
+        NeedItemText = "所需道具：第十星环x1\n封号神印x1\n九色神光x9",
         NeedItems = {
-            { ItemID = ItemIDs.SoulRing10, Count = 1, Name = "第十魂环", IconPath = GetSoulRingIconPath(10) },
+            { ItemID = ItemIDs.SoulRing10, Count = 1, Name = "第十星环", IconPath = GetSoulRingIconPath(10) },
             { ItemID = ItemIDs.FHSY, Count = 1, Name = "封号神印", IconPath = GetMaterialIconPath("w_20260630125242_2") },
             { ItemID = ItemIDs.JSSG, Count = 9, Name = "九色神光", IconPath = GetMaterialIconPath("fhsy") },
         },

@@ -189,6 +189,10 @@ function SignInEventComponent:InitUI()
     self.MainUI = UserWidget.NewWidgetObjectBP(self:GetOwner(), MainUIClass);
     self.MainUI:AddToViewport(15000);
     self.MainUI:SetVisibility(ESlateVisibility.Collapsed);
+    self.OnConfigDataLoaded:Add(self.PreloadUI, self);
+    if self.bConfigLoaded == true then
+        self:PreloadUI();
+    end
 
     if self.MainUI.AutoOpen == true then
         self.OnConfigDataLoaded:Add(self.OpenUI, self);
@@ -201,6 +205,14 @@ function SignInEventComponent:InitUI()
             local Button = UserWidget.NewWidgetObjectBP(self:GetOwner(), ButtonClass);
             Button:AddToViewport(10000); 
         end
+    end
+end
+
+function SignInEventComponent:PreloadUI()
+
+    if self.MainUI ~= nil then
+        self.MainUI:Refresh();
+        self.MainUI:SetVisibility(ESlateVisibility.Collapsed);
     end
 end
 
@@ -566,6 +578,7 @@ function SignInEventComponent:ReadConfigTable()
                     ConfigData.Awards = self:ReadAwardTable(Data.AwardTablePath);
                     Cnt = Cnt + 1;
                     if Cnt == EventCnt then
+                        self.bConfigLoaded = true;
                         self.OnConfigDataLoaded();
                     end
                 end
