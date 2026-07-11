@@ -962,6 +962,8 @@ function UGCPlayerPawn:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser
 end
 
 function UGCPlayerPawn:ReceiveEndPlay()
+    UGCGenericMessageSystem.UnListenMessage(self, L_Enum_Event.Enum.ReFreshZhanLi_01)
+
     -- Pawn 离场前，将当前血量写入跨对局存档（防止玩家未死亡直接退出）
     local playerState = self.PlayerState
     if playerState and playerState.SaveCurrentHP then

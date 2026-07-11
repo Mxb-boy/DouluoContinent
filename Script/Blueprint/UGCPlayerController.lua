@@ -1582,6 +1582,7 @@ function UGCPlayerController:CleanupPlayerTimers()
     UGCTimerUtility.RemoveLuaTimerByName("AutoPick_" .. PlayerKey)
     UGCTimerUtility.RemoveLuaTimerByName("ProbabilityBonus_" .. PlayerKey)
     UGCTimerUtility.RemoveLuaTimerByName("AutoMeleeAttack_" .. PlayerKey)
+    UGCTimerUtility.RemoveLuaTimerByName("AFKZone_" .. PlayerKey)
 end
 
 --- 单笔补偿回调（服务器&客户端都会收到）
