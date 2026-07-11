@@ -16,6 +16,7 @@ local TowerMgr = {}
 function TowerMgr:ReceiveBeginPlay()
     TowerMgr.SuperClass.ReceiveBeginPlay(self)
 
+    self.bRuntimeDestroyed = false
     self.HasStarted = false
     self.IsWaitingRespawn = false
     self.IsCheckingWave = false
@@ -32,10 +33,37 @@ function TowerMgr:ReceiveBeginPlay()
 end
 
 function TowerMgr:ReceiveEndPlay()
+    self:CleanupRuntimeState()
     TowerMgr.SuperClass.ReceiveEndPlay(self)
 end
 
+function TowerMgr:CleanupRuntimeState()
+    self.bRuntimeDestroyed = true
+    self.RespawnTimerToken = (self.RespawnTimerToken or 0) + 1
+    self.SpawnPointRespawnTokens = {}
+    self.InsidePlayerOverlapCounts = {}
+    self.ActorToPlayerUIDs = {}
+    self.InsidePlayerCount = 0
+    self.IsWaitingRespawn = false
+    self.IsCheckingWave = false
+
+    for index = #(self.AliveMonsters or {}), 1, -1 do
+        local monster = self.AliveMonsters[index]
+        if monster ~= nil and UE.IsValid(monster) then
+            monster.SpawnWall = nil
+            UGCActorComponentUtility.DestroyActor(monster)
+        end
+        table.remove(self.AliveMonsters, index)
+    end
+
+    self.AliveMonsters = {}
+    self.MonsterSpawnPoints = {}
+end
+
 function TowerMgr:HasPlayerInside()
+    if self.bRuntimeDestroyed then
+        return false
+    end
     return (self.InsidePlayerCount or 0) > 0
 end
 
@@ -82,7 +110,7 @@ function TowerMgr:ResumeWaveLoop()
 end
 
 function TowerMgr:SpawnWave()
-    if self:HasAuthority() == false then
+    if self.bRuntimeDestroyed or self:HasAuthority() == false then
         return
     end
 
@@ -170,7 +198,7 @@ function TowerMgr:SpawnWave()
 end
 
 function TowerMgr:CheckWaveCleared()
-    if self:HasAuthority() == false or self.IsWaitingRespawn then
+    if self.bRuntimeDestroyed or self:HasAuthority() == false or self.IsWaitingRespawn then
         return
     end
 
@@ -197,7 +225,7 @@ function TowerMgr:IsMonsterAlive(monster)
 end
 
 function TowerMgr:DestroyAliveMonsters()
-    if self:HasAuthority() == false then
+    if self.bRuntimeDestroyed or self:HasAuthority() == false then
         return
     end
 
@@ -206,6 +234,7 @@ function TowerMgr:DestroyAliveMonsters()
     for index = #self.AliveMonsters, 1, -1 do
         local monster = self.AliveMonsters[index]
         if monster ~= nil and UE.IsValid(monster) then
+            monster.SpawnWall = nil
             UGCActorComponentUtility.DestroyActor(monster)
         end
         self.MonsterSpawnPoints[monster] = nil
@@ -219,7 +248,7 @@ function TowerMgr:DestroyAliveMonsters()
 end
 
 function TowerMgr:AddAliveMonster(monster)
-    if monster == nil then
+    if self.bRuntimeDestroyed or monster == nil then
         return
     end
 
@@ -230,7 +259,7 @@ function TowerMgr:AddAliveMonster(monster)
 end
 
 function TowerMgr:ScheduleMonsterRespawn(monster)
-    if self:HasAuthority() == false or self:HasPlayerInside() == false then
+    if self.bRuntimeDestroyed or self:HasAuthority() == false or self:HasPlayerInside() == false then
         return
     end
 
@@ -260,7 +289,7 @@ function TowerMgr:ScheduleMonsterRespawn(monster)
 
     local wall = self
     UGCTimerUtility.CreateLuaTimer(respawnDelay, function()
-        if wall == nil or UE.IsValid(wall) == false then
+        if wall == nil or UE.IsValid(wall) == false or wall.bRuntimeDestroyed then
             return
         end
 
@@ -307,7 +336,7 @@ function TowerMgr:ScheduleMonsterRespawn(monster)
 end
 
 function TowerMgr:StartRespawnTimer()
-    if self.IsWaitingRespawn or self:HasPlayerInside() == false then
+    if self.bRuntimeDestroyed or self.IsWaitingRespawn or self:HasPlayerInside() == false then
         return
     end
 
@@ -318,7 +347,7 @@ function TowerMgr:StartRespawnTimer()
 
     local wall = self
     UGCTimerUtility.CreateLuaTimer(3, function()
-        if wall ~= nil and UE.IsValid(wall) then
+        if wall ~= nil and UE.IsValid(wall) and not wall.bRuntimeDestroyed then
             if wall.RespawnTimerToken ~= timerToken then
                 return
             end
@@ -336,7 +365,7 @@ function TowerMgr:StartRespawnTimer()
 end
 
 function TowerMgr:OnMonsterDied(monster)
-    if self:HasAuthority() == false then
+    if self.bRuntimeDestroyed or self:HasAuthority() == false then
         return
     end
 
