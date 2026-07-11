@@ -460,9 +460,11 @@ function TowerMgr:GetPlayerUID(OtherActor)
         return nil
     end
 
-    local ok, uid = pcall(UGCGameSystem.GetUIDByPlayerPawn, OtherActor)
-    if ok and uid ~= nil then
-        return uid
+    if IsPlayerPawn(OtherActor) then
+        local ok, uid = pcall(UGCGameSystem.GetUIDByPlayerPawn, OtherActor)
+        if ok and uid ~= nil then
+            return uid
+        end
     end
 
     return self.ActorToPlayerUIDs[OtherActor]
