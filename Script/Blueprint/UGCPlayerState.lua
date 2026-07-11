@@ -217,10 +217,8 @@ function UGCPlayerState:GetAutoPickButtonHidden()
 end
 
 function UGCPlayerState:SetAutoPickButtonHidden(value)
-    if value == true or tonumber(value) == 1 then
-        self.AutoPickButtonHidden = 1
-        self:SaveToArchiveImmediate()
-    end
+    self.AutoPickButtonHidden = (value == true or tonumber(value) == 1) and 1 or 0
+    self:SaveToArchive()
 end
 
 function UGCPlayerState:GetAutoAttackButtonHidden()
@@ -228,10 +226,8 @@ function UGCPlayerState:GetAutoAttackButtonHidden()
 end
 
 function UGCPlayerState:SetAutoAttackButtonHidden(value)
-    if value == true or tonumber(value) == 1 then
-        self.AutoAttackButtonHidden = 1
-        self:SaveToArchiveImmediate()
-    end
+    self.AutoAttackButtonHidden = (value == true or tonumber(value) == 1) and 1 or 0
+    self:SaveToArchive()
 end
 
 function UGCPlayerState:GetFeiButton0Hidden()

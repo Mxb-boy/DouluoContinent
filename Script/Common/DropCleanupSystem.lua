@@ -17,15 +17,19 @@ DropCleanupSystem.SCAN_INTERVAL = 10        -- 集中扫描间隔（秒），替
 DropCleanupSystem.SCAN_RANGE = 1500
 DropCleanupSystem.MAX_PICKUPS = 999
 DropCleanupSystem.SAFETY_RANGE = 100000
-DropCleanupSystem.MAX_PENDING_LOCATIONS = 24
+
 -- 兜底全场景搜索降频：每 SAFETY_SCAN_RATIO 次常规扫描才做 1 次（= 每 60 秒）
+DropCleanupSystem.SAFETY_SCAN_RATIO = 6
 
 -- 实时计数（避免每次扫描都遍历 pairs 计数）
+DropCleanupSystem.LiveCount = 0
 
 -- 常规扫描计数器（用于触发降频兜底）
+DropCleanupSystem.ScanTickCount = 0
 
 -- ScheduleDropCleanup 去抖动：合并短时间内的多次掉落为一次扫描
-DropCleanupSystem.SafetyScanPawnIndex = 1
+DropCleanupSystem.PendingDropLocations = nil
+DropCleanupSystem.DebounceTimerActive = false
 
 --- 将 UE 返回的 TArray 复制为纯 Lua table，防止遍历时数组被引擎修改
 local function CopyToArray(ueArray)
@@ -41,80 +45,10 @@ end
 
 --- 在指定位置附近查找掉落物并加入追踪列表
 ---@param location FVector 掉落位置
-local function CopyToArrayLimited(ueArray, maxCount)
-    if ueArray == nil then
-        return {}
-    end
-    local copy = {}
-    local count = 0
-    local limit = tonumber(maxCount) or DropCleanupSystem.MAX_WRAPPERS_PER_SCAN
-    for _, item in ipairs(ueArray) do
-        count = count + 1
-        if count > limit then
-            break
-        end
-        table.insert(copy, item)
-    end
-    return copy
-end
-
-local function TrackWrappersNearLocation(location, scanRange)
-    if location == nil then
-        return
-    end
-
-    local wrappers = UGCItemSystemV2.FindPickupWrapperActorByRange(location, scanRange)
-    if wrappers == nil then
-        return
-    end
-
-    local wrapperCopy = CopyToArrayLimited(wrappers, DropCleanupSystem.MAX_WRAPPERS_PER_SCAN)
-    for _, wrapper in ipairs(wrapperCopy) do
-        if wrapper and UE.IsValid(wrapper) and DropCleanupSystem.TrackedPickups[wrapper] == nil then
-            DropCleanupSystem.TrackedPickups[wrapper] = os.time()
-        end
-    end
-end
-
-function DropCleanupSystem.RunPendingDiscovery()
-    DropCleanupSystem.DiscoveryTimerActive = false
-
-    local processed = 0
-    while processed < DropCleanupSystem.MAX_LOCATIONS_PER_DISCOVERY and #DropCleanupSystem.PendingLocations > 0 do
-        local location = table.remove(DropCleanupSystem.PendingLocations, 1)
-        TrackWrappersNearLocation(location, DropCleanupSystem.SCAN_RANGE)
-        processed = processed + 1
-    end
-
-    if #DropCleanupSystem.PendingLocations > 0 then
-        DropCleanupSystem.ScheduleDiscoveryTimer()
-    end
-end
-
-function DropCleanupSystem.ScheduleDiscoveryTimer()
-    if DropCleanupSystem.DiscoveryTimerActive then
-        return
-    end
-
-    DropCleanupSystem.DiscoveryTimerActive = true
-    UGCTimerUtility.RemoveLuaTimerByName(DropCleanupSystem.DiscoveryTimerName)
-    UGCTimerUtility.CreateLuaTimer(1, function()
-        UGCTimerUtility.RemoveLuaTimerByName(DropCleanupSystem.DiscoveryTimerName)
-        DropCleanupSystem.RunPendingDiscovery()
-    end, true, DropCleanupSystem.DiscoveryTimerName)
-end
-
 function DropCleanupSystem.ScheduleDropCleanup(location)
     if location == nil then
         return
     end
-
-    table.insert(DropCleanupSystem.PendingLocations, location)
-    while #DropCleanupSystem.PendingLocations > DropCleanupSystem.MAX_PENDING_LOCATIONS do
-        table.remove(DropCleanupSystem.PendingLocations, 1)
-    end
-    DropCleanupSystem.ScheduleDiscoveryTimer()
-    return
 
     -- 去抖动：合并 1 秒内的多次掉落请求为一次扫描
     if DropCleanupSystem.PendingDropLocations == nil then
@@ -255,14 +189,6 @@ end
 function DropCleanupSystem.SafetyNetScan(livePickups, currentCount)
     local allPawns = UGCGameSystem.GetAllPlayerPawn()
     local pawnCopy = CopyToArray(allPawns)
-    if #pawnCopy > 0 then
-        if DropCleanupSystem.SafetyScanPawnIndex > #pawnCopy then
-            DropCleanupSystem.SafetyScanPawnIndex = 1
-        end
-        local selectedPawn = pawnCopy[DropCleanupSystem.SafetyScanPawnIndex]
-        DropCleanupSystem.SafetyScanPawnIndex = DropCleanupSystem.SafetyScanPawnIndex + 1
-        pawnCopy = { selectedPawn }
-    end
     for _, pawn in ipairs(pawnCopy) do
         if pawn and UE.IsValid(pawn) then
             local location = pawn:K2_GetActorLocation()
@@ -270,7 +196,7 @@ function DropCleanupSystem.SafetyNetScan(livePickups, currentCount)
                 local wrappers = UGCItemSystemV2.FindPickupWrapperActorByRange(
                     location, DropCleanupSystem.SAFETY_RANGE)
                 if wrappers then
-                    local wrapperCopy = CopyToArrayLimited(wrappers, DropCleanupSystem.MAX_WRAPPERS_PER_SCAN)
+                    local wrapperCopy = CopyToArray(wrappers)
                     for _, wrapper in ipairs(wrapperCopy) do
                         if wrapper and UE.IsValid(wrapper) then
                             if DropCleanupSystem.TrackedPickups[wrapper] == nil then
