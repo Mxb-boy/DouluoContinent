@@ -3,6 +3,7 @@
 local UGCGameMode = {};
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local DropCleanupSystem = UGCGameSystem.UGCRequire("Script.Common.DropCleanupSystem")
+UGCGameSystem.UGCRequire("Script.Common.LogFilter")
 
 local MaxPlayerCount = 12
 local MatchTeamCount = 3

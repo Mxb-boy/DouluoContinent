@@ -1,6 +1,24 @@
 ---@class BP_BackpackComponentV2_Custom_C:BP_BackpackComponentV2_C
 --Edit Below--
-local BP_BackpackComponentV2_Custom = {} 
+local BP_BackpackComponentV2_Custom = {}
+
+--- 背包排序比较函数（静默覆盖）
+--- 框架原版每次比较都 print 物品详情，40+ 物品排序产生 580+ 条日志
+--- 此覆盖版执行相同逻辑但不输出日志，消除 DS 端日志洪水
+---@param ItemA table 物品A
+---@param ItemB table 物品B
+---@return boolean ItemA 的入包时间是否早于 ItemB
+function BP_BackpackComponentV2_Custom:CompareByItemEnterTime(ItemA, ItemB)
+    local timeA = 0
+    local timeB = 0
+    if ItemA and ItemA.ItemInfos then
+        timeA = ItemA.ItemInfos.ItemEnterCellTime or 0
+    end
+    if ItemB and ItemB.ItemInfos then
+        timeB = ItemB.ItemInfos.ItemEnterCellTime or 0
+    end
+    return timeA < timeB
+end
 
 ---func 背包初始化函数，玩家登录后执行一次(服务端调用)
 -- function BP_BackpackComponentV2_Custom:InitEventAfterPlayerEnter()
