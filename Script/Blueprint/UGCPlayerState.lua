@@ -282,6 +282,7 @@ function UGCPlayerState:SetLotteryState(value)
         self.LotteryState = {}
     end
     self:SaveToArchive()
+    _G.DOREPONCE(self, "LotteryState")
 end
 
 function UGCPlayerState:GetSignInEvent()
