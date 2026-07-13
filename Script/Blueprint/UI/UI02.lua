@@ -441,6 +441,7 @@ local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
 
 local UI02 = {
     bInitDoOnce = false
@@ -621,6 +622,9 @@ function UI02:OnRefreshProperty(baseAttack, baseMaxHp, hp, maxHp, bFillHealth)
     end
 
     StateMgr:RefreshFromPlayerState(nil, baseAttack, baseMaxHp, hp, maxHp, bFillHealth)
+    if RankMgr ~= nil and RankMgr.UpdateZhanLiRank ~= nil then
+        RankMgr:UpdateZhanLiRank(StateMgr:GetFinalZhanLi())
+    end
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
     self:RefreshWeaponBonusText()
@@ -1164,6 +1168,14 @@ end
 
 -- 礼包
 function UI02:Button_0_OnClicked()
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil and UGCBlueprintFunctionLibrary ~= nil and UGCBlueprintFunctionLibrary.IsUGCPIE ~= nil and
+        UGCBlueprintFunctionLibrary.IsUGCPIE(PlayerController) and RankMgr ~= nil and
+        RankMgr.ApplyNextZhanLiRankBonusForTest ~= nil then
+        RankMgr:ApplyNextZhanLiRankBonusForTest()
+        return
+    end
+
     -- local PlayerController = GameplayStatics.GetPlayerController(self, 0)
 
     -- local GiftPackUIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath(
