@@ -248,6 +248,15 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             if PlayerState and PlayerState.LoadFromArchive then
                 local UID = UGCPawnAttrSystem.GetPlayerUID(PC.Pawn)
                 PlayerState:LoadFromArchive(tonumber(UID))
+                -- PlayerState 的复制可能晚于客户端主界面创建。存档恢复后显式同步一次
+                -- 永久解锁状态，避免 Button_5 / Button_2 按默认值 0 再次显示。
+                if PlayerState.GetAutoPickButtonHidden ~= nil and PlayerState:GetAutoPickButtonHidden() == true then
+                    UnrealNetwork.CallUnrealRPC(PC, PC, "Client_SetAutoFeatureButtonHidden", "AutoPick")
+                end
+                if PlayerState.GetAutoAttackButtonHidden ~= nil and
+                    PlayerState:GetAutoAttackButtonHidden() == true then
+                    UnrealNetwork.CallUnrealRPC(PC, PC, "Client_SetAutoFeatureButtonHidden", "AutoAttack")
+                end
                 if PlayerState.GetYXWD_InvincibleBuff ~= nil and PlayerState:GetYXWD_InvincibleBuff() == true then
                     if PlayerState.SetYXWD_InvincibleBuffActive ~= nil then
                         PlayerState:SetYXWD_InvincibleBuffActive(true)

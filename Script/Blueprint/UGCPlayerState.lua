@@ -44,6 +44,14 @@ local ARCHIVE_KEYS = {{
     field = "YXWD_InvincibleBuff",
     default = 0
 }, {
+    key = "AutoPickButtonHidden",
+    field = "AutoPickButtonHidden",
+    default = 0
+}, {
+    key = "AutoAttackButtonHidden",
+    field = "AutoAttackButtonHidden",
+    default = 0
+}, {
     key = "LotteryState",
     field = "LotteryState",
     default = {}
@@ -58,8 +66,6 @@ local ARCHIVE_KEYS = {{
 } -- 示例: { key = "Gold",    field = "Gold",    default = 0 },
 }
 
-table.insert(ARCHIVE_KEYS, { key = "AutoPickButtonHidden", field = "AutoPickButtonHidden", default = 0 })
-table.insert(ARCHIVE_KEYS, { key = "AutoAttackButtonHidden", field = "AutoAttackButtonHidden", default = 0 })
 table.insert(ARCHIVE_KEYS, { key = "UnlockedTitles", field = "UnlockedTitles", default = {} })
 table.insert(ARCHIVE_KEYS, { key = "EquippedTitleID", field = "EquippedTitleID", default = 0 })
 table.insert(ARCHIVE_KEYS, { key = "Probability_Bonus", field = "Probability_Bonus", default = 100 })
