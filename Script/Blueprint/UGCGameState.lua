@@ -15,12 +15,16 @@ end
 function UGCGameState:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
 
---[[   local RankListBtnClass = UE.LoadClass(UGCMapInfoLib.GetRootLongPackagePath().. "ExtendResource/RankingList/OfficialPackage/Asset/RankingList/Blueprint/WBP_RankingListBtn.WBP_RankingListBtn_C")
-    local RankListBtn = UserWidget.NewWidgetObjectBP(PlayerController, RankListBtnClass)
-    if RankListBtn ~= nil then
-        RankListBtn:AddToViewport(1000)
-    end
---]]
+--    local RankListBtnClass = UE.LoadClass(UGCMapInfoLib.GetRootLongPackagePath().. "ExtendResource/RankingList/OfficialPackage/Asset/RankingList/Blueprint/WBP_RankingListBtn.WBP_RankingListBtn_C")
+--     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+--     if PlayerController == nil or RankListBtnClass == nil then
+--         return
+--     end
+--     local RankListBtn = UserWidget.NewWidgetObjectBP(PlayerController, RankListBtnClass)
+--     if RankListBtn ~= nil then
+--         RankListBtn:AddToViewport(1000)
+--     end
+
 
 
     --[[local TaskBtnClass = UGCObjectUtility.LoadClass(UGCGameSystem.GetUGCResourcesFullPath("ExtendResource/TaskTemplate/OfficialPackage/Asset/Task/Blueprint/WBP_TaskMainUIButton.WBP_TaskMainUIButton_C"));

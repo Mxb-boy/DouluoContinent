@@ -66,6 +66,11 @@ end
 
 function UI14:Open()
     self:SetBattleUIVisible(false)
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil then
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestLotteryStateSync")
+    end
     self:Refresh()
     self:SetVisibility(ESlateVisibility.Visible)
 end

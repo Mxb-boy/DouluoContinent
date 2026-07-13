@@ -1,0 +1,3 @@
+local RankMgr = {}
+
+return RankMgr

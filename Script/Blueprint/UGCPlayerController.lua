@@ -86,7 +86,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_EndFlyState", "Server_FlyMove", "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus",
         "Server_AddProbabilityBonus", "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm",
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
-        "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult", "Client_RefreshProperty",
+        "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult",
+        "Server_RequestLotteryStateSync", "Client_SyncLotteryState", "Client_RefreshProperty",
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
         "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden",
@@ -929,6 +930,25 @@ function UGCPlayerController:Client_LotteryResult(LotteryType, SlotIndex, AwardI
         self.MainUIInstance.UI14Instance.OnLotteryResult ~= nil then
         self.MainUIInstance.UI14Instance:OnLotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount, bCompleted,
             ItemList)
+    end
+end
+
+function UGCPlayerController:Server_RequestLotteryStateSync()
+    local PlayerState = self.PlayerState
+    local LotteryState = PlayerState and PlayerState.GetLotteryState and PlayerState:GetLotteryState() or
+                             (PlayerState and PlayerState.LotteryState) or {}
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncLotteryState", LotteryState)
+end
+
+function UGCPlayerController:Client_SyncLotteryState(LotteryState)
+    local PlayerState = self.PlayerState
+    if PlayerState ~= nil then
+        PlayerState.LotteryState = LotteryState or {}
+    end
+
+    local UI14Instance = self.MainUIInstance and self.MainUIInstance.UI14Instance or self.UI14Instance
+    if UI14Instance ~= nil and UI14Instance.Refresh ~= nil then
+        UI14Instance:Refresh()
     end
 end
 
