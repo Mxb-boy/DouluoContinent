@@ -16,11 +16,13 @@ end
 function Common.GetClassWithSoftPath(SoftClassPath)
     
     if SoftClassPath == nil then
+        print("SignInEventManager: SoftClassPath is not valid");
         return nil;
     end
 
     local Path = KismetSystemLibrary.BreakSoftClassPath(SoftClassPath);
     if Path == nil then
+        print("SignInEventManager: Path is nil");
         return nil;
     end
 
@@ -78,6 +80,7 @@ function Common.LoadObjectWithSoftPathAsync(SoftObjectPath, CallBack)
             end
 
             if Asset == nil then
+                print("UGCAsyncLoadTools:LoadObject Error:" ..  KismetSystemLibrary.BreakSoftObjectPath(SoftObjectPath));
 
                 if UGCGameSystem.GameState.AsyncDelegate[AsyncDelegateIndex] then
                     ObjectExtend.DestroyDelegate(UGCGameSystem.GameState.AsyncDelegate[AsyncDelegateIndex])
@@ -117,6 +120,7 @@ function Common.GetCurrentTime(bPrintLog)
     end
 
     if bPrintLog == true then
+        print(string.format("[Common.GetCurrentTime] Current Timestamp=%d", CurrentTime));
     end
 
     return CurrentTime;
@@ -126,10 +130,13 @@ end
 ---@param EndDate FDateTime
 function Common.CheckStartEndDate(StartDate, EndDate)
     
+    print(string.format("[Common.CheckStartEndDate] Start check start end date"));
 
     local CurrentTime = Common.GetCurrentTime();
     local StartTime = Common.GetTimestampFromDateTime(StartDate);
+    print(string.format("[Common.CheckStartEndDate] StartTime=%d", StartTime));
     local EndTime = Common.GetTimestampFromDateTime(EndDate);
+    print(string.format("[Common.CheckStartEndDate] EndTime=%d", EndTime));
 
     return CurrentTime >= StartTime and CurrentTime < EndTime;
 end
@@ -138,8 +145,11 @@ end
 ---@param EndTime int
 function Common.CheckStartEndTime(StartTime, EndTime)
     
+    print(string.format("[Common.CheckStartEndDate] Start check start end time"));
 
     local CurrentTime = Common.GetCurrentTime();
+    print(string.format("[Common.CheckStartEndDate] StartTime=%d", StartTime));
+    print(string.format("[Common.CheckStartEndDate] EndTime=%d", EndTime));
 
     return CurrentTime >= StartTime and CurrentTime < EndTime;
 end

@@ -17,10 +17,12 @@ end
 -- end
 
 function UGC_RankingList_IngameBut_UIBP:RankClick()
+    print("UGC_RankingList_IngameBut_UIBP:RankClick");
     RankingListManager:OpenRankingList();
 end
 
 function UGC_RankingList_IngameBut_UIBP:RefreshRedPoint()
+    print("UGC_RankingList_IngameBut_UIBP:RefreshRedPoint");
     local CanSign, _ = RankingListManager:GetAllRankListRedPoint();
     if CanSign then
         self.Image_Bg_Default:SetVisibility(ESlateVisibility.SelfHitTestInvisible);
@@ -30,6 +32,7 @@ function UGC_RankingList_IngameBut_UIBP:RefreshRedPoint()
 end
 
 function UGC_RankingList_IngameBut_UIBP:InitUI()
+    print("UGC_RankingList_IngameBut_UIBP:InitUI");
     self:RefreshRedPoint();
 end
 

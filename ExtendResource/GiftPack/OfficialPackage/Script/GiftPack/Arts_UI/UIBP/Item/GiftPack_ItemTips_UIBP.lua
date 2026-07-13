@@ -19,6 +19,7 @@ function GiftPack_ItemTips_UIBP:Construct()
 end
 
 function GiftPack_ItemTips_UIBP:Refresh(ItemID, Position)
+    print(string.format("GiftPack_ItemTips_UIBP:Refresh"));
     local ItemData = Common.GetObjectDatas()[ItemID];
     if ItemData == nil then
         return;

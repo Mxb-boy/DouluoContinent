@@ -39,8 +39,10 @@ function UGCGameState:ReceiveBeginPlay()
             if GiftPackUI ~= nil then
                 GiftPackUI:AddToViewport(12000);
             else
+                ugcprint("[UGCGameState] GiftPackUI create failed");
             end
         else
+            ugcprint("[UGCGameState] GiftPackUIClass or PlayerController is nil");
         end
         --]]
 

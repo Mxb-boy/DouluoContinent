@@ -18,15 +18,18 @@ function UGC_RankingList_Item_Style1_UIBP:Construct()
 end
 
 function UGC_RankingList_Item_Style1_UIBP:ItemClick()
+    print("UGC_RankingList_Item_Style1_UIBP:ItemClick");
     local State = RankingListManager:CanClaimRankListAward(self.RankID);
     if self.IsSelf then
         if State == UGCRankingListAwardState.CanSign then
+            print("UGC_RankingList_Item_Style1_UIBP:ItemClick 领取奖励");
             ---领取奖励
             RankingListManager:ReceiveRankListAward(self.RankID);
         elseif State == UGCRankingListAwardState.NotAvailable then
             UGCWidgetManagerSystem.ShowTipsUI("榜单结算中，请稍后再来领取奖励~")
         end
     else
+        print("UGC_RankingList_Item_Style1_UIBP:ItemClick 显示道具Tip");
         ---显示道具Tip
         local AbsPosition = SlateBlueprintLibrary.GetAbsolutePosition(self:GetCachedGeometry());
         local Position = SlateBlueprintLibrary.AbsoluteToLocal(WidgetLayoutLibrary.GetViewportWidgetGeometry(self), AbsPosition);
@@ -84,6 +87,7 @@ function UGC_RankingList_Item_Style1_UIBP:RefreshRedPoint()
                 State = UGCRankingListAwardState.Lock;
             end
         end
+        print(string.format("UGC_RankingList_Item_Style1_UIBP:RefreshRedPoint State: %s", tostring(State)))
         if State == UGCRankingListAwardState.CanSign then
             self.WidgetSwitcher_Sate:SetActiveWidgetIndex(1);
             self.Image_Bg_Default:SetVisibility(ESlateVisibility.SelfHitTestInvisible);

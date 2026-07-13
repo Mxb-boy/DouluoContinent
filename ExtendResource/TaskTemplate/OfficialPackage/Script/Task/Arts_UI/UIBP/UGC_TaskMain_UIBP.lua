@@ -11,12 +11,14 @@
 local UGC_TaskMain_UIBP = { bInitDoOnce = false } 
 
 function UGC_TaskMain_UIBP:Construct()
+    print("[UGC_TaskMain_UIBP:Construct]");
     self:InitBindEvent();
     self.TabList = {};
     self.SelectTaskLineIndex = -1;
     Common.LoadObjectAsync('/Game/WwiseEvent/UI_Button/Play_UI_Bnt_MainMenu.Play_UI_Bnt_MainMenu',
             function (Object)
                 if self ~= nil and UE.IsValid(self) then
+                    print("[UGC_TaskMain_UIBP:Construct] Load WwiseEvent");
                     self.OpenWwiseEvent = Object
                 end
             end
@@ -46,11 +48,13 @@ function UGC_TaskMain_UIBP:Close()
 end
 
 function UGC_TaskMain_UIBP:InitTabItem(Item, Index)
+    print(string.format("[UGC_TaskMain_UIBP:InitTabItem] Index: %d", Index));
     -- log_tree("[UGC_TaskMain_UIBP:InitTabItem] TaskLineUIList", self.TaskLineUIMap);
     self.TabList[Index + 1] = Item;
 
     if self.LegalTaskLineConfig[Index + 1] then
         local TaskLineName = self.LegalTaskLineConfig[Index + 1].TaskLineConfig.TaskLineName;
+        print(string.format("[UGC_TaskMain_UIBP:InitTabItem] TaskLineName: %s", TaskLineName));
         Item:InitUI(Index + 1, TaskLineName);
         if Index == 0 then
             self.TabList[Index + 1]:Select();
@@ -87,6 +91,7 @@ function UGC_TaskMain_UIBP:InitUI()
             1,
             function ()
                 local CurTime = UGCGameSystem.GetServerTimeSec();
+                print(string.format("[UGC_TaskMain_UIBP:InitUI] CurTime: %d NextRefreshTime: %d", CurTime, self.NextRefreshTime or 0));
                 if self.NextRefreshTime and CurTime >= self.NextRefreshTime then
                     self:SetLegalTaskLineConfig();
                     self.Task_TabMenu:Reload(#self.LegalTaskLineConfig);
@@ -100,6 +105,7 @@ function UGC_TaskMain_UIBP:InitUI()
     end
     self.Task_TabMenu:Reload(#self.LegalTaskLineConfig);
     if self.OpenWwiseEvent then
+        print("[UGC_TaskMain_UIBP:InitUI] PlaySound2D");
         UGCSoundManagerSystem.PlaySound2D(self.OpenWwiseEvent);
     end
 end
@@ -143,6 +149,7 @@ function UGC_TaskMain_UIBP:SetLegalTaskLineConfig()
         if self.TaskLineTimeMap and self.TaskLineTimeMap[TaskLineName] then
             local BeginTime = self.TaskLineTimeMap[TaskLineName].BeginTime;
             local EndTime = self.TaskLineTimeMap[TaskLineName].EndTime;
+            print(string.format("[UGC_TaskMain_UIBP:SetLegalTaskLineConfig] CurTime: %d BeginTime: %d EndTime: %d", CurTime, BeginTime, EndTime));
             if CurTime >= BeginTime and CurTime < EndTime then
                 table.insert(self.LegalTaskLineConfig, {TaskLineConfig = TaskLineConfig, RealIndex = Idx});
             end
@@ -176,9 +183,11 @@ function UGC_TaskMain_UIBP:SetNextRefreshTime()
             self.NextRefreshTime = Time;
         end
     end
+    print(string.format("[UGC_TaskMain_UIBP:SetNextRefreshTime] CurTime: %d NextRefreshTime: %d", CurTime, self.NextRefreshTime or 0));
 end
 
 function UGC_TaskMain_UIBP:SelectTaskLine(Index)
+    print(string.format("[UGC_TaskMain_UIBP:SelectTaskLine] Index: %d", Index));
     for Idx, Tab in pairs(self.TabList) do
         if self.LegalTaskLineConfig[Idx] then
             if Index == Idx then
@@ -191,6 +200,7 @@ function UGC_TaskMain_UIBP:SelectTaskLine(Index)
     end
     if self.LegalTaskLineConfig[Index] then
         local TaskLineName = self.LegalTaskLineConfig[Index].TaskLineConfig.TaskLineName;
+        print(string.format("[UGC_TaskMain_UIBP:SelectTaskLine] TaskLineName: %s", TaskLineName));
         local TaskLineType = self.LegalTaskLineConfig[Index].TaskLineConfig.TaskLineType;
         if TaskLineType == EUGCTaskLineType.LevelTaskLine then
             self.LevelTaskLineUI:InitUI(TaskLineName);
@@ -211,6 +221,7 @@ function UGC_TaskMain_UIBP:RefershRedPoint()
 end
 
 function UGC_TaskMain_UIBP:InitLevelTaskLineUI(LevelTaskLineUI)
+    print("[UGC_TaskMain_UIBP:InitLevelTaskLineUI]");
     if UE.IsValid(LevelTaskLineUI) then
         self.LevelTaskLineUI = LevelTaskLineUI;
         UIUtil.AttachTo(self.CanvasPanel_Content, LevelTaskLineUI, 0, { Minimum = { X = 0, Y = 0 }, Maximum = { X = 1, Y = 1 } }, { Left = 0, Right = -1.5, Bottom = 0, Top = 0 });
@@ -219,6 +230,7 @@ function UGC_TaskMain_UIBP:InitLevelTaskLineUI(LevelTaskLineUI)
 end
 
 function UGC_TaskMain_UIBP:InitPercentTaskLineUI(PercentTaskLineUI)
+    print("[UGC_TaskMain_UIBP:InitPercentTaskLineUI]");
     if UE.IsValid(PercentTaskLineUI) then
         self.PercentTaskLineUI = PercentTaskLineUI;
         UIUtil.AttachTo(self.CanvasPanel_Content, PercentTaskLineUI, 0, { Minimum = { X = 0, Y = 0 }, Maximum = { X = 1, Y = 1 } }, { Left = 0, Right = -1.5, Bottom = 0, Top = 0 });
@@ -230,10 +242,12 @@ function UGC_TaskMain_UIBP:UpdateTaskInfo(TaskIndex)
     if self.TaskLineConfig and self.TaskLineConfig[self.SelectTaskLineIndex] then
         local TaskLineName = TaskIndex.TaskLineName;
         local SelectTaskLineName = self.TaskLineConfig[self.SelectTaskLineIndex].TaskLineName;
+        print(string.format("[UGC_TaskMain_UIBP:UpdateTaskInfo] TaskLineName: %s SelectTaskLineName: %s", TaskLineName, SelectTaskLineName));
         if TaskLineName == SelectTaskLineName then
             local TaskLineConfig = TaskManager:GetTaskLineConfig(TaskLineName);
             if TaskLineConfig and TaskLineConfig.TaskLineType then
                 local TaskID = TaskIndex.TaskID;
+                print(string.format("[UGC_TaskMain_UIBP:UpdateTaskInfo] TaskID: %d TaskLineType: %d", TaskID, TaskLineConfig.TaskLineType));
                 if TaskLineConfig.TaskLineType == EUGCTaskLineType.LevelTaskLine then
                     local LevelIndex = TaskIndex.LevelTaskLevelIndex;
                     local LevelTaskIndex = TaskIndex.LevelTaskIndex;

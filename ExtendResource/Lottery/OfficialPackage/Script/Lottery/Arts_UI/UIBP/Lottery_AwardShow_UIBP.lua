@@ -35,6 +35,7 @@ function Lottery_AwardShow_UIBP:InitUI(LotteryID)
     self.ItemIDList = LotteryManager:GetLotteryAwardData(LotteryID);
     -- self:RemoveDuplicateData(ItemIDList);
     self.Lottery_AwardItemList:Reload(#self.ItemIDList)
+    print(string.format("Lottery_AwardShow_UIBP:InitUI LotteryID: %d ItemNum: %d", LotteryID, #self.ItemIDList));
 end
 
 function Lottery_AwardShow_UIBP:RemoveDuplicateData(ItemIDList)

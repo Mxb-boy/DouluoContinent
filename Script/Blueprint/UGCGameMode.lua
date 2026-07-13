@@ -2,7 +2,6 @@
 -- Edit Below--
 local UGCGameMode = {};
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
-local DropCleanupSystem = UGCGameSystem.UGCRequire("Script.Common.DropCleanupSystem")
 
 local MaxPlayerCount = 12
 local MatchTeamCount = 3
@@ -97,6 +96,7 @@ local function SaveBackpackSnapshot(PlayerKey, PlayerPawn)
     end
 
     PlayerBackpackSnapshots[PlayerKey] = Snapshot
+    ugcprint("[UGCGameMode] Backpack saved, PlayerKey=" .. tostring(PlayerKey))
 end
 
 local function RestoreBackpackSnapshot(PlayerKey, PlayerPawn)
@@ -115,6 +115,7 @@ local function RestoreBackpackSnapshot(PlayerKey, PlayerPawn)
     end
 
     PlayerBackpackSnapshots[PlayerKey] = nil
+    ugcprint("[UGCGameMode] Backpack restored, PlayerKey=" .. tostring(PlayerKey))
 end
 
 function UGCGameMode:ReceiveBeginPlay()
@@ -127,10 +128,6 @@ function UGCGameMode:ReceiveBeginPlay()
 
     UGCGenericMessageSystem.ListenGlobalMessage(self, UGCGenericMessageSystem.Messages.UGC.PlayerPawn.PawnDefeat, self,
         self.OnPawnDefeat)
-
-    if self:HasAuthority() then
-        DropCleanupSystem.StartSafetyValveTimer()
-    end
 end
 
 function UGCGameMode:GetActivePlayerKeys()
@@ -333,6 +330,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             RetryCount = RetryCount + 1
             UGCTimerUtility.CreateLuaTimer(1, OnLoginDeferred, false)
         else
+            print("[UGCGameMode] UGC_PlayerLoginEvent: Pawn not ready after " .. MaxRetries .. " retries, giving up.")
         end
     end
     UGCTimerUtility.CreateLuaTimer(1, OnLoginDeferred, false)

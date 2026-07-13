@@ -99,10 +99,7 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     end
 
     if bCauserIsPlayer and not bVictimIsPlayer and HasAuthority(InstigatorController) then
-        -- 伤害飘字是高频且丢失也无所谓的表现层事件，改用不可靠 RPC 降低网络压力。
-        -- 网络不佳或重连时丢失飘字不影响游戏逻辑（HP/伤害本身已通过值复制和伤害系统同步）。
-        local RPCFunc = UnrealNetwork.CallUnrealRPC_Unreliable or UnrealNetwork.CallUnrealRPC
-        RPCFunc(InstigatorController, InstigatorController, "Client_ShowMonsterDamageNumber",
+        UnrealNetwork.CallUnrealRPC(InstigatorController, InstigatorController, "Client_ShowMonsterDamageNumber",
             VictimActor, SkillAttack)
     end
 

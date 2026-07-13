@@ -58,6 +58,7 @@ function UGC_LevelTask_UIBP:Destruct()
 end
 
 function UGC_LevelTask_UIBP:InitUI(TaskLineName)
+    print(string.format("[UGC_LevelTask_UIBP:InitUI] TaskLineName: %s", TaskLineName));
     self.TaskLineName = TaskLineName;
     self.SelectLevelIndex = -1;
     self.Button_LeftSlide:SetVisibility(ESlateVisibility.Collapsed);
@@ -66,6 +67,7 @@ function UGC_LevelTask_UIBP:InitUI(TaskLineName)
 end
 
 function UGC_LevelTask_UIBP:UpdateTaskInfo(TaskID, LevelIndex, LevelTaskIndex)
+    print(string.format("[UGC_LevelTask_UIBP:UpdateTaskInfo] TaskID: %d LevelIndex: %d LevelTaskIndex: %d SelectLevelIndex: %d", TaskID, LevelIndex, LevelTaskIndex, self.SelectLevelIndex));
     if self.SelectLevelIndex == LevelIndex then
         self.UGC_Growing_LevelDetails_UIBP:UpdateTaskInfo(TaskID, LevelTaskIndex);
     end
@@ -78,6 +80,7 @@ function UGC_LevelTask_UIBP:UpdateTaskInfo(TaskID, LevelIndex, LevelTaskIndex)
 end
 
 function UGC_LevelTask_UIBP:SetLevelItem(Index, Item)
+    print(string.format("[UGC_LevelTask_UIBP:SetLevelItem] Index: %d", Index));
     self.LevelItem[Item] = Index;
     if self.Button_LeftSlide:GetVisibility() == ESlateVisibility.Collapsed then
         local AwardState = TaskManager:GetTaskLineAwardState(self.TaskLineName, Index);
@@ -91,6 +94,7 @@ function UGC_LevelTask_UIBP:SelectLevelItem(Index)
     if self.SelectLevelIndex == Index then
         return;
     end
+    print(string.format("[UGC_LevelTask_UIBP:SelectLevelItem] Index: %d", Index));
     log_tree("[UGC_LevelTask_UIBP:SelectLevelItem] LevelItem", self.LevelItem);
     self.SelectLevelIndex = Index;
     for Item, Idx in pairs(self.LevelItem) do

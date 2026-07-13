@@ -28,6 +28,7 @@ function TaskManager:GetTaskTemplateComponent(PlayerController)
                 local PlayerController = STExtraGameplayStatics.GetFirstPlayerController(UGCGameSystem.GameState);
                 self.TaskTemplateComponent = PlayerController:GetComponentByClass(self.TaskTemplateComponentClass);
             else
+                print("[TaskManager:GetTaskTemplateComponent] Cannot get local component!");
             end
         end
         return self.TaskTemplateComponent;
@@ -36,6 +37,7 @@ function TaskManager:GetTaskTemplateComponent(PlayerController)
     if self.TaskTemplateComponentClass ~= nil then
         return PlayerController:GetComponentByClass(self.TaskTemplateComponentClass);
     else
+        print("[TaskManager:GetTaskTemplateComponent] ComponentClass is nil!");
         return nil;
     end
 end
@@ -65,14 +67,17 @@ function TaskManager:SelectTaskLine(Index)
 end
 
 function TaskManager:OpenTaskMainUI()
+    print("TaskManager:OpenTaskMainUI");
     self:GetTaskTemplateComponent():OpenTaskMainUI();
 end
 
 function TaskManager:CloseTaskMainUI()
+    print("TaskManager:CloseTaskMainUI");
     self:GetTaskTemplateComponent():CloseTaskMainUI();
 end
 
 function TaskManager:GetObjectData()
+    print("TaskManager:GetObjectData");
     if self.ObjectDatas ~= nil then
         return self.ObjectDatas;
     end
@@ -85,6 +90,7 @@ end
 ---@param ItemID int32
 ---@return FUGCObjectData
 function TaskManager:GetItemInfoByItemID(ItemID)
+    print(string.format("TaskManager:GetItemInfoByItemID ItemID: %d", ItemID));
     if self.ObjectDatas == nil then
         self:GetObjectData(); 
     end
@@ -161,6 +167,7 @@ end
 
 function TaskManager:CanSendClaimRequest()
     if self.bBlockClaimRequest then
+        print("[TaskManager:CanSendClaimRequest] Too Frequent Calls");
         return false;
     end
     self.bBlockClaimRequest = true;

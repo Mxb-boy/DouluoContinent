@@ -2,9 +2,6 @@
     回血系统：玩家离开 Battlefield 标签区域后，
     等待 DELAY_SECONDS 秒开始每秒恢复 RegenPercent% 最大生命值。
     满血自动停止，再次进入区域取消回血。
-
-    优化：使用单个命名循环定时器替代递归创建定时器，
-    减少定时器对象数量，方便统一清理。
 ]]
 local RegenSystem = {
     -- 离开触发器后等待时间（秒）
@@ -34,10 +31,6 @@ end
 
 -- ────── 内部实现 ──────
 
-function RegenSystem:_getTimerName(playerPawn)
-    return "Regen_" .. tostring(playerPawn)
-end
-
 function RegenSystem:_startDelay(playerPawn)
     local tokens = RegenSystem:_getTokens(playerPawn)
     tokens.delay = (tokens.delay or 0) + 1
@@ -56,42 +49,37 @@ function RegenSystem:_startRegen(playerPawn)
     local playerState = playerPawn.PlayerState
     if playerState == nil then return end
 
-    local regenPercent = playerState.GetRegenPercent and playerState:GetRegenPercent()
+    local regenPercent = playerState:GetRegenPercent()
     if regenPercent == nil or regenPercent <= 0 then return end
 
     local tokens = RegenSystem:_getTokens(playerPawn)
     tokens.regen = (tokens.regen or 0) + 1
     local token = tokens.regen
 
-    -- 使用单个命名循环定时器替代递归创建
+    -- 用一个局部函数做递归 Timer，便于在回调中验证 Token 有效
     local pawn = playerPawn
-    local timerName = RegenSystem:_getTimerName(pawn)
-    UGCTimerUtility.RemoveLuaTimerByName(timerName)
-
-    UGCTimerUtility.CreateLuaTimer(RegenSystem.REGEN_INTERVAL, function()
-        if pawn == nil or not UE.IsValid(pawn) then
-            UGCTimerUtility.RemoveLuaTimerByName(timerName)
-            return
-        end
+    local function doTick()
+        if pawn == nil or not UE.IsValid(pawn) then return end
         local t = RegenSystem.__Tokens[pawn]
-        if t == nil or t.regen ~= token then  -- 已取消
-            UGCTimerUtility.RemoveLuaTimerByName(timerName)
-            return
-        end
+        if t == nil or t.regen ~= token then return end  -- 已取消
 
         local currentHP = UGCPawnAttrSystem.GetHealth(pawn)
         local maxHP = UGCPawnAttrSystem.GetHealthMax(pawn)
 
         if currentHP >= maxHP then
             RegenSystem:_cancel(pawn)
-            UGCTimerUtility.RemoveLuaTimerByName(timerName)
             return
         end
 
         local heal = maxHP * (regenPercent / 100)
         local newHP = math.min(currentHP + heal, maxHP)
         UGCPawnAttrSystem.SetHealth(pawn, newHP)
-    end, true, timerName)
+
+        -- 继续下一次回血
+        UGCTimerUtility.CreateLuaTimer(RegenSystem.REGEN_INTERVAL, doTick, false)
+    end
+
+    UGCTimerUtility.CreateLuaTimer(RegenSystem.REGEN_INTERVAL, doTick, false)
 end
 
 function RegenSystem:_cancel(playerPawn)
@@ -102,8 +90,6 @@ function RegenSystem:_cancel(playerPawn)
         t.regen = (t.regen or 0) + 1
         RegenSystem.__Tokens[playerPawn] = nil
     end
-    -- 主动移除命名定时器
-    UGCTimerUtility.RemoveLuaTimerByName(RegenSystem:_getTimerName(playerPawn))
 end
 
 function RegenSystem:_getTokens(playerPawn)

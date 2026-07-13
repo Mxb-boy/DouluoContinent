@@ -7,6 +7,7 @@
 
 -- 触发器激活时，将执行Action的Execute
 function Action_PlayerLeave:Execute(...)
+    ugcprint(string.format("[Action_PlayerLeave] Start settlement %d", self.PlayerKey));
     UGCGameSystem.SendPlayerSettlement(self.PlayerKey);
     return true
 end

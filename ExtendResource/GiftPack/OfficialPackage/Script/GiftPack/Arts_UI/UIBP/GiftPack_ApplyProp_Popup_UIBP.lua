@@ -80,6 +80,7 @@ function GiftPack_ApplyProp_Popup_UIBP:ChangeNum(Num)
 end
 
 function GiftPack_ApplyProp_Popup_UIBP:UseGiftPack()
+    print(string.format("GiftPack_ApplyProp_Popup_UIBP:UseGiftPack GiftPackID: %d CurNum: %d", self.GiftPackID, self.CurNum));
     local GiftPackData = GiftPackManager:GetGiftPackDataByID(self.GiftPackID);
     if GiftPackData.GiftPackType == EGiftPackType.Normal then
         -- 常规礼包
@@ -103,6 +104,7 @@ end
 -- end
 
 function GiftPack_ApplyProp_Popup_UIBP:InitUI(GiftPackID)
+    print("GiftPack_ApplyProp_Popup_UIBP:InitUI");
     self.GiftPackID = GiftPackID;
     local ItemID = GiftPackManager:GetGiftPackDataByID(GiftPackID).ItemID;
     if ItemID then

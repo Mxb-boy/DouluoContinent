@@ -40,6 +40,7 @@ function SignInEventManager:ShowSupplementPopup(EventID)
     
     local ConfigData = self.ConfigDatas[EventID];
     if ConfigData == nil then
+        print("[SignInEventManager:ShowSupplementPopup] Invalid EventID");
     end
 
     self:GetLocalComponent():ShowSupplementPopup(EventID, ConfigData.SupplementItemID, ConfigData.SupplementItemNum);
@@ -56,6 +57,7 @@ function SignInEventManager:GetDailySignInAward(EventID)
         self:GetLocalComponent():GetDailySignInAward(EventID)
         UGCTimerUtility.CreateLuaTimer(1, function () self.bBlockRequest = false end)
     else
+        print("[SignInEventManager:GetDailySignInAward] Too Frequent Calls")
     end
 end
 
@@ -65,6 +67,7 @@ function SignInEventManager:UseSupplement(EventID)
         self:GetLocalComponent():UseSupplement(EventID);
         UGCTimerUtility.CreateLuaTimer(1, function () self.bBlockRequest = false end)
     else
+        print("[SignInEventManager:UseSupplement] Too Frequent Calls")
     end
 end
 
@@ -80,6 +83,7 @@ function SignInEventManager:GetSignInEventComponent(PlayerController)
     if self.ComponentClass ~= nil then
         return PlayerController:GetComponentByClass(self.ComponentClass);
     else
+        print("SignInEventComponentClass is nil!");
         return nil;
     end
 end
@@ -93,6 +97,7 @@ function SignInEventManager:GetLocalComponent()
             local PlayerController = STExtraGameplayStatics.GetFirstPlayerController(UGCGameSystem.GameState);
             self.LocalComponent = PlayerController:GetComponentByClass(self.ComponentClass);
         else
+            print("SignInEventManager: Cannot get local component!");
         end
     end
         
@@ -121,6 +126,7 @@ function SignInEventManager:GetEventDayNum(EventID, PlayerController)
         if UGCGameSystem.GameState:HasAuthority() == false then
             Comp = self:GetLocalComponent();
         else
+            print("[SignInEventManager:GetEventDayNum] PlayerController is nil on DS");
             return 0;
         end
     else
@@ -128,6 +134,7 @@ function SignInEventManager:GetEventDayNum(EventID, PlayerController)
     end
 
     if Comp == nil then
+        print("[SignInEventManager:GetEventDayNum] Comp is nil");
         return 0;
     end
 

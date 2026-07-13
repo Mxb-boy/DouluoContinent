@@ -32,6 +32,7 @@ end
 function GiftPack_Complex_Item_UIBP:IncreaseItem()
     -- 要先获取当前还能选择多少道具
     self.CanSelectNum = GiftPackManager:GetComplexSelectNum();
+    print(string.format("GiftPack_Complex_Item_UIBP:IncreaseItem CanSelectNum: %d", self.CanSelectNum));
     if self.CanSelectNum > 0 then
         self:ChangeNum(self.CurNum + 1);
         GiftPackManager:IncreaseItem(self.ItemID);
@@ -46,9 +47,11 @@ function GiftPack_Complex_Item_UIBP:ReduceItem()
 end
 
 function GiftPack_Complex_Item_UIBP:OnPress()
+    print("GiftPack_Complex_Item_UIBP:OnPress");
     self.PressTimerHandle = Timer.InsertTimer(
         0, 
         function ()
+            print("GiftPack_Complex_Item_UIBP: LongPress");
             local AbsPosition = SlateBlueprintLibrary.GetAbsolutePosition(self:GetCachedGeometry());
             local Position = SlateBlueprintLibrary.AbsoluteToLocal(WidgetLayoutLibrary.GetViewportWidgetGeometry(self), AbsPosition);
             GiftPackManager:ShowItemTip(self.ItemID, Position);
@@ -79,10 +82,12 @@ function GiftPack_Complex_Item_UIBP:GetSelect()
 end
 
 function GiftPack_Complex_Item_UIBP:ForbiddenIncrease()
+    print("GiftPack_Complex_Item_UIBP:ForbiddenIncrease");
     self.WidgetSwitcher_Increase:SetActiveWidgetIndex(1);
 end
 
 function GiftPack_Complex_Item_UIBP:AllowIncrease()
+    print("GiftPack_Complex_Item_UIBP:AllowIncrease");
     self.WidgetSwitcher_Increase:SetActiveWidgetIndex(0);
 end
 
@@ -104,10 +109,12 @@ function GiftPack_Complex_Item_UIBP:ChangeNum(Num)
 end
 
 function GiftPack_Complex_Item_UIBP:GetCurNum()
+    print(string.format("CurNum: %d", self.CurNum));
     return self.CurNum;
 end
 
 function GiftPack_Complex_Item_UIBP:InitUI(ItemID, ItemMinNum, ItemMaxNum, GiftPackNum, CanSelectNum, SelectedNum)
+    print(string.format("GiftPack_Complex_Item_UIBP:InitUI ItemID: %d CanSelectedNum: %d SelectedNum: %d", ItemID, CanSelectNum, SelectedNum))
     self.CurNum = SelectedNum;
     self.MaxNum = GiftPackNum;
     self.CanSelectNum = CanSelectNum;

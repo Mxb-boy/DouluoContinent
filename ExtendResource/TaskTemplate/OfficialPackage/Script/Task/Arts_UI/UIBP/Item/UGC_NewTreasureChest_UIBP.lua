@@ -24,6 +24,7 @@ function UGC_NewTreasureChest_UIBP:ClaimPercentAward()
     if AwardState == EUGCTaskLineAwardState.NotClaimed then
         TaskManager:ClaimTaskLineAward(self.TaskLineName, self.Index);
     else
+        print("[UGC_NewTreasureChest_UIBP:ClaimPercentAward] 显示道具Tip");
         ---显示道具Tip
         local AbsPosition = SlateBlueprintLibrary.GetAbsolutePosition(self:GetCachedGeometry());
         local Position = SlateBlueprintLibrary.AbsoluteToLocal(WidgetLayoutLibrary.GetViewportWidgetGeometry(self), AbsPosition);
@@ -42,6 +43,7 @@ end
 
 function UGC_NewTreasureChest_UIBP:RefreshPercentState()
     local AwardState = TaskManager:GetTaskLineAwardState(self.TaskLineName, self.Index);
+    print(string.format("[UGC_NewTreasureChest_UIBP:RefreshPercentState] Index: %s AwardState: %d", self.Index, AwardState));
     if AwardState == EUGCTaskLineAwardState.Lock then
         self.TreasureChest_ActivityBar:SetVisibility(ESlateVisibility.Collapsed);
         self.PendingCollection:SetVisibility(ESlateVisibility.Collapsed);

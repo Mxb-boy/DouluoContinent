@@ -20,6 +20,7 @@ end
 
 function GiftPack_Singular_Popup_UIBP:InitItem(Item, Idx)
     local ItemID = self.ItemList[Idx + 1].ItemID;
+    print(string.format("GiftPack_Singular_Popup_UIBP:InitItem Index: %d ItemID: %d", Idx, ItemID or -1));
     local ItemMinNum = self.ItemList[Idx + 1].ItemMinNum;
     local ItemMaxNum = self.ItemList[Idx + 1].ItemMaxNum;
     self.Item[Idx + 1] = {ItemID = ItemID, Item = Item, ItemMinNum = ItemMinNum, ItemMaxNum = ItemMaxNum};
@@ -32,6 +33,7 @@ function GiftPack_Singular_Popup_UIBP:InitItem(Item, Idx)
 end
 
 function GiftPack_Singular_Popup_UIBP:SelectItemByIndex(Index)
+    print(string.format("GiftPack_Singular_Popup_UIBP:SelectItemByID Index: %d", Index));
     if self.Item[self.SelectedIndex] and self.Item[self.SelectedIndex].Item then
         self.Item[self.SelectedIndex].Item:UnSelect();
     end
@@ -50,6 +52,7 @@ function GiftPack_Singular_Popup_UIBP:GetItem()
         local ItemID = self.Item[self.SelectedIndex].ItemID or 0;
         local ItemList = {};
         ItemList[ItemID] = ItemNum;
+        print(string.format("GiftPack_Singular_Popup_UIBP:GetItem ItemID: %d ItemNum: %d", ItemID, ItemNum));
         GiftPackManager:ManualUseGiftPack(self.GiftPackID, 1, ItemList);
     end
 end
@@ -75,7 +78,9 @@ end
 -- end
 
 function GiftPack_Singular_Popup_UIBP:InitUI(GiftPackID)
+    print(string.format("[GiftPack_Singular_Popup_UIBP:InitUI] GiftPackID: %d", GiftPackID));
     local ItemList = GiftPackManager:GetItemListByGiftPackID(GiftPackID);
+    print(string.format("[GiftPack_Singular_Popup_UIBP:InitUI] ItemList: %d", #ItemList));
     self.SelectedIndex = nil;
     self.ItemList = {};
     self.GiftPackID = GiftPackID;

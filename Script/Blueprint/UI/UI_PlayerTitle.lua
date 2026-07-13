@@ -76,6 +76,8 @@ function UI_PlayerTitle:SetTitle(titleID)
         string.format("Btn_Title_%02d", titleID)
     )
     if titleButton == nil then
+        ugcprint("[UI_PlayerTitle] Show title failed, button nil: "
+            .. tostring(titleID))
         return
     end
 

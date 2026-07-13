@@ -98,6 +98,7 @@ function LotteryManager:GetLotteryComponent(PlayerController)
                 local PlayerController = STExtraGameplayStatics.GetFirstPlayerController(UGCGameSystem.GameState);
                 self.LotteryComponent = PlayerController:GetComponentByClass(self.LotteryComponentClass);
             else
+                print("[LotteryManager:GetLotteryComponent] Cannot get local component!");
             end
         end
            
@@ -107,6 +108,7 @@ function LotteryManager:GetLotteryComponent(PlayerController)
     if self.LotteryComponentClass ~= nil then
         return PlayerController:GetComponentByClass(self.LotteryComponentClass);
     else
+        print("[LotteryManager:GetLotteryComponent] ComponentClass is nil!");
         return nil;
     end
 end

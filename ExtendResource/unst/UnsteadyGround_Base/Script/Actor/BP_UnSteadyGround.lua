@@ -39,6 +39,7 @@ local BP_UnsteadyGround = {
 
 }; 
 function BP_UnsteadyGround:ReceiveBeginPlay()
+    print("BP_UnsteadyGround:ReceiveBeginPlay")
     BP_UnsteadyGround.SuperClass.ReceiveBeginPlay(self)
 
     --设置Mesh
@@ -58,6 +59,7 @@ function BP_UnsteadyGround:ReceiveBeginPlay()
     end
 
     --设置位置
+    print("BP_UnsteadyGround:ReceiveBeginPlay set location")
     self.NormalLocation=self:K2_GetActorLocation();
     self.TargetHeight=self.NormalLocation.Z-self.FallDistance*100;
 
@@ -65,6 +67,7 @@ end
 
 --开始重生，结束这段seququence后自己跳到Complate状态上
 function BP_UnsteadyGround:BeginReBirth()
+    print("BP_UnsteadyGround:BeginReBirth")
     self:JumpToState("ReBirth",0)
     self:K2_SetActorLocation(self.NormalLocation);
 end
@@ -72,6 +75,7 @@ end
 
 --完整的地面，最开始的状态，没有抖动
 function BP_UnsteadyGround:BeginComplate()
+    print("BP_UnsteadyGround:BeginComplate")
     self.CurrentReplyTime=0;
     self.CurrentBrokingTime=0;
     
@@ -84,14 +88,17 @@ end
 
 
 function BP_UnsteadyGround:ReceiveTick(DeltaTime)
+    print("BP_UnsteadyGround:ReceiveTick")
     --DS
 
     if self.PlayerCap==0 then
+        print("BP_UnsteadyGround:ReceiveTick PlayerCap == 0")
         return;
     end
 
     local class=self.PawnClass;
     local Players=self.Box:GetOverlappingActors({},class);
+    print("BP_UnsteadyGround:ReceiveTick Player Length"..#Players)
     if #Players==0 then
         return;
     end
@@ -114,6 +121,7 @@ function BP_UnsteadyGround:ReceiveTick(DeltaTime)
 
     --Broken时向下移动FallDistance*100cm
     if self:GetCurrentStateName()=="Broken" and self:K2_GetActorLocation().Z>self.TargetHeight then
+        print("BP_UnsteadyGround:ReceiveTick set actor Location")
         local NewLocation=Vector.New(0,0,0);
         NewLocation.X=self:K2_GetActorLocation().X;
         NewLocation.Y=self:K2_GetActorLocation().Y;
@@ -127,10 +135,12 @@ end
 --开始破碎裂缝，抖动
 function BP_UnsteadyGround:BeginBroking(DeltaTime)
     --DS
+    print("BP_UnsteadyGround:BeginBroking")
     if self:GetCurrentStateName()~="Broking" then
         self:JumpToState("Broking",0)
     end
     self.CurrentBrokingTime=self.CurrentBrokingTime+DeltaTime;
+    print("BP_UnsteadyGround:BeginBroking CurrentBrokingTime"..self.CurrentBrokingTime)
     if self.CurrentBrokingTime>=self.BrokenTime then
         self:BeginBroken();
     end
@@ -141,11 +151,13 @@ end
 
 --开始恢复破碎裂缝，抖动
 function BP_UnsteadyGround:BeginReply(DeltaTime)
+    print("BP_UnsteadyGround:BeginReply")
     if self:GetCurrentStateName()=="Broking" then
         self:JumpToState("Broke_Reply",0)
     end
 
     self.CurrentReplyTime=self.CurrentReplyTime+DeltaTime;
+    print("BP_UnsteadyGround:BeginReply"..self.CurrentReplyTime)
     if self.CurrentReplyTime>=self.BelowTheLimitTime then
         self:BeginComplate();
         self.CurrentReplyTime=0;
@@ -157,6 +169,7 @@ end
 
 --完全破碎的地面，抖动
 function BP_UnsteadyGround:BeginBroken()
+    print("BP_UnsteadyGround:BeginBroken")
     self:JumpToState("Broken",0)
 
     self.CurrentReplyTime=0;
@@ -181,6 +194,7 @@ end
 ----------------------------------------状态机入口出口-----------------------------------------
 --爆炸状态
 function BP_UnsteadyGround:Broken_Entry()
+    print("BP_UnsteadyGround:Broken_Entry")
     if self:HasAuthority() then
         --DS
         --设置碰撞
@@ -222,6 +236,7 @@ end
 ---恢复状态
 
 function BP_UnsteadyGround:Broke_Reply_Entry()
+    print("BP_UnsteadyGround:Broke_Reply_Entry")
     if self:HasAuthority() then
         --DS
     else
@@ -237,6 +252,7 @@ end
 
 --重生状态
 function BP_UnsteadyGround:ReBirth_Entry()
+    print("BP_UnsteadyGround:ReBirth_Entry")
     if self:HasAuthority() then
     else
         --Client
@@ -251,6 +267,7 @@ end
 --Broking状态
 
 function BP_UnsteadyGround:Broking_Entry()
+    print("BP_UnsteadyGround:Broking_Entry")
     if self:HasAuthority() then
 
     else
@@ -270,6 +287,7 @@ end
 
 --Complate状态
 function BP_UnsteadyGround:Complate_Entry()
+    print("BP_UnsteadyGround:Complate_Entry")
     if self:HasAuthority() then
         --DS
         --设置碰撞
@@ -337,6 +355,7 @@ function BP_UnsteadyGround:PlayReplySound(IsPlay)
             self.ReplySoundID=AkGameplayStatics.PostEvent(self.ReplySound,self,false,"");
         end
     else
+        print("BP_UnsteadyGround:PlayReplySound ReplySoundID ")
         if self.ReplySoundID~=-1 then
             AkGameplayStatics.StopAkEventByID(self.ReplySoundID)
             self.ReplySoundID=-1;

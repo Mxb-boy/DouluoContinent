@@ -14,6 +14,7 @@ function WBP_RankingListBtn:Construct()
 end
 
 function WBP_RankingListBtn:UpdateRankListScore()
+    print("WBP_RankingListBtn:UpdateRankListScore");
     if self.RankID.Text == nil or self.RankID.Text == "" or self.Score.Text == nil or self.Score.Text == "" or self.UID.Text == nil or self.UID.Text == "" then
         return;
     end

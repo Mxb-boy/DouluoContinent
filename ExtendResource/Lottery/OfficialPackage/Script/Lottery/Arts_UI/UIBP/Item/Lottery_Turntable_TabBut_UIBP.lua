@@ -54,6 +54,7 @@ function Lottery_Turntable_TabBut_UIBP:InitBindEvent()
 end
 
 function Lottery_Turntable_TabBut_UIBP:ButtonClick()
+    print(string.format("Lottery_Turntable_TabBut_UIBP:SelectLottery LotteryID: %d", self.LotteryID));
     -- 更新抽卡界面信息
     LotteryManager:SwitchLotteryTab(self.LotteryID);
     -- 更新奖励一览信息

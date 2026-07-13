@@ -115,6 +115,7 @@ end
 
 -- 关闭界面时只隐藏实例，方便下次打开复用。
 function UI10:Button_125_OnClicked()
+    ugcprint("[UI10:Button_125_OnClicked] Close UI10")
     self:SetVisibility(ESlateVisibility.Collapsed)
 end
 
@@ -157,6 +158,7 @@ end
 function UI10:GetBackpackWeaponList()
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
     if PlayerPawn == nil then
+        ugcprint("[UI10:GetBackpackWeaponList] Local player pawn is nil")
         return {}
     end
     local BestWeaponBySeries = {}
@@ -324,6 +326,7 @@ function UI10:SelectWeapon(WeaponName, IconPath, ItemID)
 
     local IconTexture = UE.LoadObject(IconPath)
     if IconTexture == nil then
+        ugcprint("[UI10:SelectWeapon] Icon load failed: " .. tostring(IconPath))
         return
     end
 
@@ -388,6 +391,7 @@ end
 -- 显示锻造结果弹窗；旧组件没有接口时至少保证弹窗可见。
 function UI10:ShowForgeResultPopup(ResultType, IconPath)
     if self.NewUGCWidgetBlueprint == nil then
+        ugcprint("[UI10:ShowForgeResultPopup] Result widget is nil")
         return
     end
 
@@ -419,28 +423,33 @@ function UI10:Button_dz_OnClicked()
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
     local ItemID = tonumber(self.SelectedWeaponItemID)
     if PlayerPawn == nil or ItemID == nil then
+        ugcprint("[UI10:Button_dz_OnClicked] PlayerPawn or selected weapon is nil")
         return
     end
 
     local Cost = WeaponLevelConfig.GetForgeCost(ItemID)
     if Cost == nil then
+        ugcprint("[UI10:Button_dz_OnClicked] Selected weapon cannot forge: " .. tostring(ItemID))
         return
     end
 
     local HGRJCount = self:GetBackpackItemCount(PlayerPawn, MaterialItemIDs.HGRJ)
     local QNHHCount = self:GetBackpackItemCount(PlayerPawn, MaterialItemIDs.QNHH)
     if HGRJCount < (Cost.HGRJ or 0) or QNHHCount < (Cost.QNHH or 0) then
+        ugcprint("[UI10:Button_dz_OnClicked] Material not enough")
         self:RefreshForgeInfo()
         return
     end
 
     if self:GetBackpackItemCount(PlayerPawn, ItemID) <= 0 then
+        ugcprint("[UI10:Button_dz_OnClicked] Selected weapon is not in backpack: " .. tostring(ItemID))
         self:InitWeaponWidgets()
         return
     end
 
     local PlayerController = self:GetLocalPlayerController()
     if PlayerController == nil then
+        ugcprint("[UI10:Button_dz_OnClicked] PlayerController is nil")
         return
     end
 

@@ -109,6 +109,8 @@ function UGCPlayerState:LoadFromArchive(UID)
                 -- pcall 保护：单个 Setter 失败不影响其他字段加载，且确保锁一定能释放
                 local ok, err = pcall(self[setterName], self, val)
                 if not ok then
+                    print(string.format("[UGCPlayerState] LoadFromArchive: %s failed for key %s: %s",
+                        setterName, entry.key, tostring(err)))
                 end
             end
         end
@@ -116,8 +118,7 @@ function UGCPlayerState:LoadFromArchive(UID)
 
     -- 无论循环中是否出错，都必须释放锁，否则后续所有 SaveToArchive 会被永久拦截
     self.bLoadingArchive = false
-    -- 登入加载完成后立即写入一次（跳过防抖），确保字段默认值/还原值持久化
-    self:SaveToArchiveImmediate()
+    self:SaveToArchive()
 end
 
 --- 将注册表中所有字段的最新值写入官方存档系统（chunk 1）
@@ -132,34 +133,6 @@ function UGCPlayerState:SaveToArchive()
     if UID == nil or UID == 0 then
         return
     end
-
-    -- 性能优化：防抖（debounce），200ms 内多次 Setter 调用只写入一次整包。
-    -- 这样在 Server_EatAllSoulRings / 连续 Setter / 循环修改等场景下只产生一次网络往返。
-    self.bArchiveDirty = true
-    if self.ArchiveDebounceTimerActive ~= true then
-        self.ArchiveDebounceTimerActive = true
-        local state = self
-        UGCTimerUtility.CreateLuaTimer(0.2, function()
-            state.ArchiveDebounceTimerActive = false
-            if state.bArchiveDirty then
-                state:SaveToArchiveImmediate()
-            end
-        end, false)
-    end
-end
-
---- 立即写入存档（跳过防抖），用于登入加载完成、玩家离场、结算前等关键节点。
-function UGCPlayerState:SaveToArchiveImmediate()
-    if self.bLoadingArchive then
-        return
-    end
-
-    local UID = self.ArchiveUID
-    if UID == nil or UID == 0 then
-        return
-    end
-
-    self.bArchiveDirty = false
 
     local data = {}
     for _, entry in ipairs(ARCHIVE_KEYS) do
@@ -229,7 +202,7 @@ end
 function UGCPlayerState:SetAutoPickButtonHidden(value)
     if value == true or tonumber(value) == 1 then
         self.AutoPickButtonHidden = 1
-        self:SaveToArchiveImmediate()
+        self:SaveToArchive()
     end
 end
 
@@ -240,7 +213,7 @@ end
 function UGCPlayerState:SetAutoAttackButtonHidden(value)
     if value == true or tonumber(value) == 1 then
         self.AutoAttackButtonHidden = 1
-        self:SaveToArchiveImmediate()
+        self:SaveToArchive()
     end
 end
 
@@ -250,7 +223,7 @@ end
 
 function UGCPlayerState:SetFeiButton0Hidden(value)
     self.FeiButton0Hidden = (value == true or tonumber(value) == 1) and 1 or 0
-    self:SaveToArchiveImmediate()
+    self:SaveToArchive()
 end
 
 function UGCPlayerState:GetYXWD_InvincibleBuff()
@@ -374,8 +347,6 @@ function UGCPlayerState:SaveCurrentHP(playerPawn)
     local hp = UGCPawnAttrSystem.GetHealth(playerPawn)
     if hp ~= nil and hp > 0 then
         self:SetHP(hp)
-        -- 离场立即写入，避免防抖延迟导致存档丢失
-        self:SaveToArchiveImmediate()
     end
 end
 

@@ -30,6 +30,7 @@ end
 
 function ShopV2_Goods_UIBP:RefreshProductList(TabID, bCheckListingTime)
     
+    print("[ShopV2_Goods_UIBP:RefreshProductList] Start refresh product list");
 
     local bRefreshCurrent = self.TabID == TabID;
     self.TabID = TabID;

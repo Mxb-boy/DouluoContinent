@@ -40,6 +40,7 @@ function GiftPack_Complex_Popup_UIBP:GetItemList()
     for ItemID, SelectNum in pairs(self.SelectNum) do
         if SelectNum > 0 then
             local ItemNum = self.Item[ItemID].ItemMinNum;
+            print(string.format("GiftPack_Complex_Popup_UIBP:GetItemList ItemID: %d ItemNum: %d", ItemID, SelectNum * ItemNum));
             local ItemInfo = {ItemID = ItemID, ItemNum = SelectNum * ItemNum};
             ItemList[ItemID] = SelectNum * ItemNum;
         end
@@ -48,6 +49,7 @@ function GiftPack_Complex_Popup_UIBP:GetItemList()
 end
 
 function GiftPack_Complex_Popup_UIBP:InitItem(Item, Idx)
+    print(string.format("GiftPack_Complex_Popup_UIBP:InitItem Index: %d", Idx));
     local ItemID = self.ItemList[Idx + 1].ItemID;
     local ItemMinNum = self.ItemList[Idx + 1].ItemMinNum;
     local ItemMaxNum = self.ItemList[Idx + 1].ItemMaxNum;
@@ -71,6 +73,7 @@ end
 function GiftPack_Complex_Popup_UIBP:IncreaseItem(ItemID)
     if self.SelectNum[ItemID] then
         if self.AllSelectNum < self.GiftPackNum then
+            print("GiftPack_Complex_Popup_UIBP:IncreaseItem");
             self.SelectNum[ItemID] = self.SelectNum[ItemID] + 1;
             self.AllSelectNum = self.AllSelectNum + 1;
             self:ChangeNum();
@@ -88,6 +91,7 @@ end
 function GiftPack_Complex_Popup_UIBP:ReduceItem(ItemID)
     if self.SelectNum[ItemID] then
         if self.AllSelectNum > 0 and self.SelectNum[ItemID] > 0 then
+            print("GiftPack_Complex_Popup_UIBP:ReduceItem")
             self.SelectNum[ItemID] = self.SelectNum[ItemID] - 1;
             self.AllSelectNum = self.AllSelectNum - 1;
             self:ChangeNum();
@@ -117,7 +121,9 @@ function GiftPack_Complex_Popup_UIBP:InitUI(GiftPackID, GiftPackNum)
     self.GiftPackID = GiftPackID;
     self.SelectNum = {};
     self.AllSelectNum = 0;
+    print(string.format("[GiftPack_Complex_Popup_UIBP:InitUI] GiftPackID: %d", GiftPackID));
     local ItemList = GiftPackManager:GetItemListByGiftPackID(GiftPackID);
+    print(string.format("[GiftPack_Complex_Popup_UIBP:InitUI] ItemList: %d", #ItemList));
     if ItemList and #ItemList > 0 then
         self.ItemList = ItemList;
         for Index, Item in pairs(self.ItemList) do

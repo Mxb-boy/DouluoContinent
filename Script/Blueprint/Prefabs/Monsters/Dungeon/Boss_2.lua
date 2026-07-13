@@ -3,7 +3,6 @@
 ---@field MonsterID int32
 --Edit Below--
 local Boss_2 = {}
-local DropCleanupSystem = UGCGameSystem.UGCRequire("Script.Common.DropCleanupSystem")
 
 local DROP_SCATTER_RANGE = 300
 
@@ -33,11 +32,7 @@ end
 local function SpawnDrop(monster, ItemID, Count)
     local BaseLoc = GetDropBaseLoc(monster)
     local DropLoc = MakeDropLoc(BaseLoc)
-    local wrapper = UGCItemSystemV2.SpawnPickupWrapper(DropLoc, ItemID, Count)
-    if wrapper then
-        DropCleanupSystem.TrackPickup(wrapper)
-    end
-    return wrapper
+    return UGCItemSystemV2.SpawnPickupWrapper(DropLoc, ItemID, Count)
 end
 
 local function DisableMonsterCollision(monster)
@@ -117,15 +112,6 @@ end
 ---@param DamageTypeID int32 伤害类型
 function Boss_2:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
     DisableMonsterCollision(self)
-
-    if self:HasAuthority() then
-        local corpse = self
-        UGCTimerUtility.CreateLuaTimer(5, function()
-            if corpse and UE.IsValid(corpse) then
-                corpse:K2_DestroyActor()
-            end
-        end, false)
-    end
 
     if self:HasAuthority() and self.SpawnWall ~= nil then
         self.SpawnWall:OnMonsterDied(self)

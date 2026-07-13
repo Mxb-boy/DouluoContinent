@@ -84,16 +84,8 @@ function Tower_Mons_9:BPDie(KillingDamage, EventInstigator, DamageCauser, Damage
     Tower_Mons_9.SuperClass.BPDie(self, KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
 
     if self:HasAuthority() then
+        -- 只有服务端才可以掉落
         self.UGCPresetCommonDropItemComponent:StartDrop(self, EventInstigator, {})
-    end
-
-    if self:HasAuthority() then
-        local corpse = self
-        UGCTimerUtility.CreateLuaTimer(5, function()
-            if corpse and UE.IsValid(corpse) then
-                corpse:K2_DestroyActor()
-            end
-        end, false)
     end
 end
 

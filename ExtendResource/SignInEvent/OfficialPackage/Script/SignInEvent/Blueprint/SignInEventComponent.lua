@@ -102,8 +102,10 @@ end
 
 function SignInEventComponent:CheckEventDurationTime(bRefresh)
 
+    print("[SignInEventComponent:CheckEventDurationTime] Start check");
 
     if bRefresh == true then
+        print("[SignInEventComponent:CheckEventDurationTime] Refresh MainUI");
         self:RefreshMainUI(); 
     end
 
@@ -121,6 +123,7 @@ end
 
 function SignInEventComponent:SetVirtualItemManager()
     
+    print("[SignInEventComponent:SetVirtualItemManager] Start set VirtualItemManager");
 
     self.VirtualItemManager = UGCBlueprintFunctionLibrary.GetGamePartGlobalActor(UGCGameSystem.GameState, "VirtualItemManager");
 
@@ -131,6 +134,7 @@ end
 
 function SignInEventComponent:RefreshSignInData()
     
+    print("[SignInEventComponent:RefreshSignInData]: Start Refresh");
 
     local EventData = self:ReadData();
     local CurrentTime = Common.GetCurrentTime();
@@ -154,6 +158,7 @@ function SignInEventComponent:RefreshSignInData()
     end
 
     if bRefreshed == true then
+        print("[SignInEventComponent:RefreshSignInData]: Data Refreshed");
         -- 重置逻辑优化，避免后台过载
         -- self:WriteData(EventData);
         self.CachedEventData = EventData        
@@ -171,11 +176,13 @@ end
 function SignInEventComponent:InitUI()
 
     if self.MainUIPath == nil then
+        print("[SignInEventComponent:InitUI] MainUIPath is nil!");
         return;
     end
 
     local MainUIClass = UE.LoadClass(KismetSystemLibrary.BreakSoftClassPath(self.MainUIPath));
     if MainUIClass == nil then
+        print("[SignInEventComponent:InitUI] MainUIClass is nil!");
         return;
     end
 
@@ -386,6 +393,7 @@ end
 
 function SignInEventComponent:OnRep_SignInEventData()
     
+    print("[SignInEventComponent] SignInEventData Replicated!");
 
     self.LocalEventDatas = {};
 
@@ -410,13 +418,16 @@ function SignInEventComponent:UseSupplement(EventID)
 end
 
 function SignInEventComponent:GetSignInAward(EventID, LocalEventDatas)
+    print("[SignInEventComponent] GetSignInAward");
 
     if not self:GetOwner():HasAuthority() then
+        print("[SignInEventComponent] GetSignInAward cannot be called on client!")
         return
     end
 
     local Config = SignInEventManager:GetEventConfigData(EventID);
     if Common.CheckStartEndTime(Config.StartTime, Config.EndTime) == false and Config.EndTime ~= 0 then
+        print("[SignInEventComponent] StartDate or EndDate validation failed!]");
         return;
     end
 
@@ -427,6 +438,7 @@ function SignInEventComponent:GetSignInAward(EventID, LocalEventDatas)
         if Data[EventID].DayNum ~= LocalEventDatas.DayNum
         or Data[EventID].NextDayTime ~= LocalEventDatas.NextDayTime
         or Data[EventID].SupplementDayNum ~= LocalEventDatas.SupplementDayNum then
+            print("[SignInEventComponent:GetSignInAward] LocalEventData does not match with ds EventData")
             return
         end
     else
@@ -435,6 +447,7 @@ function SignInEventComponent:GetSignInAward(EventID, LocalEventDatas)
 
     --校验是否已到最大累计签到天数
     if Data[EventID].DayNum == #Config.Awards then
+        print("[SignInEventComponent] Reach max DayNum")
         return
     end
 
@@ -486,6 +499,7 @@ function SignInEventComponent:Server_GetDailySignInAward(EventID, LocalEventData
 
     --校验当日是否已经进行签到
     if UGCGameSystem.GetServerTimeSec() < Data[EventID].NextDayTime then
+        print("[SignInEventComponent] Daily award already claimed!")
         return
     end
 
@@ -501,6 +515,7 @@ function SignInEventComponent:Server_UseSupplement(EventID, LocalEventDatas)
         if Data[EventID].DayNum ~= LocalEventDatas.DayNum
         or Data[EventID].NextDayTime ~= LocalEventDatas.NextDayTime
         or Data[EventID].SupplementDayNum ~= LocalEventDatas.SupplementDayNum then
+            print("[SignInEventComponent:Server_UseSupplement] LocalEventData does not match with ds EventData")
             return
         end
     else
@@ -514,6 +529,7 @@ function SignInEventComponent:Server_UseSupplement(EventID, LocalEventDatas)
 
     --校验补签天数是否到达上限
     if Data[EventID].SupplementDayNum >= ConfigData.SupplementDay then
+        print("[SignInEventComponent] Reach max daily supplement day num!")
         return
     end
 
@@ -532,6 +548,7 @@ end
 function SignInEventComponent:ReadConfigTable()
     
     if self.ConfigTablePath == nil then
+        print("SignInEventComponent: ConfigTablePath is nil!");
         return;
     end
 
@@ -576,6 +593,7 @@ end
 function SignInEventComponent:ReadAwardTable(TablePath)
 
     if TablePath == nil then
+        print("SignInEventComponent: AwardTablePath is nil!");
         return nil;
     end
 
@@ -609,11 +627,13 @@ end
 
 function SignInEventComponent:ClearData()
     
+    print("[SignInEventComponent:ClearData] Request clear data");
     UnrealNetwork.CallUnrealRPC(self:GetOwner(), self, "Server_ClearData");
 end
 
 function SignInEventComponent:Server_ClearData()
     
+    print("[SignInEventComponent:ClearData] Clear player data");
 
     local EventData = self:ReadData();
 
@@ -644,6 +664,7 @@ function SignInEventComponent:Server_AddItem(ItemID, Num)
         return;
     end
 
+    print(string.format("[SignInEventComponent:Server_AddItem] Add %d %d", ItemID, Num));
 
     self.VirtualItemManager:AddVirtualItem(self:GetOwner(), ItemID, Num);
 end
@@ -654,6 +675,7 @@ function SignInEventComponent:Server_RemoveItem(ItemID, Num, Callback)
         return;
     end
 
+    print(string.format("[SignInEventComponent:Server_AddItem] Remove %d %d", ItemID, Num));
 
     self.VirtualItemManager:RemoveItem(self:GetOwner(), ItemID, Num, Callback);
 end

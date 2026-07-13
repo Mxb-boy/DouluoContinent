@@ -131,6 +131,7 @@ function UGC_DailyTask_UIBP:InitUI(TaskLineName)
             self.TextBlock_18:SetText("日常任务");
 
             local PercentAwardNum = self.TaskLineConfig.PercentAwardList:Num();
+            print(string.format("[UGC_DailyTask_UIBP:InitUI] PercentAwardNum: %d", PercentAwardNum));
             self.TaskLineAwardItem = {};
             self.Task_Item:Reload(PercentAwardNum);
         elseif self.TaskLineConfig.ResetType == EUGCPercentTaskResetType.WeeklyReset then
@@ -153,10 +154,12 @@ function UGC_DailyTask_UIBP:RefreshTask()
             local Priority = self:GetTaskPriority(TaskID);
             local BeginTimeStamp = TaskManager:GetTaskBeginTime(TaskID);
             local EndTimeStamp = TaskManager:GetTaskEndTime(TaskID);
+            print(string.format("[UGC_DailyTask_UIBP:RefreshTask] TaskID: %d CurTimeStamp: %d BeginTimeStamp: %d EndTimeStamp: %d", TaskID, CurTimeStamp, BeginTimeStamp, EndTimeStamp));
             if CurTimeStamp >= BeginTimeStamp and CurTimeStamp <= EndTimeStamp then
                 table.insert(self.TaskList, {TaskID = TaskID, Index = Index, Priority = Priority, TaskState = TaskInfo.TaskState});
             elseif CurTimeStamp > EndTimeStamp then
                 local IsShowOutDate = TaskManager:GetTaskIsShowOutDate(TaskID);
+                print(string.format("[UGC_DailyTask_UIBP:RefreshTask] IsShowOutDate: %s", tostring(IsShowOutDate)));
                 if IsShowOutDate then
                     table.insert(self.TaskList, {TaskID = TaskID, Index = Index, Priority = Priority, TaskState = TaskInfo.TaskState});
                 end
@@ -197,6 +200,7 @@ function UGC_DailyTask_UIBP:GetTaskPriority(TaskID)
 end
 
 function UGC_DailyTask_UIBP:UpdateTaskInfo(TaskID, PercentTaskIndex)
+    print(string.format("[UGC_DailyTask_UIBP:UpdateTaskInfo] TaskID: %d PercentTaskIndex: %d", TaskID, PercentTaskIndex));
     self:RefreshTask();
     -- ---活跃任务会根据优先级排序，所以这里的索引不是实际Item的索引
     -- local TaskState = TaskManager:GetPercentTaskState(self.TaskLineName, PercentTaskIndex);
@@ -224,6 +228,7 @@ function UGC_DailyTask_UIBP:UpdateTaskInfo(TaskID, PercentTaskIndex)
 end
 
 function UGC_DailyTask_UIBP:UpdateTaskLineAwardInfo(Index)
+    print(string.format("[UGC_DailyTask_UIBP:UpdateTaskLineAwardInfo] Index: %s", Index));
     if self.TaskLineConfig.ResetType == EUGCPercentTaskResetType.NotReset or self.TaskLineConfig.ResetType == EUGCPercentTaskResetType.DailyReset then
         if self.TaskLineAwardItem and self.TaskLineAwardItem[Index] then
             self.TaskLineAwardItem[Index]:UpdateTaskLineAwardInfo();

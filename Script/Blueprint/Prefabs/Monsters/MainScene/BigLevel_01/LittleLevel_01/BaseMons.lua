@@ -3,7 +3,6 @@
 ---@field MonsterID int32
 --Edit Below--
 local BaseMons = {}
-local DropCleanupSystem = UGCGameSystem.UGCRequire("Script.Common.DropCleanupSystem")
 
 local function DisableMonsterCollision(monster)
     if monster.HitBox ~= nil then
@@ -83,15 +82,6 @@ end
 function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
     DisableMonsterCollision(self)
 
-    if self:HasAuthority() then
-        local corpse = self
-        UGCTimerUtility.CreateLuaTimer(5, function()
-            if corpse and UE.IsValid(corpse) then
-                corpse:K2_DestroyActor()
-            end
-        end, false)
-    end
-
     if self:HasAuthority() and self.SpawnWall ~= nil then
         self.SpawnWall:OnMonsterDied(self)
     end
@@ -103,6 +93,7 @@ function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEven
             DropID = Probability_Bonus * 100 + self.MonsterID
         end
 
+        -- 只有服务端才可以掉落
         if DropID ~= nil then
             self.UGCPresetCommonDropItemComponent:StartDropByProduceID(
                 DropID,
@@ -110,7 +101,6 @@ function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEven
                 EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor,
                 nil
             )
-            DropCleanupSystem.ScheduleDropCleanup(self:K2_GetActorLocation())
         end
     end
 end

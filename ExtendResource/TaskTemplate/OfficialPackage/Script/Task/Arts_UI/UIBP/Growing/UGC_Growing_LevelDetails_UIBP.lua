@@ -36,6 +36,7 @@ function UGC_Growing_LevelDetails_UIBP:InitItem(Item, Index)
 end
 
 function UGC_Growing_LevelDetails_UIBP:InitUI(TaskLineName, LevelIndex)
+    print(string.format("[UGC_Growing_LevelDetails_UIBP:InitUI] TaskLineName: %s LevelIndex: %d", TaskLineName, LevelIndex));
     self.TaskLineName = TaskLineName;
     self.LevelIndex = LevelIndex;
     local TaskLineConfig = TaskManager:GetTaskLineConfig(TaskLineName);
@@ -72,6 +73,7 @@ function UGC_Growing_LevelDetails_UIBP:RefreshTask()
                     table.insert(self.TaskList, {TaskID = TaskID, Index = Index});
                 elseif CurTimeStamp > EndTimeStamp then
                     local IsShowOutDate = TaskManager:GetTaskIsShowOutDate(TaskID);
+                    print(string.format("[UGC_Growing_LevelDetails_UIBP:RefreshTask] IsShowOutDate: %s", tostring(IsShowOutDate)));
                     if IsShowOutDate then
                         table.insert(self.TaskList, {TaskID = TaskID, Index = Index});
                     end
@@ -83,6 +85,7 @@ function UGC_Growing_LevelDetails_UIBP:RefreshTask()
 end
 
 function UGC_Growing_LevelDetails_UIBP:UpdateTaskInfo(TaskID, TaskIndex)
+    print(string.format("[UGC_Growing_LevelDetails_UIBP:UpdateTaskInfo] TaskID: %d TaskIndex: %d", TaskID, TaskIndex));
     local TaskState = TaskManager:GetLevelTaskState(self.TaskLineName, self.LevelIndex, TaskIndex);
     if TaskState == EUGCTaskState.Expired then
         ---刷新Item

@@ -5,6 +5,7 @@ local Action_SendEvent =
 
 
 function Action_SendEvent:Execute()
+    print(string.format("Action_SendEvent:Execute SendEventName[%s]", self.SendEventName));
 
     LuaQuickFireEvent(self.SendEventName, self);
 

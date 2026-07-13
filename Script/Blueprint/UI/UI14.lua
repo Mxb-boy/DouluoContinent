@@ -524,6 +524,7 @@ function UI14:SetAwardImage(Image, IconPath)
         Texture = UE.LoadObject(IconPath)
     end
     if Texture == nil then
+        ugcprint("[UI14:SetAwardImage] load failed: " .. tostring(IconPath))
         return
     end
 
@@ -551,6 +552,7 @@ function UI14:RequestLottery(LotteryTypeValue)
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
         or GameplayStatics.GetPlayerController(self, 0)
     if PlayerController == nil then
+        ugcprint("[UI14:RequestLottery] PlayerController is nil")
         return
     end
     if not self:CanSummonLottery(LotteryTypeValue) then

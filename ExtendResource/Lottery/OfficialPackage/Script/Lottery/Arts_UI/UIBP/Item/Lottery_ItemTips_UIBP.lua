@@ -50,12 +50,14 @@ function Lottery_ItemTips_UIBP:ShowItemTip(ItemID, Position)
 end
 
 function Lottery_ItemTips_UIBP:SetPosition(Position)
+    print(string.format("[Lottery_ItemTips_UIBP] SetPosition X: %s Y: %s", tostring(Position.X), tostring(Position.Y)));
     -- local ViewportSize = WidgetLayoutLibrary.GetViewportSize(self);
     -- local ViewportScale = WidgetLayoutLibrary.GetViewportScale(self);
     -- local MaxX = ViewportSize.X;
     -- local MaxY = ViewportSize.Y;
 
     local TipSize = self.CanvasPanel_0.Slots[1]:GetSize();
+    print(string.format("[Lottery_ItemTips_UIBP] TipSizeX: %s TipSizeY: %s", tostring(TipSize.X), tostring(TipSize.Y)));
     -- local DesireX = (Position.X + TipSize.X) * ViewportScale;
     -- local DesireY = (Position.Y + TipSize.Y) * ViewportScale;
 
@@ -77,6 +79,7 @@ function Lottery_ItemTips_UIBP:SetPosition(Position)
 
     Position.X = Position.X + TipSize.X * 2;
     Position.Y = Position.Y + TipSize.Y * 2;
+    print(string.format("[Lottery_ItemTips_UIBP] Position X: %s Y: %s", tostring(Position.X), tostring(Position.Y)));
     self.CanvasPanel_0.Slots[1]:SetPosition(Position);
 end
 

@@ -32,6 +32,7 @@ function UGC_DailyTask_BigBox_UIBP:OpenBigBox()
 end
 
 function UGC_DailyTask_BigBox_UIBP:SignAward()
+    print("[UGC_DailyTask_BigBox_UIBP:SignAward]");
     local TaskLineConfig = TaskManager:GetTaskLineConfig(self.TaskLineName);
     local PercentAwardNum = TaskLineConfig.PercentAwardList:Num();
     if PercentAwardNum >= 3 then
@@ -133,6 +134,7 @@ function UGC_DailyTask_BigBox_UIBP:SetResetTime()
         self.NextResetTime = TaskManager:GetTaskLineResetTime(self.TaskLineName);
     end
     local ServerTime = UGCGameSystem.GetServerTimeSec();
+    print(string.format("[UGC_DailyTask_BigBox_UIBP] SetResetTime ResetTime: %d CurTime: %d", self.NextResetTime or 0, ServerTime or 0));
     local RemainTime = self.NextResetTime - ServerTime;
     if RemainTime > 86400 then
         local Day = math.ceil((self.NextResetTime - ServerTime) / 86400);
@@ -197,9 +199,11 @@ function UGC_DailyTask_BigBox_UIBP:UpdatePercent()
         else
             ShowPercent = 0.845;
         end
+        print(ShowPercent);
         local ImageMaterial = self.Image_schedule:GetDynamicMaterial();
         if ImageMaterial and Percent03 > 0 then
             ImageMaterial:SetScalarParameterValue("Mask_Percent", ShowPercent);
+            print(string.format("[UGC_DailyTask_BigBox_UIBP:UpdatePercent] Percent: %d ShowPercent: %f", Percent, ShowPercent));
         else
             print_dev("[UGC_DailyTask_BigBox_UIBP:UpdatePercent] ImageMaterial is nil");
         end
@@ -207,6 +211,7 @@ function UGC_DailyTask_BigBox_UIBP:UpdatePercent()
 end
 
 function UGC_DailyTask_BigBox_UIBP:UpdateBigBoxAwardState()
+    print(string.format("[UGC_DailyTask_BigBox_UIBP:UpdateBigBoxAwardState]"));
     --- 中间显示的是最小可领取的宝箱
     local AwardState01 = TaskManager:GetTaskLineAwardState(self.TaskLineName, 1);
     local AwardState02 = TaskManager:GetTaskLineAwardState(self.TaskLineName, 2);

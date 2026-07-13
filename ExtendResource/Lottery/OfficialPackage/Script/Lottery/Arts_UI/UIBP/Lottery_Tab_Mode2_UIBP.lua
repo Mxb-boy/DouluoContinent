@@ -96,6 +96,7 @@ function Lottery_Tab_Mode2_UIBP:InitUI(LotteryID, ShowAwardNum, IsShowExchange, 
         self.Lottery_Button_One_UIBP:InitUI(LotteryID);
         self.Lottery_Button_Ten_UIBP:InitUI(LotteryID);
 
+        print(string.format("Lottery_Tab_Mode1_UIBP:InitUI LotteryID: %d", LotteryID));
         if IsShowGiftProgress then
             if LotteryData.GiftProgressRewards then
                 local count = 0;
@@ -197,6 +198,7 @@ function Lottery_Tab_Mode2_UIBP:ShowAward(LotteryID, ShowAwardNum)
     if totalAwardNum < ShowAwardNum then
         ShowAwardNum = totalAwardNum; 
     end
+    print(string.format("Lottery_Tab_Mode2_UIBP:ShowAward ItemNum: %d ShowNum: %d", totalAwardNum, ShowAwardNum));
     if ShowAwardNum >= 7 then
         for index, v in pairs(self.ShowAwardList) do
             v:SetVisibility(ESlateVisibility.SelfHitTestInvisible);

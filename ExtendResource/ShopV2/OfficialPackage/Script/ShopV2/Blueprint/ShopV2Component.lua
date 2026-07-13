@@ -41,6 +41,7 @@ function ShopV2Component:InitShopUI()
     Common.LoadObjectWithSoftPathAsync(self.MainUIClassPath, 
         function (MainUIClass)
             if self == nil or MainUIClass == nil then
+                print("[ShopV2Component:InitShopUI] MainUIClass load failed");
                 return;
             end
 
@@ -54,6 +55,7 @@ function ShopV2Component:InitShopUI()
         Common.LoadObjectWithSoftPathAsync(self.TestButtonPath, 
             function (ButtonClass)
                 if self == nil or ButtonClass == nil then
+                    print("[ShopV2Component:InitShopUI] TestButtonClass load failed");
                     return;
                 end
                 
@@ -66,14 +68,17 @@ end
 
 function ShopV2Component:ReadItemQualityTable()
     
+    print("[ShopV2Component:ReadItemQualityTable] Start read item quality rank");
     ShopV2Manager.ItemQuality = {};
 
     if self.ItemQualityTablePath == nil then
+        print("[ShopV2Component:ReadItemQualityTable] ItemQualityTablePath is nil");
         return;
     end
 
     local Path = Common.GetDataTablePath(self.ItemQualityTablePath);
     if Path == "" then
+        print("[ShopV2Component:ReadItemQualityTable] ItemQualityTablePath is empty");
         return;
     end
 

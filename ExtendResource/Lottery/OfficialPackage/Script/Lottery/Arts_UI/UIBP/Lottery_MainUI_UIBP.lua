@@ -51,6 +51,7 @@ end
 ---@param item Lottery_Turntable_TabBut_UIBP_C
 ---@param index uint32
 function Lottery_MainUI_UIBP:InitTabMenuItem(Item, Index)
+    print(string.format("Lottery_MainUI_UIBP:InitTabMenuItem Index: %d LotteryCount: %d", Index, #self.LotteryDatas));
     Item:Init(self.LotteryDatas[Index + 1].ID);
     self.LotteryTab[self.LotteryDatas[Index + 1].ID] = Item;
 
@@ -108,6 +109,7 @@ end
 
 ---@param LotteryData LotteryData
 function Lottery_MainUI_UIBP:SelectLottery(LotteryID)
+    print(string.format("Lottery_MainUI_UIBP:SelectLottery LotteryID: %d SelectLotteryID: %d", LotteryID, self.SelectedLotteryID));
     if LotteryID == self.SelectedLotteryID then
         -- 刷新货币，奖池信息不用刷新
         self:RefreshExchangeCurrencyNum();

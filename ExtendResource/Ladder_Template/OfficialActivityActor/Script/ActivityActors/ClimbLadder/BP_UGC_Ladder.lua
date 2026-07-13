@@ -163,6 +163,7 @@ function BP_UGC_Ladder:OnUpClick(ClickParams)
     self.InUpCheckAreaList[PlayerKey] = true
 end
 function BP_UGC_Ladder:CanDownTrigger(ClickParams)
+    print("BP_UGC_Ladder:CanDownTrigger")
     local  PlayerKey = tostring(UGCGameSystem.GetPlayerKeyByPlayerController(ClickParams.PlayerController))
     local Character = ClickParams.PlayerController:GetPlayerCharacterSafety()
     print_dev("BP_UGC_Ladder:CanDownTrigger--self.DownChildActorNumRemember = "..tostring(self.DownChildActorNumRemember))

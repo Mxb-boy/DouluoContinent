@@ -38,6 +38,7 @@ function SignInEvent_Weekly_Item_UIBP:Refresh(EventID, DayIndex, SupplementDay)
     local Awards = Config.Awards;
 
     if Awards[DayIndex] == nil then
+        print("[SignInEvent_Weekly_Item_UIBP] Award table is not set correctly!");
         return;
     end
 
@@ -109,6 +110,7 @@ function SignInEvent_Weekly_Item_UIBP:OnClick()
             if SignInEventManager:GetEventDayNum(self.EventID) + 1 == self.DayIndex then
                 SignInEventManager:ShowSupplementPopup(self.EventID);
             else
+                print("[SignInEvent_Monthly_Item_UIBP] Must Check Previous Day First!");
                 SignInEventManager:ShowSupplementTip("前一日签到后才能补签");
             end
         end

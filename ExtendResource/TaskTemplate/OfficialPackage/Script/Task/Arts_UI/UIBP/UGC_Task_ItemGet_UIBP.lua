@@ -30,6 +30,7 @@ function UGC_Task_ItemGet_UIBP:Construct()
     Common.LoadObjectAsync('/Game/WwiseEvent/UI_hall/Play_UI_hall_Shopping_Get.Play_UI_hall_Shopping_Get',
     function (Object)
         if self ~= nil and UE.IsValid(self) then
+            print("[UGC_TaskMain_UIBP:Construct] Load WwiseEvent");
             self.WwiseEvent = Object
         end
     end
@@ -69,7 +70,9 @@ function UGC_Task_ItemGet_UIBP:Destruct()
 end
 
 function UGC_Task_ItemGet_UIBP:InitUI(ItemList)
+    print("UGC_Task_ItemGet_UIBP:InitUI");
     if ItemList then
+        print(#ItemList);
         self.ItemUpList = ItemList;
         self.UGC_ReuseList2_Item2:SetVisibility(ESlateVisibility.Collapsed);
         self.DesText:SetVisibility(ESlateVisibility.Collapsed);

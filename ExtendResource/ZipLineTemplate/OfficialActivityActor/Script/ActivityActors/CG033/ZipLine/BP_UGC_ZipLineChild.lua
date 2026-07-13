@@ -55,6 +55,7 @@ function BP_UGC_ZipLineChild:AreaBlockadeDetect(BeginLocation,EndLocation)
 end
 
 function BP_UGC_ZipLineChild:PossessWithAttach(PC,StartLocation,EndLocation)
+    print("BP_UGC_ZipLineChild:PossessWithAttach")
     self.ActivityFakePossess:FakePossessWithAttach(PC,self.Scene,"None")
     self.PlayerController = PC
     PC.CurrentZipLineChild = self
@@ -70,6 +71,7 @@ function BP_UGC_ZipLineChild:PossessWithAttach(PC,StartLocation,EndLocation)
     end
 end
 function BP_UGC_ZipLineChild:ActivityFakePossess_OnUnPossess(PC)
+    print("BP_UGC_Ladder:OnUnPossess")
     UGCTimerUtility.RemoveLuaTimerByName("CheckBlockTimer")
     if PC.CurrentZipLineChild == self then
         PC.CurrentZipLineChild = nil
@@ -86,6 +88,7 @@ function BP_UGC_ZipLineChild:ActivityFakePossess_OnUnPossess(PC)
 end
 
 function BP_UGC_ZipLineChild:OnPlayerAttachedToThisActor_BP(InPlayer)
+    print("BP_LadderChild:OnPlayerAttachedToThisActor_BP")
     self.ActorSequence:AddBinding(self.ActiveSeqBind.Binding, InPlayer, false)
 end
 
