@@ -257,6 +257,9 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                     PlayerState:GetAutoAttackButtonHidden() == true then
                     UnrealNetwork.CallUnrealRPC(PC, PC, "Client_SetAutoFeatureButtonHidden", "AutoAttack")
                 end
+                if PlayerState.GetFeiButton0Hidden ~= nil and PlayerState:GetFeiButton0Hidden() == true then
+                    UnrealNetwork.CallUnrealRPC(PC, PC, "Client_SetFeiButton0Hidden", 1)
+                end
                 if PlayerState.GetYXWD_InvincibleBuff ~= nil and PlayerState:GetYXWD_InvincibleBuff() == true then
                     if PlayerState.SetYXWD_InvincibleBuffActive ~= nil then
                         PlayerState:SetYXWD_InvincibleBuffActive(true)

@@ -52,6 +52,10 @@ local ARCHIVE_KEYS = {{
     field = "AutoAttackButtonHidden",
     default = 0
 }, {
+    key = "FeiButton0Hidden",
+    field = "FeiButton0Hidden",
+    default = 0
+}, {
     key = "LotteryState",
     field = "LotteryState",
     default = {}
@@ -246,7 +250,7 @@ end
 
 function UGCPlayerState:SetFeiButton0Hidden(value)
     self.FeiButton0Hidden = (value == true or tonumber(value) == 1) and 1 or 0
-    self:SaveToArchive()
+    self:SaveToArchiveImmediate()
 end
 
 function UGCPlayerState:GetYXWD_InvincibleBuff()
