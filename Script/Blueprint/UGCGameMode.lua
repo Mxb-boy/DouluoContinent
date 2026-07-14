@@ -283,13 +283,16 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             for _, ItemID in ipairs(WeaponLevelConfig.GetAllBaseItemIDs()) do
                 AddV2ItemIfMissing(PC.Pawn, ItemID, 1)
             end
+            if PC.SyncWeaponBackpackNames ~= nil then
+                PC:SyncWeaponBackpackNames()
+            end
             if HTCLv2ItemID ~= nil then
                 AddV2ItemIfMissing(PC.Pawn, HTCLv2ItemID, 1)
             end
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310064, 10)
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310047, 1)
             -- 锻造材料
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310035, 1000)
+            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310035, 5000)
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310036, 1000)
             -- --境界升级材料先发背包
             UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310037, 10)

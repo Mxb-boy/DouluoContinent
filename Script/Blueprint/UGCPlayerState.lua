@@ -9,6 +9,7 @@ local UGCPlayerState = {
     YXWD_InvincibleBuffActive = false,
     YXWD_InvincibleBuffToken = 0,
     LotteryState = {},
+    WeaponLevels = {},
     SignInEvent = {},
     UnlockedTitles = {},
     EquippedTitleID = 0,
@@ -60,6 +61,10 @@ local ARCHIVE_KEYS = {{
     field = "LotteryState",
     default = {}
 }, {
+    key = "WeaponLevels",
+    field = "WeaponLevels",
+    default = {}
+}, {
     key = "BaseAttack",
     field = "BaseAttack",
     default = 40
@@ -76,8 +81,9 @@ table.insert(ARCHIVE_KEYS, { key = "Probability_Bonus", field = "Probability_Bon
 table.insert(ARCHIVE_KEYS, { key = "SignInEvent", field = "SignInEvent", default = {} })
 
 function UGCPlayerState:GetReplicatedProperties()
-    return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "BaseAttack",
-            "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "UnlockedTitles", "EquippedTitleID", "FeiButton0Hidden"}
+    return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "WeaponLevels",
+            "BaseAttack", "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "UnlockedTitles",
+            "EquippedTitleID", "FeiButton0Hidden"}
 end
 
 -- ------ 跨对局存档 ------ --
@@ -266,6 +272,61 @@ function UGCPlayerState:SetLotteryState(value)
     end
     self:SaveToArchive()
     _G.DOREPONCE(self, "LotteryState")
+end
+
+function UGCPlayerState:GetWeaponLevels()
+    if self.WeaponLevels == nil then
+        self.WeaponLevels = {}
+    end
+    return self.WeaponLevels
+end
+
+function UGCPlayerState:GetWeaponLevel(WeaponID)
+    local WeaponLevels = self:GetWeaponLevels()
+    WeaponID = tonumber(WeaponID)
+    if WeaponID == nil then
+        return 1
+    end
+    return tonumber(WeaponLevels[WeaponID] or WeaponLevels[tostring(WeaponID)]) or 1
+end
+
+function UGCPlayerState:HasWeaponLevel(WeaponID)
+    local WeaponLevels = self:GetWeaponLevels()
+    WeaponID = tonumber(WeaponID)
+    if WeaponID == nil then
+        return false
+    end
+    return WeaponLevels[WeaponID] ~= nil or WeaponLevels[tostring(WeaponID)] ~= nil
+end
+
+function UGCPlayerState:SetWeaponLevels(value)
+    if type(value) == "table" then
+        local copy = {}
+        for k, v in pairs(value) do
+            local WeaponID = tonumber(k)
+            local Level = tonumber(v)
+            if WeaponID ~= nil and Level ~= nil then
+                copy[WeaponID] = math.max(1, Level)
+            end
+        end
+        self.WeaponLevels = copy
+    else
+        self.WeaponLevels = {}
+    end
+    self:SaveToArchive()
+    _G.DOREPONCE(self, "WeaponLevels")
+end
+
+function UGCPlayerState:SetWeaponLevel(WeaponID, Level)
+    WeaponID = tonumber(WeaponID)
+    Level = tonumber(Level)
+    if WeaponID == nil or Level == nil then
+        return
+    end
+
+    local WeaponLevels = self:GetWeaponLevels()
+    WeaponLevels[WeaponID] = math.max(1, Level)
+    self:SetWeaponLevels(WeaponLevels)
 end
 
 function UGCPlayerState:GetSignInEvent()

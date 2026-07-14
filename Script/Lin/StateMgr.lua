@@ -5,6 +5,9 @@ local StateMgr = {
     PaiHangAdd = 0,
     ChiBang = 0,
     WuQi = 0,
+    WuQiEquip = 0,
+    WuQiBackpack = 0,
+    WuQiBackpackCount = 0,
     ChengHao = 0,
     JingJieName = "",
     JingJieAddMaxHp = 0,
@@ -27,6 +30,11 @@ function StateMgr:SetUI(ui)
     self.UI = ui
     self.bServerSynced = false -- 新 UI/新对局时重置，等待服务器首次同步
     self:Init()
+
+    local pawn = UGCGameSystem.GetLocalPlayerPawn()
+    if pawn ~= nil and pawn.RefreshWeaponAttackBonus ~= nil then
+        pawn:RefreshWeaponAttackBonus(true)
+    end
 end
 
 function StateMgr:SyncFromPlayerState()
@@ -79,9 +87,14 @@ function StateMgr:ChiBangTextShow(Num, SkipCount)
     end
 end
 
-function StateMgr:WuQiTextShow(Num, SkipCount)
-    self.WuQi = Num
-    self.UI.TextBlock_112:SetText("武器加成:" .. self.WuQi .. "%")
+function StateMgr:WuQiTextShow(Num, SkipCount, BackpackAdd, BackpackCount)
+    self.WuQiEquip = tonumber(Num) or 0
+    self.WuQiBackpack = tonumber(BackpackAdd) or 0
+    self.WuQiBackpackCount = tonumber(BackpackCount) or 0
+    self.WuQi = self.WuQiEquip + self.WuQiBackpack
+    if self.UI ~= nil and self.UI.TextBlock_112 ~= nil then
+        self.UI.TextBlock_112:SetText("武器加成:" .. self.WuQi .. "%")
+    end
     if not SkipCount then
         self:CountAll()
     end

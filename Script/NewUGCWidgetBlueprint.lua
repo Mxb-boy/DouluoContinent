@@ -35,12 +35,13 @@ function NewUGCWidgetBlueprint:LuaInit()
 end
 
 -- Fill one weapon item: bottom name, button icon, and owner UI callback.
-function NewUGCWidgetBlueprint:SetWeaponData(WeaponName, IconPath, OwnerUI, ItemID)
+function NewUGCWidgetBlueprint:SetWeaponData(WeaponName, IconPath, OwnerUI, ItemID, WeaponInstance)
     self:SetVisibility(ESlateVisibility.Visible)
     self.WeaponName = WeaponName
     self.IconPath = IconPath
     self.OwnerUI = OwnerUI
     self.ItemID = ItemID
+    self.WeaponInstance = WeaponInstance
 
     if self.text_name ~= nil then
         self.text_name:SetText(WeaponName)
@@ -65,13 +66,14 @@ function NewUGCWidgetBlueprint:ClearWeaponData()
     self.IconPath = nil
     self.OwnerUI = nil
     self.ItemID = nil
+    self.WeaponInstance = nil
     self:SetVisibility(ESlateVisibility.Collapsed)
 end
 
 -- Notify UI10 to update the top preview.
 function NewUGCWidgetBlueprint:Button_97_OnClicked()
     if self.OwnerUI ~= nil and self.OwnerUI.SelectWeapon ~= nil then
-        self.OwnerUI:SelectWeapon(self.WeaponName, self.IconPath, self.ItemID)
+        self.OwnerUI:SelectWeapon(self.WeaponName, self.IconPath, self.ItemID, self.WeaponInstance)
     end
 end
 

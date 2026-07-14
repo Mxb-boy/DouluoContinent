@@ -1,6 +1,37 @@
 ---@class BP_BackpackComponentV2_Custom_C:BP_BackpackComponentV2_C
 --Edit Below--
 local BP_BackpackComponentV2_Custom = {} 
+local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
+
+local function GetOwnerController(self)
+    local Owner = nil
+    if self.GetOwner ~= nil then
+        local Success, Result = pcall(self.GetOwner, self)
+        if Success then
+            Owner = Result
+        end
+    end
+
+    if Owner == nil then
+        Owner = self.Owner
+    end
+    if Owner == nil then
+        return nil
+    end
+    return Owner.Controller or Owner.PlayerController or Owner
+end
+
+local function SyncWeaponNamesLater(self)
+    local Controller = GetOwnerController(self)
+    if Controller == nil or Controller.SyncWeaponBackpackNames == nil then
+        return
+    end
+    UGCTimerUtility.CreateLuaTimer(0.2, function()
+        if Controller ~= nil and Controller.SyncWeaponBackpackNames ~= nil then
+            Controller:SyncWeaponBackpackNames()
+        end
+    end, false)
+end
 
 ---func 背包初始化函数，玩家登录后执行一次(服务端调用)
 -- function BP_BackpackComponentV2_Custom:InitEventAfterPlayerEnter()
@@ -28,6 +59,12 @@ local BP_BackpackComponentV2_Custom = {}
 -- function BP_BackpackComponentV2_Custom:OnAddItemV2(DefineID, Count)
 --     BP_BackpackComponentV2_Custom.SuperClass.OnAddItemV2(self, DefineID, Count);
 -- end
+function BP_BackpackComponentV2_Custom:OnAddItemV2(DefineID, Count)
+    if BP_BackpackComponentV2_Custom.SuperClass ~= nil and BP_BackpackComponentV2_Custom.SuperClass.OnAddItemV2 ~= nil then
+        BP_BackpackComponentV2_Custom.SuperClass.OnAddItemV2(self, DefineID, Count)
+    end
+    SyncWeaponNamesLater(self)
+end
 
 ---func 能否合并物品(新添加物品能否与已有格子物品堆叠, 格子物品即物品实例)(服务端调用)
 ---@param ItemDefineID userdata 格子物品DefineID
@@ -45,6 +82,29 @@ local BP_BackpackComponentV2_Custom = {}
 -- function BP_BackpackComponentV2_Custom:OnMergeItemV2(ItemDefineID, OldCount, MergeCount)
 --     BP_BackpackComponentV2_Custom.SuperClass.OnMergeItemV2(self, ItemDefineID, OldCount, MergeCount);
 -- end
+function BP_BackpackComponentV2_Custom:CanMergeItemV2(ItemDefineID, CountNow, MergeCount)
+    local ItemID = nil
+    if ItemDefineID ~= nil then
+        ItemID = tonumber(ItemDefineID.TypeSpecificID or ItemDefineID.ItemID or ItemDefineID.ItemId or ItemDefineID.ID)
+    end
+
+    if ItemID ~= nil and WeaponLevelConfig.GetWeaponInfo(ItemID) ~= nil then
+        return 0
+    end
+
+    if BP_BackpackComponentV2_Custom.SuperClass ~= nil and BP_BackpackComponentV2_Custom.SuperClass.CanMergeItemV2 ~= nil then
+        return BP_BackpackComponentV2_Custom.SuperClass.CanMergeItemV2(self, ItemDefineID, CountNow, MergeCount)
+    end
+
+    return MergeCount
+end
+
+function BP_BackpackComponentV2_Custom:OnMergeItemV2(ItemDefineID, OldCount, MergeCount)
+    if BP_BackpackComponentV2_Custom.SuperClass ~= nil and BP_BackpackComponentV2_Custom.SuperClass.OnMergeItemV2 ~= nil then
+        BP_BackpackComponentV2_Custom.SuperClass.OnMergeItemV2(self, ItemDefineID, OldCount, MergeCount)
+    end
+    SyncWeaponNamesLater(self)
+end
 
 ---func 能否移除物品(服务端调用)
 ---@param ItemDefineID userdata 物品DefineID

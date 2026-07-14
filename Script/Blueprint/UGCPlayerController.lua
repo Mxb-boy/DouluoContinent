@@ -19,6 +19,7 @@ local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
     QNHH = 8310036
 }
+local DisuseItemFunctionNames = { "DisuseItemV2", "UnUseItemV2", "CancelUseItemV2", "StopUseItemV2" }
 local SoulRingItemIDs = {8310048, 8310049, 8310051, 8310053, 8310054, 8310055, 8310056, 8310057, 8310052, 8310050}
 
 function UGCPlayerController:ReceiveBeginPlay()
@@ -317,6 +318,376 @@ local function GetPlayerPawn(PlayerController)
     return nil
 end
 
+local function TryCall(Object, FunctionName, ...)
+    if Object == nil then
+        return nil
+    end
+
+    local Func = Object[FunctionName]
+    if Func == nil then
+        return nil
+    end
+
+    local Success, Result = pcall(Func, Object, ...)
+    if Success then
+        return Result
+    end
+
+    Success, Result = pcall(Func, ...)
+    if Success then
+        return Result
+    end
+
+    return nil
+end
+
+local function GetItemIDFromObject(Object)
+    if Object == nil then
+        return nil
+    end
+
+    local DirectItemID = tonumber(Object)
+    if DirectItemID ~= nil then
+        return DirectItemID
+    end
+    local ObjectType = type(Object)
+    if ObjectType ~= "table" and ObjectType ~= "userdata" then
+        return nil
+    end
+
+    local FieldNames = { "ItemID", "ItemId", "itemID", "ItemDefineID", "DefineID", "DefineId", "ID", "WPID" }
+    for _, FieldName in ipairs(FieldNames) do
+        local Success, FieldValue = pcall(function()
+            return Object[FieldName]
+        end)
+        if Success then
+            local ItemID = tonumber(FieldValue)
+            if ItemID ~= nil then
+                return ItemID
+            end
+        end
+    end
+
+    local FunctionNames = { "GetItemID", "GetItemId", "GetItemDefineID", "GetDefineID", "GetDefineId" }
+    for _, FunctionName in ipairs(FunctionNames) do
+        local ItemID = tonumber(TryCall(Object, FunctionName))
+        if ItemID ~= nil then
+            return ItemID
+        end
+    end
+
+    return nil
+end
+
+local function GetCurrentHeldWeapon(PlayerController)
+    local Pawn = GetPlayerPawn(PlayerController)
+    if Pawn == nil or UGCWeaponManagerSystem == nil or UGCWeaponManagerSystem.GetCurrentWeapon == nil then
+        return nil
+    end
+
+    return UGCWeaponManagerSystem.GetCurrentWeapon(Pawn)
+end
+
+local function IsSameWeaponType(Weapon, WeaponInfo)
+    if Weapon == nil or WeaponInfo == nil then
+        return false
+    end
+
+    local HeldWeaponID = tonumber(Weapon.WeaponConfigID or Weapon.WuQiID or Weapon.WeaponTypeID)
+    if HeldWeaponID == WeaponInfo.ID then
+        return true
+    end
+
+    local HeldItemID = nil
+    local ItemFieldNames = { "ItemID", "ItemId", "itemID", "ItemDefineID", "DefineID", "DefineId", "WPID" }
+    for _, FieldName in ipairs(ItemFieldNames) do
+        local Success, FieldValue = pcall(function()
+            return Weapon[FieldName]
+        end)
+        if Success and tonumber(FieldValue) ~= nil then
+            HeldItemID = tonumber(FieldValue)
+            break
+        end
+    end
+    if HeldItemID == nil then
+        local FunctionNames = { "GetItemID", "GetItemId", "GetItemDefineID", "GetDefineID", "GetDefineId" }
+        for _, FunctionName in ipairs(FunctionNames) do
+            HeldItemID = tonumber(TryCall(Weapon, FunctionName))
+            if HeldItemID ~= nil then
+                break
+            end
+        end
+    end
+    local HeldInfo = WeaponLevelConfig.GetWeaponInfo(HeldItemID)
+    if HeldInfo ~= nil and HeldInfo.ID == WeaponInfo.ID then
+        return true
+    end
+
+    return HeldItemID == nil or tonumber(HeldItemID) == tonumber(WeaponInfo.WPID)
+end
+
+local TrySetDisplayNameOnObject
+
+local function GetStoredWeaponLevel(PlayerController, WeaponInfo)
+    if WeaponInfo == nil then
+        return 1
+    end
+
+    PlayerController.WeaponLevelByID = PlayerController.WeaponLevelByID or {}
+    local CachedLevel = tonumber(PlayerController.WeaponLevelByID[WeaponInfo.ID])
+    if CachedLevel ~= nil then
+        return math.max(1, math.min(WeaponInfo.MaxLevel, CachedLevel))
+    end
+
+    local PlayerState = PlayerController.PlayerState
+    if PlayerState ~= nil and PlayerState.GetWeaponLevel ~= nil and
+        (PlayerState.HasWeaponLevel == nil or PlayerState:HasWeaponLevel(WeaponInfo.ID)) then
+        return math.max(1, math.min(WeaponInfo.MaxLevel, tonumber(PlayerState:GetWeaponLevel(WeaponInfo.ID)) or 1))
+    end
+
+    local Weapon = GetCurrentHeldWeapon(PlayerController)
+    if Weapon ~= nil then
+        if IsSameWeaponType(Weapon, WeaponInfo) then
+            local ActorLevel = tonumber(Weapon.WeaponLevel)
+            if ActorLevel ~= nil then
+                local Level = math.max(1, math.min(WeaponInfo.MaxLevel, ActorLevel))
+                PlayerController.WeaponLevelByID = PlayerController.WeaponLevelByID or {}
+                PlayerController.WeaponLevelByID[WeaponInfo.ID] = Level
+                return Level
+            end
+        end
+    end
+
+    return math.max(1, math.min(WeaponInfo.MaxLevel, tonumber(PlayerController.WeaponLevelByID[WeaponInfo.ID]) or 1))
+end
+
+local function SetStoredWeaponLevel(PlayerController, WeaponInfo, Level)
+    if WeaponInfo == nil then
+        return
+    end
+
+    Level = math.max(1, math.min(WeaponInfo.MaxLevel, tonumber(Level) or 1))
+    local PlayerState = PlayerController.PlayerState
+    if PlayerState ~= nil and PlayerState.SetWeaponLevel ~= nil then
+        PlayerState:SetWeaponLevel(WeaponInfo.ID, Level)
+    end
+    PlayerController.WeaponLevelByID = PlayerController.WeaponLevelByID or {}
+    PlayerController.WeaponLevelByID[WeaponInfo.ID] = Level
+
+    local AttackPercent = WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level)
+    local DisplayName = WeaponLevelConfig.BuildDisplayName(WeaponInfo.WPID, Level)
+    local Weapon = GetCurrentHeldWeapon(PlayerController)
+    if Weapon ~= nil then
+        if IsSameWeaponType(Weapon, WeaponInfo) then
+            Weapon.WeaponLevel = Level
+            Weapon.WeaponConfigID = WeaponInfo.ID
+            Weapon.WeaponLevel_0 = tonumber(AttackPercent) or 0
+            TrySetDisplayNameOnObject(Weapon, DisplayName)
+        end
+    end
+
+end
+
+local function GetWeaponLevelFromItemDefineID(ItemDefineID, WeaponInfo, StackIndex)
+    if ItemDefineID == nil or WeaponInfo == nil then
+        return nil
+    end
+    if UGCItemSystemV2 == nil or UGCItemSystemV2.LoadItemCustomData == nil then
+        return nil
+    end
+
+    StackIndex = math.max(1, tonumber(StackIndex) or 1)
+    local Success, CustomData = pcall(UGCItemSystemV2.LoadItemCustomData, ItemDefineID)
+    if Success and type(CustomData) == "table" then
+        local Level = nil
+        if type(CustomData.WeaponLevelsByStackIndex) == "table" then
+            Level = tonumber(CustomData.WeaponLevelsByStackIndex[tostring(StackIndex)] or
+                CustomData.WeaponLevelsByStackIndex[StackIndex])
+        end
+        Level = Level or tonumber(CustomData.WeaponLevel or CustomData.StrengthenLv)
+        if Level ~= nil then
+            return math.max(1, math.min(WeaponInfo.MaxLevel, Level))
+        end
+    end
+
+    return nil
+end
+
+local function SetWeaponLevelToItemDefineID(ItemDefineID, WeaponInfo, Level, StackIndex)
+    if ItemDefineID == nil or WeaponInfo == nil then
+        return false
+    end
+    if UGCItemSystemV2 == nil or UGCItemSystemV2.LoadItemCustomData == nil or UGCItemSystemV2.SaveItemCustomData == nil then
+        return false
+    end
+
+    Level = math.max(1, math.min(WeaponInfo.MaxLevel, tonumber(Level) or 1))
+    StackIndex = math.max(1, tonumber(StackIndex) or 1)
+    local Success, CustomData = pcall(UGCItemSystemV2.LoadItemCustomData, ItemDefineID)
+    if not Success or type(CustomData) ~= "table" then
+        CustomData = {}
+    end
+    CustomData.WeaponLevelsByStackIndex = CustomData.WeaponLevelsByStackIndex or {}
+    CustomData.WeaponLevelsByStackIndex[tostring(StackIndex)] = Level
+    CustomData.WeaponLevel = Level
+    CustomData.StrengthenLv = Level
+    CustomData.TemplateID = WeaponInfo.WPID
+    return pcall(UGCItemSystemV2.SaveItemCustomData, ItemDefineID, CustomData)
+end
+
+local function IsItemDefineIDInBackpack(PlayerController, ItemDefineID)
+    if ItemDefineID == nil then
+        return false
+    end
+    local Pawn = GetPlayerPawn(PlayerController)
+    if Pawn == nil or UGCBackpackSystemV2 == nil then
+        return false
+    end
+
+    if UGCBackpackSystemV2.VerifyItemDefineIDInBackpack ~= nil then
+        local Success, Result = pcall(UGCBackpackSystemV2.VerifyItemDefineIDInBackpack, Pawn, ItemDefineID)
+        if Success then
+            return Result == true or (tonumber(Result) or 0) ~= 0
+        end
+    end
+
+    if UGCBackpackSystemV2.GetItemCountByDefineIDV2 ~= nil then
+        local Success, Count, Count2 = pcall(UGCBackpackSystemV2.GetItemCountByDefineIDV2, Pawn, ItemDefineID)
+        if Success then
+            return (tonumber(Count2) or tonumber(Count) or 0) > 0
+        end
+    end
+
+    return false
+end
+
+local function GetItemIDFromDefineID(ItemDefineID)
+    if ItemDefineID == nil then
+        return nil
+    end
+    local DefineIDType = type(ItemDefineID)
+    if DefineIDType == "number" or DefineIDType == "string" then
+        return tonumber(ItemDefineID)
+    elseif DefineIDType ~= "table" and DefineIDType ~= "userdata" then
+        return nil
+    end
+
+    local FieldNames = { "TypeSpecificID", "ItemID", "ItemId", "itemID", "ID", "WPID" }
+    for _, FieldName in ipairs(FieldNames) do
+        local Success, FieldValue = pcall(function()
+            return ItemDefineID[FieldName]
+        end)
+        if Success then
+            local ItemID = tonumber(FieldValue)
+            if ItemID ~= nil then
+                return ItemID
+            end
+        end
+    end
+
+    return GetItemIDFromObject(ItemDefineID)
+end
+
+TrySetDisplayNameOnObject = function(Object, DisplayName)
+    if Object == nil or DisplayName == nil then
+        return false
+    end
+
+    local bChanged = false
+    local SetterNames = {
+        "SetItemName", "SetName", "SetDisplayName", "SetItemDisplayName", "SetCustomName", "SetItemNameText",
+    }
+    for _, FunctionName in ipairs(SetterNames) do
+        local Func = Object[FunctionName]
+        if Func ~= nil then
+            local Success, Result = pcall(Func, Object, DisplayName)
+            if not Success then
+                Success, Result = pcall(Func, DisplayName)
+            end
+            bChanged = bChanged or (Success and Result ~= false)
+        end
+    end
+
+    local FieldNames = {
+        "ItemName", "Name", "DisplayName", "ItemDisplayName", "ItemNameText", "CustomName", "DisplayNameText",
+    }
+    for _, FieldName in ipairs(FieldNames) do
+        local Success = pcall(function()
+            Object[FieldName] = DisplayName
+        end)
+        bChanged = bChanged or Success
+    end
+
+    local NestedNames = { "ItemData", "ItemConfig", "Config", "ItemDefine", "ItemTableData" }
+    for _, NestedName in ipairs(NestedNames) do
+        local NestedObject = Object[NestedName]
+        if NestedObject ~= nil then
+            bChanged = TrySetDisplayNameOnObject(NestedObject, DisplayName) or bChanged
+        end
+    end
+
+    return bChanged
+end
+
+local function GetBackpackComponent(Pawn, PlayerController)
+    if Pawn ~= nil then
+        return Pawn.BackpackComponent or Pawn.BackpackComponentV2 or Pawn.BP_BackpackComponentV2
+    end
+    if PlayerController ~= nil then
+        return PlayerController.BackpackComponent or PlayerController.BackpackComponentV2 or
+            PlayerController.BP_BackpackComponentV2
+    end
+    return nil
+end
+
+local function TrySetDisplayNameByBackpackComponent(BackpackComponent, ItemDefineID, DisplayName)
+    if BackpackComponent == nil or ItemDefineID == nil or DisplayName == nil then
+        return false
+    end
+
+    local SetterNames = {
+        "SetItemNameV2", "SetItemDisplayNameV2", "SetDisplayNameV2", "SetCustomNameV2", "UpdateItemNameV2",
+        "UpdateItemDisplayNameV2",
+    }
+    for _, FunctionName in ipairs(SetterNames) do
+        local Func = BackpackComponent[FunctionName]
+        if Func ~= nil then
+            local Success, Result = pcall(Func, BackpackComponent, ItemDefineID, DisplayName)
+            if Success and Result ~= false then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+function UGCPlayerController:SyncWeaponBackpackNames()
+    local Pawn = GetPlayerPawn(self)
+    if Pawn == nil or UGCBackpackSystemV2 == nil or UGCBackpackSystemV2.GetAllItemDefineIDsV2 == nil then
+        return
+    end
+    local AllItemData = UGCBackpackSystemV2.GetAllItemDefineIDsV2(Pawn)
+    if AllItemData == nil then
+        return
+    end
+
+    local BackpackComponent = GetBackpackComponent(Pawn, self)
+    for _, ItemDefineID in pairs(AllItemData) do
+        local ItemID = GetItemIDFromDefineID(ItemDefineID)
+        local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+        if WeaponInfo ~= nil then
+            local Level = tonumber(WeaponInfo.Level) or
+                              GetWeaponLevelFromItemDefineID(ItemDefineID, WeaponInfo, 1) or 1
+            Level = tonumber(Level) or 1
+            Level = math.max(1, math.min(WeaponInfo.MaxLevel, Level))
+            local DisplayName = WeaponLevelConfig.BuildDisplayName(WeaponInfo.WPID, Level)
+            TrySetDisplayNameOnObject(ItemDefineID, DisplayName)
+            TrySetDisplayNameByBackpackComponent(BackpackComponent, ItemDefineID, DisplayName)
+        end
+    end
+end
+
 local function GetItemCount(PlayerController, ItemID)
     local BackpackCount = 0
     local Pawn = GetPlayerPawn(PlayerController)
@@ -421,6 +792,53 @@ local function RemoveItem(PlayerController, ItemID, Count)
     return false
 end
 
+local function FindBackpackItemDefineID(PlayerController, ItemID)
+    local Pawn = GetPlayerPawn(PlayerController)
+    if Pawn == nil or UGCBackpackSystemV2 == nil or UGCBackpackSystemV2.GetAllItemDefineIDsV2 == nil then
+        return nil
+    end
+
+    local AllItemDefineIDs = UGCBackpackSystemV2.GetAllItemDefineIDsV2(Pawn)
+    if AllItemDefineIDs == nil then
+        return nil
+    end
+    for _, ItemDefineID in pairs(AllItemDefineIDs) do
+        if tonumber(GetItemIDFromDefineID(ItemDefineID)) == tonumber(ItemID) then
+            return ItemDefineID
+        end
+    end
+    return nil
+end
+
+local function TryDisuseBackpackItem(PlayerController, ItemDefineID)
+    if ItemDefineID == nil then
+        return false
+    end
+
+    local Pawn = GetPlayerPawn(PlayerController)
+    for _, FunctionName in ipairs(DisuseItemFunctionNames) do
+        local Func = UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2[FunctionName] or nil
+        if Func ~= nil then
+            local Success, Result = pcall(Func, Pawn, ItemDefineID)
+            if Success and Result ~= false and Result ~= 0 then
+                return true
+            end
+        end
+    end
+
+    local BackpackComponent = GetBackpackComponent(Pawn, PlayerController)
+    for _, FunctionName in ipairs(DisuseItemFunctionNames) do
+        local Func = BackpackComponent ~= nil and BackpackComponent[FunctionName] or nil
+        if Func ~= nil then
+            local Success, Result = pcall(Func, BackpackComponent, ItemDefineID)
+            if Success and Result ~= false and Result ~= 0 then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 --- 一键吃掉背包里的魂环
 function UGCPlayerController:Server_EatAllSoulRings()
     local Pawn = GetPlayerPawn(self)
@@ -479,7 +897,6 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num,
         return
     end
 
-    -- AddItemV2 成功后，在服务端清理源虚拟物品（避免客户端调用 RemoveVirtualItem 无效）
     if VirtualItemID ~= nil then
         local VirtualItemManager = UGCGamePartSystem.GetGamePartGlobalActor("VirtualItemManager")
         if VirtualItemManager then
@@ -493,8 +910,8 @@ end
 
 function UGCPlayerController:Server_ForgeWeapon(ItemID)
     ItemID = tonumber(ItemID)
-    local Cost = WeaponLevelConfig.GetForgeCost(ItemID)
-    if ItemID == nil or Cost == nil then
+    local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+    if ItemID == nil or WeaponInfo == nil then
         ugcprint("[UGCPlayerController:Server_ForgeWeapon] Invalid item: " .. tostring(ItemID))
         return
     end
@@ -504,49 +921,135 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
         return
     end
 
+    local CurrentLevel = tonumber(WeaponInfo.Level) or 1
+    local Cost = WeaponLevelConfig.GetForgeCost(ItemID, CurrentLevel)
+    if Cost == nil then
+        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Max level or missing level config: item=" ..
+            tostring(ItemID) .. ", level=" .. tostring(CurrentLevel))
+        return
+    end
+
     if GetItemCount(self, ForgeMaterialItemIDs.HGRJ) < (Cost.HGRJ or 0) or GetItemCount(self, ForgeMaterialItemIDs.QNHH) <
         (Cost.QNHH or 0) then
         ugcprint("[UGCPlayerController:Server_ForgeWeapon] Material not enough")
         return
     end
 
-    local ResultType = WeaponLevelConfig.RollForgeResult(ItemID)
-    local ResultItemID = WeaponLevelConfig.GetResultItemID(ItemID, ResultType)
+    if self.bForgeWeaponBusy then
+        ugcprint("[UGCPlayerController:Server_ForgeWeapon] busy, ignore repeated request")
+        return
+    end
+    self.bForgeWeaponBusy = true
+    local function ClearForgeWeaponBusy()
+        if self ~= nil then
+            self.bForgeWeaponBusy = false
+        end
+    end
+
+    local ResultType = WeaponLevelConfig.RollForgeResult(ItemID, CurrentLevel)
+    local ResultLevel = WeaponLevelConfig.GetResultLevel(ItemID, CurrentLevel, ResultType)
+    local ResultItemID = nil
+    if ResultType ~= "Destroy" then
+        ResultItemID = WeaponLevelConfig.GetResultItemID(ItemID, ResultType) or ItemID
+    end
+    local ShouldRemoveWeapon = ResultType == "Destroy" or ResultItemID ~= ItemID
+    if ShouldRemoveWeapon then
+        local ItemDefineID = FindBackpackItemDefineID(self, ItemID)
+        if ItemDefineID ~= nil then
+            TryDisuseBackpackItem(self, ItemDefineID)
+        end
+    end
 
     if not RemoveItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0) then
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", "Error", ItemID, ItemID,
+            CurrentLevel)
+        ClearForgeWeaponBusy()
         ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove HGRJ failed")
         return
     end
     if not RemoveItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0) then
         AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", "Error", ItemID, ItemID,
+            CurrentLevel)
+        ClearForgeWeaponBusy()
         ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove QNHH failed")
         return
     end
 
-    if ResultItemID ~= ItemID then
-        if not RemoveItem(self, ItemID, 1) then
-            AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
-            AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
-            ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove old weapon failed")
+    UGCTimerUtility.CreateLuaTimer(0.2, function()
+        if self == nil then
             return
         end
-        if not AddItem(self, ResultItemID, 1) then
-            AddItem(self, ItemID, 1)
-            AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
-            AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
-            ugcprint("[UGCPlayerController:Server_ForgeWeapon] Add new weapon failed")
-            return
+
+        if ShouldRemoveWeapon then
+            if not RemoveItem(self, ItemID, 1) then
+                AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
+                AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
+                UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", "Error", ItemID, ItemID,
+                    CurrentLevel)
+                ClearForgeWeaponBusy()
+                ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove old weapon failed")
+                return
+            end
+            if ResultType ~= "Destroy" and not AddItem(self, ResultItemID, 1) then
+                AddItem(self, ItemID, 1)
+                AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
+                AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
+                UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", "Error", ItemID, ItemID,
+                    CurrentLevel)
+                ClearForgeWeaponBusy()
+                ugcprint("[UGCPlayerController:Server_ForgeWeapon] Add result weapon failed: " .. tostring(ResultItemID))
+                return
+            end
+        end
+
+        self.WeaponLevelByID = self.WeaponLevelByID or {}
+        self.WeaponLevelByID[WeaponInfo.ID] = ResultLevel
+        local Pawn = GetPlayerPawn(self)
+        if Pawn ~= nil then
+            Pawn.WeaponLevelByID = Pawn.WeaponLevelByID or {}
+            Pawn.WeaponLevelByID[WeaponInfo.ID] = ResultLevel
+        end
+        local PlayerState = self.PlayerState
+        if PlayerState ~= nil and PlayerState.SetWeaponLevel ~= nil then
+            PlayerState:SetWeaponLevel(WeaponInfo.ID, ResultLevel)
+        end
+        if self.SyncWeaponBackpackNames ~= nil then
+            self:SyncWeaponBackpackNames()
+        end
+
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", ResultType, ItemID,
+            ResultItemID or 0, ResultLevel)
+        ClearForgeWeaponBusy()
+    end, false)
+
+    ugcprint(
+        "[UGCPlayerController:Server_ForgeWeapon] result=" .. tostring(ResultType) .. ", item=" .. tostring(ItemID) ..
+            "->" .. tostring(ResultItemID) .. ", level=" .. tostring(CurrentLevel) .. "->" .. tostring(ResultLevel))
+end
+
+function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, ResultItemID, ResultLevel, ItemDefineID,
+    StackIndex)
+    local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ResultItemID)
+    if WeaponInfo ~= nil then
+        self.WeaponLevelByID = self.WeaponLevelByID or {}
+        self.WeaponLevelByID[WeaponInfo.ID] = math.max(1, math.min(WeaponInfo.MaxLevel, tonumber(ResultLevel) or 1))
+    end
+
+    local Pawn = GetPlayerPawn(self)
+    if Pawn ~= nil and WeaponInfo ~= nil then
+        local Level = math.max(1,
+            math.min(WeaponInfo.MaxLevel, tonumber(ResultLevel) or WeaponInfo.Level or 1))
+        Pawn.WeaponLevelByID = Pawn.WeaponLevelByID or {}
+        Pawn.WeaponLevelByID[WeaponInfo.ID] = Level
+    end
+    if Pawn ~= nil and Pawn.RefreshWeaponAttackBonus ~= nil then
+        Pawn:RefreshWeaponAttackBonus(true)
+        if Pawn.ForceRefreshPropertySnapshot ~= nil then
+            Pawn:ForceRefreshPropertySnapshot()
         end
     end
 
-    UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", ResultType, ItemID, ResultItemID)
-
-    ugcprint(
-        "[UGCPlayerController:Server_ForgeWeapon] result=" .. tostring(ResultType) .. ", from=" .. tostring(ItemID) ..
-            ", to=" .. tostring(ResultItemID))
-end
-
-function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, ResultItemID)
     if self.MainUIInstance == nil or self.MainUIInstance.UI10Instance == nil then
         ugcprint("[UGCPlayerController:Client_ForgeWeaponResult] UI10 instance is nil")
         return
@@ -554,15 +1057,7 @@ function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, Res
 
     local UI10Instance = self.MainUIInstance.UI10Instance
     if UI10Instance.OnForgeWeaponResult ~= nil then
-        UI10Instance:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID)
-    end
-
-    local Pawn = GetPlayerPawn(self)
-    if Pawn ~= nil and Pawn.RefreshWeaponAttackBonus ~= nil then
-        Pawn:RefreshWeaponAttackBonus(true)
-        if Pawn.ForceRefreshPropertySnapshot ~= nil then
-            Pawn:ForceRefreshPropertySnapshot()
-        end
+        UI10Instance:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID, ResultLevel, ItemDefineID, StackIndex)
     end
 end
 -- 突破

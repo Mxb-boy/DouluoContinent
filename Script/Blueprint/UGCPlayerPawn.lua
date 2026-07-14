@@ -8,7 +8,8 @@ local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
 local WEAPON_ATTACK_SOURCE_KEY = "WeaponLevel"
-local WEAPON_ATTACK_CHECK_INTERVAL = 2
+local WEAPON_ATTACK_CHECK_INTERVAL = 0.2
+local BACKPACK_WEAPON_ATTACK_PER_ITEM = 5
 local PROPERTY_WATCH_CHECK_INTERVAL = 2
 local FLY_INTERRUPT_TAGS = {"PawnState.Movement.Walk", "PawnState.Movement.Run", "PawnState.Action.Jump",
                             "PawnState.Action.Crouch", "PawnState.Action.Prone", "PawnState.Action.Reload",
@@ -80,18 +81,45 @@ local function BuildPropertyWatchKey(player)
     return table.concat({tostring(Round2(hp)), tostring(Round2(maxHp)), tostring(Round2(attack))}, "|")
 end
 
+local function CountBackpackWeaponAttackBonus(player)
+    if player == nil or UGCBackPackSystem == nil or UGCBackPackSystem.GetAllItemData == nil then
+        return 0, 0
+    end
+
+    local AllItemData = UGCBackPackSystem.GetAllItemData(player)
+    if AllItemData == nil then
+        return 0, 0
+    end
+
+    local WeaponCount = 0
+    for _, ItemData in pairs(AllItemData) do
+        local ItemID = tonumber(ItemData.ItemID or ItemData.ItemId or ItemData.itemID or ItemData.TypeSpecificID)
+        local Count = tonumber(ItemData.Count or ItemData.ItemCount or ItemData.ItemNum or ItemData.Num) or 1
+        if Count > 0 and WeaponLevelConfig.GetWeaponInfo(ItemID) ~= nil then
+            WeaponCount = WeaponCount + Count
+        end
+    end
+
+    return WeaponCount * BACKPACK_WEAPON_ATTACK_PER_ITEM, WeaponCount
+end
+
 local function SetWeaponBonusPercent(player, AttackPercent, bForce)
     AttackPercent = tonumber(AttackPercent) or 0
+    local BackpackWeaponAttackPercent, BackpackWeaponCount = CountBackpackWeaponAttackBonus(player)
     local bNeedShowStateMgr = IsLocalPlayerPawn(player) and StateMgr ~= nil and StateMgr.UI ~= nil and
-                                  player.LastStateMgrWeaponAttackPercent ~= AttackPercent
-    if not bForce and player.LastWeaponAttackPercent == AttackPercent and not bNeedShowStateMgr then
+                                  (bForce or player.LastStateMgrWeaponAttackPercent ~= AttackPercent or
+                                      player.LastStateMgrBackpackWeaponAttackPercent ~= BackpackWeaponAttackPercent)
+    if not bForce and player.LastWeaponAttackPercent == AttackPercent and
+        player.LastBackpackWeaponAttackPercent == BackpackWeaponAttackPercent and not bNeedShowStateMgr then
         return
     end
 
     player.LastWeaponAttackPercent = AttackPercent
+    player.LastBackpackWeaponAttackPercent = BackpackWeaponAttackPercent
     if bNeedShowStateMgr then
         player.LastStateMgrWeaponAttackPercent = AttackPercent
-        StateMgr:WuQiTextShow(AttackPercent)
+        player.LastStateMgrBackpackWeaponAttackPercent = BackpackWeaponAttackPercent
+        StateMgr:WuQiTextShow(AttackPercent, false, BackpackWeaponAttackPercent, BackpackWeaponCount)
     end
 end
 -- 境界加成结果生成并推送给管理器
@@ -305,12 +333,49 @@ local function GetSeriesKeyFromName(Name)
     return nil
 end
 
+--[[
 local function GetLevelFromName(Name)
     if Name == nil then
         return nil
     end
 
     Name = tostring(Name)
+    local BracketValue = string.match(Name, "%(([^()]*)%)") or string.match(Name, "（([^（）]*)）")
+    if BracketValue ~= nil then
+        local Level = tonumber(string.match(BracketValue, "[Ll][Vv]%s*(%d+)") or string.match(BracketValue, "(%d+)"))
+        if Level ~= nil then
+            return Level
+        end
+    end
+
+    for Pattern, Level in pairs(WeaponLevelNameToLevel) do
+        if string.find(Name, Pattern, 1, true) ~= nil then
+            return Level
+        end
+    end
+
+    return nil
+end
+]]
+
+local function GetLevelFromName(Name)
+    if Name == nil then
+        return nil
+    end
+
+    Name = tostring(Name)
+    local FullWidthLeft = string.char(239, 188, 136)
+    local FullWidthRight = string.char(239, 188, 137)
+    local BracketValue = string.match(Name, "%(([^()]*)%)") or
+                             string.match(Name, FullWidthLeft .. "([^" .. FullWidthLeft .. FullWidthRight .. "]*)" ..
+                                              FullWidthRight)
+    if BracketValue ~= nil then
+        local Level = tonumber(string.match(BracketValue, "[Ll][Vv]%s*(%d+)") or string.match(BracketValue, "(%d+)"))
+        if Level ~= nil then
+            return Level
+        end
+    end
+
     for Pattern, Level in pairs(WeaponLevelNameToLevel) do
         if string.find(Name, Pattern, 1, true) ~= nil then
             return Level
@@ -351,6 +416,57 @@ end
 
 -- 成功方法名缓存（weak-keyed 表，避免阻止 GC）
 -- key: player, value: 上次拿到武器的时间戳
+local function GetWeaponInfoFromObject(Object)
+    if Object == nil then
+        return nil, nil
+    end
+
+    local DirectItemID = tonumber(Object)
+    if DirectItemID ~= nil then
+        return DirectItemID, WeaponLevelConfig.GetWeaponInfo(DirectItemID)
+    end
+
+    local ItemFieldNames = {"ItemID", "ItemId", "itemID", "ItemDefineID", "DefineID", "DefineId", "WPID"}
+    for _, FieldName in ipairs(ItemFieldNames) do
+        local Success, FieldValue = pcall(function()
+            return Object[FieldName]
+        end)
+        if Success then
+            local ItemID = tonumber(FieldValue)
+            local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+            if WeaponInfo ~= nil then
+                return ItemID, WeaponInfo
+            end
+        end
+    end
+
+    local FunctionNames = {"GetItemID", "GetItemId", "GetItemDefineID", "GetDefineID", "GetDefineId"}
+    for _, FunctionName in ipairs(FunctionNames) do
+        local ItemID = tonumber(TryCall(Object, FunctionName))
+        local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+        if WeaponInfo ~= nil then
+            return ItemID, WeaponInfo
+        end
+    end
+
+    local WeaponIDFieldNames = {"WeaponConfigID", "WuQiID", "WeaponID", "WeaponTypeID"}
+    for _, FieldName in ipairs(WeaponIDFieldNames) do
+        local Success, FieldValue = pcall(function()
+            return Object[FieldName]
+        end)
+        if Success then
+            local WeaponID = tonumber(FieldValue)
+            local Weapon = WeaponLevelConfig.GetWeaponByID(WeaponID)
+            if Weapon ~= nil then
+                return Weapon.WPID, WeaponLevelConfig.GetWeaponInfo(Weapon.WPID)
+            end
+        end
+    end
+
+    local FallbackItemID = GetItemIDFromObject(Object)
+    return FallbackItemID, WeaponLevelConfig.GetWeaponInfo(FallbackItemID)
+end
+
 local PlayerNoWeaponCache = setmetatable({}, {
     __mode = "k"
 })
@@ -406,13 +522,73 @@ local function GetBestBackpackWeaponItemID(player, SeriesKey)
     return BestItemID
 end
 
+local function SetWeaponRuntimeDisplayName(Weapon, DisplayName)
+    if Weapon == nil or DisplayName == nil then
+        return
+    end
+
+    local SetterNames = { "SetItemName", "SetName", "SetDisplayName", "SetItemDisplayName", "SetCustomName" }
+    for _, FunctionName in ipairs(SetterNames) do
+        local Func = Weapon[FunctionName]
+        if Func ~= nil then
+            local Success = pcall(Func, Weapon, DisplayName)
+            if not Success then
+                pcall(Func, DisplayName)
+            end
+        end
+    end
+
+    local FieldNames = { "ItemName", "Name", "DisplayName", "ItemDisplayName", "ItemNameText", "CustomName" }
+    for _, FieldName in ipairs(FieldNames) do
+        pcall(function()
+            Weapon[FieldName] = DisplayName
+        end)
+    end
+end
+
 local function GetHeldWeaponAttributeItemID(player)
     local Weapon = GetCurrentHeldWeapon(player)
     if Weapon == nil then
         return nil, nil
     end
 
-    local ItemID = GetItemIDFromObject(Weapon)
+    local ItemID, WeaponInfo = GetWeaponInfoFromObject(Weapon)
+    local ActorLevel = tonumber(Weapon.WeaponLevel)
+    if WeaponInfo ~= nil then
+        local HeldWeaponName = GetWeaponObjectItemName(Weapon)
+        local NameLevel = GetLevelFromName(HeldWeaponName)
+        -- Backpack replacement can leave the equipped actor on its old item ID briefly.
+        -- The controller cache is updated by the forge result before this refresh runs.
+        local CachedLevel = player.WeaponLevelByID ~= nil and tonumber(player.WeaponLevelByID[WeaponInfo.ID]) or nil
+        local Controller = player.Controller
+        if CachedLevel == nil and Controller ~= nil and Controller.WeaponLevelByID ~= nil then
+            CachedLevel = tonumber(Controller.WeaponLevelByID[WeaponInfo.ID])
+        end
+        local SavedLevel = nil
+        if CachedLevel == nil and player.PlayerState ~= nil and player.PlayerState.GetWeaponLevel ~= nil and
+            (player.PlayerState.HasWeaponLevel == nil or player.PlayerState:HasWeaponLevel(WeaponInfo.ID)) then
+            SavedLevel = tonumber(player.PlayerState:GetWeaponLevel(WeaponInfo.ID))
+        end
+
+        local Level = math.max(1,
+            math.min(WeaponInfo.MaxLevel,
+                CachedLevel or SavedLevel or NameLevel or ActorLevel or tonumber(WeaponInfo.Level) or 1))
+        local AttributeItemID = WeaponLevelConfig.GetItemID(WeaponInfo.SeriesKey, Level) or ItemID
+        Weapon.WeaponLevel = Level
+        Weapon.WeaponConfigID = WeaponInfo.ID
+        Weapon.WeaponLevel_0 = WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level)
+        SetWeaponRuntimeDisplayName(Weapon, WeaponLevelConfig.BuildDisplayName(WeaponInfo.WPID, Level))
+        local DebugKey = tostring(WeaponInfo.ID) .. "|" .. tostring(Level) .. "|" .. tostring(Weapon.WeaponLevel_0)
+        if player.LastHeldWeaponAttackDebugKey ~= DebugKey then
+            player.LastHeldWeaponAttackDebugKey = DebugKey
+            ugcprint("[UGCPlayerPawn:GetHeldWeaponAttribute] weaponID=" .. tostring(WeaponInfo.ID) .. ", level=" ..
+                         tostring(Level) .. ", attack=" .. tostring(Weapon.WeaponLevel_0) .. ", nameLevel=" ..
+                         tostring(NameLevel) .. ", cachedLevel=" .. tostring(CachedLevel) .. ", savedLevel=" ..
+                         tostring(SavedLevel) .. ", actorLevel=" .. tostring(ActorLevel))
+        end
+        return AttributeItemID, WeaponInfo.SeriesKey, HeldWeaponName or WeaponInfo.Name, Level
+    end
+
     local ItemName = GetItemConfigName(ItemID) or GetWeaponObjectItemName(Weapon)
     local SeriesKey = GetSeriesKeyFromName(ItemName)
     local Level = GetLevelFromName(ItemName)
@@ -723,20 +899,32 @@ function UGCPlayerPawn:RefreshWeaponAttackBonus(bForce)
 end
 
 function UGCPlayerPawn:GetCurrentWeaponBonusPercent()
-    local ItemID = GetHeldWeaponAttributeItemID(self)
-    local Attribute = WeaponLevelConfig.GetTotalAttribute(ItemID)
-    if Attribute ~= nil then
-        return tonumber(Attribute.AttackPercent) or 0
+    local ItemID, _, _, Level = GetHeldWeaponAttributeItemID(self)
+    local Weapon = GetCurrentHeldWeapon(self)
+    local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+    local AttackPercent = WeaponInfo ~= nil and
+                              WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level) or 0
+    if Weapon ~= nil then
+        if WeaponInfo ~= nil then
+            Weapon.WeaponConfigID = WeaponInfo.ID
+        end
+        Weapon.WeaponLevel_0 = AttackPercent
     end
 
-    return 0
+    return AttackPercent
 end
 
 function UGCPlayerPawn:ApplyWeaponAttackBonusLocalDisplay(ItemID, SeriesKey, ItemName, Level, bForce)
-    local Attribute = WeaponLevelConfig.GetTotalAttribute(ItemID)
-    local AttackPercent = 0
-    if Attribute ~= nil then
-        AttackPercent = tonumber(Attribute.AttackPercent) or 0
+    local Weapon = GetCurrentHeldWeapon(self)
+    local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+    local AttackPercent = WeaponInfo ~= nil and
+                              WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level) or 0
+    if Weapon ~= nil then
+        Weapon.WeaponLevel = math.max(1, tonumber(Level) or 1)
+        if WeaponInfo ~= nil then
+            Weapon.WeaponConfigID = WeaponInfo.ID
+        end
+        Weapon.WeaponLevel_0 = AttackPercent
     end
     SetWeaponBonusPercent(self, AttackPercent, bForce)
 
@@ -774,13 +962,20 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     end
     if WeaponInfo ~= nil then
         SeriesKey = SeriesKey or WeaponInfo.SeriesKey
-        Level = Level or WeaponInfo.Level
+        if Level == nil then
+            Level = WeaponInfo.Level
+        end
+        Level = math.max(1, math.min(WeaponInfo.MaxLevel, tonumber(Level) or 1))
     end
 
-    local Attribute = WeaponLevelConfig.GetTotalAttribute(ItemID)
-    local AttackPercent = 0
-    if Attribute ~= nil then
-        AttackPercent = tonumber(Attribute.AttackPercent) or 0
+    local Weapon = GetCurrentHeldWeapon(self)
+    local AttackPercent = WeaponInfo ~= nil and
+                              WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level) or 0
+    if Weapon ~= nil and WeaponInfo ~= nil then
+        Weapon.WeaponLevel = Level
+        Weapon.WeaponConfigID = WeaponInfo.ID
+        Weapon.WeaponLevel_0 = AttackPercent
+        SetWeaponRuntimeDisplayName(Weapon, WeaponLevelConfig.BuildDisplayName(WeaponInfo.WPID, Level))
     end
     local BaseAttack = GetWeaponBaseAttack(self)
     local NormalizedAttackPercent = NormalizePercent(AttackPercent)

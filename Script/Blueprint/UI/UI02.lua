@@ -1044,10 +1044,14 @@ end
 function UI02:Button_153_OnClicked()
     self:HideMainButtonRedDot("Button_153")
     if self.UI10Instance ~= nil then
-        if self.UI10Instance.InitWeaponWidgets ~= nil then
-            self.UI10Instance:InitWeaponWidgets()
+        if self.UI10Instance.Open ~= nil then
+            self.UI10Instance:Open()
+        else
+            if self.UI10Instance.InitWeaponWidgets ~= nil then
+                self.UI10Instance:InitWeaponWidgets()
+            end
+            self.UI10Instance:SetVisibility(ESlateVisibility.Visible)
         end
-        self.UI10Instance:SetVisibility(ESlateVisibility.Visible)
         return
     end
 
@@ -1068,6 +1072,9 @@ function UI02:Button_153_OnClicked()
     end
 
     self.UI10Instance:AddToViewport(11000)
+    if self.UI10Instance.Open ~= nil then
+        self.UI10Instance:Open()
+    end
 end
 
 function UI02:Button_158_OnClicked()

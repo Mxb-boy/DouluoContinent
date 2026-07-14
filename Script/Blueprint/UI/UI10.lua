@@ -1,6 +1,8 @@
----@class UI10_C:UUserWidget
+﻿---@class UI10_C:UUserWidget
+---@field Button_78 UButton
 ---@field Button_125 UButton
 ---@field button_dz UButton
+---@field GDK UScrollBox
 ---@field Image_66 UImage
 ---@field Image_112 UImage
 ---@field Image_180 UImage
@@ -18,6 +20,17 @@
 ---@field NewUGCWidgetBlueprint_C_2 NewUGCWidgetBlueprint_C
 ---@field NewUGCWidgetBlueprint_C_3 NewUGCWidgetBlueprint_C
 ---@field NewUGCWidgetBlueprint_C_4 NewUGCWidgetBlueprint_C
+---@field NewUGCWidgetBlueprint_C_5 NewUGCWidgetBlueprint_C
+---@field NewUGCWidgetBlueprint_C_6 NewUGCWidgetBlueprint_C
+---@field NewUGCWidgetBlueprint_C_7 NewUGCWidgetBlueprint_C
+---@field NewUGCWidgetBlueprint_C_8 NewUGCWidgetBlueprint_C
+---@field NewUGCWidgetBlueprint_C_9 NewUGCWidgetBlueprint_C
+---@field NewUGCWidgetBlueprint_C_10 NewUGCWidgetBlueprint_C
+---@field NewUGCWidgetBlueprint_C_11 NewUGCWidgetBlueprint_C
+---@field NewUGCWidgetBlueprint_C_12 NewUGCWidgetBlueprint_C
+---@field NewUGCWidgetBlueprint_C_13 NewUGCWidgetBlueprint_C
+---@field NewUGCWidgetBlueprint_C_14 NewUGCWidgetBlueprint_C
+---@field NewUGCWidgetBlueprint_C_15 NewUGCWidgetBlueprint_C
 ---@field right_cl UImage
 ---@field text_bb UTextBlock
 ---@field text_cg UTextBlock
@@ -31,6 +44,8 @@
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local UI10 = { bInitDoOnce = false }
+local WeaponItemWidgetPath = "Asset/NewUGCWidgetBlueprint.NewUGCWidgetBlueprint_C"
+local ForgeResultWidgetPath = "Asset/Blueprint/UI/NewUGCWidgetBlueprint.NewUGCWidgetBlueprint_C"
 
 -- 锻造材料道具 ID。
 local MaterialItemIDs = {
@@ -49,15 +64,8 @@ local TextLabels = {
 }
 
 -- 武器品质显示名称。
-local LevelLabels = {
-    [1] = string.char(230, 153, 174, 233, 128, 154),
-    [2] = string.char(228, 188, 152, 231, 167, 128),
-    [3] = string.char(231, 178, 190, 232, 137, 175),
-    [4] = string.char(229, 143, 178, 232, 175, 151),
-    [5] = string.char(228, 188, 160, 232, 175, 180),
-}
-
 -- 武器系列显示名称。
+--[[
 local WeaponNameLabels = {
     XJWQ = "血狱裁魂刃",
     HWSCJ = "沧澜裂海戟",
@@ -67,6 +75,14 @@ local WeaponNameLabels = {
 }
 
 -- 武器系列对应的展示图标。
+]]
+local WeaponNameLabels = {
+    XJWQ = "XJWQ",
+    HWSCJ = "HWSCJ",
+    HTC = "HTC",
+    LCSL = "LCSL",
+    TSSJ = "TSSJ",
+}
 local WeaponUIConfig = {
     XJWQ = {
         DefaultName = "XJWQ",
@@ -74,11 +90,11 @@ local WeaponUIConfig = {
     },
     HWSCJ = {
         DefaultName = "HWSCJ",
-        IconPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/cs/HWSCJ_B.HWSCJ_B",
+        IconPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/cs/image/HWSCJ_T3.HWSCJ_T3",
     },
     HTC = {
         DefaultName = "HTC",
-        IconPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/cs/HTC/HTC_T1.HTC_T1",
+        IconPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/cs/image/HTC_T3.HTC_T3",
     },
     LCSL = {
         DefaultName = "LCSL",
@@ -86,9 +102,42 @@ local WeaponUIConfig = {
     },
     TSSJ = {
         DefaultName = "TSSJ",
-        IconPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/cs/TSSJ/TSSJ_B.TSSJ_B",
+        IconPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/cs/image/TSSJ_T3.TSSJ_T3",
     },
 }
+
+local WeaponIconKeyByWPID = {
+    [8310000] = "HWSCJ",
+    [8310003] = "TSSJ",
+    [8310002] = "HTC",
+    [8310004] = "LCSL",
+    [8310006] = "XJWQ",
+}
+
+local function SortAndIndexWeaponList(WeaponList)
+    table.sort(WeaponList, function(Left, Right)
+        local LeftSeries = tonumber(Left.SeriesKey) or 0
+        local RightSeries = tonumber(Right.SeriesKey) or 0
+        if LeftSeries ~= RightSeries then
+            return LeftSeries < RightSeries
+        end
+        local LeftLevel = tonumber(Left.Level) or 1
+        local RightLevel = tonumber(Right.Level) or 1
+        if LeftLevel ~= RightLevel then
+            return LeftLevel < RightLevel
+        end
+        local LeftItemID = tonumber(Left.ItemID) or 0
+        local RightItemID = tonumber(Right.ItemID) or 0
+        if LeftItemID ~= RightItemID then
+            return LeftItemID < RightItemID
+        end
+        return tostring(Left.ItemDefineID or "") < tostring(Right.ItemDefineID or "")
+    end)
+    for Index, WeaponInfo in ipairs(WeaponList) do
+        WeaponInfo.SelectKey = Index
+    end
+    return WeaponList
+end
 
 function UI10:Construct()
     self:LuaInit()
@@ -105,12 +154,39 @@ function UI10:LuaInit()
         self.Button_125.OnClicked:Add(self.Button_125_OnClicked, self)
         UIEffectUtil.BindPressScale(self, self.Button_125, self.Button_125, 1.06, 1.0)
     end
-    if self.button_dz ~= nil then
-        self.button_dz.OnClicked:Add(self.Button_dz_OnClicked, self)
-        UIEffectUtil.BindPressScale(self, self.button_dz, self.button_dz, 1.06, 1.0)
+    local BoundCount = 0
+    if self:BindForgeButton(self.button_dz, "button_dz") then
+        BoundCount = BoundCount + 1
+    end
+    if self:BindForgeButton(self.Button_78, "Button_78") then
+        BoundCount = BoundCount + 1
+    end
+    if BoundCount <= 0 then
+        ugcprint("[UI10:LuaInit] Forge button is nil")
+    else
+        ugcprint("[UI10:LuaInit] Forge button bind count=" .. tostring(BoundCount))
     end
 
     self:InitWeaponWidgets()
+end
+
+function UI10:GetForgeButton()
+    return self.button_dz or self.Button_78
+end
+
+function UI10:BindForgeButton(Button, ButtonName)
+    if Button == nil or Button.OnClicked == nil then
+        return false
+    end
+    self.BoundForgeButtons = self.BoundForgeButtons or {}
+    if self.BoundForgeButtons[Button] == true then
+        return false
+    end
+    self.BoundForgeButtons[Button] = true
+    Button.OnClicked:Add(self.Button_dz_OnClicked, self)
+    UIEffectUtil.BindPressScale(self, Button, Button, 1.06, 1.0)
+    ugcprint("[UI10:BindForgeButton] bind " .. tostring(ButtonName))
+    return true
 end
 
 -- 关闭界面时只隐藏实例，方便下次打开复用。
@@ -121,13 +197,21 @@ end
 
 -- 从背包刷新底部武器格子，并默认选中第一把可锻造武器。
 function UI10:InitWeaponWidgets()
-    local Widgets = self:GetWeaponWidgets()
     local WeaponList = self:GetBackpackWeaponList()
-    for Index, Widget in ipairs(Widgets) do
+    self.WeaponList = WeaponList
+
+    self.DynamicWeaponWidgets = nil
+    self:SetPresetWeaponWidgetsVisible(true)
+    self:HideExtraPresetWeaponWidgets()
+    local Widgets = self:GetWeaponWidgets()
+    local DebugText = "[UI10:InitWeaponWidgets] BackpackWeaponCount=" .. tostring(#WeaponList) .. ", PresetWidgetCount=" .. tostring(#Widgets)
+    ugcprint(DebugText)
+    for Index = 1, #Widgets do
+        local Widget = Widgets[Index]
         local WeaponInfo = WeaponList[Index]
         if Widget ~= nil then
-            if WeaponInfo ~= nil and Widget.SetWeaponData ~= nil then
-                Widget:SetWeaponData(WeaponInfo.Name, WeaponInfo.IconPath, self, WeaponInfo.ItemID)
+            if WeaponInfo ~= nil then
+                self:ApplyWeaponWidgetData(Widget, WeaponInfo, Index)
             elseif Widget.ClearWeaponData ~= nil then
                 Widget:ClearWeaponData()
             else
@@ -137,21 +221,150 @@ function UI10:InitWeaponWidgets()
     end
 
     if WeaponList[1] ~= nil then
-        self:SelectWeapon(WeaponList[1].Name, WeaponList[1].IconPath, WeaponList[1].ItemID)
+        self:SelectWeapon(WeaponList[1].Name, WeaponList[1].IconPath, WeaponList[1].SelectKey or 1, WeaponList[1])
     else
         self:SelectWeapon(nil, nil, nil)
     end
 end
 
 -- UI10 蓝图中预摆放的 5 个武器格子。
+function UI10:ApplyWeaponWidgetData(Widget, WeaponInfo, Index)
+    if Widget == nil or WeaponInfo == nil then
+        return
+    end
+
+    if Widget.SetWeaponData ~= nil then
+        Widget:SetWeaponData(WeaponInfo.Name, WeaponInfo.IconPath, self, WeaponInfo.ItemID, WeaponInfo)
+    end
+
+    Widget.WeaponName = WeaponInfo.Name
+    Widget.IconPath = WeaponInfo.IconPath
+    Widget.OwnerUI = self
+    Widget.ItemID = WeaponInfo.ItemID
+    Widget.WeaponInstance = WeaponInfo
+
+    if Widget.SetVisibility ~= nil then
+        Widget:SetVisibility(ESlateVisibility.Visible)
+    end
+    if Widget.text_name ~= nil then
+        Widget.text_name:SetText(WeaponInfo.Name or "")
+    end
+    local IconTexture = nil
+    if WeaponInfo.IconPath ~= nil then
+        IconTexture = UE.LoadObject(WeaponInfo.IconPath)
+    end
+    if IconTexture == nil then
+        ugcprint("[UI10:ApplyWeaponWidgetData] Icon load failed: " .. tostring(WeaponInfo.IconPath))
+        return
+    end
+
+    if Widget.Button_97 ~= nil and Widget.SetButtonTexture ~= nil then
+        Widget:SetButtonTexture(Widget.Button_97, IconTexture)
+    elseif Widget.Button_97 ~= nil and Widget.Button_97.WidgetStyle ~= nil then
+        self:SetWidgetBrushTexture(Widget.Button_97.WidgetStyle.Normal, IconTexture)
+        self:SetWidgetBrushTexture(Widget.Button_97.WidgetStyle.Hovered, IconTexture)
+        self:SetWidgetBrushTexture(Widget.Button_97.WidgetStyle.Pressed, IconTexture)
+        if Widget.Button_97.SetStyle ~= nil then
+            Widget.Button_97:SetStyle(Widget.Button_97.WidgetStyle)
+        end
+    end
+end
+
+function UI10:SetPresetWeaponWidgetsVisible(bVisible)
+    local Visibility = bVisible and ESlateVisibility.Visible or ESlateVisibility.Collapsed
+    local Widgets = self:GetAllPresetWeaponWidgets()
+    for Index = 1, #Widgets do
+        local Widget = Widgets[Index]
+        if Widget ~= nil and Widget.SetVisibility ~= nil then
+            Widget:SetVisibility(Visibility)
+        end
+    end
+end
+
+function UI10:SetWidgetBrushTexture(Brush, Texture)
+    if Brush == nil or Texture == nil then
+        return
+    end
+    Brush.ResourceObject = Texture
+    if Brush.TintColor ~= nil and Brush.TintColor.SpecifiedColor ~= nil then
+        Brush.TintColor.SpecifiedColor.A = 1.0
+    end
+end
+
+function UI10:GetWeaponItemWidgetClass()
+    if self.WeaponItemWidgetClass ~= nil then
+        return self.WeaponItemWidgetClass
+    end
+
+    local FullPath = nil
+    if UGCMapInfoLib ~= nil and UGCMapInfoLib.GetRootLongPackagePath ~= nil then
+        FullPath = UGCMapInfoLib.GetRootLongPackagePath() .. WeaponItemWidgetPath
+    end
+
+    if FullPath == nil then
+        ugcprint("[UI10:GetWeaponItemWidgetClass] path is nil")
+        return nil
+    end
+
+    local WidgetClass = UE.LoadClass(FullPath)
+    if WidgetClass == nil then
+        ugcprint("[UI10:GetWeaponItemWidgetClass] load failed: " .. tostring(FullPath))
+        return nil
+    end
+
+    self.WeaponItemWidgetClass = WidgetClass
+    return WidgetClass
+end
+
 function UI10:GetWeaponWidgets()
-    return {
-        self.NewUGCWidgetBlueprint_C_0,
-        self.NewUGCWidgetBlueprint_C_1,
-        self.NewUGCWidgetBlueprint_C_2,
-        self.NewUGCWidgetBlueprint_C_3,
-        self.NewUGCWidgetBlueprint_C_4,
-    }
+    local AllWidgets = self:GetAllPresetWeaponWidgets()
+    local Widgets = {}
+    for Index = 1, #AllWidgets do
+        if #Widgets >= 10 then
+            break
+        end
+        table.insert(Widgets, AllWidgets[Index])
+    end
+
+    return Widgets
+end
+
+function UI10:GetAllPresetWeaponWidgets()
+    local Widgets = {}
+    local function AddWidget(Widget)
+        if Widget ~= nil then
+            table.insert(Widgets, Widget)
+        end
+    end
+
+    AddWidget(self.NewUGCWidgetBlueprint_C_0)
+    AddWidget(self.NewUGCWidgetBlueprint_C_1)
+    AddWidget(self.NewUGCWidgetBlueprint_C_2)
+    AddWidget(self.NewUGCWidgetBlueprint_C_3)
+    AddWidget(self.NewUGCWidgetBlueprint_C_4)
+    AddWidget(self.NewUGCWidgetBlueprint_C_5)
+    AddWidget(self.NewUGCWidgetBlueprint_C_6)
+    AddWidget(self.NewUGCWidgetBlueprint_C_7)
+    AddWidget(self.NewUGCWidgetBlueprint_C_8)
+    AddWidget(self.NewUGCWidgetBlueprint_C_9)
+    AddWidget(self.NewUGCWidgetBlueprint_C_10)
+    AddWidget(self.NewUGCWidgetBlueprint_C_11)
+    AddWidget(self.NewUGCWidgetBlueprint_C_12)
+    AddWidget(self.NewUGCWidgetBlueprint_C_13)
+    AddWidget(self.NewUGCWidgetBlueprint_C_14)
+    AddWidget(self.NewUGCWidgetBlueprint_C_15)
+
+    return Widgets
+end
+
+function UI10:HideExtraPresetWeaponWidgets()
+    local Widgets = self:GetAllPresetWeaponWidgets()
+    for Index = 11, #Widgets do
+        local Widget = Widgets[Index]
+        if Widget ~= nil and Widget.SetVisibility ~= nil then
+            Widget:SetVisibility(ESlateVisibility.Collapsed)
+        end
+    end
 end
 
 -- 读取本地背包武器；同系列有多把时只展示最高等级。
@@ -161,42 +374,68 @@ function UI10:GetBackpackWeaponList()
         ugcprint("[UI10:GetBackpackWeaponList] Local player pawn is nil")
         return {}
     end
-    local BestWeaponBySeries = {}
-    for SeriesKey, SeriesData in pairs(WeaponLevelConfig.Series) do
-        for Level, ItemID in ipairs(SeriesData.ItemIDs) do
-            if self:GetBackpackItemCount(PlayerPawn, ItemID) > 0 then
-                local CurrentWeapon = BestWeaponBySeries[SeriesKey]
-                if CurrentWeapon == nil or Level > CurrentWeapon.Level then
-                    BestWeaponBySeries[SeriesKey] = {
-                        ItemID = ItemID,
-                        Level = Level,
-                        SeriesKey = SeriesKey,
-                    }
+    local Result = {}
+    if UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.GetAllItemDefineIDsV2 ~= nil then
+        local AllItemData = UGCBackpackSystemV2.GetAllItemDefineIDsV2(PlayerPawn)
+        if AllItemData ~= nil then
+            for _, ItemDefineID in pairs(AllItemData) do
+                local ItemID = self:GetItemIDFromDefineID(ItemDefineID)
+                local Weapon = WeaponLevelConfig.GetWeaponInfo(ItemID)
+                local DefineCount = self:GetBackpackItemCountByDefineID(PlayerPawn, ItemDefineID)
+                if Weapon ~= nil and DefineCount > 0 then
+                    for StackIndex = 1, DefineCount do
+                        local Level = self:GetWeaponLevelByDefineID(ItemDefineID, Weapon, StackIndex)
+                        local SelectKey = #Result + 1
+                        table.insert(Result, {
+                            Name = self:GetWeaponDisplayName(Weapon, Level),
+                            IconPath = self:GetWeaponIconPathByItemID(Weapon.WPID),
+                            ItemID = ItemID,
+                            ItemDefineID = ItemDefineID,
+                            StackIndex = StackIndex,
+                            SelectKey = SelectKey,
+                            Level = Level,
+                            SeriesKey = Weapon.SeriesKey,
+                        })
+                    end
                 end
             end
         end
     end
-    local Result = {}
-    local SeriesOrder = { "XJWQ", "HWSCJ", "HTC", "LCSL", "TSSJ" }
-    for _, SeriesKey in ipairs(SeriesOrder) do
-        local BackpackWeapon = BestWeaponBySeries[SeriesKey]
-        local UIConfig = WeaponUIConfig[SeriesKey]
-        if BackpackWeapon ~= nil and UIConfig ~= nil then
+    if #Result > 0 then
+        return SortAndIndexWeaponList(Result)
+    end
+    for _, Weapon in ipairs(WeaponLevelConfig.GetAllWeapons()) do
+        local Count = self:GetBackpackItemCount(PlayerPawn, Weapon.WPID)
+        for _ = 1, Count do
+            local Level = self:GetWeaponLevel(Weapon)
+            local SelectKey = #Result + 1
             table.insert(Result, {
-                Name = self:GetWeaponDisplayName(BackpackWeapon.SeriesKey, BackpackWeapon.Level),
-                IconPath = UIConfig.IconPath,
-                ItemID = BackpackWeapon.ItemID,
+                Name = self:GetWeaponDisplayName(Weapon, Level),
+                IconPath = self:GetWeaponIconPathByItemID(Weapon.WPID),
+                ItemID = Weapon.WPID,
+                SelectKey = SelectKey,
+                Level = Level,
+                SeriesKey = Weapon.SeriesKey,
             })
         end
     end
-    return Result
+    return SortAndIndexWeaponList(Result)
 end
 
 -- 武器名由系列名和品质名拼成，例如“星陨昊锤（史诗）”。
 function UI10:GetWeaponDisplayName(SeriesKey, Level)
+    local Weapon = nil
+    if type(SeriesKey) == "table" then
+        Weapon = SeriesKey
+    else
+        Weapon = WeaponLevelConfig.GetWeaponByID(SeriesKey)
+    end
+
+    if Weapon ~= nil then
+        return WeaponLevelConfig.BuildDisplayName(Weapon, Level)
+    end
     local WeaponName = WeaponNameLabels[SeriesKey] or tostring(SeriesKey)
-    local LevelName = LevelLabels[tonumber(Level)] or tostring(Level)
-    return WeaponName .. TextLabels.OpenParen .. LevelName .. TextLabels.CloseParen
+    return WeaponName .. TextLabels.OpenParen .. "Lv" .. tostring(tonumber(Level) or 1) .. TextLabels.CloseParen
 end
 
 -- 优先从背包数据或道具配置取名字，取不到才使用默认名。
@@ -309,10 +548,27 @@ function UI10:GetVirtualItemManager()
 end
 
 -- 更新顶部选中武器的名字、图标，并刷新锻造信息。
-function UI10:SelectWeapon(WeaponName, IconPath, ItemID)
+function UI10:SelectWeapon(WeaponName, IconPath, SelectKey, WeaponInstance)
+    if WeaponInstance == nil and SelectKey ~= nil then
+        local Index = tonumber(SelectKey)
+        if self.WeaponList ~= nil and Index ~= nil then
+            WeaponInstance = self.WeaponList[Index]
+        end
+        if WeaponInstance == nil then
+            local WeaponList = self:GetBackpackWeaponList()
+            self.WeaponList = WeaponList
+            if Index ~= nil then
+                WeaponInstance = WeaponList[Index]
+            end
+        end
+    end
     self.SelectedWeaponName = WeaponName
     self.SelectedWeaponIconPath = IconPath
-    self.SelectedWeaponItemID = ItemID
+    self.SelectedWeaponItemID = WeaponInstance ~= nil and WeaponInstance.ItemID or SelectKey
+    self.SelectedWeaponDefineID = WeaponInstance ~= nil and WeaponInstance.ItemDefineID or nil
+    self.SelectedWeaponStackIndex = WeaponInstance ~= nil and WeaponInstance.StackIndex or nil
+    self.SelectedWeaponSelectKey = WeaponInstance ~= nil and WeaponInstance.SelectKey or tonumber(SelectKey)
+    self.SelectedWeaponLevel = WeaponInstance ~= nil and WeaponInstance.Level or nil
 
     if self.text_name_1 ~= nil then
         self.text_name_1:SetText(WeaponName or "")
@@ -335,8 +591,12 @@ end
 
 -- 刷新材料数量、成功率和当前武器属性加成。
 function UI10:RefreshForgeInfo()
-    local Cost = WeaponLevelConfig.GetForgeCost(self.SelectedWeaponItemID) or { HGRJ = 0, QNHH = 0 }
-    local Rate = WeaponLevelConfig.GetForgeRate(self.SelectedWeaponItemID) or { Success = 0, Keep = 0, Down = 0 }
+    local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(self.SelectedWeaponItemID)
+    local WeaponLevel = tonumber(self.SelectedWeaponLevel) or
+                            self:GetWeaponLevelByDefineID(self.SelectedWeaponDefineID, WeaponInfo,
+                                self.SelectedWeaponStackIndex)
+    local Cost = WeaponLevelConfig.GetForgeCost(self.SelectedWeaponItemID, WeaponLevel) or { HGRJ = 0, QNHH = 0 }
+    local Rate = WeaponLevelConfig.GetForgeRate(self.SelectedWeaponItemID, WeaponLevel) or { Success = 0, Keep = 0, Down = 0 }
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
     local HGRJCount = self:GetBackpackItemCount(PlayerPawn, MaterialItemIDs.HGRJ)
     local QNHHCount = self:GetBackpackItemCount(PlayerPawn, MaterialItemIDs.QNHH)
@@ -357,50 +617,138 @@ function UI10:RefreshForgeInfo()
         self.text_jj:SetText(TextLabels.Down .. tostring(Rate.Down or 0) .. "%")
     end
     if self.TextBlock_297 ~= nil then
-        local Attribute = WeaponLevelConfig.GetTotalAttribute(self.SelectedWeaponItemID) or { AttackPercent = 0 }
-        self.TextBlock_297:SetText(TextLabels.AttackBonus .. tostring(Attribute.AttackPercent or 0) .. "%")
+        local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(self.SelectedWeaponItemID)
+        local AttackPercent = WeaponInfo ~= nil and
+                                  WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, WeaponLevel) or 0
+        self.TextBlock_297:SetText(TextLabels.AttackBonus .. tostring(AttackPercent or 0) .. "%")
     end
 end
 
 -- 服务端锻造结果回调后，刷新背包列表并尽量保持当前系列选中。
-function UI10:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID)
+function UI10:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID, ResultLevel, ItemDefineID, StackIndex)
     OldItemID = tonumber(OldItemID)
-    ResultItemID = tonumber(ResultItemID) or OldItemID
-
-    local ResultInfo = WeaponLevelConfig.GetWeaponInfo(ResultItemID)
-    local SeriesKey = nil
-    if ResultInfo ~= nil then
-        SeriesKey = ResultInfo.SeriesKey
+    ResultItemID = tonumber(ResultItemID)
+    if ResultItemID ~= nil and ResultItemID <= 0 then
+        ResultItemID = nil
     end
 
-    local IconPath = self:GetWeaponIconPathByItemID(ResultItemID) or self.SelectedWeaponIconPath
-    self:ShowForgeResultPopup(ResultType, IconPath)
+    local ResultInfo = ResultItemID ~= nil and WeaponLevelConfig.GetWeaponInfo(ResultItemID) or nil
+    local OldInfo = WeaponLevelConfig.GetWeaponInfo(OldItemID)
+    local SeriesKey = ResultInfo ~= nil and ResultInfo.SeriesKey or (OldInfo ~= nil and OldInfo.SeriesKey or nil)
+    local PreviousSelectKey = self.SelectedWeaponSelectKey
+    if ResultInfo ~= nil then
+        local PlayerController = self:GetLocalPlayerController()
+        local Level = math.max(1,
+            math.min(ResultInfo.MaxLevel, tonumber(ResultLevel) or ResultInfo.Level or 1))
+        if PlayerController ~= nil then
+            PlayerController.WeaponLevelByID = PlayerController.WeaponLevelByID or {}
+            PlayerController.WeaponLevelByID[ResultInfo.ID] = Level
+        end
 
-    UGCTimerUtility.CreateLuaTimer(0.2, function()
-        if self ~= nil then
-            self:InitWeaponWidgets()
-            if SeriesKey ~= nil then
-                self:SelectWeaponBySeriesKey(SeriesKey)
-            elseif ResultItemID ~= nil then
-                self:SelectWeaponByItemID(ResultItemID)
+        local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+        if PlayerPawn ~= nil then
+            PlayerPawn.WeaponLevelByID = PlayerPawn.WeaponLevelByID or {}
+            PlayerPawn.WeaponLevelByID[ResultInfo.ID] = Level
+
+            local CurrentWeapon = UGCWeaponManagerSystem ~= nil and
+                                      UGCWeaponManagerSystem.GetCurrentWeapon ~= nil and
+                                      UGCWeaponManagerSystem.GetCurrentWeapon(PlayerPawn) or nil
+            local CurrentWeaponID = CurrentWeapon ~= nil and
+                                        tonumber(CurrentWeapon.WeaponConfigID or CurrentWeapon.WuQiID or
+                                            CurrentWeapon.WeaponTypeID) or nil
+            local CurrentItemID = CurrentWeapon ~= nil and
+                                      tonumber(CurrentWeapon.ItemID or CurrentWeapon.ItemId or CurrentWeapon.WPID or
+                                          CurrentWeapon.ItemDefineID or CurrentWeapon.DefineID) or nil
+            local CurrentInfo = WeaponLevelConfig.GetWeaponInfo(CurrentItemID)
+            if (CurrentInfo ~= nil and CurrentInfo.ID == ResultInfo.ID) or CurrentWeaponID == ResultInfo.ID then
+                local AttackPercent = WeaponLevelConfig.GetAttackPercentByWeaponID(ResultInfo.ID, Level)
+                CurrentWeapon.WeaponLevel = Level
+                CurrentWeapon.WeaponConfigID = ResultInfo.ID
+                CurrentWeapon.WeaponLevel_0 = AttackPercent
+                ugcprint("[UI10:ForgeAttack] weaponID=" .. tostring(ResultInfo.ID) .. ", level=" .. tostring(Level) ..
+                    ", attack=" .. tostring(AttackPercent))
+                if PlayerPawn.ApplyWeaponAttackBonusLocalDisplay ~= nil then
+                    PlayerPawn:ApplyWeaponAttackBonusLocalDisplay(ResultItemID, ResultInfo.SeriesKey, ResultInfo.Name,
+                        Level, true)
+                end
             end
         end
+    end
+
+    local IconPath = self:GetWeaponIconPathByItemID(ResultItemID or OldItemID) or self.SelectedWeaponIconPath
+    self:ShowForgeResultPopup(ResultType, IconPath)
+
+    local function RefreshAndReselect(RetriesRemaining)
+        if self == nil then
+            return
+        end
+        self:InitWeaponWidgets()
+        if ResultItemID ~= nil then
+            if self:SelectWeaponByItemID(ResultItemID, false) ~= true and RetriesRemaining > 0 then
+                UGCTimerUtility.CreateLuaTimer(0.2, function()
+                    RefreshAndReselect(RetriesRemaining - 1)
+                end, false)
+            end
+        elseif SeriesKey ~= nil then
+            self:SelectWeaponBySeriesKey(SeriesKey)
+        elseif PreviousSelectKey ~= nil then
+            self:SelectWeaponByIndex(PreviousSelectKey)
+        end
+    end
+    UGCTimerUtility.CreateLuaTimer(0.3, function()
+        RefreshAndReselect(5)
     end, false)
 end
 
--- 显示锻造结果弹窗；旧组件没有接口时至少保证弹窗可见。
+function UI10:GetForgeResultWidget()
+    if self.ForgeResultWidget ~= nil then
+        return self.ForgeResultWidget
+    end
+
+    local PlayerController = self:GetLocalPlayerController()
+    if PlayerController == nil then
+        ugcprint("[UI10:GetForgeResultWidget] PlayerController is nil")
+        return nil
+    end
+
+    local FullPath = nil
+    if UGCGameSystem.GetUGCResourcesFullPath ~= nil then
+        local Success, Result = pcall(UGCGameSystem.GetUGCResourcesFullPath, ForgeResultWidgetPath)
+        if Success then
+            FullPath = Result
+        end
+    end
+    if FullPath == nil and UGCMapInfoLib ~= nil and UGCMapInfoLib.GetRootLongPackagePath ~= nil then
+        FullPath = UGCMapInfoLib.GetRootLongPackagePath() .. ForgeResultWidgetPath
+    end
+
+    local WidgetClass = FullPath ~= nil and UE.LoadClass(FullPath) or nil
+    if WidgetClass == nil then
+        ugcprint("[UI10:GetForgeResultWidget] Class load failed: " .. tostring(FullPath))
+        return nil
+    end
+
+    local Widget = UserWidget.NewWidgetObjectBP(PlayerController, WidgetClass)
+    if Widget == nil then
+        ugcprint("[UI10:GetForgeResultWidget] Widget create failed")
+        return nil
+    end
+    Widget:AddToViewport(12000)
+    self.ForgeResultWidget = Widget
+    return Widget
+end
+
+-- 使用独立的全屏控件显示每一次锻造结果。
 function UI10:ShowForgeResultPopup(ResultType, IconPath)
-    if self.NewUGCWidgetBlueprint == nil then
-        ugcprint("[UI10:ShowForgeResultPopup] Result widget is nil")
+    local Widget = self:GetForgeResultWidget()
+    if Widget == nil then
         return
     end
-
-    if self.NewUGCWidgetBlueprint.ShowForgeResult ~= nil then
-        self.NewUGCWidgetBlueprint:ShowForgeResult(ResultType, IconPath)
-        return
+    if Widget.ShowForgeResult ~= nil then
+        Widget:ShowForgeResult(ResultType, IconPath)
+    else
+        Widget:SetVisibility(ESlateVisibility.SelfHitTestInvisible)
     end
-
-    self.NewUGCWidgetBlueprint:SetVisibility(ESlateVisibility.SelfHitTestInvisible)
 end
 
 -- 根据武器 ItemID 找到对应系列图标。
@@ -410,7 +758,7 @@ function UI10:GetWeaponIconPathByItemID(ItemID)
         return nil
     end
 
-    local UIConfig = WeaponUIConfig[WeaponInfo.SeriesKey]
+    local UIConfig = WeaponUIConfig[WeaponIconKeyByWPID[tonumber(ItemID)] or WeaponInfo.SeriesKey]
     if UIConfig == nil then
         return nil
     end
@@ -420,16 +768,23 @@ end
 
 -- 点击锻造：先做本地材料和武器检查，再请求服务器执行锻造。
 function UI10:Button_dz_OnClicked()
+    ugcprint("[UI10:Button_dz_OnClicked] clicked")
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
-    local ItemID = tonumber(self.SelectedWeaponItemID)
+    local ItemID = self:GetItemIDFromDefineID(self.SelectedWeaponDefineID) or tonumber(self.SelectedWeaponItemID)
     if PlayerPawn == nil or ItemID == nil then
         ugcprint("[UI10:Button_dz_OnClicked] PlayerPawn or selected weapon is nil")
+        self:ShowForgeResultPopup("Error", self.SelectedWeaponIconPath)
         return
     end
 
-    local Cost = WeaponLevelConfig.GetForgeCost(ItemID)
+    local SelectedWeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+    local SelectedLevel = tonumber(self.SelectedWeaponLevel) or
+                              self:GetWeaponLevelByDefineID(self.SelectedWeaponDefineID, SelectedWeaponInfo,
+                                  self.SelectedWeaponStackIndex)
+    local Cost = WeaponLevelConfig.GetForgeCost(ItemID, SelectedLevel)
     if Cost == nil then
         ugcprint("[UI10:Button_dz_OnClicked] Selected weapon cannot forge: " .. tostring(ItemID))
+        self:ShowForgeResultPopup("Error", self.SelectedWeaponIconPath)
         return
     end
 
@@ -438,36 +793,27 @@ function UI10:Button_dz_OnClicked()
     if HGRJCount < (Cost.HGRJ or 0) or QNHHCount < (Cost.QNHH or 0) then
         ugcprint("[UI10:Button_dz_OnClicked] Material not enough")
         self:RefreshForgeInfo()
+        self:ShowForgeResultPopup("Error", self.SelectedWeaponIconPath)
         return
     end
 
-    if self:GetBackpackItemCount(PlayerPawn, ItemID) <= 0 then
+    if self.SelectedWeaponDefineID == nil and self:GetBackpackItemCount(PlayerPawn, ItemID) <= 0 then
         ugcprint("[UI10:Button_dz_OnClicked] Selected weapon is not in backpack: " .. tostring(ItemID))
         self:InitWeaponWidgets()
+        self:ShowForgeResultPopup("Error", self.SelectedWeaponIconPath)
         return
     end
 
     local PlayerController = self:GetLocalPlayerController()
     if PlayerController == nil then
         ugcprint("[UI10:Button_dz_OnClicked] PlayerController is nil")
+        self:ShowForgeResultPopup("Error", self.SelectedWeaponIconPath)
         return
     end
 
-    local SelectedWeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
-    local SelectedSeriesKey = nil
-    if SelectedWeaponInfo ~= nil then
-        SelectedSeriesKey = SelectedWeaponInfo.SeriesKey
-    end
-
+    ugcprint("[UI10:Button_dz_OnClicked] Call Server_ForgeWeapon item=" .. tostring(ItemID) ..
+        ", define=" .. tostring(self.SelectedWeaponDefineID) .. ", stack=" .. tostring(self.SelectedWeaponStackIndex or 1))
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_ForgeWeapon", ItemID)
-    UGCTimerUtility.CreateLuaTimer(0.5, function()
-        if self ~= nil then
-            self:InitWeaponWidgets()
-            if SelectedSeriesKey ~= nil then
-                self:SelectWeaponBySeriesKey(SelectedSeriesKey)
-            end
-        end
-    end, false)
 end
 
 -- 本地消耗锻造材料和替换武器的兜底逻辑。
@@ -541,6 +887,143 @@ function UI10:GetLocalPlayerController()
 end
 
 -- 同时读取背包数量和虚拟道具数量，取较大的值用于显示。
+function UI10:GetWeaponLevel(WeaponInfo)
+    if WeaponInfo == nil then
+        return 1
+    end
+    local PlayerController = self:GetLocalPlayerController()
+    if PlayerController ~= nil and PlayerController.WeaponLevelByID ~= nil then
+        local CachedLevel = tonumber(PlayerController.WeaponLevelByID[WeaponInfo.ID])
+        if CachedLevel ~= nil then
+            return math.max(1, math.min(WeaponInfo.MaxLevel, CachedLevel))
+        end
+    end
+    local PlayerState = nil
+    if UGCGameSystem.GetLocalPlayerState ~= nil then
+        local Success, Result = pcall(UGCGameSystem.GetLocalPlayerState)
+        if Success then
+            PlayerState = Result
+        end
+    end
+    if PlayerState == nil then
+        local PlayerController = self:GetLocalPlayerController()
+        PlayerState = PlayerController ~= nil and PlayerController.PlayerState or nil
+    end
+    if PlayerState ~= nil and PlayerState.GetWeaponLevel ~= nil and
+        (PlayerState.HasWeaponLevel == nil or PlayerState:HasWeaponLevel(WeaponInfo.ID)) then
+        local SavedLevel = tonumber(PlayerState:GetWeaponLevel(WeaponInfo.ID))
+        if SavedLevel ~= nil then
+            return math.max(1, math.min(WeaponInfo.MaxLevel, SavedLevel))
+        end
+    end
+    local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    if PlayerPawn ~= nil and UGCWeaponManagerSystem ~= nil and UGCWeaponManagerSystem.GetCurrentWeapon ~= nil then
+        local CurrentWeapon = UGCWeaponManagerSystem.GetCurrentWeapon(PlayerPawn)
+        if CurrentWeapon ~= nil then
+            local CurrentWeaponID = tonumber(CurrentWeapon.WeaponConfigID or CurrentWeapon.WuQiID or
+                                                CurrentWeapon.WeaponTypeID)
+            local CurrentItemID = tonumber(CurrentWeapon.ItemID or CurrentWeapon.ItemId or CurrentWeapon.WPID or
+                CurrentWeapon.ItemDefineID or CurrentWeapon.DefineID)
+            local CurrentLevel = tonumber(CurrentWeapon.WeaponLevel)
+            local CurrentInfo = WeaponLevelConfig.GetWeaponInfo(CurrentItemID)
+            if CurrentLevel ~= nil and
+                (CurrentWeaponID == WeaponInfo.ID or (CurrentInfo ~= nil and CurrentInfo.ID == WeaponInfo.ID) or
+                    CurrentItemID == tonumber(WeaponInfo.WPID)) then
+                return math.max(1, math.min(WeaponInfo.MaxLevel, CurrentLevel))
+            end
+        end
+    end
+    return 1
+end
+function UI10:GetItemIDFromDefineID(ItemDefineID)
+    if ItemDefineID == nil then
+        return nil
+    end
+    local DefineIDType = type(ItemDefineID)
+    if DefineIDType == "number" or DefineIDType == "string" then
+        return tonumber(ItemDefineID)
+    elseif DefineIDType ~= "table" and DefineIDType ~= "userdata" then
+        return nil
+    end
+    local FieldNames = { "TypeSpecificID", "ItemID", "ItemId", "itemID", "ID", "WPID" }
+    for _, FieldName in ipairs(FieldNames) do
+        local Success, FieldValue = pcall(function()
+            return ItemDefineID[FieldName]
+        end)
+        if Success then
+            local ItemID = tonumber(FieldValue)
+            if ItemID ~= nil then
+                return ItemID
+            end
+        end
+    end
+    local FunctionNames = { "GetItemID", "GetItemId", "GetItemDefineID", "GetDefineID", "GetDefineId" }
+    for _, FunctionName in ipairs(FunctionNames) do
+        local SuccessGetFunc, Func = pcall(function()
+            return ItemDefineID[FunctionName]
+        end)
+        if not SuccessGetFunc then
+            Func = nil
+        end
+        if Func ~= nil then
+            local Success, Result = pcall(Func, ItemDefineID)
+            if Success and tonumber(Result) ~= nil then
+                return tonumber(Result)
+            end
+            Success, Result = pcall(Func)
+            if Success and tonumber(Result) ~= nil then
+                return tonumber(Result)
+            end
+        end
+    end
+    return nil
+end
+function UI10:GetWeaponLevelByDefineID(ItemDefineID, WeaponInfo, StackIndex)
+    if WeaponInfo == nil then
+        return 1
+    end
+    StackIndex = math.max(1, tonumber(StackIndex) or 1)
+    if ItemDefineID ~= nil and self.WeaponLevelByDefineID ~= nil then
+        local CachedLevel = tonumber(self.WeaponLevelByDefineID[self:GetDefineIDKey(ItemDefineID, StackIndex)])
+        if CachedLevel ~= nil then
+            return math.max(1, math.min(WeaponInfo.MaxLevel, CachedLevel))
+        end
+    end
+    if ItemDefineID ~= nil and UGCItemSystemV2 ~= nil and UGCItemSystemV2.LoadItemCustomData ~= nil then
+        local Success, CustomData = pcall(UGCItemSystemV2.LoadItemCustomData, ItemDefineID)
+        if Success and type(CustomData) == "table" then
+            local Level = nil
+            if type(CustomData.WeaponLevelsByStackIndex) == "table" then
+                Level = tonumber(CustomData.WeaponLevelsByStackIndex[tostring(StackIndex)] or
+                    CustomData.WeaponLevelsByStackIndex[StackIndex])
+            end
+            Level = Level or tonumber(CustomData.WeaponLevel or CustomData.StrengthenLv)
+            if Level ~= nil then
+                return math.max(1, math.min(WeaponInfo.MaxLevel, Level))
+            end
+        end
+    end
+    if ItemDefineID ~= nil then
+        return math.max(1, math.min(WeaponInfo.MaxLevel, tonumber(WeaponInfo.Level) or 1))
+    end
+    return self:GetWeaponLevel(WeaponInfo)
+end
+function UI10:GetDefineIDKey(ItemDefineID, StackIndex)
+    return tostring(ItemDefineID) .. ":" .. tostring(math.max(1, tonumber(StackIndex) or 1))
+end
+function UI10:GetBackpackItemCountByDefineID(PlayerPawn, ItemDefineID)
+    if PlayerPawn ~= nil and ItemDefineID ~= nil and UGCBackpackSystemV2 ~= nil and
+        UGCBackpackSystemV2.GetItemCountByDefineIDV2 ~= nil then
+        local Success, Count, Count2 = pcall(UGCBackpackSystemV2.GetItemCountByDefineIDV2, PlayerPawn, ItemDefineID)
+        if Success then
+            local NumberCount = tonumber(Count2) or tonumber(Count)
+            if NumberCount ~= nil then
+                return NumberCount
+            end
+        end
+    end
+    return ItemDefineID ~= nil and 1 or 0
+end
 function UI10:GetBackpackItemCount(PlayerPawn, ItemID)
     if ItemID == nil then
         return 0
@@ -568,36 +1051,57 @@ function UI10:GetBackpackItemCount(PlayerPawn, ItemID)
     return VirtualCount
 end
 
--- 根据 ItemID 重新选中武器；找不到时回退到第一把。
-function UI10:SelectWeaponByItemID(ItemID)
+-- 根据 ItemID 重新选中武器；服务端替换后可关闭回退并等待背包复制。
+function UI10:SelectWeaponByItemID(ItemID, bFallbackToFirst)
     local WeaponList = self:GetBackpackWeaponList()
+    self.WeaponList = WeaponList
     for _, WeaponInfo in ipairs(WeaponList) do
         if WeaponInfo.ItemID == ItemID then
-            self:SelectWeapon(WeaponInfo.Name, WeaponInfo.IconPath, WeaponInfo.ItemID)
-            return
+            self:SelectWeapon(WeaponInfo.Name, WeaponInfo.IconPath, WeaponInfo.SelectKey, WeaponInfo)
+            return true
         end
     end
 
+    if bFallbackToFirst == false then
+        return false
+    end
     if WeaponList[1] ~= nil then
-        self:SelectWeapon(WeaponList[1].Name, WeaponList[1].IconPath, WeaponList[1].ItemID)
+        self:SelectWeapon(WeaponList[1].Name, WeaponList[1].IconPath, WeaponList[1].SelectKey or 1, WeaponList[1])
+    else
+        self:SelectWeapon(nil, nil, nil)
+    end
+    return false
+end
+
+-- 根据武器系列重新选中武器；锻造升降级后用它保持选中系列不跳走。
+function UI10:SelectWeaponByIndex(Index)
+    Index = tonumber(Index)
+    local WeaponList = self:GetBackpackWeaponList()
+    self.WeaponList = WeaponList
+    if Index ~= nil and WeaponList[Index] ~= nil then
+        local WeaponInfo = WeaponList[Index]
+        self:SelectWeapon(WeaponInfo.Name, WeaponInfo.IconPath, WeaponInfo.SelectKey or Index, WeaponInfo)
+        return
+    end
+    if WeaponList[1] ~= nil then
+        self:SelectWeapon(WeaponList[1].Name, WeaponList[1].IconPath, WeaponList[1].SelectKey or 1, WeaponList[1])
     else
         self:SelectWeapon(nil, nil, nil)
     end
 end
-
--- 根据武器系列重新选中武器；锻造升降级后用它保持选中系列不跳走。
 function UI10:SelectWeaponBySeriesKey(SeriesKey)
     local WeaponList = self:GetBackpackWeaponList()
+    self.WeaponList = WeaponList
     for _, WeaponInfo in ipairs(WeaponList) do
         local Info = WeaponLevelConfig.GetWeaponInfo(WeaponInfo.ItemID)
         if Info ~= nil and Info.SeriesKey == SeriesKey then
-            self:SelectWeapon(WeaponInfo.Name, WeaponInfo.IconPath, WeaponInfo.ItemID)
+            self:SelectWeapon(WeaponInfo.Name, WeaponInfo.IconPath, WeaponInfo.SelectKey, WeaponInfo)
             return
         end
     end
 
     if WeaponList[1] ~= nil then
-        self:SelectWeapon(WeaponList[1].Name, WeaponList[1].IconPath, WeaponList[1].ItemID)
+        self:SelectWeapon(WeaponList[1].Name, WeaponList[1].IconPath, WeaponList[1].SelectKey or 1, WeaponList[1])
     else
         self:SelectWeapon(nil, nil, nil)
     end

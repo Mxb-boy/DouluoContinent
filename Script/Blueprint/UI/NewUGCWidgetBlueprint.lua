@@ -10,11 +10,15 @@ local ResultText = {
     Success = string.char(233, 148, 187, 233, 128, 160, 230, 136, 144, 229, 138, 159),
     Keep = string.char(233, 148, 187, 233, 128, 160, 228, 191, 157, 230, 140, 129),
     Down = string.char(233, 148, 187, 233, 128, 160, 233, 153, 141, 231, 186, 167),
+    Destroy = string.char(233, 148, 187, 233, 128, 160, 230, 175, 129, 229, 157, 143),
+    Error = string.char(233, 148, 187, 233, 128, 160, 229, 164, 177, 232, 180, 165),
 }
 local ResultColor = {
     Success = { R = 1.0, G = 0.78, B = 0.22, A = 1.0 },
     Keep = { R = 0.56, G = 0.86, B = 1.0, A = 1.0 },
     Down = { R = 1.0, G = 0.32, B = 0.22, A = 1.0 },
+    Destroy = { R = 0.72, G = 0.18, B = 0.18, A = 1.0 },
+    Error = { R = 1.0, G = 0.22, B = 0.18, A = 1.0 },
 }
 --[==[ Construct
 function NewUGCWidgetBlueprint:Construct()

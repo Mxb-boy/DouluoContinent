@@ -1,4 +1,5 @@
 ---@class HTC_C:BP_UGC_MeleeWeap_TangDao_C
+---@field HtcLevel_1 int32
 --Edit Below--
 local HTC = {}
  
