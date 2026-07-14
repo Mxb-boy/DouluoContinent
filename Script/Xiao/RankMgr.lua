@@ -1,12 +1,15 @@
 local RankMgr = {
     ZhanLiRankID = 1,
+    ConsumeRankID = 2,
     LastUploadZhanLi = nil,
-    TestBonusIndex = 0,
-    TestBonusRanks = {1, 5, 0},
     BonusByRank = {
-        {MinRank = 1, MaxRank = 1, Percent = 10},
-        {MinRank = 2, MaxRank = 3, Percent = 8},
-        {MinRank = 4, MaxRank = 10, Percent = 5},
+        {MinRank = 1, MaxRank = 1, Percent = 100},
+        {MinRank = 2, MaxRank = 2, Percent = 82},
+        {MinRank = 3, MaxRank = 3, Percent = 65},
+        {MinRank = 4, MaxRank = 10, Percent = 40},
+        {MinRank = 11, MaxRank = 20, Percent = 22},
+        {MinRank = 21, MaxRank = 30, Percent = 10},
+        {MinRank = 31, MaxRank = 50, Percent = 2},
     },
 }
 
@@ -71,6 +74,88 @@ function RankMgr:UpdateZhanLiRank(ZhanLi)
     return true
 end
 
+function RankMgr:UpdateRankScore(RankID, Score, bIncremental)
+    RankID = tonumber(RankID)
+    Score = math.floor((tonumber(Score) or 0) + 0.5)
+    if RankID == nil or RankID <= 0 or Score <= 0 then
+        return false
+    end
+
+    local PlayerController = GetLocalPlayerController()
+    if PlayerController == nil then
+        return false
+    end
+
+    local UID = GetLocalUID(PlayerController)
+    if UID == nil then
+        return false
+    end
+
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_UpdateRankingListScore", UID, RankID, Score,
+        bIncremental == true and 1 or 0)
+    return true
+end
+
+function RankMgr:NotifyPurchaseSuccess(ProductID, Price, Num)
+    Price = tonumber(Price) or 0
+    Num = tonumber(Num) or 1
+
+    local Amount = Price * Num
+    if Amount <= 0 then
+        return false
+    end
+
+    return self:UpdateRankScore(self.ConsumeRankID, Amount, true)
+end
+
+function RankMgr:BeginConsumePurchase(ProductID, ItemID, Price, Num)
+    ProductID = tonumber(ProductID)
+    ItemID = tonumber(ItemID)
+    Price = tonumber(Price) or 0
+    Num = tonumber(Num) or 1
+
+    if ProductID == nil or ItemID == nil or Price <= 0 or Num <= 0 then
+        self.PendingConsumePurchase = nil
+        return false
+    end
+
+    self.PendingConsumePurchase = {
+        ProductID = ProductID,
+        ItemID = ItemID,
+        Price = Price,
+        Num = Num,
+    }
+    return true
+end
+
+function RankMgr:CancelConsumePurchase()
+    self.PendingConsumePurchase = nil
+end
+
+function RankMgr:ConfirmConsumePurchase(ItemID)
+    local Pending = self.PendingConsumePurchase
+    if Pending == nil then
+        return false
+    end
+
+    ItemID = tonumber(ItemID)
+    if ItemID ~= nil and Pending.ItemID ~= ItemID then
+        return false
+    end
+
+    self.PendingConsumePurchase = nil
+    return self:NotifyPurchaseSuccess(Pending.ProductID, Pending.Price, Pending.Num)
+end
+
+function RankMgr:TryUploadCurrentZhanLi()
+    local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+    if StateMgr == nil or StateMgr.GetFinalZhanLi == nil then
+        return false
+    end
+
+    return self:UpdateZhanLiRank(StateMgr:GetFinalZhanLi())
+end
+
 function RankMgr:GetZhanLiBonusByRank(Rank)
     Rank = tonumber(Rank) or 0
     if Rank <= 0 then
@@ -84,32 +169,6 @@ function RankMgr:GetZhanLiBonusByRank(Rank)
     end
 
     return 0
-end
-
-function RankMgr:ApplyZhanLiRankBonusForTest(Rank)
-    local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
-    if StateMgr == nil or StateMgr.PaiHangTextShow == nil or StateMgr.UI == nil then
-        return false
-    end
-
-    local Percent = self:GetZhanLiBonusByRank(Rank)
-    StateMgr:PaiHangTextShow(Percent)
-
-    if StateMgr.GetFinalZhanLi ~= nil then
-        self:UpdateZhanLiRank(StateMgr:GetFinalZhanLi())
-    end
-
-    return true
-end
-
-function RankMgr:ApplyNextZhanLiRankBonusForTest()
-    self.TestBonusIndex = (tonumber(self.TestBonusIndex) or 0) + 1
-    if self.TestBonusIndex > #self.TestBonusRanks then
-        self.TestBonusIndex = 1
-    end
-
-    local Rank = self.TestBonusRanks[self.TestBonusIndex]
-    return self:ApplyZhanLiRankBonusForTest(Rank)
 end
 
 return RankMgr

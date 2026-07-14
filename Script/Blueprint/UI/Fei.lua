@@ -3,6 +3,7 @@
 ---@field Button_84 UButton
 --Edit Below--
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
+local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
 
 local FLY_SPEED = 3600
 local FLY_ANIM_PATHS = {
@@ -136,6 +137,11 @@ function Fei:Button_0_OnClicked()
         return
     end
 
+    local ProductData = ShopV2Manager:GetProductConfigData(ProductID)
+    if ProductData ~= nil and RankMgr ~= nil and RankMgr.BeginConsumePurchase ~= nil then
+        RankMgr:BeginConsumePurchase(ProductID, ProductData.ItemID, ShopV2Manager:GetDiscountPrice(ProductID), 1)
+    end
+
     self:EnsureShopPurchaseCallbacks()
     ShopV2Manager.bBlockRepeatPurchase = true
     PurchaseUI:AddToViewport(15000)
@@ -148,6 +154,9 @@ function Fei:OnFeiAddVirtualItem(Result)
     end
 
     if Result.ItemList[WingItemID] ~= nil or Result.ItemList[tostring(WingItemID)] ~= nil then
+        if RankMgr ~= nil and RankMgr.ConfirmConsumePurchase ~= nil then
+            RankMgr:ConfirmConsumePurchase(WingItemID)
+        end
         self:SetButton0Hidden(true)
     end
 end

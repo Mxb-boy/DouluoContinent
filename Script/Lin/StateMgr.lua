@@ -161,7 +161,7 @@ end
 
 function StateMgr:CountFinalMaxHp(pawn, showHp, showMaxHp, bFillHealth)
     local baseMaxHp = self.BaseMaxHp
-    local MaxHpAddForce = self.PaiHangAdd + self.ChiBang + self.ChengHao + self.JingJieAddMaxHp
+    local MaxHpAddForce =  self.ChiBang + self.ChengHao + self.JingJieAddMaxHp
     FinalMaxHp = baseMaxHp * (1 + MaxHpAddForce / 100)
     pawn = pawn or UGCGameSystem.GetLocalPlayerPawn()
     if pawn == nil then

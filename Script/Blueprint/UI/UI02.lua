@@ -622,9 +622,6 @@ function UI02:OnRefreshProperty(baseAttack, baseMaxHp, hp, maxHp, bFillHealth)
     end
 
     StateMgr:RefreshFromPlayerState(nil, baseAttack, baseMaxHp, hp, maxHp, bFillHealth)
-    if RankMgr ~= nil and RankMgr.UpdateZhanLiRank ~= nil then
-        RankMgr:UpdateZhanLiRank(StateMgr:GetFinalZhanLi())
-    end
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
     self:RefreshWeaponBonusText()
@@ -913,6 +910,9 @@ function UI02:PurchaseShopItem(ItemID, Price)
     else
         local ObjectData = ShopV2Manager:GetItemConfigData(ProductData.ItemID)
         self.YXWDCanAfford = ShopV2Manager:CanAfford(ProductID, 1)
+        if RankMgr ~= nil and RankMgr.BeginConsumePurchase ~= nil then
+            RankMgr:BeginConsumePurchase(ProductID, ProductData.ItemID, ShopV2Manager:GetDiscountPrice(ProductID), 1)
+        end
         local PromiseFuture =
             UGCCommoditySystem.BuyUGCCommodity2(ProductID, ObjectData.ItemIcon, ObjectData.ItemDesc, 1)
         if PromiseFuture ~= nil then
@@ -940,7 +940,15 @@ end
 
 function UI02:OnYXWDPurchaseConfirm(Value)
     if not Value or not self.YXWDCanAfford then
+        if RankMgr ~= nil and RankMgr.CancelConsumePurchase ~= nil then
+            RankMgr:CancelConsumePurchase()
+        end
         ShopV2Manager.bBlockRepeatPurchase = false
+        return
+    end
+
+    if RankMgr ~= nil and RankMgr.ConfirmConsumePurchase ~= nil then
+        RankMgr:ConfirmConsumePurchase()
     end
 end
 
@@ -979,6 +987,10 @@ function UI02:Button_150_OnClicked()
     self:HideMainButtonRedDot("Button_150")
     if RankingListManager == nil then
         return
+    end
+
+    if RankMgr ~= nil and RankMgr.TryUploadCurrentZhanLi ~= nil then
+        RankMgr:TryUploadCurrentZhanLi()
     end
 
     RankingListManager:OpenRankingList()
@@ -1168,14 +1180,6 @@ end
 
 -- 礼包
 function UI02:Button_0_OnClicked()
-    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
-    if PlayerController ~= nil and UGCBlueprintFunctionLibrary ~= nil and UGCBlueprintFunctionLibrary.IsUGCPIE ~= nil and
-        UGCBlueprintFunctionLibrary.IsUGCPIE(PlayerController) and RankMgr ~= nil and
-        RankMgr.ApplyNextZhanLiRankBonusForTest ~= nil then
-        RankMgr:ApplyNextZhanLiRankBonusForTest()
-        return
-    end
-
     -- local PlayerController = GameplayStatics.GetPlayerController(self, 0)
 
     -- local GiftPackUIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath(
