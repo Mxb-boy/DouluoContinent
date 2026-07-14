@@ -275,13 +275,13 @@ function UGCPlayerController:Server_UpdateWeaponAttackBonus(ItemID)
         return
     end
 
-    -- 存档加载前拒绝客户端 RPC，防止用默认 AttackPower 覆盖服务器正确属性
     local playerState = self.PlayerState
-    if playerState ~= nil and playerState.bArchiveLoaded ~= true then
-        return
-    end
 
     if ItemID == 0 then
+        -- 存档加载前拒绝"卸下武器"（ItemID=0），防止用默认 AttackPower 覆盖服务器正确属性
+        if playerState ~= nil and playerState.bArchiveLoaded ~= true then
+            return
+        end
         pawn.LastClientWeaponAttackItemID = nil
         pawn:ApplyWeaponAttackBonusByItemID(nil, nil, nil, nil, true)
         return
@@ -1424,12 +1424,13 @@ function UGCPlayerController:Server_SetFinalAttack(finalAttack)
     if pawn == nil then
         return
     end
-    -- 存档加载前拒绝客户端 RPC，防止默认值覆盖服务器正确属性
+    finalAttack = tonumber(finalAttack) or 40
+    -- 存档加载前仅拒绝默认值（40），防止用默认 AttackPower 覆盖服务器正确属性；
+    -- 但如果客户端已计算出武器/境界加成后的非默认值，则允许通过。
     local playerState = self.PlayerState
-    if playerState ~= nil and playerState.bArchiveLoaded ~= true then
+    if playerState ~= nil and playerState.bArchiveLoaded ~= true and finalAttack <= 40 then
         return
     end
-    finalAttack = tonumber(finalAttack) or 40
     UGCAttributeSystem.SetGameAttributeValue(pawn, "AttackPower", finalAttack)
 end
 

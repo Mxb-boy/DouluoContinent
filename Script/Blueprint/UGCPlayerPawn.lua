@@ -797,6 +797,11 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
 
     self.LastWeaponAttackKey = WeaponAttackKey
 
+    -- 服务端直接写入 AttackPower，不依赖客户端 RPC（避免 bArchiveLoaded 拦截导致武器伤害失效）
+    if self:HasAuthority() then
+        UGCAttributeSystem.SetGameAttributeValue(self, "AttackPower", FinalAttack)
+    end
+
     ugcprint(
         "[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID) .. ", series=" .. tostring(SeriesKey) ..
             ", name=" .. tostring(ItemName) .. ", level=" .. tostring(Level) .. ", attackPercent=" ..
