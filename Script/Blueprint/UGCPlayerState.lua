@@ -16,6 +16,7 @@ local UGCPlayerState = {
     AutoPickButtonHidden = 0,
     AutoAttackButtonHidden = 0,
     FeiButton0Hidden = 0,
+    KJ04GiftPackPurchased = 0,
     ArchiveUID = nil,
     bArchiveLoaded = false, -- 服务器侧标志：LoadFromArchive 成功后置 true
 
@@ -57,6 +58,10 @@ local ARCHIVE_KEYS = {{
     field = "FeiButton0Hidden",
     default = 0
 }, {
+    key = "KJ04GiftPackPurchased",
+    field = "KJ04GiftPackPurchased",
+    default = 0
+}, {
     key = "LotteryState",
     field = "LotteryState",
     default = {}
@@ -83,7 +88,7 @@ table.insert(ARCHIVE_KEYS, { key = "SignInEvent", field = "SignInEvent", default
 function UGCPlayerState:GetReplicatedProperties()
     return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "WeaponLevels",
             "BaseAttack", "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "UnlockedTitles",
-            "EquippedTitleID", "FeiButton0Hidden"}
+            "EquippedTitleID", "FeiButton0Hidden", "KJ04GiftPackPurchased"}
 end
 
 -- ------ 跨对局存档 ------ --
@@ -229,6 +234,15 @@ end
 
 function UGCPlayerState:SetFeiButton0Hidden(value)
     self.FeiButton0Hidden = (value == true or tonumber(value) == 1) and 1 or 0
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetKJ04GiftPackPurchased()
+    return tonumber(self.KJ04GiftPackPurchased) == 1
+end
+
+function UGCPlayerState:SetKJ04GiftPackPurchased(value)
+    self.KJ04GiftPackPurchased = (value == true or tonumber(value) == 1) and 1 or 0
     self:SaveToArchive()
 end
 

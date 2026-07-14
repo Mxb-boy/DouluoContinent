@@ -1187,18 +1187,24 @@ end
 
 -- 礼包
 function UI02:Button_0_OnClicked()
-    -- local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        return
+    end
 
-    -- local GiftPackUIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath(
-    --     "ExtendResource/GiftPack/OfficialPackage/Asset/GiftPack/Blueprint/WBP_GiftPackBtn.WBP_GiftPackBtn_C"))
+    local KJ04Class = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath("Asset/kj04.kj04_C"))
+    if KJ04Class == nil then
+        ugcprint("[UI02:Button_0_OnClicked] kj04 class load failed")
+        return
+    end
 
-    -- if PlayerController and GiftPackUIClass then
-    --     local GiftPackUI = UserWidget.NewWidgetObjectBP(PlayerController, GiftPackUIClass)
+    local KJ04Instance = UserWidget.NewWidgetObjectBP(PlayerController, KJ04Class)
+    if KJ04Instance == nil then
+        ugcprint("[UI02:Button_0_OnClicked] kj04 create failed")
+        return
+    end
 
-    --     if GiftPackUI then
-    --         GiftPackUI:AddToViewport(12000)
-    --     end
-    -- end
+    KJ04Instance:AddToViewport(12000)
 end
 
 -- 自动拾取
