@@ -1,7 +1,14 @@
 local L_Com = {}
 
+local ToastManager = UGCGameSystem.UGCRequire("Script.Lin.ToastManager")
 local HUNHUAN_TABLE_PATH = "Data/Table/Customized/HunHuanConfig"
 local JingJieConfig = "Data/Table/Customized/JingJieConfig"
+
+--[[-----------------------显示小提示-----------------------]] --
+function L_Com.ShowToast(text)
+    ToastManager.ShowToast(text)
+end
+
 function L_Com.UseHunHuan(pawn, itemID, num)
     local cfg = UGCGameSystem.GetTableDataByRowName(HUNHUAN_TABLE_PATH, tostring(itemID))
 
