@@ -27,11 +27,9 @@ function ZDGJ_GJ:UGC_OnStopUse(Reason)
         return
     end
 
-    local PlayerState = PlayerController.PlayerState
-    if PlayerState ~= nil and PlayerState.SetAutoAttackButtonHidden ~= nil then
-        PlayerState:SetAutoAttackButtonHidden(true)
+    if PlayerController.Server_SetAutoFeatureButtonHidden ~= nil then
+        PlayerController:Server_SetAutoFeatureButtonHidden("AutoAttack")
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_StartAutoMeleeAttack")
-        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_SetAutoFeatureButtonHidden", "AutoAttack")
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_RefreshProperty")
     end
 end

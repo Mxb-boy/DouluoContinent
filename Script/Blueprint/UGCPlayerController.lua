@@ -98,6 +98,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult",
         "Server_RequestLotteryStateSync", "Client_SyncLotteryState", "Client_RefreshProperty",
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
+        "Server_SetAutoFeatureButtonHidden",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
         "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden",
         "Client_ShowMonsterDamageNumber", 
@@ -2075,6 +2076,36 @@ function UGCPlayerController:Client_StartAutoMeleeAttack()
     end
 end
 
+function UGCPlayerController:Server_SetAutoFeatureButtonHidden(FeatureName)
+    if self.PlayerState == nil then
+        return
+    end
+
+    if FeatureName == "AutoPick" then
+        if self.PlayerState.SetAutoPickButtonHidden ~= nil then
+            self.PlayerState:SetAutoPickButtonHidden(true)
+        else
+            self.PlayerState.AutoPickButtonHidden = 1
+            if self.PlayerState.SaveToArchive ~= nil then
+                self.PlayerState:SaveToArchive()
+            end
+        end
+    elseif FeatureName == "AutoAttack" then
+        if self.PlayerState.SetAutoAttackButtonHidden ~= nil then
+            self.PlayerState:SetAutoAttackButtonHidden(true)
+        else
+            self.PlayerState.AutoAttackButtonHidden = 1
+            if self.PlayerState.SaveToArchive ~= nil then
+                self.PlayerState:SaveToArchive()
+            end
+        end
+    else
+        return
+    end
+
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SetAutoFeatureButtonHidden", FeatureName)
+end
+
 function UGCPlayerController:Client_SetAutoFeatureButtonHidden(FeatureName)
     if self.PlayerState ~= nil then
         if FeatureName == "AutoPick" then
@@ -2090,10 +2121,25 @@ function UGCPlayerController:Client_SetAutoFeatureButtonHidden(FeatureName)
 end
 
 function UGCPlayerController:Server_SetFeiButton0Hidden(value)
-    if self.PlayerState ~= nil and self.PlayerState.SetFeiButton0Hidden ~= nil then
-        self.PlayerState:SetFeiButton0Hidden(value)
-        UnrealNetwork.CallUnrealRPC(self, self, "Client_SetFeiButton0Hidden", value)
+    if self.PlayerState == nil then
+        return
     end
+
+    if (self.PlayerState.ArchiveUID == nil or self.PlayerState.ArchiveUID == 0) and self.Pawn ~= nil and
+        UGCPawnAttrSystem ~= nil and UGCPawnAttrSystem.GetPlayerUID ~= nil then
+        self.PlayerState.ArchiveUID = tonumber(UGCPawnAttrSystem.GetPlayerUID(self.Pawn))
+    end
+
+    if self.PlayerState.SetFeiButton0Hidden ~= nil then
+        self.PlayerState:SetFeiButton0Hidden(value)
+    else
+        self.PlayerState.FeiButton0Hidden = (value == true or tonumber(value) == 1) and 1 or 0
+        if self.PlayerState.SaveToArchive ~= nil then
+            self.PlayerState:SaveToArchive()
+        end
+    end
+
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SetFeiButton0Hidden", value)
 end
 
 function UGCPlayerController:Client_SetFeiButton0Hidden(value)

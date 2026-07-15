@@ -27,10 +27,8 @@ function ZDSQ_ZD_2:UGC_OnStopUse(Reason)
         return
     end
 
-    local PlayerState = PlayerController.PlayerState
-    if PlayerState ~= nil and PlayerState.SetAutoPickButtonHidden ~= nil then
-        PlayerState:SetAutoPickButtonHidden(true)
-        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_SetAutoFeatureButtonHidden", "AutoPick")
+    if PlayerController.Server_SetAutoFeatureButtonHidden ~= nil then
+        PlayerController:Server_SetAutoFeatureButtonHidden("AutoPick")
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_RefreshProperty")
     end
 end

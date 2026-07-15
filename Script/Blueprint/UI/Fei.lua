@@ -69,6 +69,7 @@ function Fei:LuaInit()
         UIEffectUtil.BindPressScale(self, self.Button_0, self.Button_0, 1.06, 1.0)
         self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
         self:RefreshButton0Visibility()
+        self:RefreshButton0VisibilityLater(3)
     end
 
     if self.Button_84 ~= nil then
@@ -83,6 +84,21 @@ function Fei:LuaInit()
             self.Button_84.OnReleased:Add(self.Button_84_OnReleased, self)
         end
     end
+end
+
+function Fei:RefreshButton0VisibilityLater(RetriesRemaining)
+    if UGCTimerUtility == nil or UGCTimerUtility.CreateLuaTimer == nil then
+        return
+    end
+
+    UGCTimerUtility.CreateLuaTimer(0.5, function()
+        if self ~= nil and self.RefreshButton0Visibility ~= nil then
+            self:RefreshButton0Visibility()
+            if (tonumber(RetriesRemaining) or 0) > 0 then
+                self:RefreshButton0VisibilityLater(RetriesRemaining - 1)
+            end
+        end
+    end, false)
 end
 
 function Fei:SetupRootHitTest()
@@ -153,7 +169,17 @@ function Fei:OnFeiAddVirtualItem(Result)
         return
     end
 
-    if Result.ItemList[WingItemID] ~= nil or Result.ItemList[tostring(WingItemID)] ~= nil then
+    local bGotWing = Result.ItemList[WingItemID] ~= nil or Result.ItemList[tostring(WingItemID)] ~= nil
+    if not bGotWing then
+        for _, ItemID in ipairs(WingBackpackItemIDs) do
+            if Result.ItemList[ItemID] ~= nil or Result.ItemList[tostring(ItemID)] ~= nil then
+                bGotWing = true
+                break
+            end
+        end
+    end
+
+    if bGotWing then
         if RankMgr ~= nil and RankMgr.ConfirmConsumePurchase ~= nil then
             RankMgr:ConfirmConsumePurchase(WingItemID)
         end
