@@ -98,7 +98,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
         "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden",
-        "Server_SetKJ04GiftPackPurchased", "Client_SetKJ04GiftPackPurchased", "Client_ShowMonsterDamageNumber",
+        "Client_ShowMonsterDamageNumber",
         "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty"
 end
 
@@ -2008,19 +2008,6 @@ function UGCPlayerController:Client_SetFeiButton0Hidden(value)
 
     if self.FeiUIInstance ~= nil and self.FeiUIInstance.RefreshButton0Visibility ~= nil then
         self.FeiUIInstance:RefreshButton0Visibility()
-    end
-end
-
-function UGCPlayerController:Server_SetKJ04GiftPackPurchased(value)
-    if self.PlayerState ~= nil and self.PlayerState.SetKJ04GiftPackPurchased ~= nil then
-        self.PlayerState:SetKJ04GiftPackPurchased(value)
-        UnrealNetwork.CallUnrealRPC(self, self, "Client_SetKJ04GiftPackPurchased", value)
-    end
-end
-
-function UGCPlayerController:Client_SetKJ04GiftPackPurchased(value)
-    if self.PlayerState ~= nil then
-        self.PlayerState.KJ04GiftPackPurchased = (value == true or tonumber(value) == 1) and 1 or 0
     end
 end
 
