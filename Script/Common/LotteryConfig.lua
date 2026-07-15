@@ -71,7 +71,7 @@ local HardcodedIcons = {
     [8310066] = ToHardcodedPath("/Douluo/Asset/ui/Icon/fx2.fx2"),                                         -- 30分钟双倍药水
     [8310037] = ToHardcodedPath("/Douluo/Asset/ui/Icon/hszz.hszz"),                                       -- 星导师之证
     -- Title pool
-    [8310061] = ToHardcodedPath("/Douluo/Asset/ui/huaban_6553688612.huaban_6553688612"),                  -- 富甲一方
+    [8310061] = ToHardcodedPath("/Douluo/Asset/ui/huaban_6553688580.huaban_6553688580"),                  -- 不周霸主
     [8310051] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_3.Pic_3"),            -- 千年星环
     [8310068] = ToHardcodedPath("/Douluo/Asset/ui/Icon/lvx10.lvx10"),                                     -- 10分钟10倍药水
     [8310039] = ToHardcodedPath("/Douluo/Asset/ui/Icon/lyzh.lyzh"),                                       -- 领域之核
