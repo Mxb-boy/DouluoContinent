@@ -512,7 +512,7 @@ function WeaponLevelConfig.GetResultLevel(WPID, Level, ResultType)
         return math.min(Weapon.MaxLevel, Level + 1)
     end
     if ResultType == "Down" then
-        return 1
+        return math.max(1, Level - 1)
     end
     if ResultType == "Destroy" then
         return 1

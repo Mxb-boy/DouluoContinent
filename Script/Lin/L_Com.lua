@@ -3,9 +3,15 @@ local L_Com = {}
 local ToastManager = UGCGameSystem.UGCRequire("Script.Lin.ToastManager")
 local HUNHUAN_TABLE_PATH = "Data/Table/Customized/HunHuanConfig"
 local JingJieConfig = "Data/Table/Customized/JingJieConfig"
+local LastToastTime = 0
 
 --[[-----------------------显示小提示-----------------------]] --
 function L_Com.ShowToast(text)
+    local NowTime = os.time()
+    if NowTime - LastToastTime < 1 then
+        return
+    end
+    LastToastTime = NowTime
     ToastManager.ShowToast(text)
 end
 

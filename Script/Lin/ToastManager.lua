@@ -6,6 +6,7 @@ local ActiveToasts = {}
 
 -- ========== 配置 ==========
 local CONFIG = {
+    ZOrder = 30000,
     TopOffset = 200,
     FadeInDuration = 0.5,
     HoldDuration = 1.2,
@@ -73,7 +74,7 @@ end
 local function CreateAndShowToast(WidgetClass, text)
     local ToastWidget = UGCWidgetManagerSystem.CreateWidget(WidgetClass)
 
-    ToastWidget:AddToViewport(10)
+    ToastWidget:AddToViewport(CONFIG.ZOrder)
     ToastWidget:SetToastText(text)
 
     local ScreenSize = UGCWidgetManagerSystem.GetViewportSize()

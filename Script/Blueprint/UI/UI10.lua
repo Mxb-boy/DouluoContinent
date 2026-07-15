@@ -43,6 +43,7 @@
 -- 武器锻造 UI：负责读取背包武器、显示材料消耗，并向服务器发起锻造请求。
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
+local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 local UI10 = { bInitDoOnce = false }
 local WeaponItemWidgetPath = "Asset/NewUGCWidgetBlueprint.NewUGCWidgetBlueprint_C"
 local ForgeResultWidgetPath = "Asset/Blueprint/UI/NewUGCWidgetBlueprint.NewUGCWidgetBlueprint_C"
@@ -61,6 +62,7 @@ local TextLabels = {
     AttackBonus = string.char(230, 148, 187, 229, 135, 187, 229, 138, 160, 230, 136, 144),
     OpenParen = string.char(239, 188, 136),
     CloseParen = string.char(239, 188, 137),
+    MaterialNotEnough = string.char(230, 157, 144, 230, 150, 153, 228, 184, 141, 232, 182, 179),
 }
 
 -- 武器品质显示名称。
@@ -168,6 +170,36 @@ function UI10:LuaInit()
     end
 
     self:InitWeaponWidgets()
+end
+
+function UI10:Open()
+    self:LuaInit()
+    self.bForgeBackpackSyncPending = false
+    self:SetVisibility(ESlateVisibility.Visible)
+    self:InitWeaponWidgets()
+
+    local function RefreshAfterOpen(RetriesRemaining)
+        if self == nil then
+            return
+        end
+
+        local PreviousItemID = self:GetItemIDFromDefineID(self.SelectedWeaponDefineID) or tonumber(self.SelectedWeaponItemID)
+        local PreviousInfo = WeaponLevelConfig.GetWeaponInfo(PreviousItemID)
+        self:InitWeaponWidgets()
+        if PreviousInfo ~= nil then
+            self:SelectWeaponBySeriesKey(PreviousInfo.SeriesKey)
+        end
+
+        if RetriesRemaining > 0 then
+            UGCTimerUtility.CreateLuaTimer(0.3, function()
+                RefreshAfterOpen(RetriesRemaining - 1)
+            end, false)
+        end
+    end
+
+    UGCTimerUtility.CreateLuaTimer(0.3, function()
+        RefreshAfterOpen(3)
+    end, false)
 end
 
 function UI10:GetForgeButton()
@@ -640,6 +672,17 @@ function UI10:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID, ResultLev
         local PlayerController = self:GetLocalPlayerController()
         local Level = math.max(1,
             math.min(ResultInfo.MaxLevel, tonumber(ResultLevel) or ResultInfo.Level or 1))
+        self.SelectedWeaponItemID = ResultItemID
+        self.SelectedWeaponDefineID = nil
+        self.SelectedWeaponStackIndex = nil
+        self.SelectedWeaponLevel = Level
+        self.SelectedWeaponName = self:GetWeaponDisplayName(ResultInfo, Level)
+        self.SelectedWeaponIconPath = self:GetWeaponIconPathByItemID(ResultItemID) or self.SelectedWeaponIconPath
+        self.bForgeBackpackSyncPending = true
+        if self.text_name_1 ~= nil then
+            self.text_name_1:SetText(self.SelectedWeaponName or "")
+        end
+        self:RefreshForgeInfo()
         if PlayerController ~= nil then
             PlayerController.WeaponLevelByID = PlayerController.WeaponLevelByID or {}
             PlayerController.WeaponLevelByID[ResultInfo.ID] = Level
@@ -684,10 +727,27 @@ function UI10:OnForgeWeaponResult(ResultType, OldItemID, ResultItemID, ResultLev
         end
         self:InitWeaponWidgets()
         if ResultItemID ~= nil then
-            if self:SelectWeaponByItemID(ResultItemID, false) ~= true and RetriesRemaining > 0 then
-                UGCTimerUtility.CreateLuaTimer(0.2, function()
-                    RefreshAndReselect(RetriesRemaining - 1)
-                end, false)
+            if self:SelectWeaponByItemID(ResultItemID, false) == true then
+                self.bForgeBackpackSyncPending = false
+            else
+                self.SelectedWeaponItemID = ResultItemID
+                self.SelectedWeaponDefineID = nil
+                self.SelectedWeaponStackIndex = nil
+                if ResultInfo ~= nil then
+                    self.SelectedWeaponLevel = math.max(1,
+                        math.min(ResultInfo.MaxLevel, tonumber(ResultLevel) or ResultInfo.Level or 1))
+                    self.SelectedWeaponName = self:GetWeaponDisplayName(ResultInfo, self.SelectedWeaponLevel)
+                    self.SelectedWeaponIconPath = self:GetWeaponIconPathByItemID(ResultItemID) or self.SelectedWeaponIconPath
+                    if self.text_name_1 ~= nil then
+                        self.text_name_1:SetText(self.SelectedWeaponName or "")
+                    end
+                    self:RefreshForgeInfo()
+                end
+                if RetriesRemaining > 0 then
+                    UGCTimerUtility.CreateLuaTimer(0.2, function()
+                        RefreshAndReselect(RetriesRemaining - 1)
+                    end, false)
+                end
             end
         elseif SeriesKey ~= nil then
             self:SelectWeaponBySeriesKey(SeriesKey)
@@ -766,10 +826,43 @@ function UI10:GetWeaponIconPathByItemID(ItemID)
     return UIConfig.IconPath
 end
 
+function UI10:RefreshSelectedWeaponFromBackpack()
+    if self.bForgeBackpackSyncPending == true then
+        return
+    end
+
+    local CurrentItemID = self:GetItemIDFromDefineID(self.SelectedWeaponDefineID) or tonumber(self.SelectedWeaponItemID)
+    local CurrentInfo = WeaponLevelConfig.GetWeaponInfo(CurrentItemID)
+    if CurrentInfo == nil then
+        return
+    end
+
+    local WeaponList = self:GetBackpackWeaponList()
+    self.WeaponList = WeaponList
+    local BestWeapon = nil
+    for _, WeaponInfo in ipairs(WeaponList) do
+        if WeaponInfo.SeriesKey == CurrentInfo.SeriesKey and
+            (BestWeapon == nil or (tonumber(WeaponInfo.Level) or 1) > (tonumber(BestWeapon.Level) or 1)) then
+            BestWeapon = WeaponInfo
+        end
+    end
+
+    if BestWeapon ~= nil then
+        self:SelectWeapon(BestWeapon.Name, BestWeapon.IconPath, BestWeapon.SelectKey, BestWeapon)
+    end
+end
+
 -- 点击锻造：先做本地材料和武器检查，再请求服务器执行锻造。
 function UI10:Button_dz_OnClicked()
     ugcprint("[UI10:Button_dz_OnClicked] clicked")
+    local NowTime = os.time()
+    if self.LastForgeClickTime ~= nil and NowTime - self.LastForgeClickTime < 2 then
+        return
+    end
+    self.LastForgeClickTime = NowTime
+
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    self:RefreshSelectedWeaponFromBackpack()
     local ItemID = self:GetItemIDFromDefineID(self.SelectedWeaponDefineID) or tonumber(self.SelectedWeaponItemID)
     if PlayerPawn == nil or ItemID == nil then
         ugcprint("[UI10:Button_dz_OnClicked] PlayerPawn or selected weapon is nil")
@@ -793,15 +886,20 @@ function UI10:Button_dz_OnClicked()
     if HGRJCount < (Cost.HGRJ or 0) or QNHHCount < (Cost.QNHH or 0) then
         ugcprint("[UI10:Button_dz_OnClicked] Material not enough")
         self:RefreshForgeInfo()
-        self:ShowForgeResultPopup("Error", self.SelectedWeaponIconPath)
+        if L_Com ~= nil and L_Com.ShowToast ~= nil then
+            L_Com.ShowToast(TextLabels.MaterialNotEnough)
+        end
         return
     end
 
     if self.SelectedWeaponDefineID == nil and self:GetBackpackItemCount(PlayerPawn, ItemID) <= 0 then
-        ugcprint("[UI10:Button_dz_OnClicked] Selected weapon is not in backpack: " .. tostring(ItemID))
-        self:InitWeaponWidgets()
-        self:ShowForgeResultPopup("Error", self.SelectedWeaponIconPath)
-        return
+        if self.bForgeBackpackSyncPending ~= true then
+            ugcprint("[UI10:Button_dz_OnClicked] Selected weapon is not in backpack: " .. tostring(ItemID))
+            self:InitWeaponWidgets()
+            self:ShowForgeResultPopup("Error", self.SelectedWeaponIconPath)
+            return
+        end
+        ugcprint("[UI10:Button_dz_OnClicked] Backpack sync pending, send selected result item: " .. tostring(ItemID))
     end
 
     local PlayerController = self:GetLocalPlayerController()

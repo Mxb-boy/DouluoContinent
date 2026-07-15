@@ -599,6 +599,9 @@ TrySetDisplayNameOnObject = function(Object, DisplayName)
     if Object == nil or DisplayName == nil then
         return false
     end
+    if type(Object) ~= "table" then
+        return false
+    end
 
     local bChanged = false
     local SetterNames = {
@@ -817,6 +820,72 @@ local function FindBackpackItemDefineID(PlayerController, ItemID)
     return nil
 end
 
+local function FindHeldWeaponItemIDBySeries(PlayerController, SeriesKey)
+    if SeriesKey == nil then
+        return nil
+    end
+
+    local BestItemID = nil
+    local BestLevel = -1
+    local Pawn = GetPlayerPawn(PlayerController)
+    if Pawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.GetAllItemDefineIDsV2 ~= nil then
+        local AllItemDefineIDs = UGCBackpackSystemV2.GetAllItemDefineIDsV2(Pawn)
+        if AllItemDefineIDs ~= nil then
+            for _, ItemDefineID in pairs(AllItemDefineIDs) do
+                local ItemID = tonumber(GetItemIDFromDefineID(ItemDefineID))
+                local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+                if WeaponInfo ~= nil and WeaponInfo.SeriesKey == SeriesKey and GetItemCount(PlayerController, ItemID) > 0 then
+                    local Level = tonumber(WeaponInfo.Level) or 1
+                    if Level > BestLevel then
+                        BestItemID = ItemID
+                        BestLevel = Level
+                    end
+                end
+            end
+        end
+    end
+
+    if BestItemID ~= nil then
+        return BestItemID
+    end
+
+    for _, Weapon in ipairs(WeaponLevelConfig.GetAllWeapons()) do
+        if Weapon.SeriesKey == SeriesKey then
+            local LevelItemIDs = Weapon.LevelItemIDs or {}
+            for Level, ItemID in pairs(LevelItemIDs) do
+                ItemID = tonumber(ItemID)
+                Level = tonumber(Level) or 1
+                if ItemID ~= nil and Level > BestLevel and GetItemCount(PlayerController, ItemID) > 0 then
+                    BestItemID = ItemID
+                    BestLevel = Level
+                end
+            end
+            local BaseItemID = tonumber(Weapon.WPID)
+            if BaseItemID ~= nil and 1 > BestLevel and GetItemCount(PlayerController, BaseItemID) > 0 then
+                BestItemID = BaseItemID
+                BestLevel = 1
+            end
+        end
+    end
+
+    return BestItemID
+end
+
+local function GetResultItemIDByLevel(WeaponInfo, ResultLevel, FallbackItemID)
+    if WeaponInfo == nil then
+        return FallbackItemID
+    end
+
+    local Weapon = WeaponLevelConfig.GetWeaponByID(WeaponInfo.ID)
+    local LevelItemIDs = Weapon ~= nil and Weapon.LevelItemIDs or nil
+    ResultLevel = tonumber(ResultLevel) or tonumber(WeaponInfo.Level) or 1
+    if LevelItemIDs ~= nil and LevelItemIDs[ResultLevel] ~= nil then
+        return LevelItemIDs[ResultLevel]
+    end
+
+    return FallbackItemID
+end
+
 local function TryDisuseBackpackItem(PlayerController, ItemDefineID)
     if ItemDefineID == nil then
         return false
@@ -925,11 +994,19 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
     end
 
     if GetItemCount(self, ItemID) <= 0 then
-        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Weapon not found: " .. tostring(ItemID))
-        return
+        local CurrentItemID = FindHeldWeaponItemIDBySeries(self, WeaponInfo.SeriesKey)
+        if CurrentItemID == nil then
+            ugcprint("[UGCPlayerController:Server_ForgeWeapon] Weapon not found: " .. tostring(ItemID))
+            return
+        end
+        ugcprint("[UGCPlayerController:Server_ForgeWeapon] selected item missing, use current series item: " ..
+            tostring(ItemID) .. "->" .. tostring(CurrentItemID))
+        ItemID = CurrentItemID
+        WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
     end
 
-    local CurrentLevel = tonumber(WeaponInfo.Level) or 1
+    local CurrentItemDefineID = FindBackpackItemDefineID(self, ItemID)
+    local CurrentLevel = GetWeaponLevelFromItemDefineID(CurrentItemDefineID, WeaponInfo, 1) or tonumber(WeaponInfo.Level) or 1
     local Cost = WeaponLevelConfig.GetForgeCost(ItemID, CurrentLevel)
     if Cost == nil then
         ugcprint("[UGCPlayerController:Server_ForgeWeapon] Max level or missing level config: item=" ..
@@ -958,7 +1035,7 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
     local ResultLevel = WeaponLevelConfig.GetResultLevel(ItemID, CurrentLevel, ResultType)
     local ResultItemID = nil
     if ResultType ~= "Destroy" then
-        ResultItemID = WeaponLevelConfig.GetResultItemID(ItemID, ResultType) or ItemID
+        ResultItemID = GetResultItemIDByLevel(WeaponInfo, ResultLevel, ItemID) or ItemID
     end
     local ShouldRemoveWeapon = ResultType == "Destroy" or ResultItemID ~= ItemID
     if ShouldRemoveWeapon then
@@ -989,17 +1066,27 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
             return
         end
 
+        local bKeptOriginalWeapon = false
         if ShouldRemoveWeapon then
             if not RemoveItem(self, ItemID, 1) then
-                AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
-                AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
-                UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", "Error", ItemID, ItemID,
-                    CurrentLevel)
-                ClearForgeWeaponBusy()
-                ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove old weapon failed")
-                return
+                local ItemDefineID = FindBackpackItemDefineID(self, ItemID)
+                local bSavedLevel = ResultType ~= "Destroy" and ItemDefineID ~= nil and
+                                        SetWeaponLevelToItemDefineID(ItemDefineID, WeaponInfo, ResultLevel, 1) == true
+                if not bSavedLevel then
+                    AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
+                    AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
+                    UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", "Error", ItemID, ItemID,
+                        CurrentLevel)
+                    ClearForgeWeaponBusy()
+                    ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove old weapon failed")
+                    return
+                end
+                ResultItemID = ItemID
+                bKeptOriginalWeapon = true
+                ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove old weapon failed, saved level on item: " ..
+                    tostring(ItemID) .. ", level=" .. tostring(ResultLevel))
             end
-            if ResultType ~= "Destroy" and not AddItem(self, ResultItemID, 1) then
+            if ResultType ~= "Destroy" and not bKeptOriginalWeapon and not AddItem(self, ResultItemID, 1) then
                 AddItem(self, ItemID, 1)
                 AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
                 AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
