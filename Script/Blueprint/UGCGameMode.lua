@@ -5,11 +5,6 @@ local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelCon
 --[[--------------------全局引用--------------------------]] --
 L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
-local MaxPlayerCount = 12
-local MatchTeamCount = 3
-local MatchTeamSize = 4
-local PlayerJoinRequestInterval = 8
-
 -- 保存玩家死亡前的背包快照，键为 PlayerKey。
 local PlayerBackpackSnapshots = {};
 local WingItemIDs = {
@@ -40,8 +35,7 @@ local function TryDisuseItem(PlayerPawn, ItemDefineID)
         end
     end
 
-    local BackpackComponent = PlayerPawn.BackpackComponent or PlayerPawn.BackpackComponentV2 or
-                                  PlayerPawn.BP_BackpackComponentV2
+    local BackpackComponent = PlayerPawn.BackpackComponent or PlayerPawn.BackpackComponentV2 or PlayerPawn.BP_BackpackComponentV2
     if BackpackComponent == nil and PlayerPawn.Controller ~= nil then
         BackpackComponent = PlayerPawn.Controller.BackpackComponent or PlayerPawn.Controller.BackpackComponentV2 or
                                 PlayerPawn.Controller.BP_BackpackComponentV2
@@ -121,121 +115,80 @@ local function RestoreBackpackSnapshot(PlayerKey, PlayerPawn)
 end
 
 function UGCGameMode:ReceiveBeginPlay()
-    self.SuperClass.ReceiveBeginPlay(self)
-
-    self.PlayerJoinElapsedTime = 0
-    self.PlayerJoinRequestCount = 1
-    UGCGameSystem.OpenPlayerJoin()
-    UGCGameSystem.ApplyPlayerJoinSucceededDelegate:Add(self.OnPlayerJoinSucceeded, self)
-
     UGCGenericMessageSystem.ListenGlobalMessage(self, UGCGenericMessageSystem.Messages.UGC.PlayerPawn.PawnDefeat, self,
         self.OnPawnDefeat)
+
+    if self:HasAuthority() then
+        DropCleanupSystem.StartSafetyValveTimer()
+    end
 end
 
-function UGCGameMode:GetActivePlayerKeys()
-    local PlayerKeys = {}
-    local PlayerControllers = UGCGameSystem.GetAllPlayerController(false)
+-- ============================================================
+-- 自动补位玩家修复：将非大厅组队的自动补位玩家踢到独立队伍
+-- ============================================================
 
-    for _, PlayerController in pairs(PlayerControllers) do
-        local PlayerKey = UGCGameSystem.GetPlayerKeyByPlayerController(PlayerController)
-        if PlayerKey and PlayerKey > 0 then
-            table.insert(PlayerKeys, PlayerKey)
+local function GetUnusedTeamID()
+    local AllTeamIDs = UGCTeamSystem.GetTeamIDs() or {}
+    local UsedIDs = {}
+    for _, tid in ipairs(AllTeamIDs) do
+        UsedIDs[tostring(tid)] = true
+    end
+    for id = 100, 999 do
+        if not UsedIDs[tostring(id)] then
+            return id
         end
     end
-
-    table.sort(PlayerKeys)
-    return PlayerKeys
+    return nil
 end
 
-function UGCGameMode:RefreshDynamicTeams()
-    local PlayerKeys = self:GetActivePlayerKeys()
-    local ActivePlayerMap = {}
-    local UsedPlayerMap = {}
-    local NewTeamID = 1
-
-    for _, PlayerKey in pairs(PlayerKeys) do
-        ActivePlayerMap[PlayerKey] = true
+local function FixAutoMatchedPlayer(PlayerController)
+    if PlayerController == nil then
+        return
+    end
+    local PlayerKey = PlayerController.PlayerKey
+    if PlayerKey == nil then
+        return
     end
 
-    for _, PlayerKey in pairs(PlayerKeys) do
-        if not UsedPlayerMap[PlayerKey] then
-            local TeamPlayerKeys = {PlayerKey}
-            UsedPlayerMap[PlayerKey] = true
+    local TeamID = UGCTeamSystem.GetTeamIDByPlayerKey(PlayerKey)
+    if TeamID == nil then
+        return
+    end
 
-            local LobbyTeammates = UGCTeamSystem.GetLobbyTeammatePlayerKeysByPlayerKey(PlayerKey) or {}
-            for _, TeammateKey in pairs(LobbyTeammates) do
-                if ActivePlayerMap[TeammateKey] and not UsedPlayerMap[TeammateKey] then
-                    table.insert(TeamPlayerKeys, TeammateKey)
-                    UsedPlayerMap[TeammateKey] = true
+    local TeamPlayerKeys = UGCTeamSystem.GetPlayerKeysByTeamID(TeamID)
+    if TeamPlayerKeys == nil or #TeamPlayerKeys <= 1 then
+        return
+    end
+
+    local LobbyMates = UGCTeamSystem.GetLobbyTeammatePlayerKeysByPlayerKey(PlayerKey)
+    local bHasLobbyMateOnTeam = false
+    if LobbyMates ~= nil then
+        for _, MatePK in ipairs(LobbyMates) do
+            for _, TeamPK in ipairs(TeamPlayerKeys) do
+                if tostring(MatePK) == tostring(TeamPK) then
+                    bHasLobbyMateOnTeam = true
+                    break
                 end
             end
-
-            for _, TeamPlayerKey in pairs(TeamPlayerKeys) do
-                UGCTeamSystem.ChangePlayerTeamID(TeamPlayerKey, NewTeamID)
+            if bHasLobbyMateOnTeam then
+                break
             end
-
-            NewTeamID = NewTeamID + 1
         end
     end
-end
 
-function UGCGameMode:RefreshPlayerJoin()
-    local CurrentPlayerCount = #self:GetActivePlayerKeys()
-    local NeedPlayerCount = MaxPlayerCount - CurrentPlayerCount
-
-    UGCGameSystem.StopPlayerJoin()
-
-    if NeedPlayerCount <= 0 then
-        return
-    end
-
-    local RequestCount = math.min(self.PlayerJoinRequestCount or 1, MatchTeamSize, NeedPlayerCount)
-    local JoinLimitCount = {
-        [MatchTeamCount] = RequestCount
-    }
-
-    UGCGameSystem.OpenPlayerJoin()
-    UGCGameSystem.ApplyPlayerJoinLimitCount(JoinLimitCount)
-end
-
-function UGCGameMode:AdvancePlayerJoinRequestCount()
-    local CurrentPlayerCount = #self:GetActivePlayerKeys()
-    local MaxRequestCount = math.min(MatchTeamSize, MaxPlayerCount - CurrentPlayerCount)
-
-    if MaxRequestCount <= 1 then
-        self.PlayerJoinRequestCount = 1
-        return
-    end
-
-    self.PlayerJoinRequestCount = (self.PlayerJoinRequestCount or 1) + 1
-    if self.PlayerJoinRequestCount > MaxRequestCount then
-        self.PlayerJoinRequestCount = 1
-    end
-end
-
-function UGCGameMode:OnPlayerJoinSucceeded(UID, RemainingPlayerCountToJoin)
-    self.PlayerJoinRequestCount = 1
-    self:RefreshDynamicTeams()
-    self:RefreshPlayerJoin()
-end
-
-function UGCGameMode:ReceiveTick(DeltaTime)
-    self.PlayerJoinElapsedTime = (self.PlayerJoinElapsedTime or 0) + DeltaTime
-
-    if self.PlayerJoinElapsedTime >= PlayerJoinRequestInterval then
-        self.PlayerJoinElapsedTime = 0
-        self:AdvancePlayerJoinRequestCount()
-        self:RefreshPlayerJoin()
+    if not bHasLobbyMateOnTeam then
+        local NewTeamID = GetUnusedTeamID()
+        if NewTeamID ~= nil then
+            UGCTeamSystem.ChangePlayerTeamID(PlayerKey, NewTeamID)
+            ugcprint("[UGCGameMode] Auto-matched player " .. tostring(PlayerKey) ..
+                         " reassigned from team " .. tostring(TeamID) .. " to team " .. tostring(NewTeamID))
+        end
     end
 end
 
 -- 玩家登录时: 先加载跨对局存档, 再发初始武器（Pawn可能还没好，等1秒）
 -- 若 Pawn 在 1 秒后仍未就绪，则重试（最多 10 次），避免 LoadFromArchive 被整体跳过导致存档丢失
 function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
-    self.PlayerJoinRequestCount = 1
-    self:RefreshDynamicTeams()
-    self:RefreshPlayerJoin()
-
     local PC = PlayerController
     local RetryCount = 0
     local MaxRetries = 10
@@ -339,12 +292,10 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
     end
     UGCTimerUtility.CreateLuaTimer(1, OnLoginDeferred, false)
 
-end
-
-function UGCGameMode:UGC_PlayerExitEvent(PlayerController)
-    self.PlayerJoinRequestCount = 1
-    self:RefreshDynamicTeams()
-    self:RefreshPlayerJoin()
+    -- 5秒后修复自动补位玩家（确保PlayerKey已初始化，队伍分配已完成）
+    UGCTimerUtility.CreateLuaTimer(5, function()
+        FixAutoMatchedPlayer(PC)
+    end, false)
 end
 
 -- 此事件提供死亡前的旧 Pawn，必须在这里读取背包和血量。

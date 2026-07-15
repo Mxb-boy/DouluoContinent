@@ -21,8 +21,8 @@ bOpenParticleEditorV1=0
 [MatchSetting]
 NumberOfTeams=12
 TeamPlayers=4
-bIsAllowStageMatching=1
-TeamSettings="{\"TeamSettings\": [{\"NumberOfTeams\": 3,\"TeamPlayers\": 4},{\"NumberOfTeams\": 3,\"TeamPlayers\": 3},{\"NumberOfTeams\": 2,\"TeamPlayers\": 4},{\"NumberOfTeams\": 2,\"TeamPlayers\": 3},{\"NumberOfTeams\": 1,\"TeamPlayers\": 4},{\"NumberOfTeams\": 1,\"TeamPlayers\": 3},{\"NumberOfTeams\": 1,\"TeamPlayers\": 2},{\"NumberOfTeams\": 1,\"TeamPlayers\": 1}]}"
+bIsAllowStageMatching=0
+TeamSettings="{\"TeamSettings\": [{\"NumberOfTeams\": 12,\"TeamPlayers\": 1},{\"NumberOfTeams\": 6,\"TeamPlayers\": 2},{\"NumberOfTeams\": 4,\"TeamPlayers\": 3},{\"NumberOfTeams\": 3,\"TeamPlayers\": 4},{\"NumberOfTeams\": 1,\"TeamPlayers\": 1}]}"
 bEnableChat=1
 bEnableRoomChat=1
 ChannelName=全部
@@ -92,7 +92,7 @@ TargetPlatform=LinuxServer+Android_ETC2+IOS+OpenHarmony_ETC2
 
 [DebugSettings]
 bRoomOB=0
-TeamPlayers=1,0;
+TeamPlayers=2,0;1,0;
 
 [MultiModeSetting_0]
 bDefaultMode=1
