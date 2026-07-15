@@ -9,9 +9,9 @@ function CH_best_2:OnUseV2()
     if player ~= nil then
         local count = UGCBackpackSystemV2.GetItemCountV2(player, itemID)
         if player.UnlockTitle ~= nil then
-            player:UnlockTitle(6)
+            player:UnlockTitle(13)
         else
-            UnrealNetwork.CallUnrealRPC(player, player, "Client_UnlockTitle", 6)
+            UnrealNetwork.CallUnrealRPC(player, player, "Client_UnlockTitle", 13)
         end
         UGCBackpackSystemV2.RemoveItemV2(player, itemID, count)
     end
