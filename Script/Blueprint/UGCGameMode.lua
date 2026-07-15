@@ -2,7 +2,9 @@
 -- Edit Below--
 local UGCGameMode = {};
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
-
+--[[--------------------全局引用--------------------------]] --
+L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
+TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local MaxPlayerCount = 12
 local MatchTeamCount = 3
 local MatchTeamSize = 4
@@ -249,8 +251,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                 if PlayerState.GetAutoPickButtonHidden ~= nil and PlayerState:GetAutoPickButtonHidden() == true then
                     UnrealNetwork.CallUnrealRPC(PC, PC, "Client_SetAutoFeatureButtonHidden", "AutoPick")
                 end
-                if PlayerState.GetAutoAttackButtonHidden ~= nil and
-                    PlayerState:GetAutoAttackButtonHidden() == true then
+                if PlayerState.GetAutoAttackButtonHidden ~= nil and PlayerState:GetAutoAttackButtonHidden() == true then
                     UnrealNetwork.CallUnrealRPC(PC, PC, "Client_SetAutoFeatureButtonHidden", "AutoAttack")
                 end
                 if PlayerState.GetFeiButton0Hidden ~= nil and PlayerState:GetFeiButton0Hidden() == true then

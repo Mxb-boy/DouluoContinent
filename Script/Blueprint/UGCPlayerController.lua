@@ -14,6 +14,8 @@ local TitleConfig = UGCGameSystem.UGCRequire("Script.Common.TitleConfig")
 local Ma_NumShow = UGCGameSystem.UGCRequire("Script.Ma.Ma_NumShow")
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
+local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
+local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
 local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
@@ -98,8 +100,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
         "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden",
-        "Client_ShowMonsterDamageNumber",
-        "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty"
+        "Client_ShowMonsterDamageNumber", 
+        "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress"
 end
 
 local function StopCurrentZipLine(self)
@@ -175,6 +177,11 @@ end
 function UGCPlayerController:Server_TeleportToLocation(x, y, z)
     StopCurrentZipLine(self)
     UGCPlayerControllerSystem.TeleportTo(self, x, y, z)
+end
+
+--[[---------------------服务端增加任务进度-------------------------]] --
+function UGCPlayerController:Server_AddTaskProgress(TaskKey, AddValue)
+    TaskMgr:AddTaskProgressOnServer(L_Enum.AllTask[TaskKey], tonumber(AddValue) or 1, self)
 end
 
 -- WBP_RankingListBtn 更新排行榜服务端--要走官方测试按钮暂时没开
@@ -856,6 +863,7 @@ function UGCPlayerController:Server_EatAllSoulRings()
             if Success then
                 LastBaseAttack = NewBaseAttack
                 LastBaseMaxHp = NewBaseMaxHp
+                TaskMgr:AddTaskProgressOnServer(L_Enum.AllTask.UseHunHuan, Count, self)
             else
                 AddItem(self, ItemID, Count)
                 ugcprint("[UGCPlayerController:Server_EatAllSoulRings] UseHunHuan failed: " .. tostring(ItemID))

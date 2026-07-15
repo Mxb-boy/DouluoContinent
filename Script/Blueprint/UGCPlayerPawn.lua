@@ -5,8 +5,6 @@ local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelCon
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
-L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
-TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
 local WEAPON_ATTACK_SOURCE_KEY = "WeaponLevel"

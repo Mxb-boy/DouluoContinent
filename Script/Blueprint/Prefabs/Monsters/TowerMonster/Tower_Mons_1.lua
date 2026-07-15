@@ -11,6 +11,8 @@
 ---@field TowerLevelID int32
 -- Edit Below--
 local Tower_Mons_1 = {}
+local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
+local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 
 local SHAKE_TYPE_RANDOM = 0 -- EPESkillCameraShakeType::Random
 local SHAKE_SCALE = 0.3
@@ -111,6 +113,7 @@ function Tower_Mons_1:BPDie(KillingDamage, EventInstigator, DamageCauser, Damage
     if self:HasAuthority() and self.SpawnWall ~= nil then
         self.SpawnWall:OnMonsterDied(self)
     end
+    TaskMgr:RequestAddTaskProgress(L_Enum.AllTask.KillMonster, 1)
 end
 
 -- ---状态进入事件

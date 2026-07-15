@@ -7,7 +7,7 @@
 ---@field Image_34 UImage
 ---@field Image_35 UImage
 ---@field Image_36 UImage
---Edit Below--
+-- Edit Below--
 ---@class TowerTopUI_C:UUserWidget
 ---@field Button_107 UButton
 ---@field Button_109 UButton
@@ -20,6 +20,8 @@
 local TowerTopUI = {
     bInitDoOnce = false
 }
+local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
+local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 
 function TowerTopUI:Construct()
     self:LuaInit()
@@ -40,6 +42,7 @@ function TowerTopUI:Button_109_OnClicked()
     if pc then
         --[[------------------通知获得物品----------------------------]] --
         UnrealNetwork.CallUnrealRPC(pc, pc, "Server_ClaimTowerTopReward")
+        TaskMgr:RequestAddTaskProgress(L_Enum.AllTask.TowerPass, 1)
         pc.TowerTopUIInstance = nil
     end
 

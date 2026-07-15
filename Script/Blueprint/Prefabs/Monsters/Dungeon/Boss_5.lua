@@ -3,6 +3,8 @@
 ---@field MonsterID int32
 --Edit Below--
 local Boss_5 = {}
+local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
+local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 
 local DROP_SCATTER_RANGE = 300
 
@@ -144,6 +146,7 @@ function Boss_5:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent,
             SpawnDrop(self, 8310036, 1)
         end
     end
+    TaskMgr:RequestAddTaskProgress(L_Enum.AllTask.KillMonster, 1)
 end
 
 -- ---状态进入事件

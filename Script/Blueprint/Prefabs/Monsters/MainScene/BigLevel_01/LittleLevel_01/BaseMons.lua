@@ -1,8 +1,10 @@
 ---@class BaseMons_C:BP_UGC_GenericMobPawn_Base_C
 ---@field HitBox UCapsuleComponent
 ---@field MonsterID int32
---Edit Below--
+-- Edit Below--
 local BaseMons = {}
+local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
+local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 
 local function DisableMonsterCollision(monster)
     if monster.HitBox ~= nil then
@@ -37,7 +39,7 @@ end
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- function BaseMons:PreTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
-     
+
 -- end
 
 -- ---受击后置事件
@@ -47,7 +49,7 @@ end
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- function BaseMons:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
-    
+
 -- end
 
 -- ---受击前置伤害修改
@@ -95,14 +97,13 @@ function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEven
 
         -- 只有服务端才可以掉落
         if DropID ~= nil then
-            self.UGCPresetCommonDropItemComponent:StartDropByProduceID(
-                DropID,
-                -1,
-                EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor,
-                nil
-            )
+            self.UGCPresetCommonDropItemComponent:StartDropByProduceID(DropID, -1,
+                EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor, nil)
         end
     end
+
+    TaskMgr:RequestAddTaskProgress(L_Enum.AllTask.KillMonster, 1)
+
 end
 
 -- ---状态进入事件
@@ -141,7 +142,7 @@ end
 -- ---@param NewTarget AActor 新目标
 -- ---@param OldTarget AActor 旧目标
 -- function BaseMons:OnTargetChange_BP(NewTarget, OldTarget)
-    
+
 -- end
 
 return BaseMons

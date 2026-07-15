@@ -3,6 +3,8 @@
 ---@field MonsterID int32
 --Edit Below--
 local BaseMons = {}
+local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
+local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 
 local function DisableMonsterCollision(monster)
     if monster.HitBox ~= nil then
@@ -102,6 +104,9 @@ function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEven
             )
         end
     end
+
+    TaskMgr:RequestAddTaskProgress(L_Enum.AllTask.KillMonster, 1)
+
 end
 
 -- ---状态进入事件

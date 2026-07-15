@@ -4,6 +4,8 @@
 -- Edit Below--
 local HunHuan_01 = {}
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
+local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
+local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 
 function HunHuan_01:OnUseV2()
     local itemID = tonumber(self.ItemID)
@@ -22,6 +24,7 @@ function HunHuan_01:OnUseV2()
     end
 
     UGCBackpackSystemV2.RemoveItemV2(player, itemID, count)
+    TaskMgr:AddTaskProgressOnServer(L_Enum.AllTask.UseHunHuan, count, player)
 
 end
 --[[经典背包事件]] --
