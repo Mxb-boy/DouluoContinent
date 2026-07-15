@@ -974,14 +974,17 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
         SetWeaponRuntimeDisplayName(Weapon, WeaponLevelConfig.BuildDisplayName(WeaponInfo.WPID, Level))
     end
     local BaseAttack = GetWeaponBaseAttack(self)
-    local NormalizedAttackPercent = NormalizePercent(AttackPercent)
+    local BackpackWeaponAttackPercent = CountBackpackWeaponAttackBonus(self)
+    local TotalAttackPercent = AttackPercent + BackpackWeaponAttackPercent
+    local NormalizedAttackPercent = NormalizePercent(TotalAttackPercent)
     local FinalAttack = BaseAttack * (1 + NormalizedAttackPercent)
     SetWeaponBonusPercent(self, AttackPercent, bForce)
     local bSetBaseAttackSuccess = false
 
     local WeaponAttackKey = tostring(ItemID or "none") .. "|" .. tostring(SeriesKey or "none") .. "|" ..
                                 tostring(ItemName or "none") .. "|" .. tostring(Level or "none") .. "|" ..
-                                tostring(AttackPercent) .. "|" .. tostring(Round2(BaseAttack))
+                                tostring(AttackPercent) .. "|" .. tostring(BackpackWeaponAttackPercent) .. "|" ..
+                                tostring(Round2(BaseAttack))
     if not bForce and self.LastWeaponAttackKey == WeaponAttackKey then
         return
     end
@@ -996,7 +999,8 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     ugcprint(
         "[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID) .. ", series=" .. tostring(SeriesKey) ..
             ", name=" .. tostring(ItemName) .. ", level=" .. tostring(Level) .. ", attackPercent=" ..
-            tostring(AttackPercent) .. ", baseAttack=" .. tostring(BaseAttack) .. ", finalAttack=" ..
+            tostring(AttackPercent) .. ", backpackAttackPercent=" .. tostring(BackpackWeaponAttackPercent) ..
+            ", totalAttackPercent=" .. tostring(TotalAttackPercent) .. ", baseAttack=" .. tostring(BaseAttack) .. ", finalAttack=" ..
             tostring(FinalAttack) .. ", setBaseAttackSuccess=" .. tostring(bSetBaseAttackSuccess))
 
     -- self:ForceRefreshPropertySnapshot()
