@@ -1,10 +1,12 @@
 ---@class UGCPlayerPawn_C:BP_UGCPlayerPawn_C
---Edit Below--
+-- Edit Below--
 local UGCPlayerPawn = {}
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
+TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
 local WEAPON_ATTACK_SOURCE_KEY = "WeaponLevel"
@@ -109,8 +111,8 @@ local function SetWeaponBonusPercent(player, AttackPercent, bForce)
     local bNeedShowStateMgr = IsLocalPlayerPawn(player) and StateMgr ~= nil and StateMgr.UI ~= nil and
                                   (bForce or player.LastStateMgrWeaponAttackPercent ~= AttackPercent or
                                       player.LastStateMgrBackpackWeaponAttackPercent ~= BackpackWeaponAttackPercent)
-    if not bForce and player.LastWeaponAttackPercent == AttackPercent and
-        player.LastBackpackWeaponAttackPercent == BackpackWeaponAttackPercent and not bNeedShowStateMgr then
+    if not bForce and player.LastWeaponAttackPercent == AttackPercent and player.LastBackpackWeaponAttackPercent ==
+        BackpackWeaponAttackPercent and not bNeedShowStateMgr then
         return
     end
 
@@ -368,7 +370,7 @@ local function GetLevelFromName(Name)
     local FullWidthRight = string.char(239, 188, 137)
     local BracketValue = string.match(Name, "%(([^()]*)%)") or
                              string.match(Name, FullWidthLeft .. "([^" .. FullWidthLeft .. FullWidthRight .. "]*)" ..
-                                              FullWidthRight)
+            FullWidthRight)
     if BracketValue ~= nil then
         local Level = tonumber(string.match(BracketValue, "[Ll][Vv]%s*(%d+)") or string.match(BracketValue, "(%d+)"))
         if Level ~= nil then
@@ -527,7 +529,7 @@ local function SetWeaponRuntimeDisplayName(Weapon, DisplayName)
         return
     end
 
-    local SetterNames = { "SetItemName", "SetName", "SetDisplayName", "SetItemDisplayName", "SetCustomName" }
+    local SetterNames = {"SetItemName", "SetName", "SetDisplayName", "SetItemDisplayName", "SetCustomName"}
     for _, FunctionName in ipairs(SetterNames) do
         local Func = Weapon[FunctionName]
         if Func ~= nil then
@@ -538,7 +540,7 @@ local function SetWeaponRuntimeDisplayName(Weapon, DisplayName)
         end
     end
 
-    local FieldNames = { "ItemName", "Name", "DisplayName", "ItemDisplayName", "ItemNameText", "CustomName" }
+    local FieldNames = {"ItemName", "Name", "DisplayName", "ItemDisplayName", "ItemNameText", "CustomName"}
     for _, FieldName in ipairs(FieldNames) do
         pcall(function()
             Weapon[FieldName] = DisplayName
@@ -570,9 +572,8 @@ local function GetHeldWeaponAttributeItemID(player)
             SavedLevel = tonumber(player.PlayerState:GetWeaponLevel(WeaponInfo.ID))
         end
 
-        local Level = math.max(1,
-            math.min(WeaponInfo.MaxLevel,
-                CachedLevel or SavedLevel or NameLevel or ActorLevel or tonumber(WeaponInfo.Level) or 1))
+        local Level = math.max(1, math.min(WeaponInfo.MaxLevel, CachedLevel or SavedLevel or NameLevel or ActorLevel or
+            tonumber(WeaponInfo.Level) or 1))
         local AttributeItemID = WeaponLevelConfig.GetItemID(WeaponInfo.SeriesKey, Level) or ItemID
         Weapon.WeaponLevel = Level
         Weapon.WeaponConfigID = WeaponInfo.ID
@@ -902,8 +903,7 @@ function UGCPlayerPawn:GetCurrentWeaponBonusPercent()
     local ItemID, _, _, Level = GetHeldWeaponAttributeItemID(self)
     local Weapon = GetCurrentHeldWeapon(self)
     local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
-    local AttackPercent = WeaponInfo ~= nil and
-                              WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level) or 0
+    local AttackPercent = WeaponInfo ~= nil and WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level) or 0
     if Weapon ~= nil then
         if WeaponInfo ~= nil then
             Weapon.WeaponConfigID = WeaponInfo.ID
@@ -917,8 +917,7 @@ end
 function UGCPlayerPawn:ApplyWeaponAttackBonusLocalDisplay(ItemID, SeriesKey, ItemName, Level, bForce)
     local Weapon = GetCurrentHeldWeapon(self)
     local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
-    local AttackPercent = WeaponInfo ~= nil and
-                              WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level) or 0
+    local AttackPercent = WeaponInfo ~= nil and WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level) or 0
     if Weapon ~= nil then
         Weapon.WeaponLevel = math.max(1, tonumber(Level) or 1)
         if WeaponInfo ~= nil then
@@ -969,8 +968,7 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     end
 
     local Weapon = GetCurrentHeldWeapon(self)
-    local AttackPercent = WeaponInfo ~= nil and
-                              WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level) or 0
+    local AttackPercent = WeaponInfo ~= nil and WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level) or 0
     if Weapon ~= nil and WeaponInfo ~= nil then
         Weapon.WeaponLevel = Level
         Weapon.WeaponConfigID = WeaponInfo.ID
