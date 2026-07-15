@@ -46,6 +46,18 @@ local function IsLocalPlayerPawn(player)
 end
 
 local function GetWeaponBaseAttack(player)
+    if player == nil then
+        return DEFAULT_BASE_ATTACK
+    end
+
+    if player.PlayerState ~= nil and player.PlayerState.GetBaseAttack ~= nil then
+        local StateBaseAttack = tonumber(player.PlayerState:GetBaseAttack())
+        if StateBaseAttack ~= nil and StateBaseAttack > 0 then
+            player.WeaponBaseAttackPower = StateBaseAttack
+            return StateBaseAttack
+        end
+    end
+
     local CurrentAttack = DEFAULT_BASE_ATTACK
     if player ~= nil and UGCAttributeSystem ~= nil and UGCAttributeSystem.GetGameAttributeValue ~= nil then
         CurrentAttack = tonumber(UGCAttributeSystem.GetGameAttributeValue(player, "AttackPower")) or DEFAULT_BASE_ATTACK
@@ -446,6 +458,16 @@ local function GetWeaponInfoFromObject(Object)
         local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
         if WeaponInfo ~= nil then
             return ItemID, WeaponInfo
+        end
+    end
+
+    local ObjectName = GetWeaponObjectItemName(Object) or GetObjectName(Object)
+    local SeriesKey = GetSeriesKeyFromName(ObjectName)
+    if SeriesKey ~= nil then
+        local SeriesItemID = WeaponLevelConfig.GetItemID(SeriesKey, 1)
+        local SeriesInfo = WeaponLevelConfig.GetWeaponInfo(SeriesItemID)
+        if SeriesInfo ~= nil then
+            return SeriesItemID, SeriesInfo
         end
     end
 
