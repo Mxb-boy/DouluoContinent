@@ -72,7 +72,7 @@ end
 
 -- Notify UI10 to update the top preview.
 function NewUGCWidgetBlueprint:Button_97_OnClicked()
-    if self.OwnerUI ~= nil and self.OwnerUI.SelectWeapon ~= nil then
+    if self.OwnerUI ~= nil and self.OwnerUI.SelectWeapon ~= nil and self.WeaponInstance ~= nil then
         self.OwnerUI:SelectWeapon(self.WeaponName, self.IconPath, self.ItemID, self.WeaponInstance)
     end
 end

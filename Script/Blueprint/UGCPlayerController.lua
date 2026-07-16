@@ -19,7 +19,8 @@ local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
 local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
-    QNHH = 8310036
+    QNHH = 8310036,
+    Protect = 8310121
 }
 local DisuseItemFunctionNames = {"DisuseItemV2", "UnUseItemV2", "CancelUseItemV2", "StopUseItemV2"}
 local SoulRingItemIDs = {8310048, 8310049, 8310051, 8310053, 8310054, 8310055, 8310056, 8310057, 8310052, 8310050}
@@ -1024,8 +1025,9 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num,
     end
 end
 
-function UGCPlayerController:Server_ForgeWeapon(ItemID)
+function UGCPlayerController:Server_ForgeWeapon(ItemID, UseProtect)
     ItemID = tonumber(ItemID)
+    local bRequestProtect = UseProtect == true or tonumber(UseProtect) == 1
     local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
     if ItemID == nil or WeaponInfo == nil then
         ugcprint("[UGCPlayerController:Server_ForgeWeapon] Invalid item: " .. tostring(ItemID))
@@ -1071,13 +1073,22 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
         end
     end
 
-    local ResultType = WeaponLevelConfig.RollForgeResult(ItemID, CurrentLevel)
-    local ResultLevel = WeaponLevelConfig.GetResultLevel(ItemID, CurrentLevel, ResultType)
+    local RollResultType = WeaponLevelConfig.RollForgeResult(ItemID, CurrentLevel)
+    local ResultType = RollResultType
+    local bUseProtectThisForge = RollResultType == "Destroy" and bRequestProtect == true and CurrentLevel >= 10 and
+                                     CurrentLevel <= 14 and GetItemCount(self, ForgeMaterialItemIDs.Protect) > 0
+    local ResultLevel = nil
+    if bUseProtectThisForge then
+        ResultType = "Protect"
+        ResultLevel = math.random(6, 10)
+    else
+        ResultLevel = WeaponLevelConfig.GetResultLevel(ItemID, CurrentLevel, RollResultType)
+    end
     local ResultItemID = nil
-    if ResultType ~= "Destroy" then
+    if RollResultType ~= "Destroy" or bUseProtectThisForge then
         ResultItemID = GetResultItemIDByLevel(WeaponInfo, ResultLevel, ItemID) or ItemID
     end
-    local ShouldRemoveWeapon = ResultType == "Destroy" or ResultItemID ~= ItemID
+    local ShouldRemoveWeapon = RollResultType == "Destroy" or ResultItemID ~= ItemID
     if ShouldRemoveWeapon then
         local ItemDefineID = FindBackpackItemDefineID(self, ItemID)
         if ItemDefineID ~= nil then
@@ -1098,6 +1109,14 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
         ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove QNHH failed")
         return
     end
+    if bUseProtectThisForge and not RemoveItem(self, ForgeMaterialItemIDs.Protect, 1) then
+        AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
+        AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", "Error", ItemID, ItemID, CurrentLevel)
+        ClearForgeWeaponBusy()
+        ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove protect item failed")
+        return
+    end
 
     UGCTimerUtility.CreateLuaTimer(0.2, function()
         if self == nil then
@@ -1108,11 +1127,15 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
         if ShouldRemoveWeapon then
             if not RemoveItem(self, ItemID, 1) then
                 local ItemDefineID = FindBackpackItemDefineID(self, ItemID)
-                local bSavedLevel = ResultType ~= "Destroy" and ItemDefineID ~= nil and
+                local bSavedLevel = RollResultType ~= "Destroy" or bUseProtectThisForge
+                bSavedLevel = bSavedLevel and ItemDefineID ~= nil and
                                         SetWeaponLevelToItemDefineID(ItemDefineID, WeaponInfo, ResultLevel, 1) == true
                 if not bSavedLevel then
                     AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
                     AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
+                    if bUseProtectThisForge then
+                        AddItem(self, ForgeMaterialItemIDs.Protect, 1)
+                    end
                     UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", "Error", ItemID, ItemID,
                         CurrentLevel)
                     ClearForgeWeaponBusy()
@@ -1124,15 +1147,21 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
                 ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove old weapon failed, saved level on item: " ..
                     tostring(ItemID) .. ", level=" .. tostring(ResultLevel))
             end
-            if ResultType ~= "Destroy" and not bKeptOriginalWeapon and not AddItem(self, ResultItemID, 1) then
-                AddItem(self, ItemID, 1)
-                AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
-                AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
-                UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", "Error", ItemID, ItemID,
-                    CurrentLevel)
-                ClearForgeWeaponBusy()
-                ugcprint("[UGCPlayerController:Server_ForgeWeapon] Add result weapon failed: " .. tostring(ResultItemID))
-                return
+            if RollResultType ~= "Destroy" or bUseProtectThisForge then
+                if not bKeptOriginalWeapon and not AddItem(self, ResultItemID, 1) then
+                    AddItem(self, ItemID, 1)
+                    AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
+                    AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
+                    if bUseProtectThisForge then
+                        AddItem(self, ForgeMaterialItemIDs.Protect, 1)
+                    end
+                    UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", "Error", ItemID, ItemID,
+                        CurrentLevel)
+                    ClearForgeWeaponBusy()
+                    ugcprint("[UGCPlayerController:Server_ForgeWeapon] Add result weapon failed: " ..
+                        tostring(ResultItemID))
+                    return
+                end
             end
         end
 
@@ -1158,7 +1187,8 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID)
 
     ugcprint(
         "[UGCPlayerController:Server_ForgeWeapon] result=" .. tostring(ResultType) .. ", item=" .. tostring(ItemID) ..
-            "->" .. tostring(ResultItemID) .. ", level=" .. tostring(CurrentLevel) .. "->" .. tostring(ResultLevel))
+            "->" .. tostring(ResultItemID) .. ", level=" .. tostring(CurrentLevel) .. "->" .. tostring(ResultLevel) ..
+            ", protect=" .. tostring(bUseProtectThisForge))
 end
 
 function UGCPlayerController:Client_ForgeWeaponResult(ResultType, OldItemID, ResultItemID, ResultLevel, ItemDefineID,

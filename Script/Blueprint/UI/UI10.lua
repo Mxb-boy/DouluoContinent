@@ -1,9 +1,11 @@
-﻿---@class UI10_C:UUserWidget
----@field Button_78 UButton
+---@class UI10_C:UUserWidget
+---@field Button_24 UButton
 ---@field Button_125 UButton
 ---@field button_dz UButton
 ---@field GDK UScrollBox
+---@field Image_35 UImage
 ---@field Image_66 UImage
+---@field Image_72 UImage
 ---@field Image_112 UImage
 ---@field Image_180 UImage
 ---@field Image_181 UImage
@@ -20,7 +22,6 @@
 ---@field NewUGCWidgetBlueprint_C_2 NewUGCWidgetBlueprint_C
 ---@field NewUGCWidgetBlueprint_C_3 NewUGCWidgetBlueprint_C
 ---@field NewUGCWidgetBlueprint_C_4 NewUGCWidgetBlueprint_C
----@field NewUGCWidgetBlueprint_C_5 NewUGCWidgetBlueprint_C
 ---@field NewUGCWidgetBlueprint_C_6 NewUGCWidgetBlueprint_C
 ---@field NewUGCWidgetBlueprint_C_7 NewUGCWidgetBlueprint_C
 ---@field NewUGCWidgetBlueprint_C_8 NewUGCWidgetBlueprint_C
@@ -38,6 +39,8 @@
 ---@field text_jj UTextBlock
 ---@field text_name_1 UTextBlock
 ---@field text_qnhh UTextBlock
+---@field TextBlock_1 UTextBlock
+---@field TextBlock_2 UTextBlock
 ---@field TextBlock_297 UTextBlock
 --Edit Below--
 -- 武器锻造 UI：负责读取背包武器、显示材料消耗，并向服务器发起锻造请求。
@@ -52,6 +55,7 @@ local ForgeResultWidgetPath = "Asset/Blueprint/UI/NewUGCWidgetBlueprint.NewUGCWi
 local MaterialItemIDs = {
     HGRJ = 8310035,
     QNHH = 8310036,
+    Protect = 8310121,
 }
 
 -- UI 固定文案，使用 char 避免部分编辑器保存中文时乱码。
@@ -59,10 +63,13 @@ local TextLabels = {
     Success = string.char(230, 136, 144, 229, 138, 159, 239, 188, 154),
     Keep = string.char(228, 191, 157, 230, 140, 129, 228, 184, 141, 229, 143, 152, 239, 188, 154),
     Down = string.char(233, 153, 141, 231, 186, 167, 239, 188, 154),
+    Destroy = string.char(230, 175, 129, 229, 157, 143, 239, 188, 154),
     AttackBonus = string.char(230, 148, 187, 229, 135, 187, 229, 138, 160, 230, 136, 144),
     OpenParen = string.char(239, 188, 136),
     CloseParen = string.char(239, 188, 137),
     MaterialNotEnough = string.char(230, 157, 144, 230, 150, 153, 228, 184, 141, 232, 182, 179),
+    ProtectLevelLimit = string.char(230, 173, 166, 229, 153, 168, 49, 48, 45, 49, 52, 231, 186, 167, 229, 143, 175, 228, 189, 191, 231, 148, 168, 228, 191, 157, 230, 138, 164, 229, 141, 183),
+    ProtectNotEnough = string.char(230, 178, 161, 230, 156, 137, 229, 188, 186, 229, 140, 150, 228, 191, 157, 230, 138, 164, 229, 141, 183),
 }
 
 -- 武器品质显示名称。
@@ -163,18 +170,24 @@ function UI10:LuaInit()
     if self:BindForgeButton(self.Button_78, "Button_78") then
         BoundCount = BoundCount + 1
     end
+    if self.Button_24 ~= nil and self.Button_24.OnClicked ~= nil then
+        self.Button_24.OnClicked:Add(self.Button_24_OnClicked, self)
+        UIEffectUtil.BindPressScale(self, self.Button_24, self.Button_24, 1.06, 1.0)
+    end
     if BoundCount <= 0 then
         ugcprint("[UI10:LuaInit] Forge button is nil")
     else
         ugcprint("[UI10:LuaInit] Forge button bind count=" .. tostring(BoundCount))
     end
 
+    self:SetForgeProtectSelected(false)
     self:InitWeaponWidgets()
 end
 
 function UI10:Open()
     self:LuaInit()
     self.bForgeBackpackSyncPending = false
+    self:SetForgeProtectSelected(false)
     self:SetVisibility(ESlateVisibility.Visible)
     self:InitWeaponWidgets()
 
@@ -224,7 +237,51 @@ end
 -- 关闭界面时只隐藏实例，方便下次打开复用。
 function UI10:Button_125_OnClicked()
     ugcprint("[UI10:Button_125_OnClicked] Close UI10")
+    self:SetForgeProtectSelected(false)
     self:SetVisibility(ESlateVisibility.Collapsed)
+end
+
+function UI10:SetForgeProtectSelected(bSelected)
+    self.bUseForgeProtect = bSelected == true
+    if self.Image_35 ~= nil then
+        self.Image_35:SetVisibility(self.bUseForgeProtect and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
+    end
+end
+
+function UI10:GetSelectedWeaponLevel()
+    local ItemID = self:GetItemIDFromDefineID(self.SelectedWeaponDefineID) or tonumber(self.SelectedWeaponItemID)
+    local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+    return tonumber(self.SelectedWeaponLevel) or
+               self:GetWeaponLevelByDefineID(self.SelectedWeaponDefineID, WeaponInfo, self.SelectedWeaponStackIndex) or 1
+end
+
+function UI10:ShowToast(Text)
+    if L_Com ~= nil and L_Com.ShowToast ~= nil then
+        L_Com.ShowToast(Text)
+    end
+end
+
+function UI10:Button_24_OnClicked()
+    if self.bUseForgeProtect == true then
+        self:SetForgeProtectSelected(false)
+        return
+    end
+
+    local SelectedLevel = self:GetSelectedWeaponLevel()
+    if SelectedLevel < 10 or SelectedLevel > 14 then
+        self:ShowToast(TextLabels.ProtectLevelLimit)
+        self:SetForgeProtectSelected(false)
+        return
+    end
+
+    local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    if self:GetBackpackItemCount(PlayerPawn, MaterialItemIDs.Protect) <= 0 then
+        self:ShowToast(TextLabels.ProtectNotEnough)
+        self:SetForgeProtectSelected(false)
+        return
+    end
+
+    self:SetForgeProtectSelected(true)
 end
 
 -- 从背包刷新底部武器格子，并默认选中第一把可锻造武器。
@@ -594,13 +651,28 @@ function UI10:SelectWeapon(WeaponName, IconPath, SelectKey, WeaponInstance)
             end
         end
     end
+    if WeaponInstance == nil then
+        local MaybeItemID = tonumber(SelectKey)
+        if WeaponLevelConfig.GetWeaponInfo(MaybeItemID) ~= nil then
+            WeaponInstance = {
+                Name = WeaponName,
+                IconPath = IconPath,
+                ItemID = MaybeItemID,
+                SelectKey = tonumber(SelectKey),
+            }
+        elseif self.SelectedWeaponItemID ~= nil then
+            ugcprint("[UI10:SelectWeapon] ignore invalid select key: " .. tostring(SelectKey))
+            return
+        end
+    end
     self.SelectedWeaponName = WeaponName
     self.SelectedWeaponIconPath = IconPath
-    self.SelectedWeaponItemID = WeaponInstance ~= nil and WeaponInstance.ItemID or SelectKey
+    self.SelectedWeaponItemID = WeaponInstance ~= nil and WeaponInstance.ItemID or nil
     self.SelectedWeaponDefineID = WeaponInstance ~= nil and WeaponInstance.ItemDefineID or nil
     self.SelectedWeaponStackIndex = WeaponInstance ~= nil and WeaponInstance.StackIndex or nil
     self.SelectedWeaponSelectKey = WeaponInstance ~= nil and WeaponInstance.SelectKey or tonumber(SelectKey)
     self.SelectedWeaponLevel = WeaponInstance ~= nil and WeaponInstance.Level or nil
+    self:SetForgeProtectSelected(false)
 
     if self.text_name_1 ~= nil then
         self.text_name_1:SetText(WeaponName or "")
@@ -628,10 +700,13 @@ function UI10:RefreshForgeInfo()
                             self:GetWeaponLevelByDefineID(self.SelectedWeaponDefineID, WeaponInfo,
                                 self.SelectedWeaponStackIndex)
     local Cost = WeaponLevelConfig.GetForgeCost(self.SelectedWeaponItemID, WeaponLevel) or { HGRJ = 0, QNHH = 0 }
-    local Rate = WeaponLevelConfig.GetForgeRate(self.SelectedWeaponItemID, WeaponLevel) or { Success = 0, Keep = 0, Down = 0 }
+    local Rate = WeaponLevelConfig.GetForgeRate(self.SelectedWeaponItemID, WeaponLevel) or { Success = 0, Keep = 0, Down = 0, Destroy = 0 }
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
     local HGRJCount = self:GetBackpackItemCount(PlayerPawn, MaterialItemIDs.HGRJ)
     local QNHHCount = self:GetBackpackItemCount(PlayerPawn, MaterialItemIDs.QNHH)
+    if (WeaponLevel < 10 or WeaponLevel > 14) and self.bUseForgeProtect == true then
+        self:SetForgeProtectSelected(false)
+    end
 
     if self.text_hgrj ~= nil then
         self.text_hgrj:SetText(tostring(HGRJCount) .. "/" .. tostring(Cost.HGRJ or 0))
@@ -647,6 +722,9 @@ function UI10:RefreshForgeInfo()
     end
     if self.text_jj ~= nil then
         self.text_jj:SetText(TextLabels.Down .. tostring(Rate.Down or 0) .. "%")
+    end
+    if self.TextBlock_1 ~= nil then
+        self.TextBlock_1:SetText(TextLabels.Destroy .. tostring(Rate.Destroy or 0) .. "%")
     end
     if self.TextBlock_297 ~= nil then
         local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(self.SelectedWeaponItemID)
@@ -834,6 +912,7 @@ function UI10:RefreshSelectedWeaponFromBackpack()
     local CurrentItemID = self:GetItemIDFromDefineID(self.SelectedWeaponDefineID) or tonumber(self.SelectedWeaponItemID)
     local CurrentInfo = WeaponLevelConfig.GetWeaponInfo(CurrentItemID)
     if CurrentInfo == nil then
+        self:SelectFirstBackpackWeapon()
         return
     end
 
@@ -852,6 +931,16 @@ function UI10:RefreshSelectedWeaponFromBackpack()
     end
 end
 
+function UI10:SelectFirstBackpackWeapon()
+    local WeaponList = self:GetBackpackWeaponList()
+    self.WeaponList = WeaponList
+    if WeaponList[1] ~= nil then
+        self:SelectWeapon(WeaponList[1].Name, WeaponList[1].IconPath, WeaponList[1].SelectKey or 1, WeaponList[1])
+        return true
+    end
+    return false
+end
+
 -- 点击锻造：先做本地材料和武器检查，再请求服务器执行锻造。
 function UI10:Button_dz_OnClicked()
     ugcprint("[UI10:Button_dz_OnClicked] clicked")
@@ -862,8 +951,12 @@ function UI10:Button_dz_OnClicked()
     self.LastForgeClickTime = NowTime
 
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    local bProtectSelectedBeforeRefresh = self.bUseForgeProtect == true
     self:RefreshSelectedWeaponFromBackpack()
     local ItemID = self:GetItemIDFromDefineID(self.SelectedWeaponDefineID) or tonumber(self.SelectedWeaponItemID)
+    if WeaponLevelConfig.GetWeaponInfo(ItemID) == nil and self:SelectFirstBackpackWeapon() == true then
+        ItemID = self:GetItemIDFromDefineID(self.SelectedWeaponDefineID) or tonumber(self.SelectedWeaponItemID)
+    end
     if PlayerPawn == nil or ItemID == nil then
         ugcprint("[UI10:Button_dz_OnClicked] PlayerPawn or selected weapon is nil")
         self:ShowForgeResultPopup("Error", self.SelectedWeaponIconPath)
@@ -909,9 +1002,13 @@ function UI10:Button_dz_OnClicked()
         return
     end
 
+    local UseProtect = bProtectSelectedBeforeRefresh and SelectedLevel >= 10 and SelectedLevel <= 14 and
+                           self:GetBackpackItemCount(PlayerPawn, MaterialItemIDs.Protect) > 0 and 1 or 0
     ugcprint("[UI10:Button_dz_OnClicked] Call Server_ForgeWeapon item=" .. tostring(ItemID) ..
-        ", define=" .. tostring(self.SelectedWeaponDefineID) .. ", stack=" .. tostring(self.SelectedWeaponStackIndex or 1))
-    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_ForgeWeapon", ItemID)
+        ", define=" .. tostring(self.SelectedWeaponDefineID) .. ", stack=" .. tostring(self.SelectedWeaponStackIndex or 1) ..
+        ", protect=" .. tostring(UseProtect))
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_ForgeWeapon", ItemID, UseProtect)
+    self:SetForgeProtectSelected(false)
 end
 
 -- 本地消耗锻造材料和替换武器的兜底逻辑。
