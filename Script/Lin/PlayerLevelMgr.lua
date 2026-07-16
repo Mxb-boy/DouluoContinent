@@ -4,8 +4,8 @@ local PlayerLevelMgr = {}
 --[[----------------------配置表路径------------------------]] --
 local LEVEL_TABLE_PATH = "Data/Table/Lin/DT_PlayerLevelConfig"
 local WAVE_EXP_TABLE_PATH = "Data/Table/Lin/DT_WaveExpConfig"
-local DEFAULT_MAX_LEVEL = 40
-local PLAYER_SKILL_1_REQUIRED_LEVEL = 20
+local DEFAULT_MAX_LEVEL = 50
+local PLAYER_SKILL_1_REQUIRED_LEVEL = 50
 local PLAYER_SKILL_1_PATH = "Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/PlayerSkill_1.PlayerSkill_1_C"
 
 --[[----------------------读取某一级的配置------------------------]] --
@@ -55,6 +55,13 @@ function PlayerLevelMgr:GetCurrentLevelExp(totalExp, level)
     return math.max((tonumber(totalExp) or 0) - levelStartExp, 0)
 end
 
+--[[----------------------计算当前等级升级所需经验------------------------]] --
+function PlayerLevelMgr:GetCurrentLevelMaxExp(level, nextTotalExp)
+    local cfg = self:GetLevelConfig(level)
+    local levelStartExp = cfg and (tonumber(cfg.ExpRequired) or 0) or 0
+    return math.max((tonumber(nextTotalExp) or levelStartExp) - levelStartExp, 0)
+end
+
 --[[----------------------给玩家增加经验------------------------]] --
 -- PlayerController：获得经验的玩家控制器
 -- amount：增加的经验值
@@ -95,7 +102,8 @@ function PlayerLevelMgr:AddExp(PlayerController, amount)
     -- UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
     --     "添加的经验是" .. tostring(amount))
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_RefreshPlayerExp",
-        self:GetCurrentLevelExp(newExp, newLevel), playerState:GetPlayerMaxExp(), newLevel)
+        self:GetCurrentLevelExp(newExp, newLevel),
+        self:GetCurrentLevelMaxExp(newLevel, playerState:GetPlayerMaxExp()), newLevel)
     return newLevel > oldLevel, newLevel
 end
 

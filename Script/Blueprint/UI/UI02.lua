@@ -793,7 +793,11 @@ function UI02:RefreshPlayerExpUI(playerExp, playerMaxExp)
         Exp = Exp or PlayerState:GetPlayerExp()
         MaxExp = MaxExp or PlayerState:GetPlayerMaxExp()
         if playerExp == nil and PlayerLevelMgr ~= nil and PlayerLevelMgr.GetCurrentLevelExp ~= nil then
-            Exp = PlayerLevelMgr:GetCurrentLevelExp(Exp, PlayerState:GetPlayerLevel())
+            local PlayerLevel = PlayerState:GetPlayerLevel()
+            Exp = PlayerLevelMgr:GetCurrentLevelExp(Exp, PlayerLevel)
+            if PlayerLevelMgr.GetCurrentLevelMaxExp ~= nil then
+                MaxExp = PlayerLevelMgr:GetCurrentLevelMaxExp(PlayerLevel, MaxExp)
+            end
         end
     end
     Exp = Exp or 0

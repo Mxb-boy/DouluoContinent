@@ -855,7 +855,7 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     self:EnsurePlayerTitleActor()
 end
 
-local PLAYER_SKILL_1_REQUIRED_LEVEL = 20 -- 第一个技能解锁需要的等级
+local PLAYER_SKILL_1_REQUIRED_LEVEL = 50 -- 第一个技能解锁需要的等级
 local PLAYER_SKILL_1_PATH = 'Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/PlayerSkill_1.PlayerSkill_1_C'
 
 function UGCPlayerPawn:OnPawnInit()
