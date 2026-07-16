@@ -81,3 +81,7 @@ Thumbnail.png
 Doc/
 bridge_helper.py
 AGENTS.md
+DocModel/
+.workbuddy/
+.codebuddy/
+CODEBUDDY.md
