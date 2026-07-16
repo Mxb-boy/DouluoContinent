@@ -2,6 +2,7 @@
 ---@field Button_24 UButton
 ---@field Button_125 UButton
 ---@field button_dz UButton
+---@field CanvasPanel_0 UCanvasPanel
 ---@field GDK UScrollBox
 ---@field Image_35 UImage
 ---@field Image_66 UImage
@@ -41,6 +42,7 @@
 ---@field text_qnhh UTextBlock
 ---@field TextBlock_1 UTextBlock
 ---@field TextBlock_2 UTextBlock
+---@field TextBlock_106 UTextBlock
 ---@field TextBlock_297 UTextBlock
 --Edit Below--
 -- 武器锻造 UI：负责读取背包武器、显示材料消耗，并向服务器发起锻造请求。
@@ -243,8 +245,12 @@ end
 
 function UI10:SetForgeProtectSelected(bSelected)
     self.bUseForgeProtect = bSelected == true
+    local Visibility = self.bUseForgeProtect and ESlateVisibility.Visible or ESlateVisibility.Collapsed
     if self.Image_35 ~= nil then
-        self.Image_35:SetVisibility(self.bUseForgeProtect and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
+        self.Image_35:SetVisibility(Visibility)
+    end
+    if self.TextBlock_106 ~= nil then
+        self.TextBlock_106:SetVisibility(Visibility)
     end
 end
 
