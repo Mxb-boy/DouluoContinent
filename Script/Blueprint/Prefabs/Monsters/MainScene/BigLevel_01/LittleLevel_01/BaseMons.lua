@@ -5,6 +5,7 @@
 local BaseMons = {}
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
+local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 
 local function DisableMonsterCollision(monster)
     if monster.HitBox ~= nil then
@@ -100,6 +101,10 @@ function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEven
             self.UGCPresetCommonDropItemComponent:StartDropByProduceID(DropID, -1,
                 EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor, nil)
         end
+
+        --[[----------------------怪物死亡给击杀者加经验------------------------]] --
+        local KillExp = PlayerLevelMgr:GetWaveKillExp(self.MonsterID)
+        PlayerLevelMgr:AddExp(EventInstigator, KillExp)
     end
 
     TaskMgr:RequestAddTaskProgress(L_Enum.AllTask.KillMonster, 1)

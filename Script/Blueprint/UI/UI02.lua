@@ -69,6 +69,89 @@
 ---@field ProgressBar_1 UProgressBar
 ---@field ProgressBar_2 UProgressBar
 ---@field ProgressBar_122 UProgressBar
+---@field ProgressBar_171 UProgressBar
+---@field TextBlock_0 UTextBlock
+---@field TextBlock_1 UTextBlock
+---@field TextBlock_49 UTextBlock
+---@field TextBlock_50 UTextBlock
+---@field TextBlock_109 UTextBlock
+---@field TextBlock_110 UTextBlock
+---@field TextBlock_112 UTextBlock
+---@field TextBlock_114 UTextBlock
+---@field TextBlock_132 UTextBlock
+---@field TextBlock_303 UTextBlock
+--Edit Below--
+---@class UI02_C:UUserWidget
+---@field Avarar_frame varar_frame_C
+---@field Button_0 UButton
+---@field Button_1 UButton
+---@field Button_2 UButton
+---@field Button_3 UButton
+---@field Button_4 UButton
+---@field Button_5 UButton
+---@field Button_92 UButton
+---@field Button_93 UButton
+---@field Button_94 UButton
+---@field Button_95 UButton
+---@field Button_97 UButton
+---@field Button_99 UButton
+---@field Button_134 UButton
+---@field Button_135 UButton
+---@field Button_144 UButton
+---@field Button_145 UButton
+---@field Button_147 UButton
+---@field Button_149 UButton
+---@field Button_150 UButton
+---@field Button_151 UButton
+---@field Button_152 UButton
+---@field Button_153 UButton
+---@field Button_154 UButton
+---@field Button_155 UButton
+---@field Button_156 UButton
+---@field Button_157 UButton
+---@field Button_158 UButton
+---@field Button_226 UButton
+---@field Button_227 UButton
+---@field Button_228 UButton
+---@field gjl UTextBlock
+---@field hp UTextBlock
+---@field Image_0 UImage
+---@field Image_1 UImage
+---@field Image_2 UImage
+---@field Image_3 UImage
+---@field Image_4 UImage
+---@field Image_5 UImage
+---@field Image_6 UImage
+---@field Image_7 UImage
+---@field Image_8 UImage
+---@field Image_9 UImage
+---@field Image_10 UImage
+---@field Image_11 UImage
+---@field Image_12 UImage
+---@field Image_13 UImage
+---@field Image_14 UImage
+---@field Image_43 UImage
+---@field Image_109 UImage
+---@field Image_169 UImage
+---@field Image_225 UImage
+---@field Image_246 UImage
+---@field Image_302 UImage
+---@field Image_303 UImage
+---@field Image_386 UImage
+---@field Image_387 UImage
+---@field Image_388 UImage
+---@field Image_389 UImage
+---@field Image_392 UImage
+---@field Image_393 UImage
+---@field Image_395 UImage
+---@field Image_396 UImage
+---@field Image_397 UImage
+---@field Image_398 UImage
+---@field Image_542 UImage
+---@field ProgressBar_0 UProgressBar
+---@field ProgressBar_1 UProgressBar
+---@field ProgressBar_2 UProgressBar
+---@field ProgressBar_122 UProgressBar
 ---@field TextBlock_0 UTextBlock
 ---@field TextBlock_1 UTextBlock
 ---@field TextBlock_49 UTextBlock
@@ -78,7 +161,7 @@
 ---@field TextBlock_112 UTextBlock
 ---@field TextBlock_114 UTextBlock
 ---@field TextBlock_303 UTextBlock
---Edit Below--
+-- Edit Below--
 ---@class UI02_C:UUserWidget
 ---@field Button_0 UButton
 ---@field Button_2 UButton
@@ -442,6 +525,8 @@ local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
+local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
+local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 
 local UI02 = {
     bInitDoOnce = false
@@ -463,8 +548,18 @@ local MainButtonRedDots = {
 local MainFoldImages = {"Image_386", "Image_387", "Image_388", "Image_389", "Image_392", "Image_393", "Image_395",
                         "Image_396"}
 local HiddenMainWidgets = {"Button_147", "Button_156", "Button_157", "Image_9", "Image_14", "Image_397", "Image_398"}
-local ToggleButtonNormalColor = {R = 1.0, G = 1.0, B = 1.0, A = 1.0}
-local ToggleButtonGrayColor = {R = 0.45, G = 0.45, B = 0.45, A = 1.0}
+local ToggleButtonNormalColor = {
+    R = 1.0,
+    G = 1.0,
+    B = 1.0,
+    A = 1.0
+}
+local ToggleButtonGrayColor = {
+    R = 0.45,
+    G = 0.45,
+    B = 0.45,
+    A = 1.0
+}
 
 function UI02:Construct()
     self:LuaInit()
@@ -563,6 +658,7 @@ function UI02:LuaInit()
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
     StateMgr:SetUI(self)
+    self:RefreshPlayerExpUI()
     self:RefreshRealmNameText()
 
     self:SetTowerOutBoxImageVisible(false)
@@ -682,6 +778,33 @@ function UI02:GetLocalPlayerState()
     end
 
     return nil
+end
+
+--[[----------------------刷新玩家经验显示------------------------]]
+function UI02:RefreshPlayerExpUI(playerExp, playerMaxExp)
+    local PlayerState = self:GetLocalPlayerState()
+    if PlayerState == nil and playerExp == nil and playerMaxExp == nil then
+        return
+    end
+
+    local Exp = tonumber(playerExp)
+    local MaxExp = tonumber(playerMaxExp)
+    if PlayerState ~= nil then
+        Exp = Exp or PlayerState:GetPlayerExp()
+        MaxExp = MaxExp or PlayerState:GetPlayerMaxExp()
+        if playerExp == nil and PlayerLevelMgr ~= nil and PlayerLevelMgr.GetCurrentLevelExp ~= nil then
+            Exp = PlayerLevelMgr:GetCurrentLevelExp(Exp, PlayerState:GetPlayerLevel())
+        end
+    end
+    Exp = Exp or 0
+    MaxExp = MaxExp or 100
+    local Percent = 0
+    if MaxExp > 0 then
+        Percent = math.min(Exp / MaxExp, 1)
+    end
+
+    self.ProgressBar_171:SetPercent(Percent)
+    self.TextBlock_132:SetText(tostring(Exp) .. "/" .. tostring(MaxExp))
 end
 
 function UI02:HasYXWDInvincibleBuff()
@@ -1192,6 +1315,8 @@ function UI02:Button_0_OnClicked()
         return
     end
 
+    L_Com.ShowToast("测试成功")
+
     local KJ04Class = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath("Asset/kj04.kj04_C"))
     if KJ04Class == nil then
         ugcprint("[UI02:Button_0_OnClicked] kj04 class load failed")
@@ -1205,6 +1330,7 @@ function UI02:Button_0_OnClicked()
     end
 
     KJ04Instance:AddToViewport(12000)
+
 end
 
 -- 自动拾取

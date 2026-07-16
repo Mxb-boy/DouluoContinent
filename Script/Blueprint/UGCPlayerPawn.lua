@@ -851,8 +851,18 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     if not self:HasAuthority() then
         return
     end
-
+    self:OnPawnInit()
     self:EnsurePlayerTitleActor()
+end
+
+local PLAYER_SKILL_1_REQUIRED_LEVEL = 20 -- 第一个技能解锁需要的等级
+local PLAYER_SKILL_1_PATH = 'Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/PlayerSkill_1.PlayerSkill_1_C'
+
+function UGCPlayerPawn:OnPawnInit()
+    local playerState = self.PlayerState
+    if playerState ~= nil and playerState:GetPlayerLevel() >= PLAYER_SKILL_1_REQUIRED_LEVEL then
+        UGCPersistEffectSystem.AddSkillByClass(self, UGCGameSystem.GetUGCResourcesFullPath(PLAYER_SKILL_1_PATH))
+    end
 end
 
 function UGCPlayerPawn:ReceiveTick(DeltaTime)

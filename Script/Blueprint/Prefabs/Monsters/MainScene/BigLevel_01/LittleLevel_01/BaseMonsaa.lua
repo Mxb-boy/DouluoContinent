@@ -4,6 +4,7 @@
 ---@field MonsterID int32
 --Edit Below--
 local BaseMonsaa = {}
+local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 
 local function DisableMonsterCollision(monster)
     if monster.HitBox ~= nil then
@@ -103,6 +104,10 @@ function BaseMonsaa:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEv
                 nil
             )
         end
+
+        --[[----------------------怪物死亡给击杀者加经验------------------------]] --
+        local KillExp = PlayerLevelMgr:GetWaveKillExp(self.MonsterID)
+        PlayerLevelMgr:AddExp(EventInstigator, KillExp)
     end
 end
 

@@ -21,7 +21,12 @@ local UGCPlayerState = {
     bArchiveLoaded = false, -- 服务器侧标志：LoadFromArchive 成功后置 true
 
     BaseAttack = 40, -- 基础攻击力
-    BaseMaxHp = 100 -- 基础最大血量
+    BaseMaxHp = 100, -- 基础最大血量
+    --[[-------------------玩家等级相关---------------------------]] --
+    PlayerLevel = 1, -- 玩家等级
+    PlayerExp = 0, -- 当前累计经验
+    PlayerMaxExp = 100 -- 下一级经验的阈值
+
 }
 
 -- ============================================================
@@ -80,15 +85,47 @@ local ARCHIVE_KEYS = {{
 } -- 示例: { key = "Gold",    field = "Gold",    default = 0 },
 }
 
-table.insert(ARCHIVE_KEYS, { key = "UnlockedTitles", field = "UnlockedTitles", default = {} })
-table.insert(ARCHIVE_KEYS, { key = "EquippedTitleID", field = "EquippedTitleID", default = 0 })
-table.insert(ARCHIVE_KEYS, { key = "Probability_Bonus", field = "Probability_Bonus", default = 100 })
-table.insert(ARCHIVE_KEYS, { key = "SignInEvent", field = "SignInEvent", default = {} })
+table.insert(ARCHIVE_KEYS, {
+    key = "UnlockedTitles",
+    field = "UnlockedTitles",
+    default = {}
+})
+table.insert(ARCHIVE_KEYS, {
+    key = "EquippedTitleID",
+    field = "EquippedTitleID",
+    default = 0
+})
+table.insert(ARCHIVE_KEYS, {
+    key = "Probability_Bonus",
+    field = "Probability_Bonus",
+    default = 100
+})
+table.insert(ARCHIVE_KEYS, {
+    key = "SignInEvent",
+    field = "SignInEvent",
+    default = {}
+})
+table.insert(ARCHIVE_KEYS, {
+    key = "PlayerLevel",
+    field = "PlayerLevel",
+    default = 1
+})
+table.insert(ARCHIVE_KEYS, {
+    key = "PlayerExp",
+    field = "PlayerExp",
+    default = 0
+})
+table.insert(ARCHIVE_KEYS, {
+    key = "PlayerMaxExp",
+    field = "PlayerMaxExp",
+    default = 100
+})
 
 function UGCPlayerState:GetReplicatedProperties()
     return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "WeaponLevels",
             "BaseAttack", "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "UnlockedTitles",
-            "EquippedTitleID", "FeiButton0Hidden", "KJ04GiftPackPurchased"}
+            "EquippedTitleID", "FeiButton0Hidden", "KJ04GiftPackPurchased", "PlayerLevel", "PlayerExp",
+            "PlayerMaxExp"}
 end
 
 -- ------ 跨对局存档 ------ --
@@ -120,8 +157,8 @@ function UGCPlayerState:LoadFromArchive(UID)
                 -- pcall 保护：单个 Setter 失败不影响其他字段加载，且确保锁一定能释放
                 local ok, err = pcall(self[setterName], self, val)
                 if not ok then
-                    print(string.format("[UGCPlayerState] LoadFromArchive: %s failed for key %s: %s",
-                        setterName, entry.key, tostring(err)))
+                    print(string.format("[UGCPlayerState] LoadFromArchive: %s failed for key %s: %s", setterName,
+                        entry.key, tostring(err)))
                 end
             end
         end
@@ -203,6 +240,33 @@ end
 
 function UGCPlayerState:SetBaseMaxHp(value)
     self.BaseMaxHp = tonumber(value) or 100
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetPlayerLevel()
+    return tonumber(self.PlayerLevel) or 1
+end
+
+function UGCPlayerState:SetPlayerLevel(value)
+    self.PlayerLevel = tonumber(value) or 1
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetPlayerExp()
+    return tonumber(self.PlayerExp) or 0
+end
+
+function UGCPlayerState:SetPlayerExp(value)
+    self.PlayerExp = tonumber(value) or 0
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetPlayerMaxExp()
+    return tonumber(self.PlayerMaxExp) or 100
+end
+
+function UGCPlayerState:SetPlayerMaxExp(value)
+    self.PlayerMaxExp = tonumber(value) or 100
     self:SaveToArchive()
 end
 
@@ -361,7 +425,8 @@ end
 
 function UGCPlayerState:OnRep_LotteryState()
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
-    local UI14Instance = PlayerController and PlayerController.MainUIInstance and PlayerController.MainUIInstance.UI14Instance
+    local UI14Instance = PlayerController and PlayerController.MainUIInstance and
+                             PlayerController.MainUIInstance.UI14Instance
     if UI14Instance ~= nil and UI14Instance.Refresh ~= nil then
         UI14Instance:Refresh()
     end
