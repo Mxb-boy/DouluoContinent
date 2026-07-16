@@ -24,6 +24,29 @@ local ForgeMaterialItemIDs = {
 local DisuseItemFunctionNames = {"DisuseItemV2", "UnUseItemV2", "CancelUseItemV2", "StopUseItemV2"}
 local SoulRingItemIDs = {8310048, 8310049, 8310051, 8310053, 8310054, 8310055, 8310056, 8310057, 8310052, 8310050}
 
+local function EnsurePlayerStateArchiveUID(PlayerController)
+    if PlayerController == nil or PlayerController.PlayerState == nil then
+        return
+    end
+
+    local PlayerState = PlayerController.PlayerState
+    if PlayerState.ArchiveUID ~= nil and tonumber(PlayerState.ArchiveUID) ~= 0 then
+        return
+    end
+
+    local Pawn = PlayerController.Pawn
+    if Pawn == nil and PlayerController.K2_GetPawn ~= nil then
+        local Success, Result = pcall(PlayerController.K2_GetPawn, PlayerController)
+        if Success then
+            Pawn = Result
+        end
+    end
+
+    if Pawn ~= nil and UGCPawnAttrSystem ~= nil and UGCPawnAttrSystem.GetPlayerUID ~= nil then
+        PlayerState.ArchiveUID = tonumber(UGCPawnAttrSystem.GetPlayerUID(Pawn))
+    end
+end
+
 function UGCPlayerController:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
 
@@ -67,6 +90,14 @@ function UGCPlayerController:ReceiveBeginPlay()
     end
 
     self.MainUIInstance:AddToViewport()
+    if self.MainUIInstance.RefreshYXWDBuffIcon ~= nil then
+        self.MainUIInstance:RefreshYXWDBuffIcon()
+    elseif self.MainUIInstance.RefreshYXWDPurchaseButton ~= nil then
+        self.MainUIInstance:RefreshYXWDPurchaseButton()
+    end
+    if self.ClientYXWDInvincibleBuffEnabled == true and self.MainUIInstance.OnYXWDInvincibleBuffChanged ~= nil then
+        self.MainUIInstance:OnYXWDInvincibleBuffChanged(1, self.ClientYXWDInvincibleBuffDurationSeconds or -2)
+    end
     ugcprint("[UGCPlayerController] MainUI created")
     self:Client_RefreshTitleBonus()
 
@@ -1989,6 +2020,13 @@ function UGCPlayerController:StopTowerAttentionSoundImmediately()
 end
 
 function UGCPlayerController:Client_YXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
+    self.ClientYXWDInvincibleBuffEnabled = bEnabled == true or tonumber(bEnabled) == 1
+    self.ClientYXWDInvincibleBuffDurationSeconds = tonumber(DurationSeconds) or -2
+
+    if self.PlayerState ~= nil and self.ClientYXWDInvincibleBuffEnabled == true then
+        self.PlayerState.YXWD_InvincibleBuff = 1
+    end
+
     if self.MainUIInstance ~= nil and self.MainUIInstance.OnYXWDInvincibleBuffChanged ~= nil then
         self.MainUIInstance:OnYXWDInvincibleBuffChanged(bEnabled, DurationSeconds)
     end
@@ -2126,6 +2164,8 @@ function UGCPlayerController:Server_SetAutoFeatureButtonHidden(FeatureName)
         return
     end
 
+    EnsurePlayerStateArchiveUID(self)
+
     if FeatureName == "AutoPick" then
         if self.PlayerState.SetAutoPickButtonHidden ~= nil then
             self.PlayerState:SetAutoPickButtonHidden(true)
@@ -2155,9 +2195,15 @@ function UGCPlayerController:Client_SetAutoFeatureButtonHidden(FeatureName)
     if self.PlayerState ~= nil then
         if FeatureName == "AutoPick" then
             self.PlayerState.AutoPickButtonHidden = 1
+            self.ClientAutoPickButtonHidden = true
         elseif FeatureName == "AutoAttack" then
             self.PlayerState.AutoAttackButtonHidden = 1
+            self.ClientAutoAttackButtonHidden = true
         end
+    elseif FeatureName == "AutoPick" then
+        self.ClientAutoPickButtonHidden = true
+    elseif FeatureName == "AutoAttack" then
+        self.ClientAutoAttackButtonHidden = true
     end
 
     if self.MainUIInstance ~= nil and self.MainUIInstance.RefreshYXWDPurchaseButton ~= nil then

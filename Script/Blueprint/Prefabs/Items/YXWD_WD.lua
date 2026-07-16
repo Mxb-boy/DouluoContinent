@@ -3,6 +3,20 @@
 local YXWD_WD = {}
 local DEFAULT_BUFF_DURATION_SECONDS = -2
 
+local function EnsureArchiveUID(PlayerController, PlayerState)
+    if PlayerController == nil or PlayerState == nil then
+        return
+    end
+    if PlayerState.ArchiveUID ~= nil and tonumber(PlayerState.ArchiveUID) ~= 0 then
+        return
+    end
+
+    local PlayerPawn = UGCGameSystem.GetPlayerPawnByPlayerController(PlayerController)
+    if PlayerPawn ~= nil and UGCPawnAttrSystem ~= nil and UGCPawnAttrSystem.GetPlayerUID ~= nil then
+        PlayerState.ArchiveUID = tonumber(UGCPawnAttrSystem.GetPlayerUID(PlayerPawn))
+    end
+end
+
 local function SetYXWDInvincibleBuffActive(PlayerState, DurationSeconds)
     if PlayerState == nil then
         return
@@ -182,6 +196,7 @@ function YXWD_WD:OnUseV2()
     end
 
     local BuffDurationSeconds = GetYXWDBuffDurationSeconds(self)
+    EnsureArchiveUID(PlayerController, PlayerState)
     SetYXWDInvincibleBuffActive(PlayerState, BuffDurationSeconds)
 
     self.YXWD_PendingBuffIconNotify = true

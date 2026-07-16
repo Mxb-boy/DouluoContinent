@@ -819,6 +819,11 @@ function UI02:HasYXWDInvincibleBuff()
         return true
     end
 
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil and PlayerController.ClientYXWDInvincibleBuffEnabled == true then
+        return true
+    end
+
     local PlayerState = self:GetLocalPlayerState()
     if PlayerState == nil then
         return false
@@ -849,6 +854,11 @@ function UI02:RefreshYXWDPurchaseButton()
 end
 
 function UI02:HasAutoPickButtonHidden()
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil and PlayerController.ClientAutoPickButtonHidden == true then
+        return true
+    end
+
     local PlayerState = self:GetLocalPlayerState()
     if PlayerState == nil then
         return false
@@ -862,6 +872,11 @@ function UI02:HasAutoPickButtonHidden()
 end
 
 function UI02:HasAutoAttackButtonHidden()
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil and PlayerController.ClientAutoAttackButtonHidden == true then
+        return true
+    end
+
     local PlayerState = self:GetLocalPlayerState()
     if PlayerState == nil then
         return false
