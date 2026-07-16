@@ -48,6 +48,7 @@
 ---@field Image_13 UImage
 ---@field Image_14 UImage
 ---@field Image_43 UImage
+---@field Image_62 UImage
 ---@field Image_109 UImage
 ---@field Image_169 UImage
 ---@field Image_225 UImage
@@ -72,6 +73,8 @@
 ---@field ProgressBar_171 UProgressBar
 ---@field TextBlock_0 UTextBlock
 ---@field TextBlock_1 UTextBlock
+---@field TextBlock_3 UTextBlock
+---@field TextBlock_5 UTextBlock
 ---@field TextBlock_49 UTextBlock
 ---@field TextBlock_50 UTextBlock
 ---@field TextBlock_109 UTextBlock
