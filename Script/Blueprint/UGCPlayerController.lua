@@ -16,6 +16,7 @@ local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
+local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
 local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
@@ -1640,6 +1641,11 @@ function UGCPlayerController:Server_RequestLottery(LotteryType, SlotIndex)
 
     UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, Candidate.Index,
         tonumber(Award.ItemID) or 0, tonumber(Award.Count) or 1, LotteryState.Completed and 1 or 0, ItemList)
+
+    -- 只有服务端完成扣券、发奖并保存抽奖状态后，才算一次有效抽奖。
+    TaskMgr:AddTaskProgressOnServer(L_Enum.AllTask.LotterySummon, 1, self)
+    TitleMgr:CheckAndUnlock(5, self)
+    TitleMgr:CheckAndUnlock(6, self)
 end
 
 function UGCPlayerController:Client_LotteryResult(LotteryType, SlotIndex, AwardItemID, AwardCount, bCompleted, ItemList)
@@ -1688,6 +1694,9 @@ function UGCPlayerController:Client_UnlockTitle(titleID)
         titleUI:UnlockTitle(titleID)
     end
 
+    local titleConfig = TitleConfig.GetTitle(titleID)
+    local titleName = titleConfig and titleConfig.Name or ("称号" .. titleID)
+    L_Com.ShowToast("恭喜解锁“" .. titleName .. "”！")
     self:Client_RefreshTitleBonus()
 end
 
@@ -1704,9 +1713,25 @@ function UGCPlayerController:Client_RefreshTitleBonus()
     StateMgr:ChengHaoTextShow(bonus.AttackPercent)
 end
 
-function UGCPlayerController:Client_SyncTitleState(unlockedTitles, equippedTitleID)
+function UGCPlayerController:Client_SyncKillMonsterCount(killMonsterCount)
+    killMonsterCount = math.max(0, tonumber(killMonsterCount) or 0)
+    self.KillMonsterCount = killMonsterCount
+
+    local playerState = self.PlayerState
+    if playerState ~= nil then
+        playerState.KillMonsterCount = killMonsterCount
+    end
+
+    local titleUI = self.MainUIInstance and self.MainUIInstance.TitleUIInstance or nil
+    if titleUI ~= nil and titleUI.SelectedTitleID == 15 and titleUI.SelectTitle ~= nil then
+        titleUI:SelectTitle(15)
+    end
+end
+
+function UGCPlayerController:Client_SyncTitleState(unlockedTitles, equippedTitleID, killMonsterCount)
     self.UnlockedTitles = unlockedTitles or {}
     self.EquippedTitleID = tonumber(equippedTitleID) or 0
+    self:Client_SyncKillMonsterCount(killMonsterCount)
 
     local titleUI = self.MainUIInstance and self.MainUIInstance.TitleUIInstance or nil
     if titleUI ~= nil then
@@ -1753,6 +1778,8 @@ function UGCPlayerController:SyncSavedTitleState()
     local equippedTitleID = playerState.GetEquippedTitleID and playerState:GetEquippedTitleID() or
                                 playerState.EquippedTitleID
     equippedTitleID = tonumber(equippedTitleID) or 0
+    local killMonsterCount = playerState.GetKillMonsterCount and playerState:GetKillMonsterCount() or
+                                 playerState.KillMonsterCount
 
     local pawn = self:K2_GetPawn()
     if pawn ~= nil and equippedTitleID > 0 then
@@ -1766,7 +1793,8 @@ function UGCPlayerController:SyncSavedTitleState()
         end
     end
 
-    UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncTitleState", unlockedTitles or {}, equippedTitleID)
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncTitleState", unlockedTitles or {}, equippedTitleID,
+        tonumber(killMonsterCount) or 0)
 end
 
 -- Title equip
@@ -2121,6 +2149,7 @@ function UGCPlayerController:Server_SetFinalMaxHp(finalMaxHp, bFillHealth)
         end
     end
     UGCPawnAttrSystem.SetHealth(pawn, math.min(oldHp, finalMaxHp))
+    TitleMgr:CheckCombatPowerTitles(self)
 end
 
 function UGCPlayerController:Server_SetFinalAttack(finalAttack)
@@ -2136,6 +2165,7 @@ function UGCPlayerController:Server_SetFinalAttack(finalAttack)
         return
     end
     UGCAttributeSystem.SetGameAttributeValue(pawn, "AttackPower", finalAttack)
+    TitleMgr:CheckCombatPowerTitles(self)
 end
 
 local AUTO_PICK_RANGE = 600

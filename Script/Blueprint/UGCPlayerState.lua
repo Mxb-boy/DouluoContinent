@@ -12,6 +12,7 @@ local UGCPlayerState = {
     WeaponLevels = {},
     SignInEvent = {},
     UnlockedTitles = {},
+    KillMonsterCount = 0,
     EquippedTitleID = 0,
     AutoPickButtonHidden = 0,
     AutoAttackButtonHidden = 0,
@@ -91,6 +92,11 @@ table.insert(ARCHIVE_KEYS, {
     default = {}
 })
 table.insert(ARCHIVE_KEYS, {
+    key = "KillMonsterCount",
+    field = "KillMonsterCount",
+    default = 0
+})
+table.insert(ARCHIVE_KEYS, {
     key = "EquippedTitleID",
     field = "EquippedTitleID",
     default = 0
@@ -124,6 +130,7 @@ table.insert(ARCHIVE_KEYS, {
 function UGCPlayerState:GetReplicatedProperties()
     return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "WeaponLevels",
             "BaseAttack", "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "UnlockedTitles",
+            "KillMonsterCount",
             "EquippedTitleID", "FeiButton0Hidden", "KJ04GiftPackPurchased", "PlayerLevel", "PlayerExp",
             "PlayerMaxExp"}
 end
@@ -466,6 +473,15 @@ function UGCPlayerState:SetTitleUnlocked(titleID)
     local unlockedTitles = self:GetUnlockedTitles()
     unlockedTitles[titleID] = true
     self:SetUnlockedTitles(unlockedTitles)
+end
+
+function UGCPlayerState:GetKillMonsterCount()
+    return math.max(0, tonumber(self.KillMonsterCount) or 0)
+end
+
+function UGCPlayerState:SetKillMonsterCount(value)
+    self.KillMonsterCount = math.max(0, tonumber(value) or 0)
+    self:SaveToArchive()
 end
 
 function UGCPlayerState:GetEquippedTitleID()

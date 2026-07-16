@@ -6,6 +6,7 @@ local BaseMons = {}
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
+local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
 
 local function DisableMonsterCollision(monster)
     if monster.HitBox ~= nil then
@@ -112,6 +113,7 @@ function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEven
 
     if self:HasAuthority() then
         TaskMgr:AddTeamTaskProgressOnServer(L_Enum.AllTask.KillMonster, 1, EventInstigator)
+        TitleMgr:OnDungeonClear(EventInstigator, 4)
     end
 
 end

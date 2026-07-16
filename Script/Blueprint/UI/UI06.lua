@@ -44,6 +44,15 @@
 --Edit Below--
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local TitleConfig = UGCGameSystem.UGCRequire("Script.Common.TitleConfig")
+local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
+local Ma_NumShow = UGCGameSystem.UGCRequire("Script.Ma.Ma_NumShow")
+
+local function FormatProgressValue(value, source)
+    if source == "CombatPower" then
+        return Ma_NumShow.Format(value)
+    end
+    return tostring(math.floor(math.max(0, tonumber(value) or 0)))
+end
 
 local UI06 = { bInitDoOnce = false }
 function UI06:Construct()
@@ -210,7 +219,22 @@ function UI06:SelectTitle(titleID)
         return
     end
     self.SelectedTitleID = titleID
-    self.TextToGet:SetText("获取途径：\n" .. config.TextToGet)
+    local getText = "获取途径：\n" .. config.TextToGet
+    if not self.UnlockedTitles[titleID] then
+        local playerController = UGCGameSystem.GetLocalPlayerController()
+            or GameplayStatics.GetPlayerController(self, 0)
+        local current, target, source = TitleMgr:GetProgress(titleID, playerController)
+        if current ~= nil and target ~= nil then
+            local currentText = FormatProgressValue(math.min(current, target), source)
+            if source == "CombatPower" then
+                getText = getText .. "\n当前战力：" .. currentText
+            else
+                local targetText = FormatProgressValue(target, source)
+                getText = getText .. "\n进度：" .. currentText .. "/" .. targetText
+            end
+        end
+    end
+    self.TextToGet:SetText(getText)
     self.TextAdd:SetText(config.BonusText)
     self:RefreshTitleImage(titleID)
     if self.EquipButton then

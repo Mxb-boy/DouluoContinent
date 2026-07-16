@@ -10,6 +10,7 @@ UGCGameSystem.UGCRequire("ExtendResource.SignInEvent.OfficialPackage." .. "Scrip
 UGCGameSystem.UGCRequire("ExtendResource.SignInEvent.OfficialPackage." .. "Script.Common.Common");
 
 local Delegate = UGCGameSystem.UGCRequire("common.Delegate");
+local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr");
 local STExtraGMDelegatesMgr = KismetLibrary.New("/Script/ShadowTrackerExtra.STExtraGMDelegatesMgr");
 
 local SignInAwardItemMap =
@@ -483,6 +484,10 @@ function SignInEventComponent:GetSignInAward(EventID, LocalEventDatas)
 
     -- 同步到客户端
     self:SetSignInEventData(Data);
+
+    if tonumber(EventID) == 10086 then
+        TitleMgr:CheckAndUnlock(14, self:GetOwner());
+    end
 
     local Award = Config.Awards[Data[EventID].DayNum];
     local AwardItemID = SignInAwardItemMap[Award.ItemID] or Award.ItemID;

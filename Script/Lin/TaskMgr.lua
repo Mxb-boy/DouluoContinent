@@ -1,4 +1,5 @@
 TaskMgr = TaskMgr or {}
+local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
 --[[------------------任务进度管理器----------------------------]] --
 -- 使用教程：先引用，在直接调用这个方法RequestAddTaskProgress
 -- 任务要调用L_Enum.AllTask.LotterySummon
@@ -45,6 +46,7 @@ function TaskMgr:AddTeamTaskProgressOnServer(TaskConfig, AddValue, PlayerControl
     local TeamPlayerControllers = UGCTeamSystem.GetPlayerControllersByTeamID(TeamID) or {}
     for _, TeamPlayerController in ipairs(TeamPlayerControllers) do
         self:AddTaskProgressOnServer(TaskConfig, AddValue, TeamPlayerController)
+        TitleMgr:OnTaskProgress(TaskConfig.Key, AddValue, TeamPlayerController)
     end
 end
 
