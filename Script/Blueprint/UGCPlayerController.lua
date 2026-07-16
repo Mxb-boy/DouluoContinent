@@ -192,6 +192,7 @@ function UGCPlayerController:Server_BeginFlyState()
         return
     end
 
+    self.bServerFlying = true
     pawn:BeginFly()
 end
 
@@ -201,12 +202,17 @@ function UGCPlayerController:Server_EndFlyState()
         return
     end
 
+    self.bServerFlying = false
     pawn:EndFly()
 end
 
 local FLY_SPEED = 3600
 
 function UGCPlayerController:Server_FlyMove(DirX, DirY, DirZ, DeltaTime)
+    if self.bServerFlying ~= true then
+        return
+    end
+
     local pawn = self:K2_GetPawn()
     if pawn == nil or pawn.K2_GetActorLocation == nil or pawn.K2_SetActorLocation == nil then
         return
@@ -256,9 +262,15 @@ function UGCPlayerController:Server_FlyMove(DirX, DirY, DirZ, DeltaTime)
 end
 
 function UGCPlayerController:Server_StopFlyMove()
+    self.bServerFlying = false
+
     local pawn = self:K2_GetPawn()
     if pawn == nil then
         return
+    end
+
+    if pawn.EndFly ~= nil then
+        pawn:EndFly()
     end
 
     local MovementComponent = pawn.CharacterMovement or pawn.MovementComponent

@@ -20,8 +20,6 @@ local WingItemID = 1028
 local WingBackpackItemIDs = {8310012, 8310013, 8310014, 8310058, 8310059, 8310010}
 
 local BlockedControlWidgetNames = {
-    "MainUI_FireLeft_C_0",
-    "MainUI_FireRight_C_0",
     "MainUI_Jump_C_0",
     "MainUI_Crouch_C_0",
     "MainUI_Crawl_C_0",
@@ -581,42 +579,10 @@ function Fei:GetFlyAnimation()
 end
 
 function Fei:PlayFlyAnimation()
-    local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
-    if PlayerPawn == nil or PlayerPawn.Mesh == nil then
-        return
-    end
-
-    local AnimAsset = self:GetFlyAnimation()
-    if AnimAsset == nil then
-        return
-    end
-
-    if PlayerPawn.Mesh.GetAnimationMode ~= nil then
-        local Success, AnimationMode = pcall(PlayerPawn.Mesh.GetAnimationMode, PlayerPawn.Mesh)
-        if Success then
-            self.CacheAnimationMode = AnimationMode
-        end
-    end
-
-    if PlayerPawn.Mesh.PlayAnimation ~= nil then
-        pcall(PlayerPawn.Mesh.PlayAnimation, PlayerPawn.Mesh, AnimAsset, true)
-    end
+    -- Do not drive the pawn Mesh animation here; PESkill owns attack animations.
 end
 
 function Fei:StopFlyAnimation()
-    local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
-    if PlayerPawn == nil or PlayerPawn.Mesh == nil then
-        return
-    end
-
-    if PlayerPawn.Mesh.SetAnimationMode ~= nil then
-        if self.CacheAnimationMode ~= nil then
-            pcall(PlayerPawn.Mesh.SetAnimationMode, PlayerPawn.Mesh, self.CacheAnimationMode)
-        elseif EAnimationMode ~= nil and EAnimationMode.AnimationBlueprint ~= nil then
-            pcall(PlayerPawn.Mesh.SetAnimationMode, PlayerPawn.Mesh, EAnimationMode.AnimationBlueprint)
-        end
-    end
-
     self.CacheAnimationMode = nil
 end
 

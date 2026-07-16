@@ -92,7 +92,7 @@ TargetPlatform=LinuxServer+Android_ETC2+IOS+OpenHarmony_ETC2
 
 [DebugSettings]
 bRoomOB=0
-TeamPlayers=2,0;1,0;
+TeamPlayers=1,0;
 
 [MultiModeSetting_0]
 bDefaultMode=1
