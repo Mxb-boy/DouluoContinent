@@ -512,6 +512,7 @@ function ShopV2Manager:OnAddVirtualItem(Result)
         [1052] = 8310057,  -- 魂环8 (HunHuan_08)
         [1053] = 8310052,  -- 魂环9 (HunHuan_09)
         [1054] = 8310050,  -- 魂环10 (HunHuan_10)
+        [1057] = 8310121,  -- 强化保护卷
     }
 
     for ItemID, Num in pairs(Result.ItemList) do
