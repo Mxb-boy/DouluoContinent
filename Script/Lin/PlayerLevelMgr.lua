@@ -92,11 +92,10 @@ function PlayerLevelMgr:AddExp(PlayerController, amount)
     end
 
     --[[-----------------------客户端提示-----------------------]] --
-    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
-        "添加的经验是" .. tostring(amount))
+    -- UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+    --     "添加的经验是" .. tostring(amount))
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_RefreshPlayerExp",
-        self:GetCurrentLevelExp(newExp, newLevel),
-        playerState:GetPlayerMaxExp(), newLevel)
+        self:GetCurrentLevelExp(newExp, newLevel), playerState:GetPlayerMaxExp(), newLevel)
     return newLevel > oldLevel, newLevel
 end
 
