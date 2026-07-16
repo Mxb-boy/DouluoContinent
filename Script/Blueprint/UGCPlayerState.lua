@@ -26,7 +26,7 @@ local UGCPlayerState = {
     --[[-------------------玩家等级相关---------------------------]] --
     PlayerLevel = 1, -- 玩家等级
     PlayerExp = 0, -- 当前累计经验
-    PlayerMaxExp = 100 -- 下一级经验的阈值
+    PlayerMaxExp = 60 -- 下一级经验的阈值
 
 }
 
@@ -124,7 +124,7 @@ table.insert(ARCHIVE_KEYS, {
 table.insert(ARCHIVE_KEYS, {
     key = "PlayerMaxExp",
     field = "PlayerMaxExp",
-    default = 100
+    default = 60
 })
 
 function UGCPlayerState:GetReplicatedProperties()
@@ -269,11 +269,11 @@ function UGCPlayerState:SetPlayerExp(value)
 end
 
 function UGCPlayerState:GetPlayerMaxExp()
-    return tonumber(self.PlayerMaxExp) or 100
+    return tonumber(self.PlayerMaxExp) or 60
 end
 
 function UGCPlayerState:SetPlayerMaxExp(value)
-    self.PlayerMaxExp = tonumber(value) or 100
+    self.PlayerMaxExp = tonumber(value) or 60
     self:SaveToArchive()
 end
 
