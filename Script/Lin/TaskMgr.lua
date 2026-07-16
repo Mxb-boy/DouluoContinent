@@ -31,7 +31,24 @@ function TaskMgr:AddTaskProgressOnServer(TaskConfig, AddValue, PlayerController)
     end
 end
 
---[[---------------------获取组件方法-------------------------]] --
+--[[----------------------给同队玩家增加任务进度------------------------]] --
+function TaskMgr:AddTeamTaskProgressOnServer(TaskConfig, AddValue, PlayerController)
+    if PlayerController == nil or PlayerController.PlayerKey == nil then
+        return
+    end
+
+    local TeamID = UGCTeamSystem.GetTeamIDByPlayerKey(PlayerController.PlayerKey)
+    if TeamID == nil then
+        return
+    end
+
+    local TeamPlayerControllers = UGCTeamSystem.GetPlayerControllersByTeamID(TeamID) or {}
+    for _, TeamPlayerController in ipairs(TeamPlayerControllers) do
+        self:AddTaskProgressOnServer(TaskConfig, AddValue, TeamPlayerController)
+    end
+end
+
+--[[---------------------获取任务组件-------------------------]] --
 function TaskMgr:GetTaskComponents(PlayerController)
     local PC = PlayerController or UGCGameSystem.GetLocalPlayerController()
     local Component = UGCGamePartSystem.GetGamePartPlayerComponent("TaskManager", PC, "Task")

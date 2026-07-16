@@ -107,7 +107,9 @@ function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEven
         PlayerLevelMgr:AddExp(EventInstigator, KillExp)
     end
 
-    TaskMgr:RequestAddTaskProgress(L_Enum.AllTask.KillMonster, 1)
+    if self:HasAuthority() then
+        TaskMgr:AddTeamTaskProgressOnServer(L_Enum.AllTask.KillMonster, 1, EventInstigator)
+    end
 
 end
 

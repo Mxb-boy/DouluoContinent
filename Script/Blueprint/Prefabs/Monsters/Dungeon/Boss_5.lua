@@ -146,7 +146,9 @@ function Boss_5:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent,
             SpawnDrop(self, 8310036, 1)
         end
     end
-    TaskMgr:RequestAddTaskProgress(L_Enum.AllTask.KillMonster, 1)
+    if self:HasAuthority() then
+        TaskMgr:AddTeamTaskProgressOnServer(L_Enum.AllTask.KillMonster, 1, EventInstigator)
+    end
 end
 
 -- ---状态进入事件

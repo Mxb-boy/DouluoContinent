@@ -113,7 +113,9 @@ function Tower_Mons_1:BPDie(KillingDamage, EventInstigator, DamageCauser, Damage
     if self:HasAuthority() and self.SpawnWall ~= nil then
         self.SpawnWall:OnMonsterDied(self)
     end
-    TaskMgr:RequestAddTaskProgress(L_Enum.AllTask.KillMonster, 1)
+    if self:HasAuthority() then
+        TaskMgr:AddTeamTaskProgressOnServer(L_Enum.AllTask.KillMonster, 1, EventInstigator)
+    end
 end
 
 -- ---状态进入事件
