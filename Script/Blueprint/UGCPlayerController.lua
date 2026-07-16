@@ -1183,6 +1183,17 @@ local function SetRealmFailCount(PlayerController, Level, Count)
     PlayerController.RealmFailCounts[Level] = math.max(0, tonumber(Count) or 0)
 end
 
+local function GetRealmCombatPower(PlayerController)
+    local PlayerPawn = PlayerController:K2_GetPawn()
+    if PlayerPawn == nil then
+        return 0
+    end
+
+    local AttackPower = tonumber(UGCAttributeSystem.GetGameAttributeValue(PlayerPawn, "AttackPower")) or 0
+    local MaxHP = tonumber(UGCPawnAttrSystem.GetHealthMax(PlayerPawn)) or 0
+    return AttackPower + MaxHP
+end
+
 function UGCPlayerController:CanUseRealmLuckyCard()
     if GetRealmLevel(self) >= RealmConfig.MaxLevel then
         return false
@@ -1268,6 +1279,18 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
 
     local Config = RealmConfig.Get(TargetLevel)
     if Config == nil then
+        return
+    end
+
+    local CurrentPower = GetRealmCombatPower(self)
+    local NeedPower = tonumber(Config.NeedPower)
+    if NeedPower == nil then
+        ugcprint("[UGCPlayerController:Server_BreakRealm] NeedPower is nil, target=" .. tostring(TargetLevel))
+        return
+    end
+    if CurrentPower < NeedPower then
+        ugcprint("[UGCPlayerController:Server_BreakRealm] power not enough: current=" .. tostring(CurrentPower) ..
+                     ", need=" .. tostring(NeedPower) .. ", target=" .. tostring(TargetLevel))
         return
     end
 

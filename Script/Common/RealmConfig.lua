@@ -47,6 +47,7 @@ RealmConfig.Levels = {
         Stage = "凡境",
         Name = "",
         IconPath = "",
+        NeedPower = 0,
         NeedPowerText = "战力门槛：-----",
         NeedItemText = "所需道具：-----",
         NeedItems = {},
@@ -60,7 +61,8 @@ RealmConfig.Levels = {
         Stage = "一环",
         Name = "启星境",
         IconPath = GetSoulRingIconPath(1),
-        NeedPowerText = "战力门槛：------",
+        NeedPower = 1000,
+        NeedPowerText = "战力门槛：1000",
         NeedItemText = "所需道具：第一星环x1\n第二星环x1",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing1, Count = 1, Name = "第一星环", IconPath = GetSoulRingIconPath(1) },
@@ -76,7 +78,8 @@ RealmConfig.Levels = {
         Stage = "二环",
         Name = "融星境",
         IconPath = GetSoulRingIconPath(2),
-        NeedPowerText = "战力门槛：------",
+        NeedPower = 10000,
+        NeedPowerText = "战力门槛：1万",
         NeedItemText = "所需道具：第三星环x1\n融星玉x5",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing3, Count = 1, Name = "第三星环", IconPath = GetSoulRingIconPath(3) },
@@ -93,7 +96,8 @@ RealmConfig.Levels = {
         Stage = "三环",
         Name = "星导师境",
         IconPath = GetSoulRingIconPath(3),
-        NeedPowerText = "战力门槛：------",
+        NeedPower = 80000,
+        NeedPowerText = "战力门槛：8万",
         NeedItemText = "所需道具：第四星环x1\n星导师之证x1",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing4, Count = 1, Name = "第四星环", IconPath = GetSoulRingIconPath(4) },
@@ -110,7 +114,8 @@ RealmConfig.Levels = {
         Stage = "四环",
         Name = "星宗境",
         IconPath = GetSoulRingIconPath(4),
-        NeedPowerText = "战力门槛：------",
+        NeedPower = 8000000,
+        NeedPowerText = "战力门槛：800万",
         NeedItemText = "所需道具：第五星环x1\n领域之核x1",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing5, Count = 1, Name = "第五星环", IconPath = GetSoulRingIconPath(5) },
@@ -127,7 +132,8 @@ RealmConfig.Levels = {
         Stage = "五环",
         Name = "星王境",
         IconPath = GetSoulRingIconPath(5),
-        NeedPowerText = "战力门槛：------",
+        NeedPower = 200000000,
+        NeedPowerText = "战力门槛：2亿",
         NeedItemText = "所需道具：第六星环x1\n法则碎片x10",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing6, Count = 1, Name = "第六星环", IconPath = GetSoulRingIconPath(6) },
@@ -144,7 +150,8 @@ RealmConfig.Levels = {
         Stage = "六环",
         Name = "星帝境",
         IconPath = GetSoulRingIconPath(6),
-        NeedPowerText = "战力门槛：------",
+        NeedPower = 8000000000,
+        NeedPowerText = "战力门槛：80亿",
         NeedItemText = "所需道具：第七星环x1\n帝星印x1",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing7, Count = 1, Name = "第七星环", IconPath = GetSoulRingIconPath(7) },
@@ -161,7 +168,8 @@ RealmConfig.Levels = {
         Stage = "七环",
         Name = "星圣境",
         IconPath = GetSoulRingIconPath(7),
-        NeedPowerText = "战力门槛：------",
+        NeedPower = 88000000000,
+        NeedPowerText = "战力门槛：880亿",
         NeedItemText = "所需道具：第八星环x1\n圣星玉x20",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing8, Count = 1, Name = "第八星环", IconPath = GetSoulRingIconPath(8) },
@@ -178,7 +186,8 @@ RealmConfig.Levels = {
         Stage = "八环",
         Name = "星尊境",
         IconPath = GetSoulRingIconPath(8),
-        NeedPowerText = "战力门槛：------",
+        NeedPower = 4000000000000,
+        NeedPowerText = "战力门槛：4万亿",
         NeedItemText = "所需道具：第九星环x1\n神兽之血x1",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing9, Count = 1, Name = "第九星环", IconPath = GetSoulRingIconPath(9) },
@@ -195,7 +204,8 @@ RealmConfig.Levels = {
         Stage = "九环",
         Name = "星冕境",
         IconPath = GetSoulRingIconPath(9),
-        NeedPowerText = "战力门槛：------",
+        NeedPower = 800000000000000,
+        NeedPowerText = "战力门槛：800万亿",
         NeedItemText = "所需道具：第十星环x1\n封号神印x1\n九色神光x9",
         NeedItems = {
             { ItemID = ItemIDs.SoulRing10, Count = 1, Name = "第十星环", IconPath = GetSoulRingIconPath(10) },

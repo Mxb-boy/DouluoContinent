@@ -28,6 +28,8 @@
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+local Ma_NumShow = UGCGameSystem.UGCRequire("Script.Ma.Ma_NumShow")
+local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 
 local UI08 = { bInitDoOnce = false }
 
@@ -84,8 +86,25 @@ function UI08:Btn_Break_OnClicked()
     if NextConfig == nil then
         return
     end
-    if not self:HasEnoughNeedItems(NextConfig) then
-        self:SetButtonEnabled(self.Btn_Break, false)
+
+    local HasPower = self:HasEnoughPower(NextConfig)
+    local HasItems = self:HasEnoughNeedItems(NextConfig)
+    if not HasPower or not HasItems then
+        local ToastText = ""
+        if not HasPower and not HasItems then
+            ToastText = "战力和突破材料均不足"
+        elseif not HasPower then
+            ToastText = "战力不足，当前" .. Ma_NumShow.Format(self:GetCurrentPower()) ..
+                            "，需要" .. Ma_NumShow.Format(tonumber(NextConfig.NeedPower) or 0)
+        else
+            ToastText = "突破材料不足"
+        end
+
+        if L_Com ~= nil and L_Com.ShowToast ~= nil then
+            L_Com.ShowToast(ToastText)
+        else
+            ugcprint("[UI08:Btn_Break_OnClicked] L_Com.ShowToast is nil: " .. ToastText)
+        end
         return
     end
 
@@ -129,7 +148,7 @@ function UI08:RefreshNextRealm(CurrentConfig, NextConfig)
     self:SetText(self:GetWidget("Text_NowValue"), self:BuildCompareLeftText(CurrentBonuses, Bonuses))
     self:SetText(self:GetWidget("Text_NextValue"), self:BuildCompareRightText(Bonuses))
     self:SetText(self:GetWidget("TextZhanli"), self:BuildNeedPowerText(NextConfig))
-    self:SetButtonEnabled(self.Btn_Break, self:RefreshNeedItems(NextConfig))
+    self:RefreshBreakButton(NextConfig)
 end
 
 function UI08:BuildCurrentBonusText(Bonuses)
@@ -169,11 +188,36 @@ function UI08:BuildNeedPowerText(Config)
     if Config == nil then
         return ""
     end
-    local NeedPowerText = tostring(Config.NeedPowerText or "")
-    if NeedPowerText == "" then
+
+    local NeedPower = tonumber(Config.NeedPower)
+    if NeedPower == nil then
         return "所需战力：------"
     end
-    return string.gsub(NeedPowerText, "战力门槛", "所需战力")
+
+    return "所需战力：" .. Ma_NumShow.Format(NeedPower)
+end
+function UI08:GetCurrentPower()
+    if StateMgr == nil or StateMgr.GetFinalZhanLi == nil then
+        return 0
+    end
+
+    return tonumber(StateMgr:GetFinalZhanLi()) or 0
+end
+function UI08:HasEnoughPower(Config)
+    if Config == nil then
+        return false
+    end
+
+    local NeedPower = tonumber(Config.NeedPower)
+    if NeedPower == nil then
+        return false
+    end
+
+    return self:GetCurrentPower() >= NeedPower
+end
+function UI08:RefreshBreakButton(Config)
+    self:RefreshNeedItems(Config)
+    self:SetButtonEnabled(self.Btn_Break, Config ~= nil)
 end
 function UI08:GetBackpackItemCount(ItemID)
     ItemID = tonumber(ItemID)
@@ -388,7 +432,7 @@ function UI08:RefreshNeedItemsAfterDelay()
             return
         end
         local NextConfig = RealmConfig.GetNext(self.CurrentRealmLevel)
-        self:SetButtonEnabled(self.Btn_Break, self:RefreshNeedItems(NextConfig))
+        self:RefreshBreakButton(NextConfig)
     end, false, TimerName)
 end
 function UI08:HideBreakHh()
