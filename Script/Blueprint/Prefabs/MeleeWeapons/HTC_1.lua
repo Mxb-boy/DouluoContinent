@@ -1,37 +1,41 @@
 ---@class HTC_1_C:BP_UGC_MeleeWeap_TangDao_C
 ---@field WeaponLevel int32
 ---@field WeaponLevel_0 int32
+---@field WeaponConfigID int32
 --Edit Below--
-local HWSCJ = {}
- 
+local HTC = {}
+
+local WEAPON_CONFIG_ID = 1003
+
+function HTC:ReceiveBeginPlay()
+    if HTC.SuperClass ~= nil and HTC.SuperClass.ReceiveBeginPlay ~= nil then
+        HTC.SuperClass.ReceiveBeginPlay(self)
+    end
+    self.WeaponConfigID = WEAPON_CONFIG_ID
+end
+
 --[[
-function HWSCJ:ReceiveBeginPlay()
-    HWSCJ.SuperClass.ReceiveBeginPlay(self)
+function HTC:ReceiveTick(DeltaTime)
+    HTC.SuperClass.ReceiveTick(self, DeltaTime)
 end
 --]]
 
 --[[
-function HWSCJ:ReceiveTick(DeltaTime)
-    HWSCJ.SuperClass.ReceiveTick(self, DeltaTime)
+function HTC:ReceiveEndPlay()
+    HTC.SuperClass.ReceiveEndPlay(self) 
 end
 --]]
 
 --[[
-function HWSCJ:ReceiveEndPlay()
-    HWSCJ.SuperClass.ReceiveEndPlay(self) 
-end
---]]
-
---[[
-function HWSCJ:GetReplicatedProperties()
+function HTC:GetReplicatedProperties()
     return
 end
 --]]
 
 --[[
-function HWSCJ:GetAvailableServerRPCs()
+function HTC:GetAvailableServerRPCs()
     return
 end
 --]]
 
-return HWSCJ
+return HTC
