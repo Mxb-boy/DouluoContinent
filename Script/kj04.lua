@@ -1,6 +1,8 @@
 ---@class kj04_C:UUserWidget
 ---@field Btn_Buy UButton
 ---@field Btn_Close UButton
+---@field Image_0 UImage
+---@field Image_1 UImage
 ---@field Image_45 UImage
 ---@field Image_107 UImage
 ---@field Image_108 UImage
@@ -21,6 +23,7 @@ local KJ04_GIFT_PRODUCT = {
 local KJ04_REWARD_ITEMS = {
     {ItemID = 1028, BackpackItemID = 8310012, Num = 1},
     {ItemID = 1047, BackpackItemID = 8310051, Num = 6},
+    {ItemID = 1057, BackpackItemID = 8310121, Num = 2},
 }
 
 local kj04 = { bInitDoOnce = false } 

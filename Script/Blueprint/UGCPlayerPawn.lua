@@ -104,11 +104,15 @@ local function CountBackpackWeaponAttackBonus(player)
     end
 
     local WeaponCount = 0
+    local SeenWeaponSeries = {}
     for _, ItemData in pairs(AllItemData) do
         local ItemID = tonumber(ItemData.ItemID or ItemData.ItemId or ItemData.itemID or ItemData.TypeSpecificID)
         local Count = tonumber(ItemData.Count or ItemData.ItemCount or ItemData.ItemNum or ItemData.Num) or 1
-        if Count > 0 and WeaponLevelConfig.GetWeaponInfo(ItemID) ~= nil then
-            WeaponCount = WeaponCount + Count
+        local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
+        local SeriesKey = WeaponInfo ~= nil and (WeaponInfo.SeriesKey or WeaponInfo.ID) or nil
+        if Count > 0 and SeriesKey ~= nil and SeenWeaponSeries[SeriesKey] ~= true then
+            SeenWeaponSeries[SeriesKey] = true
+            WeaponCount = WeaponCount + 1
         end
     end
 
