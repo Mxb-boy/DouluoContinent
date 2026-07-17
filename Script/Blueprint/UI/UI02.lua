@@ -1351,7 +1351,7 @@ function UI02:Button_0_OnClicked()
         return
     end
 
-    L_Com.ShowToast("测试成功")
+    --L_Com.ShowToast("测试成功")
 
     local KJ04Class = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath("Asset/kj04.kj04_C"))
     if KJ04Class == nil then
