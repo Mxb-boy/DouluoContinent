@@ -7,7 +7,7 @@ local First_Hit_Run_Away_Time = 2 -- 首次受击乱跑时间
 local First_Hit_Run_Away_Distance = 900 -- 首次受击随机移动距离
 local First_Hit_Run_Away_Stop_Radius = 80 -- 首次受击移动停止距离
 local First_Hit_Run_Away_Reason = "FirstHitRunAway" -- 首次受击暂停行为树原因
-local First_Hit_Run_Away_Speed_Scale = 3 -- 首次受击随机移动速度倍率
+local First_Hit_Run_Away_Speed_Scale = 2.5 -- 首次受击随机移动速度倍率
 local First_Hit_Run_Away_Speed_Reason = 1001 -- 首次受击移动速度修改原因
 
 --[[----------------------禁用怪物碰撞------------------------]]
@@ -49,16 +49,8 @@ function MonsterSpawnMgr.ResumeFirstHitBehavior(monster, TargetPawn, OldSpeed, S
 end
 
 --[[----------------------首次受击随机移动后追击攻击者------------------------]]
-function MonsterSpawnMgr.FirstHitRunAway(
-    monster,
-    EventInstigator,
-    RunAwayTime,
-    RunAwayDistance,
-    StopRadius,
-    BehaviorReason,
-    SpeedScale,
-    SpeedReason
-)
+function MonsterSpawnMgr.FirstHitRunAway(monster, EventInstigator, RunAwayTime, RunAwayDistance, StopRadius,
+    BehaviorReason, SpeedScale, SpeedReason)
     RunAwayTime = RunAwayTime or First_Hit_Run_Away_Time
     RunAwayDistance = RunAwayDistance or First_Hit_Run_Away_Distance
     StopRadius = StopRadius or First_Hit_Run_Away_Stop_Radius
@@ -142,11 +134,7 @@ function MonsterSpawnMgr.GetCachedLevelPoints(WorldContext, Scene, BigLevel, Lit
     local matchedPoints = {}
 
     for _, point in ipairs(allPoints or {}) do
-        if point
-            and point.Scene == Scene
-            and point.BigLevel == BigLevel
-            and point.LittleLevel == LittleLevel
-        then
+        if point and point.Scene == Scene and point.BigLevel == BigLevel and point.LittleLevel == LittleLevel then
             table.insert(matchedPoints, point)
         end
     end
@@ -164,14 +152,7 @@ function MonsterSpawnMgr.ClearCache()
     MonsterSpawnMgr.LevelPointCache = {}
 end
 
-function MonsterSpawnMgr.SpawnMonsters(
-    WorldContext,
-    MonsterPath,
-    Location,
-    Rotation,
-    Count,
-    Owner
-)
+function MonsterSpawnMgr.SpawnMonsters(WorldContext, MonsterPath, Location, Rotation, Count, Owner)
     local MonsterClass = MonsterSpawnMgr.GetCachedClass(MonsterPath)
     if MonsterClass == nil then
         return {}
@@ -187,20 +168,10 @@ function MonsterSpawnMgr.SpawnMonsters(
         local column = (index - 1) % 3
         local row = math.floor((index - 1) / 3)
 
-        local spawnLocation = Vector.New(
-            Location.X + (column - 1) * spacing,
-            Location.Y + row * spacing,
-            Location.Z
-        )
+        local spawnLocation = Vector.New(Location.X + (column - 1) * spacing, Location.Y + row * spacing, Location.Z)
 
-        local monster = UGCActorComponentUtility.SpawnActor(
-            WorldContext,
-            MonsterClass,
-            spawnLocation,
-            Rotation,
-            Vector.New(1, 1, 1),
-            Owner
-        )
+        local monster = UGCActorComponentUtility.SpawnActor(WorldContext, MonsterClass, spawnLocation, Rotation,
+            Vector.New(1, 1, 1), Owner)
 
         if monster then
             table.insert(spawnedMonsters, monster)
@@ -210,13 +181,7 @@ function MonsterSpawnMgr.SpawnMonsters(
     return spawnedMonsters
 end
 
-function MonsterSpawnMgr.SpawnAtLevelPoints(
-    WorldContext,
-    Scene,
-    BigLevel,
-    LittleLevel,
-    Owner
-)
+function MonsterSpawnMgr.SpawnAtLevelPoints(WorldContext, Scene, BigLevel, LittleLevel, Owner)
     local sceneName = "MainScene"
     local monsterClass = MonsterSpawnMgr.GetCachedClass(MonsterSpawnMgr.PatchPath(sceneName, BigLevel, LittleLevel))
     if monsterClass == nil then
@@ -242,14 +207,8 @@ function MonsterSpawnMgr.SpawnAtPointWithClass(WorldContext, MonsterClass, Point
         return nil
     end
 
-    local monster = UGCActorComponentUtility.SpawnActor(
-        WorldContext,
-        MonsterClass,
-        Point:K2_GetActorLocation(),
-        Point:K2_GetActorRotation(),
-        Vector.New(1, 1, 1),
-        Owner
-    )
+    local monster = UGCActorComponentUtility.SpawnActor(WorldContext, MonsterClass, Point:K2_GetActorLocation(),
+        Point:K2_GetActorRotation(), Vector.New(1, 1, 1), Owner)
 
     if monster then
         monster.SpawnPoint = Point
@@ -258,27 +217,15 @@ function MonsterSpawnMgr.SpawnAtPointWithClass(WorldContext, MonsterClass, Point
     return monster
 end
 
-function MonsterSpawnMgr.SpawnAtPoint(
-    WorldContext,
-    Scene,
-    BigLevel,
-    LittleLevel,
-    Point,
-    Owner
-)
+function MonsterSpawnMgr.SpawnAtPoint(WorldContext, Scene, BigLevel, LittleLevel, Point, Owner)
     local sceneName = "MainScene"
     local monsterClass = MonsterSpawnMgr.GetCachedClass(MonsterSpawnMgr.PatchPath(sceneName, BigLevel, LittleLevel))
     return MonsterSpawnMgr.SpawnAtPointWithClass(WorldContext, monsterClass, Point, Owner)
 end
 
 function MonsterSpawnMgr.PatchPath(Scene, BigLevel, LittleLevel)
-    return string.format(
-        "%sAsset/Blueprint/Prefabs/Monsters/%s/BigLevel_%02d/LittleLevel_%02d/BaseMons.BaseMons_C",
-        UGCMapInfoLib.GetRootLongPackagePath(),
-        Scene,
-        BigLevel,
-        LittleLevel
-    )
+    return string.format("%sAsset/Blueprint/Prefabs/Monsters/%s/BigLevel_%02d/LittleLevel_%02d/BaseMons.BaseMons_C",
+        UGCMapInfoLib.GetRootLongPackagePath(), Scene, BigLevel, LittleLevel)
 end
 
 return MonsterSpawnMgr

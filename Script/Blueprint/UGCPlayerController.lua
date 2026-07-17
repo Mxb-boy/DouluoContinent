@@ -130,8 +130,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult",
         "Server_RequestLotteryStateSync", "Client_SyncLotteryState", "Client_RefreshProperty",
-        "Client_RefreshPlayerExp", "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Client_StartAutoMeleeAttack",
-        "Server_SetAutoFeatureButtonHidden",
+        "Client_RefreshPlayerExp", "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Server_RequestRefreshProperty",
+        "Client_StartAutoMeleeAttack", "Server_SetAutoFeatureButtonHidden",
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
         "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden",
         "Client_ShowMonsterDamageNumber", 
@@ -1963,6 +1963,19 @@ function UGCPlayerController:Client_ProbabilityBonusChanged(value)
     local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
     if StateMgr ~= nil and StateMgr.BeiLvTextShow ~= nil and StateMgr.UI ~= nil then
         StateMgr:BeiLvTextShow(value)
+    end
+end
+
+--[[----------------------客户端请求同步存档属性------------------------]]
+function UGCPlayerController:Server_RequestRefreshProperty()
+    local pawn = self.Pawn or self:K2_GetPawn()
+    local playerState = self.PlayerState
+    if pawn == nil or playerState == nil or playerState.bArchiveLoaded ~= true then
+        return
+    end
+
+    if pawn.RefreshStateMgrProperty ~= nil then
+        pawn:RefreshStateMgrProperty(false)
     end
 end
 

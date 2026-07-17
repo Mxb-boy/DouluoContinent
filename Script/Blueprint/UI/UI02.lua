@@ -680,6 +680,10 @@ function UI02:LuaInit()
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
     StateMgr:SetUI(self)
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil then
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestRefreshProperty")
+    end
     self:RefreshPlayerExpUI()
     self:RefreshRealmNameText()
 
