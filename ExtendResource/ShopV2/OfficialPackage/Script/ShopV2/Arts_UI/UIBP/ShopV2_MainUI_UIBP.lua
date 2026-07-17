@@ -122,6 +122,8 @@ function ShopV2_MainUI_UIBP:RefreshTabs()
 end
 
 function ShopV2_MainUI_UIBP:InitCurrencyBar()
+    print("ShopV2_MainUI_UIBP:InitCurrencyBar")
+
     if self.bShowOasisCoin == true then
         UGCCommoditySystem.ShowRechargeEntryUI():Then(
             function (Result)
@@ -132,13 +134,16 @@ function ShopV2_MainUI_UIBP:InitCurrencyBar()
                     UI:SetVisibility(ESlateVisibility.Visible);
                     self.CurrencyBar:AddChild(UI);
                     self.bCurrencyBarInited = true;
+                else
+                    print("ShopV2_MainUI_UIBP:InitCurrencyBar RechargeUI is nil")
                 end
             end
         );
-    end
+    end    
 end
 
 function ShopV2_MainUI_UIBP:ShowPurchasePanel(ProductID)
+    
     self.PurchasePanel:SetVisibility(ESlateVisibility.SelfHitTestInvisible);
     self.PurchasePanel:Refresh(ProductID);
 end
@@ -214,6 +219,8 @@ function ShopV2_MainUI_UIBP:OnHelpButtonClick()
 end
 
 function ShopV2_MainUI_UIBP:CheckRefreshTime()
+    
+    print("[ShopV2_MainUI_UIBP:CheckRefreshTime] Start check time");
 
     --每小时刷新上下架状态
     local CurrentTime = Common.GetCurrentTime();
