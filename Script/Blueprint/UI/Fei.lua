@@ -6,9 +6,11 @@ local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
 
 local FLY_SPEED = 3600
-local FLY_ANIM_PATHS = {
-    "/Game/Arts_Timeliness/CG005_Concert/Arts_Player/CommingHome/Anim/Concert_CommingHome_Idle.Concert_CommingHome_Idle",
-}
+local FLY_START_ANIM_PATH = "/Game/UGC/Repository/Arts_Player/Anim/Dash/AS_DashStart_F.AS_DashStart_F"
+local FLY_LOOP_ANIM_PATH = "/Game/UGC/Repository/Arts_Player/Anim/Dash/AS_Dash_F.AS_Dash_F"
+local FLY_END_ANIM_PATH = "/Game/UGC/Repository/Arts_Player/Anim/Dash/AS_DashEnd_F.AS_DashEnd_F"
+local FLY_START_ANIM_DURATION = 0.45
+local FLY_END_ANIM_DURATION = 0.45
 local FLY_EFFECT_RELATIVE_PATH = "Asset/cs/P_Speed.P_Speed"
 local FLY_EFFECT_SOCKET = "Root"
 local FLY_EFFECT_OFFSET = Vector.New(0, 0, 80)
@@ -327,9 +329,8 @@ function Fei:StartFly()
     self.bFlying = true
     self.FlyMoveRpcElapsed = FLY_MOVE_RPC_INTERVAL
     self:BeginFly()
-    self:SetPawnAnimationPaused(true)
     self:SetFlyMovementMode(true)
-    self:PlayFlyAnimation()
+    self:PlayFlyStartAnimation()
     self:SpawnFlyEffect()
     self:SetOtherBlueprintUIHidden(true)
     self:SetNativeControlBlocked(true)
@@ -342,8 +343,7 @@ function Fei:StopFly()
 
     self.bFlying = false
     self:EndFly()
-    self:StopFlyAnimation()
-    self:SetPawnAnimationPaused(false)
+    self:PlayFlyEndAnimation()
     self:DestroyFlyEffect()
     self:SetFlyMovementMode(false)
     self:SetOtherBlueprintUIHidden(false)
@@ -562,31 +562,133 @@ function Fei:EndFly()
     end
 end
 
-function Fei:GetFlyAnimation()
-    if self.FlyAnimation ~= nil then
-        return self.FlyAnimation
+function Fei:GetFlyAnimation(AnimPath)
+    if AnimPath == nil then
+        return nil
     end
 
-    for _, AnimPath in ipairs(FLY_ANIM_PATHS) do
-        local AnimAsset = UE.LoadObject(AnimPath)
-        if AnimAsset ~= nil then
-            self.FlyAnimation = AnimAsset
-            self.FlyAnimationPath = AnimPath
-            ugcprint("[Fei] Fly animation loaded: " .. tostring(AnimPath))
-            return AnimAsset
-        end
+    self.FlyAnimationCache = self.FlyAnimationCache or {}
+    if self.FlyAnimationCache[AnimPath] ~= nil then
+        return self.FlyAnimationCache[AnimPath]
     end
 
-    ugcprint("[Fei] Fly animation load failed")
+    local AnimAsset = UE.LoadObject(AnimPath)
+    if AnimAsset ~= nil then
+        self.FlyAnimationCache[AnimPath] = AnimAsset
+        ugcprint("[Fei] Fly animation loaded: " .. tostring(AnimPath))
+        return AnimAsset
+    end
+
+    ugcprint("[Fei] Fly animation load failed: " .. tostring(AnimPath))
     return nil
 end
 
-function Fei:PlayFlyAnimation()
-    -- Do not drive the pawn Mesh animation here; PESkill owns attack animations.
+function Fei:CacheMeshAnimationState(Mesh)
+    if Mesh == nil then
+        return
+    end
+
+    if self.CacheMeshAnimationMode == nil then
+        self.CacheMeshAnimationMode = Mesh.AnimationMode
+    end
+    if self.CacheMeshAnimClass == nil then
+        self.CacheMeshAnimClass = Mesh.AnimClass
+    end
+end
+
+function Fei:PlayFlyAnimationByPath(AnimPath, bLoop)
+    local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    local Mesh = PlayerPawn ~= nil and PlayerPawn.Mesh or nil
+    if Mesh == nil then
+        return false
+    end
+
+    local AnimAsset = self:GetFlyAnimation(AnimPath)
+    if AnimAsset == nil then
+        self:SetPawnAnimationPaused(true)
+        return false
+    end
+
+    self:CacheMeshAnimationState(Mesh)
+    self:SetPawnAnimationPaused(false)
+
+    if Mesh.PlayAnimation ~= nil then
+        local Success = pcall(Mesh.PlayAnimation, Mesh, AnimAsset, bLoop == true)
+        if Success then
+            self.bPlayingFlyAnimation = true
+            return true
+        end
+    end
+
+    self:SetPawnAnimationPaused(true)
+    return false
+end
+
+function Fei:PlayFlyStartAnimation()
+    self.FlyAnimationSerial = (self.FlyAnimationSerial or 0) + 1
+    local Serial = self.FlyAnimationSerial
+    local bPlayed = self:PlayFlyAnimationByPath(FLY_START_ANIM_PATH, false)
+    if not bPlayed then
+        self:PlayFlyLoopAnimation()
+        return
+    end
+
+    if UGCTimerUtility ~= nil and UGCTimerUtility.CreateLuaTimer ~= nil then
+        UGCTimerUtility.CreateLuaTimer(FLY_START_ANIM_DURATION, function()
+            if self ~= nil and self.bFlying == true and self.FlyAnimationSerial == Serial then
+                self:PlayFlyLoopAnimation()
+            end
+        end, false)
+    else
+        self:PlayFlyLoopAnimation()
+    end
+end
+
+function Fei:PlayFlyLoopAnimation()
+    if self.bFlying ~= true then
+        return
+    end
+
+    self:PlayFlyAnimationByPath(FLY_LOOP_ANIM_PATH, true)
+end
+
+function Fei:PlayFlyEndAnimation()
+    self.FlyAnimationSerial = (self.FlyAnimationSerial or 0) + 1
+    self:PlayFlyAnimationByPath(FLY_END_ANIM_PATH, false)
+
+    if UGCTimerUtility ~= nil and UGCTimerUtility.CreateLuaTimer ~= nil then
+        local Serial = self.FlyAnimationSerial
+        UGCTimerUtility.CreateLuaTimer(FLY_END_ANIM_DURATION, function()
+            if self ~= nil and self.bFlying ~= true and self.FlyAnimationSerial == Serial then
+                self:StopFlyAnimation()
+                self:SetPawnAnimationPaused(false)
+            end
+        end, false)
+    else
+        self:StopFlyAnimation()
+        self:SetPawnAnimationPaused(false)
+    end
 end
 
 function Fei:StopFlyAnimation()
+    local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    local Mesh = PlayerPawn ~= nil and PlayerPawn.Mesh or nil
+    if Mesh ~= nil and self.bPlayingFlyAnimation == true then
+        if Mesh.Stop ~= nil then
+            pcall(Mesh.Stop, Mesh)
+        end
+        if Mesh.SetAnimationMode ~= nil and self.CacheMeshAnimationMode ~= nil then
+            pcall(Mesh.SetAnimationMode, Mesh, self.CacheMeshAnimationMode)
+        end
+        if Mesh.SetAnimInstanceClass ~= nil and self.CacheMeshAnimClass ~= nil then
+            pcall(Mesh.SetAnimInstanceClass, Mesh, self.CacheMeshAnimClass)
+        end
+    end
+
+    self.bPlayingFlyAnimation = false
     self.CacheAnimationMode = nil
+    self.CacheMeshAnimationMode = nil
+    self.CacheMeshAnimClass = nil
 end
 
 function Fei:SetPawnAnimationPaused(bPaused)
