@@ -439,7 +439,7 @@ local function GetWeaponInfoFromObject(Object)
 
     local DirectItemID = tonumber(Object)
     if DirectItemID ~= nil then
-        return DirectItemID, WeaponLevelConfig.GetWeaponInfo(DirectItemID)
+        return DirectItemID, WeaponLevelConfig.GetWeaponInfo(DirectItemID), true
     end
 
     local ItemFieldNames = {"ItemID", "ItemId", "itemID", "ItemDefineID", "DefineID", "DefineId", "WPID"}
@@ -451,7 +451,7 @@ local function GetWeaponInfoFromObject(Object)
             local ItemID = tonumber(FieldValue)
             local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
             if WeaponInfo ~= nil then
-                return ItemID, WeaponInfo
+                return ItemID, WeaponInfo, true
             end
         end
     end
@@ -461,7 +461,7 @@ local function GetWeaponInfoFromObject(Object)
         local ItemID = tonumber(TryCall(Object, FunctionName))
         local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
         if WeaponInfo ~= nil then
-            return ItemID, WeaponInfo
+            return ItemID, WeaponInfo, true
         end
     end
 
@@ -471,7 +471,7 @@ local function GetWeaponInfoFromObject(Object)
         local SeriesItemID = WeaponLevelConfig.GetItemID(SeriesKey, 1)
         local SeriesInfo = WeaponLevelConfig.GetWeaponInfo(SeriesItemID)
         if SeriesInfo ~= nil then
-            return SeriesItemID, SeriesInfo
+            return SeriesItemID, SeriesInfo, false
         end
     end
 
@@ -484,13 +484,13 @@ local function GetWeaponInfoFromObject(Object)
             local WeaponID = tonumber(FieldValue)
             local Weapon = WeaponLevelConfig.GetWeaponByID(WeaponID)
             if Weapon ~= nil then
-                return Weapon.WPID, WeaponLevelConfig.GetWeaponInfo(Weapon.WPID)
+                return Weapon.WPID, WeaponLevelConfig.GetWeaponInfo(Weapon.WPID), false
             end
         end
     end
 
     local FallbackItemID = GetItemIDFromObject(Object)
-    return FallbackItemID, WeaponLevelConfig.GetWeaponInfo(FallbackItemID)
+    return FallbackItemID, WeaponLevelConfig.GetWeaponInfo(FallbackItemID), FallbackItemID ~= nil
 end
 
 local PlayerNoWeaponCache = setmetatable({}, {
@@ -523,31 +523,6 @@ local function GetCurrentHeldWeapon(player)
     return nil
 end
 
-local function GetBestBackpackWeaponItemID(player, SeriesKey)
-    if player == nil or SeriesKey == nil or UGCBackPackSystem == nil or UGCBackPackSystem.GetAllItemData == nil then
-        return nil
-    end
-
-    local AllItemData = UGCBackPackSystem.GetAllItemData(player)
-    if AllItemData == nil then
-        return nil
-    end
-
-    local BestItemID = nil
-    local BestLevel = 0
-    for _, ItemData in pairs(AllItemData) do
-        local ItemID = tonumber(ItemData.ItemID)
-        local Count = tonumber(ItemData.Count or ItemData.ItemCount or ItemData.ItemNum or ItemData.Num) or 0
-        local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
-        if Count > 0 and WeaponInfo ~= nil and WeaponInfo.SeriesKey == SeriesKey and WeaponInfo.Level > BestLevel then
-            BestItemID = ItemID
-            BestLevel = WeaponInfo.Level
-        end
-    end
-
-    return BestItemID
-end
-
 local function SetWeaponRuntimeDisplayName(Weapon, DisplayName)
     if Weapon == nil or DisplayName == nil then
         return
@@ -578,25 +553,34 @@ local function GetHeldWeaponAttributeItemID(player)
         return nil, nil
     end
 
-    local ItemID, WeaponInfo = GetWeaponInfoFromObject(Weapon)
+    local UsedItemID = tonumber(player.CurrentUsedWeaponItemID)
+    local UsedWeaponInfo = WeaponLevelConfig.GetWeaponInfo(UsedItemID)
+    if UsedWeaponInfo ~= nil then
+        local UsedLevel = math.max(1, math.min(UsedWeaponInfo.MaxLevel,
+            tonumber(player.CurrentUsedWeaponLevel) or tonumber(UsedWeaponInfo.Level) or 1))
+        local AttributeItemID = WeaponLevelConfig.GetItemID(UsedWeaponInfo.SeriesKey, UsedLevel) or UsedItemID
+        Weapon.WeaponLevel = UsedLevel
+        Weapon.WeaponConfigID = UsedWeaponInfo.ID
+        Weapon.WeaponLevel_0 = WeaponLevelConfig.GetAttackPercentByWeaponID(UsedWeaponInfo.ID, UsedLevel)
+        SetWeaponRuntimeDisplayName(Weapon, WeaponLevelConfig.BuildDisplayName(UsedWeaponInfo.WPID, UsedLevel))
+        local DebugKey = "used|" .. tostring(UsedWeaponInfo.ID) .. "|" .. tostring(UsedLevel) .. "|" ..
+                             tostring(Weapon.WeaponLevel_0)
+        if player.LastHeldWeaponAttackDebugKey ~= DebugKey then
+            player.LastHeldWeaponAttackDebugKey = DebugKey
+            ugcprint("[UGCPlayerPawn:GetHeldWeaponAttribute] usedItem=" .. tostring(UsedItemID) .. ", weaponID=" ..
+                         tostring(UsedWeaponInfo.ID) .. ", level=" .. tostring(UsedLevel) .. ", attack=" ..
+                         tostring(Weapon.WeaponLevel_0))
+        end
+        return AttributeItemID, UsedWeaponInfo.SeriesKey, UsedWeaponInfo.Name, UsedLevel
+    end
+
+    local ItemID, WeaponInfo, bTrustItemLevel = GetWeaponInfoFromObject(Weapon)
     local ActorLevel = tonumber(Weapon.WeaponLevel)
     if WeaponInfo ~= nil then
         local HeldWeaponName = GetWeaponObjectItemName(Weapon)
         local NameLevel = GetLevelFromName(HeldWeaponName)
-        -- Backpack replacement can leave the equipped actor on its old item ID briefly.
-        -- The controller cache is updated by the forge result before this refresh runs.
-        local CachedLevel = player.WeaponLevelByID ~= nil and tonumber(player.WeaponLevelByID[WeaponInfo.ID]) or nil
-        local Controller = player.Controller
-        if CachedLevel == nil and Controller ~= nil and Controller.WeaponLevelByID ~= nil then
-            CachedLevel = tonumber(Controller.WeaponLevelByID[WeaponInfo.ID])
-        end
-        local SavedLevel = nil
-        if CachedLevel == nil and player.PlayerState ~= nil and player.PlayerState.GetWeaponLevel ~= nil and
-            (player.PlayerState.HasWeaponLevel == nil or player.PlayerState:HasWeaponLevel(WeaponInfo.ID)) then
-            SavedLevel = tonumber(player.PlayerState:GetWeaponLevel(WeaponInfo.ID))
-        end
-
-        local Level = math.max(1, math.min(WeaponInfo.MaxLevel, CachedLevel or SavedLevel or NameLevel or ActorLevel or
+        local ItemLevel = bTrustItemLevel == true and tonumber(WeaponInfo.Level) or nil
+        local Level = math.max(1, math.min(WeaponInfo.MaxLevel, ItemLevel or NameLevel or ActorLevel or
             tonumber(WeaponInfo.Level) or 1))
         local AttributeItemID = WeaponLevelConfig.GetItemID(WeaponInfo.SeriesKey, Level) or ItemID
         Weapon.WeaponLevel = Level
@@ -608,8 +592,7 @@ local function GetHeldWeaponAttributeItemID(player)
             player.LastHeldWeaponAttackDebugKey = DebugKey
             ugcprint("[UGCPlayerPawn:GetHeldWeaponAttribute] weaponID=" .. tostring(WeaponInfo.ID) .. ", level=" ..
                          tostring(Level) .. ", attack=" .. tostring(Weapon.WeaponLevel_0) .. ", nameLevel=" ..
-                         tostring(NameLevel) .. ", cachedLevel=" .. tostring(CachedLevel) .. ", savedLevel=" ..
-                         tostring(SavedLevel) .. ", actorLevel=" .. tostring(ActorLevel))
+                         tostring(NameLevel) .. ", actorLevel=" .. tostring(ActorLevel))
         end
         return AttributeItemID, WeaponInfo.SeriesKey, HeldWeaponName or WeaponInfo.Name, Level
     end
@@ -627,8 +610,7 @@ local function GetHeldWeaponAttributeItemID(player)
             return ItemID, SeriesKey, ItemName, WeaponInfo.Level
         end
 
-        return GetBestBackpackWeaponItemID(player, SeriesKey) or WeaponLevelConfig.GetItemID(SeriesKey, 1), SeriesKey,
-            ItemName, 1
+        return WeaponLevelConfig.GetItemID(SeriesKey, 1), SeriesKey, ItemName, 1
     end
 
     local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
@@ -641,8 +623,7 @@ local function GetHeldWeaponAttributeItemID(player)
         return nil, nil
     end
 
-    return GetBestBackpackWeaponItemID(player, SeriesKey) or WeaponLevelConfig.GetItemID(SeriesKey, 1), SeriesKey, nil,
-        nil
+    return WeaponLevelConfig.GetItemID(SeriesKey, 1), SeriesKey, nil, 1
 end
 
 local function DestroySoulMesh(player)

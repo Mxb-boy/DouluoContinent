@@ -345,6 +345,11 @@ function UGCPlayerController:Server_UpdateWeaponAttackBonus(ItemID)
         return
     end
 
+    if WeaponLevelConfig.GetWeaponInfo(pawn.CurrentUsedWeaponItemID) ~= nil and pawn.RefreshWeaponAttackBonus ~= nil then
+        pawn:RefreshWeaponAttackBonus(true)
+        return
+    end
+
     pawn:ApplyWeaponAttackBonusByItemID(ItemID, nil, nil, nil, false)
 end
 
