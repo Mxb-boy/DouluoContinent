@@ -1,21 +1,13 @@
 ﻿---@class BaseMons_C:BP_UGC_GenericMobPawn_Base_C
 ---@field HitBox UCapsuleComponent
 ---@field MonsterID int32
---Edit Below--
+-- Edit Below--
 local BaseMons = {}
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
+local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 
-local function DisableMonsterCollision(monster)
-    if monster.HitBox ~= nil then
-        monster.HitBox:SetCollisionEnabled(ECollisionEnabled.NoCollision)
-    end
-
-    if monster.StaticMesh ~= nil then
-        monster.StaticMesh:SetCollisionEnabled(ECollisionEnabled.NoCollision)
-    end
-end
 -- function BaseMons:ReceiveBeginPlay()
 --     BaseMons.SuperClass.ReceiveBeginPlay(self)
 -- end
@@ -39,19 +31,20 @@ end
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- function BaseMons:PreTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
-     
+
 -- end
 
--- ---受击后置事件
--- ---生效范围：服务器
--- ---@param Damage float 伤害值
--- ---@param EventInstigator AController 伤害来源的Controller
--- ---@param DamageCauser AActor 伤害来源
--- ---@param DamageContext FGameMagnitudeContext  伤害上下文
--- function BaseMons:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
-    
--- end
+--[[----------------------首次受击随机移动后追击攻击者------------------------]]
+function BaseMons:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+    MonsterSpawnMgr.FirstHitRunAway(self, EventInstigator)
+end
 
+---受击后置事件
+---生效范围：服务器
+---@param Damage float 伤害值
+---@param EventInstigator AController 伤害来源的Controller
+---@param DamageCauser AActor 伤害来源
+---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- ---受击前置伤害修改
 -- ---生效范围：服务器
 -- ---@param Damage float 伤害值
@@ -82,7 +75,7 @@ end
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
 function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
-    DisableMonsterCollision(self)
+    MonsterSpawnMgr.DisableMonsterCollision(self)
 
     if self:HasAuthority() and self.SpawnWall ~= nil then
         self.SpawnWall:OnMonsterDied(self)
@@ -97,12 +90,8 @@ function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEven
 
         -- 只有服务端才可以掉落
         if DropID ~= nil then
-            self.UGCPresetCommonDropItemComponent:StartDropByProduceID(
-                DropID,
-                -1,
-                EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor,
-                nil
-            )
+            self.UGCPresetCommonDropItemComponent:StartDropByProduceID(DropID, -1,
+                EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor, nil)
         end
         --[[----------------------怪物死亡给击杀者加经验------------------------]] --
         local KillExp = PlayerLevelMgr:GetWaveKillExp(self.MonsterID)
@@ -151,7 +140,7 @@ end
 -- ---@param NewTarget AActor 新目标
 -- ---@param OldTarget AActor 旧目标
 -- function BaseMons:OnTargetChange_BP(NewTarget, OldTarget)
-    
+
 -- end
 
 return BaseMons

@@ -1,10 +1,11 @@
----@class Boss_2_C:BP_UGC_GenericMobPawn_Base_C
+﻿---@class Boss_2_C:BP_UGC_GenericMobPawn_Base_C
 ---@field HitBox UCapsuleComponent
 ---@field MonsterID int32
 --Edit Below--
 local Boss_2 = {}
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
+local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 
 local DROP_SCATTER_RANGE = 300
 
@@ -37,15 +38,6 @@ local function SpawnDrop(monster, ItemID, Count)
     return UGCItemSystemV2.SpawnPickupWrapper(DropLoc, ItemID, Count)
 end
 
-local function DisableMonsterCollision(monster)
-    if monster.HitBox ~= nil then
-        monster.HitBox:SetCollisionEnabled(ECollisionEnabled.NoCollision)
-    end
-
-    if monster.StaticMesh ~= nil then
-        monster.StaticMesh:SetCollisionEnabled(ECollisionEnabled.NoCollision)
-    end
-end
 
 -- function Boss_2:ReceiveBeginPlay()
 --     Boss_2.SuperClass.ReceiveBeginPlay(self)
@@ -113,7 +105,7 @@ end
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
 function Boss_2:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
-    DisableMonsterCollision(self)
+    MonsterSpawnMgr.DisableMonsterCollision(self)
 
     if self:HasAuthority() and self.SpawnWall ~= nil then
         self.SpawnWall:OnMonsterDied(self)

@@ -1,20 +1,12 @@
----@class BaseMonsddd_C:BP_UGC_GenericStaticMeshMob_C
+﻿---@class BaseMonsddd_C:BP_UGC_GenericStaticMeshMob_C
 ---@field StaticMesh UStaticMeshComponent
 ---@field HitBox UCapsuleComponent
 ---@field MonsterID int32
 --Edit Below--
 local BaseMonsJiChu = {}
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
+local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 
-local function DisableMonsterCollision(monster)
-    if monster.HitBox ~= nil then
-        monster.HitBox:SetCollisionEnabled(ECollisionEnabled.NoCollision)
-    end
-
-    if monster.StaticMesh ~= nil then
-        monster.StaticMesh:SetCollisionEnabled(ECollisionEnabled.NoCollision)
-    end
-end
 
 -- function BaseMonsJiChu:ReceiveBeginPlay()
 --     BaseMonsJiChu.SuperClass.ReceiveBeginPlay(self)
@@ -82,7 +74,7 @@ end
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
 function BaseMonsJiChu:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
-    DisableMonsterCollision(self)
+    MonsterSpawnMgr.DisableMonsterCollision(self)
 
     if self:HasAuthority() and self.SpawnWall ~= nil then
         self.SpawnWall:OnMonsterDied(self)

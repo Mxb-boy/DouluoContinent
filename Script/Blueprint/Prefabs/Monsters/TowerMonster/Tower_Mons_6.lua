@@ -1,6 +1,7 @@
----@class Tower_Mons_6_C:Tower_Mons_1_C
+﻿---@class Tower_Mons_6_C:Tower_Mons_1_C
 --Edit Below--
 local Tower_Mons_6 = {}
+local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 
 local SHAKE_TYPE_RANDOM = 0 -- EPESkillCameraShakeType::Random
 local SHAKE_SCALE = 0.3
@@ -81,6 +82,7 @@ end
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
 function Tower_Mons_6:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
+    MonsterSpawnMgr.DisableMonsterCollision(self)
     Tower_Mons_6.SuperClass.BPDie(self, KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
 
     if self:HasAuthority() then

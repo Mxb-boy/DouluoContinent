@@ -7,16 +7,8 @@ local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
+local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 
-local function DisableMonsterCollision(monster)
-    if monster.HitBox ~= nil then
-        monster.HitBox:SetCollisionEnabled(ECollisionEnabled.NoCollision)
-    end
-
-    if monster.StaticMesh ~= nil then
-        monster.StaticMesh:SetCollisionEnabled(ECollisionEnabled.NoCollision)
-    end
-end
 
 -- function BaseMons:ReceiveBeginPlay()
 --     BaseMons.SuperClass.ReceiveBeginPlay(self)
@@ -84,7 +76,7 @@ end
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
 function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
-    DisableMonsterCollision(self)
+    MonsterSpawnMgr.DisableMonsterCollision(self)
 
     if self:HasAuthority() and self.SpawnWall ~= nil then
         self.SpawnWall:OnMonsterDied(self)

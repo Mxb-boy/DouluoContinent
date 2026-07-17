@@ -3,6 +3,98 @@ MonsterSpawnMgr = MonsterSpawnMgr or {}
 MonsterSpawnMgr.ClassCache = MonsterSpawnMgr.ClassCache or {}
 MonsterSpawnMgr.LevelPointCache = MonsterSpawnMgr.LevelPointCache or {}
 
+local First_Hit_Run_Away_Time = 2 -- 首次受击乱跑时间
+local First_Hit_Run_Away_Distance = 900 -- 首次受击随机移动距离
+local First_Hit_Run_Away_Stop_Radius = 80 -- 首次受击移动停止距离
+local First_Hit_Run_Away_Reason = "FirstHitRunAway" -- 首次受击暂停行为树原因
+local First_Hit_Run_Away_Speed_Scale = 3 -- 首次受击随机移动速度倍率
+local First_Hit_Run_Away_Speed_Reason = 1001 -- 首次受击移动速度修改原因
+
+--[[----------------------禁用怪物碰撞------------------------]]
+function MonsterSpawnMgr.DisableMonsterCollision(monster)
+    if monster.HitBox ~= nil then
+        monster.HitBox:SetCollisionEnabled(ECollisionEnabled.NoCollision)
+    end
+
+    if monster.StaticMesh ~= nil then
+        monster.StaticMesh:SetCollisionEnabled(ECollisionEnabled.NoCollision)
+    end
+end
+
+--[[----------------------获取伤害来源玩家------------------------]]
+function MonsterSpawnMgr.GetInstigatorPawn(EventInstigator)
+    if EventInstigator == nil then
+        return nil
+    end
+
+    return UGCGameSystem.GetPlayerPawnByPlayerController(EventInstigator) or EventInstigator
+end
+
+--[[----------------------设置怪物追击目标------------------------]]
+function MonsterSpawnMgr.SetMonsterTarget(monster, TargetPawn)
+    local Blackboard = UGCGenericCharacterSystem.GetBlackboard(monster)
+    if Blackboard ~= nil then
+        Blackboard:SetValueAsObject("Target", TargetPawn)
+    end
+end
+
+--[[----------------------恢复首次受击后的追击------------------------]]
+function MonsterSpawnMgr.ResumeFirstHitBehavior(monster, TargetPawn, OldSpeed, SpeedReason, BehaviorReason)
+    if UGCGenericCharacterSystem.IsAlive(monster) then
+        UGCGenericCharacterSystem.StopMove(monster)
+        UGCGenericCharacterSystem.SetMaxSpeed(monster, OldSpeed, SpeedReason)
+        MonsterSpawnMgr.SetMonsterTarget(monster, TargetPawn)
+        UGCGenericCharacterSystem.ResumeBehavior(monster, BehaviorReason)
+    end
+end
+
+--[[----------------------首次受击随机移动后追击攻击者------------------------]]
+function MonsterSpawnMgr.FirstHitRunAway(
+    monster,
+    EventInstigator,
+    RunAwayTime,
+    RunAwayDistance,
+    StopRadius,
+    BehaviorReason,
+    SpeedScale,
+    SpeedReason
+)
+    RunAwayTime = RunAwayTime or First_Hit_Run_Away_Time
+    RunAwayDistance = RunAwayDistance or First_Hit_Run_Away_Distance
+    StopRadius = StopRadius or First_Hit_Run_Away_Stop_Radius
+    BehaviorReason = BehaviorReason or First_Hit_Run_Away_Reason
+    SpeedScale = SpeedScale or First_Hit_Run_Away_Speed_Scale
+    SpeedReason = SpeedReason or First_Hit_Run_Away_Speed_Reason
+
+    if monster.FirstHitRunAwayDone then
+        return
+    end
+
+    if not monster:HasAuthority() then
+        return
+    end
+
+    local TargetPawn = MonsterSpawnMgr.GetInstigatorPawn(EventInstigator)
+    if TargetPawn == nil then
+        return
+    end
+
+    local SelfLoc = monster:K2_GetActorLocation()
+    local Angle = math.random() * 2 * math.pi
+    local MoveLoc = Vector.New(SelfLoc.X + math.cos(Angle) * RunAwayDistance,
+        SelfLoc.Y + math.sin(Angle) * RunAwayDistance, SelfLoc.Z)
+    local OldSpeed = UGCGenericCharacterSystem.GetMaxSpeed(monster)
+
+    monster.FirstHitRunAwayDone = true
+    MonsterSpawnMgr.SetMonsterTarget(monster, TargetPawn)
+    UGCGenericCharacterSystem.PauseBehavior(monster, BehaviorReason)
+    UGCGenericCharacterSystem.SetMaxSpeed(monster, OldSpeed * SpeedScale, SpeedReason)
+    UGCGenericCharacterSystem.MoveTo(monster, MoveLoc, StopRadius)
+    UGCTimerUtility.CreateLuaTimer(RunAwayTime, function()
+        MonsterSpawnMgr.ResumeFirstHitBehavior(monster, TargetPawn, OldSpeed, SpeedReason, BehaviorReason)
+    end)
+end
+
 function MonsterSpawnMgr.GetCachedClass(ClassPath)
     if ClassPath == nil or ClassPath == "" then
         return nil
