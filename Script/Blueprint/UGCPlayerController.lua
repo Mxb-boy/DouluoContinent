@@ -227,6 +227,8 @@ function UGCPlayerController:Server_BeginFlyState()
     end
 
     self.bServerFlying = true
+    self.bServerFlyMovementModeReady = false
+    self.ServerFlyCachedMaxWalkSpeed = nil
     pawn:BeginFly()
 end
 
@@ -237,6 +239,8 @@ function UGCPlayerController:Server_EndFlyState()
     end
 
     self.bServerFlying = false
+    self.bServerFlyMovementModeReady = false
+    self.ServerFlyCachedMaxWalkSpeed = nil
     pawn:EndFly()
 end
 
@@ -248,17 +252,25 @@ function UGCPlayerController:Server_FlyMove(DirX, DirY, DirZ, DeltaTime)
     end
 
     local pawn = self:K2_GetPawn()
-    if pawn == nil or pawn.K2_GetActorLocation == nil or pawn.K2_SetActorLocation == nil then
+    if pawn == nil then
         return
     end
 
     local MovementComponent = pawn.CharacterMovement or pawn.MovementComponent
-    if MovementComponent ~= nil then
+    if MovementComponent ~= nil and self.bServerFlyMovementModeReady ~= true then
+        self.bServerFlyMovementModeReady = true
         if MovementComponent.SetMovementMode ~= nil then
             pcall(MovementComponent.SetMovementMode, MovementComponent, 5)
         end
         if MovementComponent.GravityScale ~= nil then
             MovementComponent.GravityScale = 0
+        end
+        if MovementComponent.MaxFlySpeed ~= nil then
+            MovementComponent.MaxFlySpeed = FLY_SPEED
+        end
+        if MovementComponent.MaxWalkSpeed ~= nil then
+            self.ServerFlyCachedMaxWalkSpeed = self.ServerFlyCachedMaxWalkSpeed or MovementComponent.MaxWalkSpeed
+            MovementComponent.MaxWalkSpeed = FLY_SPEED
         end
         if MovementComponent.Velocity ~= nil then
             MovementComponent.Velocity = Vector.New(0, 0, 0)
@@ -270,7 +282,7 @@ function UGCPlayerController:Server_FlyMove(DirX, DirY, DirZ, DeltaTime)
     DirZ = tonumber(DirZ) or 0
     DeltaTime = tonumber(DeltaTime) or 0.016
 
-    if DeltaTime <= 0 or DeltaTime > 0.1 then
+    if DeltaTime <= 0 or DeltaTime > 0.2 then
         DeltaTime = 0.016
     end
 
@@ -283,20 +295,22 @@ function UGCPlayerController:Server_FlyMove(DirX, DirY, DirZ, DeltaTime)
     DirY = DirY / Length
     DirZ = DirZ / Length
 
-    local Location = pawn:K2_GetActorLocation()
-    if Location == nil then
-        return
+    if pawn.AddMovementInput ~= nil then
+        local Direction = Vector.New(DirX, DirY, DirZ)
+        local Success = pcall(pawn.AddMovementInput, pawn, Direction, 1.0, true)
+        if not Success then
+            pcall(pawn.AddMovementInput, pawn, Direction, 1.0)
+        end
     end
 
-    local Distance = FLY_SPEED * DeltaTime
-    local NewLocation = Vector.New(Location.X + DirX * Distance, Location.Y + DirY * Distance,
-        Location.Z + DirZ * Distance)
-
-    pawn:K2_SetActorLocation(NewLocation, true, nil, true)
+    if MovementComponent ~= nil and MovementComponent.Velocity ~= nil then
+        MovementComponent.Velocity = Vector.New(DirX * FLY_SPEED, DirY * FLY_SPEED, DirZ * FLY_SPEED)
+    end
 end
 
 function UGCPlayerController:Server_StopFlyMove()
     self.bServerFlying = false
+    self.bServerFlyMovementModeReady = false
 
     local pawn = self:K2_GetPawn()
     if pawn == nil then
@@ -315,6 +329,10 @@ function UGCPlayerController:Server_StopFlyMove()
     if MovementComponent.GravityScale ~= nil then
         MovementComponent.GravityScale = 1
     end
+    if self.ServerFlyCachedMaxWalkSpeed ~= nil and MovementComponent.MaxWalkSpeed ~= nil then
+        MovementComponent.MaxWalkSpeed = self.ServerFlyCachedMaxWalkSpeed
+    end
+    self.ServerFlyCachedMaxWalkSpeed = nil
     if MovementComponent.Velocity ~= nil then
         MovementComponent.Velocity = Vector.New(0, 0, 0)
     end

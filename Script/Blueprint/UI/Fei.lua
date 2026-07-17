@@ -15,7 +15,7 @@ local FLY_EFFECT_OFFSET = Vector.New(0, 0, 80)
 local FLY_EFFECT_ROTATION = Rotator.New(0, 0, 0)
 local FLY_EFFECT_SCALE = Vector.New(2, 2, 2)
 local FLY_RELEASE_GRACE_TIME = 0.35
-local FLY_MOVE_RPC_INTERVAL = 0.1
+local FLY_MOVE_RPC_INTERVAL = 0.05
 local WingItemID = 1028
 local WingBackpackItemIDs = {8310012, 8310013, 8310014, 8310058, 8310059, 8310010}
 
@@ -327,6 +327,8 @@ function Fei:StartFly()
     self.bFlying = true
     self.FlyMoveRpcElapsed = FLY_MOVE_RPC_INTERVAL
     self:BeginFly()
+    self:SetPawnAnimationPaused(true)
+    self:SetFlyMovementMode(true)
     self:PlayFlyAnimation()
     self:SpawnFlyEffect()
     self:SetOtherBlueprintUIHidden(true)
@@ -341,6 +343,7 @@ function Fei:StopFly()
     self.bFlying = false
     self:EndFly()
     self:StopFlyAnimation()
+    self:SetPawnAnimationPaused(false)
     self:DestroyFlyEffect()
     self:SetFlyMovementMode(false)
     self:SetOtherBlueprintUIHidden(false)
@@ -586,6 +589,63 @@ function Fei:StopFlyAnimation()
     self.CacheAnimationMode = nil
 end
 
+function Fei:SetPawnAnimationPaused(bPaused)
+    local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    local Mesh = PlayerPawn ~= nil and PlayerPawn.Mesh or nil
+    if Mesh == nil then
+        return
+    end
+
+    if bPaused then
+        if self.CacheMeshPauseAnims == nil then
+            self.CacheMeshPauseAnims = Mesh.bPauseAnims
+        end
+        if self.CacheMeshGlobalAnimRateScale == nil then
+            self.CacheMeshGlobalAnimRateScale = Mesh.GlobalAnimRateScale
+        end
+
+        pcall(function()
+            Mesh.bPauseAnims = true
+        end)
+        pcall(function()
+            Mesh.GlobalAnimRateScale = 0
+        end)
+
+        if Mesh.SetComponentTickEnabled ~= nil then
+            pcall(Mesh.SetComponentTickEnabled, Mesh, false)
+        end
+        return
+    end
+
+    if self.CacheMeshPauseAnims ~= nil then
+        local PauseAnims = self.CacheMeshPauseAnims
+        pcall(function()
+            Mesh.bPauseAnims = PauseAnims
+        end)
+    else
+        pcall(function()
+            Mesh.bPauseAnims = false
+        end)
+    end
+    self.CacheMeshPauseAnims = nil
+
+    if self.CacheMeshGlobalAnimRateScale ~= nil then
+        local AnimRateScale = self.CacheMeshGlobalAnimRateScale
+        pcall(function()
+            Mesh.GlobalAnimRateScale = AnimRateScale
+        end)
+    else
+        pcall(function()
+            Mesh.GlobalAnimRateScale = 1
+        end)
+    end
+    self.CacheMeshGlobalAnimRateScale = nil
+
+    if Mesh.SetComponentTickEnabled ~= nil then
+        pcall(Mesh.SetComponentTickEnabled, Mesh, true)
+    end
+end
+
 function Fei:GetFlyEffectTemplate()
     if self.FlyEffectTemplate ~= nil then
         return self.FlyEffectTemplate
@@ -696,19 +756,18 @@ function Fei:ApplyFlyMovement(InDeltaTime)
         return
     end
 
-    self:SetFlyMovementMode(true)
-
     local ForwardVector = self:GetViewForwardVector(PlayerPawn)
     if ForwardVector == nil then
         return
     end
 
-    self:MovePawnByDirection(PlayerPawn, ForwardVector, InDeltaTime)
+    self:ApplyNativeFlyMovement(PlayerPawn, ForwardVector)
 
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
     if PlayerController ~= nil then
         self.FlyMoveRpcElapsed = (self.FlyMoveRpcElapsed or 0) + (tonumber(InDeltaTime) or 0.016)
         if self.FlyMoveRpcElapsed >= FLY_MOVE_RPC_INTERVAL then
+            local RpcDeltaTime = self.FlyMoveRpcElapsed
             self.FlyMoveRpcElapsed = 0
             UnrealNetwork.CallUnrealRPC(
                 PlayerController,
@@ -717,10 +776,39 @@ function Fei:ApplyFlyMovement(InDeltaTime)
                 ForwardVector.X or 0,
                 ForwardVector.Y or 0,
                 ForwardVector.Z or 0,
-                FLY_MOVE_RPC_INTERVAL
+                RpcDeltaTime
             )
         end
     end
+end
+
+function Fei:ApplyNativeFlyMovement(PlayerPawn, Direction)
+    if PlayerPawn == nil or Direction == nil then
+        return
+    end
+
+    if PlayerPawn.AddMovementInput ~= nil then
+        local Success = pcall(PlayerPawn.AddMovementInput, PlayerPawn, Direction, 1.0, true)
+        if Success then
+            return
+        end
+        Success = pcall(PlayerPawn.AddMovementInput, PlayerPawn, Direction, 1.0)
+        if Success then
+            return
+        end
+    end
+
+    local MovementComponent = PlayerPawn.CharacterMovement or PlayerPawn.MovementComponent
+    if MovementComponent ~= nil and MovementComponent.Velocity ~= nil then
+        MovementComponent.Velocity = Vector.New(
+            (Direction.X or 0) * FLY_SPEED,
+            (Direction.Y or 0) * FLY_SPEED,
+            (Direction.Z or 0) * FLY_SPEED
+        )
+        return
+    end
+
+    self:MovePawnByDirection(PlayerPawn, Direction, 0.016)
 end
 
 function Fei:GetViewForwardVector(PlayerPawn)
@@ -763,6 +851,10 @@ function Fei:SetFlyMovementMode(bFlying)
     local MovementComponent = PlayerPawn.CharacterMovement or PlayerPawn.MovementComponent
     if MovementComponent ~= nil and MovementComponent.SetMovementMode ~= nil then
         if bFlying then
+            if self.bFlyMovementModeEnabled == true then
+                return
+            end
+            self.bFlyMovementModeEnabled = true
             if self.CacheGravityScale == nil then
                 self.CacheGravityScale = MovementComponent.GravityScale
             end
@@ -770,14 +862,29 @@ function Fei:SetFlyMovementMode(bFlying)
             if MovementComponent.GravityScale ~= nil then
                 MovementComponent.GravityScale = 0
             end
+            if MovementComponent.MaxFlySpeed ~= nil then
+                MovementComponent.MaxFlySpeed = FLY_SPEED
+            end
+            if MovementComponent.MaxWalkSpeed ~= nil then
+                self.CacheMaxWalkSpeed = self.CacheMaxWalkSpeed or MovementComponent.MaxWalkSpeed
+                MovementComponent.MaxWalkSpeed = FLY_SPEED
+            end
             if MovementComponent.Velocity ~= nil then
                 MovementComponent.Velocity = Vector.New(0, 0, 0)
             end
         else
+            self.bFlyMovementModeEnabled = false
             if self.CacheGravityScale ~= nil and MovementComponent.GravityScale ~= nil then
                 MovementComponent.GravityScale = self.CacheGravityScale
             end
             self.CacheGravityScale = nil
+            if self.CacheMaxWalkSpeed ~= nil and MovementComponent.MaxWalkSpeed ~= nil then
+                MovementComponent.MaxWalkSpeed = self.CacheMaxWalkSpeed
+            end
+            self.CacheMaxWalkSpeed = nil
+            if MovementComponent.Velocity ~= nil then
+                MovementComponent.Velocity = Vector.New(0, 0, 0)
+            end
             pcall(MovementComponent.SetMovementMode, MovementComponent, 1)
         end
     end
