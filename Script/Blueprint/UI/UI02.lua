@@ -6,6 +6,8 @@
 ---@field Button_3 UButton
 ---@field Button_4 UButton
 ---@field Button_5 UButton
+---@field Button_6 UButton
+---@field Button_7 UButton
 ---@field Button_92 UButton
 ---@field Button_93 UButton
 ---@field Button_94 UButton
@@ -47,6 +49,10 @@
 ---@field Image_12 UImage
 ---@field Image_13 UImage
 ---@field Image_14 UImage
+---@field Image_15 UImage
+---@field Image_16 UImage
+---@field Image_17 UImage
+---@field Image_18 UImage
 ---@field Image_43 UImage
 ---@field Image_62 UImage
 ---@field Image_109 UImage
@@ -541,6 +547,8 @@ local AutoAttackItemID = 1026
 local MainButtonRedDots = {
     Button_144 = "Image_5",
     Button_145 = "Image_6",
+    Button_6 = "Image_17",
+    Button_7 = "Image_18",
     Button_149 = "Image_8",
     Button_150 = "Image_10",
     Button_151 = "Image_11",
@@ -550,6 +558,7 @@ local MainButtonRedDots = {
 }
 local MainFoldImages = {"Image_386", "Image_387", "Image_388", "Image_389", "Image_392", "Image_393", "Image_395",
                         "Image_396"}
+local MainFoldWidgets = {"Button_6", "Button_7", "Image_15", "Image_16", "Image_17", "Image_18"}
 local HiddenMainWidgets = {"Button_147", "Button_156", "Button_157", "Image_9", "Image_14", "Image_397", "Image_398"}
 local ToggleButtonNormalColor = {
     R = 1.0,
@@ -628,6 +637,8 @@ function UI02:LuaInit()
     self.Button_150.OnClicked:Add(self.Button_150_OnClicked, self)
     self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
     self.Button_5.OnClicked:Add(self.Button_1_OnClicked, self)
+    self.Button_6.OnClicked:Add(self.Button_6_OnClicked, self)
+    self.Button_7.OnClicked:Add(self.Button_7_OnClicked, self)
     self.Button_2.OnClicked:Add(self.Button_2_OnClicked, self)
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
     self.Button_153.OnClicked:Add(self.Button_153_OnClicked, self)
@@ -646,6 +657,8 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_0)
     self:ApplyButtonEffect(self.Button_1)
     self:ApplyButtonEffect(self.Button_5)
+    self:ApplyButtonEffect(self.Button_6)
+    self:ApplyButtonEffect(self.Button_7)
     self:ApplyButtonEffect(self.Button_2)
     self:ApplyButtonEffect(self.Button_3)
     self:ApplyButtonEffect(self.Button_4)
@@ -732,6 +745,11 @@ function UI02:Button_134_OnClicked()
     end
     for _, ImageName in ipairs(MainFoldImages) do
         self[ImageName]:SetVisibility(Visibility)
+    end
+    for _, WidgetName in ipairs(MainFoldWidgets) do
+        if self[WidgetName] ~= nil then
+            self[WidgetName]:SetVisibility(Visibility)
+        end
     end
     self:HideHiddenMainWidgets()
 end
@@ -1133,6 +1151,14 @@ function UI02:Button_145_OnClicked()
     SignInEventManager:OpenMainUI()
 end
 -- 商城
+function UI02:Button_6_OnClicked()
+    self:HideMainButtonRedDot("Button_6")
+end
+
+function UI02:Button_7_OnClicked()
+    self:HideMainButtonRedDot("Button_7")
+end
+
 function UI02:Button_144_OnClicked()
     self:HideMainButtonRedDot("Button_144")
     if ShopV2Manager == nil then
