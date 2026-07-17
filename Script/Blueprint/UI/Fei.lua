@@ -363,14 +363,35 @@ function Fei:GetKeyNameFromEvent(KeyEvent)
     end
 
     local Key = nil
-    if KeyEvent.GetKey ~= nil then
-        local Success, Result = pcall(KeyEvent.GetKey, KeyEvent)
+
+    local SuccessGetKey, GetKeyFunc = pcall(function()
+        return KeyEvent.GetKey
+    end)
+    if SuccessGetKey and GetKeyFunc ~= nil then
+        local Success, Result = pcall(GetKeyFunc, KeyEvent)
         if Success then
             Key = Result
         end
     end
 
-    Key = Key or KeyEvent.Key or KeyEvent.KeyName
+    if Key == nil then
+        local SuccessKey, KeyValue = pcall(function()
+            return KeyEvent.Key
+        end)
+        if SuccessKey then
+            Key = KeyValue
+        end
+    end
+
+    if Key == nil then
+        local SuccessKeyName, KeyNameValue = pcall(function()
+            return KeyEvent.KeyName
+        end)
+        if SuccessKeyName then
+            Key = KeyNameValue
+        end
+    end
+
     if Key == nil then
         return nil
     end
@@ -381,8 +402,11 @@ function Fei:GetKeyNameFromEvent(KeyEvent)
 
     local FunctionNames = { "GetFName", "GetDisplayName", "GetName", "ToString" }
     for _, FunctionName in ipairs(FunctionNames) do
-        if Key[FunctionName] ~= nil then
-            local Success, Result = pcall(Key[FunctionName], Key)
+        local SuccessHas, Func = pcall(function()
+            return Key[FunctionName]
+        end)
+        if SuccessHas and Func ~= nil then
+            local Success, Result = pcall(Func, Key)
             if Success and Result ~= nil then
                 return tostring(Result)
             end
@@ -490,7 +514,7 @@ function Fei:SetOtherBlueprintUIHidden(bHidden)
         self.HiddenBlueprintWidgets = {}
         if PlayerController.MainUIInstance ~= nil
             and PlayerController.MainUIInstance.YXWDBuffIconActive == true then
-            ugcprint("[Fei:SetOtherBlueprintUIHidden] keep MainUIInstance visible for YXWD icon")
+            -- keep MainUIInstance visible for YXWD icon
         else
             self:HideWidget(PlayerController.MainUIInstance)
         end
@@ -569,12 +593,10 @@ function Fei:GetFlyAnimation()
         if AnimAsset ~= nil then
             self.FlyAnimation = AnimAsset
             self.FlyAnimationPath = AnimPath
-            ugcprint("[Fei] Fly animation loaded: " .. tostring(AnimPath))
             return AnimAsset
         end
     end
 
-    ugcprint("[Fei] Fly animation load failed")
     return nil
 end
 
@@ -607,13 +629,8 @@ function Fei:GetFlyEffectTemplate()
         self.FlyEffectTemplate = UE.LoadObject(EffectPath)
         if self.FlyEffectTemplate ~= nil then
             self.FlyEffectPath = EffectPath
-            ugcprint("[Fei] Fly effect loaded: " .. tostring(EffectPath))
             return self.FlyEffectTemplate
         end
-    end
-
-    if self.FlyEffectTemplate == nil then
-        ugcprint("[Fei] Fly effect load failed: " .. tostring(FLY_EFFECT_RELATIVE_PATH))
     end
 
     return self.FlyEffectTemplate
@@ -665,9 +682,6 @@ function Fei:SpawnFlyEffect()
 
     if Success and EffectComponent ~= nil then
         self.FlyEffectComponent = EffectComponent
-        ugcprint("[Fei] Fly effect spawned")
-    else
-        ugcprint("[Fei] Fly effect spawn failed")
     end
 end
 

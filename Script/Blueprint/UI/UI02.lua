@@ -1057,62 +1057,40 @@ function UI02:PurchaseShopItem(ItemID, Price)
         return false
     end
 
-    self:EnsureShopPurchaseCallbacks()
     if ShopV2Manager.bBlockRepeatPurchase == true then
         return false
     end
 
-    ShopV2Manager.bBlockRepeatPurchase = true
     local ProductData = ShopV2Manager:GetProductConfigData(ProductID)
     if ProductData == nil then
+        return false
+    end
+
+    ShopV2Manager.bBlockRepeatPurchase = true
+
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
         ShopV2Manager.bBlockRepeatPurchase = false
         return false
     end
-    if ProductData.CurrencyType == ECurrencyType.OtherCoin then
-        ShopV2Manager:BuyProduct(ProductID, 1, ShopV2Manager:GetDiscountPrice(ProductID))
-    else
-        local ObjectData = ShopV2Manager:GetItemConfigData(ProductData.ItemID)
-        self.YXWDCanAfford = ShopV2Manager:CanAfford(ProductID, 1)
-        if RankMgr ~= nil and RankMgr.BeginConsumePurchase ~= nil then
-            RankMgr:BeginConsumePurchase(ProductID, ProductData.ItemID, ShopV2Manager:GetDiscountPrice(ProductID), 1)
-        end
-        local PromiseFuture =
-            UGCCommoditySystem.BuyUGCCommodity2(ProductID, ObjectData.ItemIcon, ObjectData.ItemDesc, 1)
-        if PromiseFuture ~= nil then
-            PromiseFuture:Then(function(Result)
-                local UI = Result:Get()
-                UI.ConfirmationOperationDelegate:Add(self.OnYXWDPurchaseConfirm, self)
-            end)
-        end
-    end
-    return true
-end
 
-function UI02:EnsureShopPurchaseCallbacks()
-    if ShopV2Manager.bBuyProductResultBinded ~= true then
-        ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Add(ShopV2Manager.OnBuyProductResult,
-            ShopV2Manager)
-        ShopV2Manager.bBuyProductResultBinded = true
-    end
-
-    if ShopV2Manager.bAddItemResultDelegateBinded ~= true then
-        ShopV2Manager:GetVirtualItemManager().AddItemResultDelegate:Add(ShopV2Manager.OnAddVirtualItem, ShopV2Manager)
-        ShopV2Manager.bAddItemResultDelegateBinded = true
-    end
-end
-
-function UI02:OnYXWDPurchaseConfirm(Value)
-    if not Value or not self.YXWDCanAfford then
-        if RankMgr ~= nil and RankMgr.CancelConsumePurchase ~= nil then
-            RankMgr:CancelConsumePurchase()
-        end
+    local PopupPath = UGCGameSystem.GetUGCResourcesFullPath(
+        "ExtendResource/ShopV2/OfficialPackage/Asset/ShopV2/Arts_UI/UIBP/ShopV2_PurchasePopups_UIBP.ShopV2_PurchasePopups_UIBP_C")
+    local PopupClass = UE.LoadClass(PopupPath)
+    if PopupClass == nil then
         ShopV2Manager.bBlockRepeatPurchase = false
-        return
+        return false
     end
 
-    if RankMgr ~= nil and RankMgr.ConfirmConsumePurchase ~= nil then
-        RankMgr:ConfirmConsumePurchase()
+    local Popup = UserWidget.NewWidgetObjectBP(PlayerController, PopupClass)
+    if Popup == nil then
+        ShopV2Manager.bBlockRepeatPurchase = false
+        return false
     end
+
+    Popup:AddToViewport(15000)
+    Popup:Refresh(ProductID)
+    return true
 end
 
 function UI02:GetShopProductID(ItemID, Price)

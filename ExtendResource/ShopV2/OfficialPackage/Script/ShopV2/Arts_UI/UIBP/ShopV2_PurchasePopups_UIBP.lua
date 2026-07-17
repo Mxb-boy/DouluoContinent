@@ -25,17 +25,24 @@ local ShopV2_PurchasePopups_UIBP =
 } 
 
 function ShopV2_PurchasePopups_UIBP:Construct()
-	
     self.BuyButton.OnClicked:Add(self.OnBuyClick, self);
     self.IncreaseButton.OnClicked:Add(self.OnIncreaseClick, self);
     self.Increase10Button.OnClicked:Add(self.OnIncrease10Click, self);
     self.Increase100Button.OnClicked:Add(self.OnIncrease100Click, self);
     self.DecreaseButton.OnClicked:Add(self.OnDecreaseClick, self);
     self.CloseButton.OnClicked:Add(self.OnCloseClick, self);
+
+    if ShopV2Manager.bBlockRepeatPurchase == true then
+        UGCTimerUtility.CreateLuaTimer(0.1, function()
+            if self ~= nil and UE.IsValid(self) and self.ProductData ~= nil then
+                self:SetVisibility(ESlateVisibility.Collapsed);
+                ShopV2Manager:BuyProduct(self.ProductData.ProductID, self.Count, self.CurrentPrice);
+            end
+        end, false)
+    end
 end
 
 function ShopV2_PurchasePopups_UIBP:Refresh(ProductID)
-    
     self.ProductData = ShopV2Manager:GetProductConfigData(ProductID);
     local ItemData = ShopV2Manager:GetItemConfigData(self.ProductData.ItemID);
 
@@ -122,13 +129,14 @@ function ShopV2_PurchasePopups_UIBP:OnBuyClick()
     elseif ShopV2Manager:IsProductValid(self.ProductData.ProductID) == false then
         ShopV2Manager:ShowPurchaseTip("购买失败，商品未上架");
     else
-        ShopV2Manager:BuyProduct(self.ProductData.ProductID, self.Count, self.CurrentPrice);
         bRequested = true
     end
 
     self:SetVisibility(ESlateVisibility.Collapsed);
 
-    if not bRequested then
+    if bRequested then
+        ShopV2Manager:BuyProduct(self.ProductData.ProductID, self.Count, self.CurrentPrice);
+    else
         ShopV2Manager.bBlockRepeatPurchase = false
     end
 end

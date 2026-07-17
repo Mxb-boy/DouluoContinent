@@ -154,18 +154,15 @@ function ShopV2Manager:GetShopV2Component(PlayerController)
             if self.ComponentClass ~= nil and UGCGameSystem.GameState ~= nil then
                 local PlayerController = STExtraGameplayStatics.GetFirstPlayerController(UGCGameSystem.GameState);
                 self.LocalComponent = PlayerController:GetComponentByClass(self.ComponentClass);
-            else
-                print("[ShopV2Manager:GetShopV2Component] Cannot get local component!");
             end
         end
-           
+
         return self.LocalComponent;
     end
 
     if self.ComponentClass ~= nil then
         return PlayerController:GetComponentByClass(self.ComponentClass);
     else
-        print("[ShopV2Manager:GetShopV2Component] ComponentClass is nil!");
         return nil;
     end
 end
@@ -173,20 +170,15 @@ end
 function ShopV2Manager:OpenMainUI(TabID)
 
     if self.MainUI == nil then
-        print("[ShopV2] OpenMainUI: MainUI nil, retry in 0.5s");
         Timer.InsertTimer(0.5,
             function()
                 if self ~= nil and self.MainUI ~= nil then
                     self:OpenMainUI(TabID)
-                else
-                    print("[ShopV2] OpenMainUI: MainUI still nil after retry, check MainUIClassPath in ShopV2Component CDO")
                 end
             end
         , false)
         return;
     end
-
-    print("[ShopV2] OpenMainUI: MainUI OK, binding delegates...")
 
     -- 一次性清理 UGCObjectMapping bug 残留的堆积虚拟物品
     if not self._bCleanedVirtualItems then
@@ -197,28 +189,22 @@ function ShopV2Manager:OpenMainUI(TabID)
     if not self.bBuyProductResultBinded then
         self:GetCommodityOperationManager().BuyProductResultDelegate:Add(self.OnBuyProductResult, self);
         self.bBuyProductResultBinded = true
-        print("[ShopV2]  + BuyProductResultDelegate binded")
     end
 
     if not self.bLimitProductDelegateBinded then
         self:GetCommodityOperationManager().LimitProductUpdateDelegate:Add(self.RefreshProducts, self);
         self.bLimitProductDelegateBinded = true
-        print("[ShopV2]  + LimitProductUpdateDelegate binded")
     end
 
     if not self.bAddItemResultDelegateBinded then
         self:GetVirtualItemManager().AddItemResultDelegate:Add(self.OnAddVirtualItem, self);
         self.bAddItemResultDelegateBinded = true
-        print("[ShopV2]  + AddItemResultDelegate binded")
     end
 
     if not self.bItemNumUpdateDelegateBinded then
         self:GetVirtualItemManager().OnItemNumUpdatedDelegate:Add(self.OnItemNumUpdate, self);
         self.bItemNumUpdateDelegateBinded = true
-        print("[ShopV2]  + OnItemNumUpdatedDelegate binded")
     end
-
-    print("[ShopV2] OpenMainUI: all delegates ready, opening UI TabID=" .. tostring(TabID))
 
     if TabID ~= nil then
         self.MainUI.SelectedTabID = TabID;
@@ -236,7 +222,6 @@ end
 function ShopV2Manager:CloseMainUI()
 
     if self.MainUI == nil then
-        print("[ShopV2Manager:OpenMainUI] MainUI is nil!");
         return;
     end
 
@@ -250,7 +235,6 @@ function ShopV2Manager:CloseMainUI()
 end
 
 function ShopV2Manager:OpenPurchaseUI(ProductID)
-    
     self.MainUI:ShowPurchasePanel(ProductID);
 end
 
@@ -387,7 +371,6 @@ end
 ---@param Num int 购买商品数量
 ---@param CurrentPrice int 商品价格
 function ShopV2Manager:BuyProduct(ProductID, Num, CurrentPrice)
-    print("[ShopV2] BuyProduct: ProductID=" .. tostring(ProductID) .. " Num=" .. tostring(Num) .. " Price=" .. tostring(CurrentPrice))
     self:GetCommodityOperationManager():BuyProduct(ProductID, CurrentPrice, Num);
 end
 
@@ -398,12 +381,10 @@ end
 function ShopV2Manager:GetProductIDsInTab(TabID, bRefresh)
 
     if self.ProductIDGroupByTabID == nil or bRefresh == true then
-        print("[ShopV2Manager:GetProductIDsInTab] Group ProductID by TabID");
         self:GroupProductIDByTabID();
     end
 
     if self.ProductIDGroupByTabID[tostring(TabID)] == nil then
-        print("[ShopV2Manager:GetProductIDsInTab] No products in TabID");
         return {};
     end
 
@@ -411,8 +392,6 @@ function ShopV2Manager:GetProductIDsInTab(TabID, bRefresh)
 end
 
 function ShopV2Manager:GroupProductIDByTabID()
-
-    print("[ShopV2Manager:GroupProductIDByTabID] Start group ProductID by TabID");
 
     local ProductDatas = self:GetCommodityOperationManager():GetAllProductData();
     self.ProductIDGroupByTabID = {};
@@ -450,15 +429,12 @@ end
 
 -- 一次性清理 UGCObjectMapping bug 残留的堆积虚拟物品
 function ShopV2Manager:CleanupAccumulatedVirtualItems()
-    print("[ShopV2] CleanupAccumulatedVirtualItems: removing stale virtual items...")
     local PlayerController = STExtraGameplayStatics.GetFirstPlayerController(UGCGameSystem.GameState)
     if PlayerController then
         local vm = self:GetVirtualItemManager()
-        local count = vm:GetItemNum(PlayerController, 1002)
-        print("[ShopV2]  ItemID=1002 virtual count BEFORE cleanup: " .. tostring(count))
+        local count = vm:GetItemNum(1002, PlayerController)
         if count > 0 then
             vm:RemoveVirtualItem(PlayerController, 1002, count)
-            print("[ShopV2]  Removed " .. tostring(count) .. " stale virtual items")
         end
     end
 end
@@ -466,7 +442,6 @@ end
 function ShopV2Manager:OnAddVirtualItem(Result)
 
     if Result.bSucceeded == false then
-        print("[ShopV2] OnAddVirtualItem: FAILED")
         return;
     end
 
@@ -516,28 +491,19 @@ function ShopV2Manager:OnAddVirtualItem(Result)
     }
 
     for ItemID, Num in pairs(Result.ItemList) do
-        print("[ShopV2] OnAddVirtualItem: ItemID=" .. tostring(ItemID) .. " Num=" .. tostring(Num))
         self:ShowItemGetPopup(ItemID, Num);
 
         local BackpackItemID = VIRTUAL_TO_BACKPACK[ItemID]
         if BackpackItemID then
             local PlayerController = STExtraGameplayStatics.GetFirstPlayerController(UGCGameSystem.GameState)
-            print("[ShopV2]  -> PC=" .. tostring(PlayerController))
             if PlayerController and UnrealNetwork and UnrealNetwork.CallUnrealRPC then
-                print("[ShopV2]  -> RPC Server_AddShopItemToBackpackV2: BP_ID=" .. tostring(BackpackItemID) .. " Num=" .. tostring(Num) .. " VItemID=" .. tostring(ItemID))
                 -- BugFix: 传入 VirtualItemID，由服务端统一完成 AddItemV2 + RemoveVirtualItem
-                local ok, err = pcall(UnrealNetwork.CallUnrealRPC, PlayerController, PlayerController, "Server_AddShopItemToBackpackV2", BackpackItemID, Num, ItemID)
-                print("[ShopV2]  -> RPC ok=" .. tostring(ok) .. " err=" .. tostring(err))
-            else
-                print("[ShopV2]  -> MISSING PC or UnrealNetwork")
+                pcall(UnrealNetwork.CallUnrealRPC, PlayerController, PlayerController, "Server_AddShopItemToBackpackV2", BackpackItemID, Num, ItemID)
             end
-        else
-            print("[ShopV2]  -> No mapping for ItemID=" .. tostring(ItemID) .. " (not a shop reward)")
         end
     end
 end
 
 function ShopV2Manager:OnBuyProductResult(Result)
-    print("[ShopV2] OnBuyProductResult: bSucceeded=" .. tostring(Result.bSucceeded))
     self.bBlockRepeatPurchase = false;
 end
