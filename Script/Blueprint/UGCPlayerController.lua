@@ -17,6 +17,7 @@ local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
+local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
 local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
@@ -1981,6 +1982,14 @@ function UGCPlayerController:Server_RequestRefreshProperty()
 
     if pawn.RefreshStateMgrProperty ~= nil then
         pawn:RefreshStateMgrProperty(false)
+    end
+
+    if PlayerLevelMgr ~= nil and playerState.GetPlayerExp ~= nil and playerState.GetPlayerLevel ~= nil then
+        local playerExp = playerState:GetPlayerExp()
+        local playerLevel = playerState:GetPlayerLevel()
+        local currentExp = PlayerLevelMgr:GetCurrentLevelExp(playerExp, playerLevel)
+        local currentMaxExp = PlayerLevelMgr:GetCurrentLevelMaxExp(playerLevel, playerState:GetPlayerMaxExp())
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_RefreshPlayerExp", currentExp, currentMaxExp, playerLevel)
     end
 end
 
