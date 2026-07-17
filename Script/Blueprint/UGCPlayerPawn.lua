@@ -1,4 +1,6 @@
 ---@class UGCPlayerPawn_C:BP_UGCPlayerPawn_C
+--Edit Below--
+---@class UGCPlayerPawn_C:BP_UGCPlayerPawn_C
 -- Edit Below--
 local UGCPlayerPawn = {}
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
