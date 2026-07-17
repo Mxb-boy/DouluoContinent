@@ -596,6 +596,21 @@ function UI02:RefreshToggleButtonColors()
     self:SetToggleButtonGray(self.Button_93, self.bAutoMeleeAttackEnabled ~= true)
 end
 
+function UI02:EnableDefaultAutoAttackIfUnlocked()
+    if self:HasAutoAttackButtonHidden() ~= true or self.bAutoMeleeAttackEnabled == true then
+        return
+    end
+
+    local PC = GameplayStatics.GetPlayerController(self, 0)
+    if PC == nil then
+        return
+    end
+
+    self.bAutoMeleeAttackEnabled = true
+    PC:StartAutoMeleeAttack()
+    self:RefreshToggleButtonColors()
+end
+
 function UI02:LuaInit()
     if self.bInitDoOnce then
         return
@@ -655,9 +670,13 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_228)
 
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
+    if self.Button_228 ~= nil then
+        self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
+    end
     self:RefreshYXWDBuffIcon()
     self:RefreshYXWDPurchaseButton()
     self:RefreshToggleButtonColors()
+    self:EnableDefaultAutoAttackIfUnlocked()
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshProperty)
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.ReFreshProperty, self, self.OnRefreshProperty)
     StateMgr:SetUI(self)
@@ -896,8 +915,7 @@ function UI02:HideYXWDBuffIcon()
     self.YXWDBuffIconExpireToken = (self.YXWDBuffIconExpireToken or 0) + 1
 
     if self.Button_228 ~= nil then
-        self.Button_228:SetVisibility(self:HasYXWDInvincibleBuff() and ESlateVisibility.Visible or
-                                          ESlateVisibility.Collapsed)
+        self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
     end
     self:RefreshYXWDPurchaseButton()
     self:RefreshToggleButtonColors()
@@ -926,7 +944,7 @@ function UI02:ShowYXWDBuffIcon(DurationSeconds)
     self.YXWDBuffIconExpireToken = (self.YXWDBuffIconExpireToken or 0) + 1
     local ExpireToken = self.YXWDBuffIconExpireToken
 
-    self.Button_228:SetVisibility(ESlateVisibility.Visible)
+    self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
     self:RefreshYXWDPurchaseButton()
     self:RefreshToggleButtonColors()
 
@@ -953,11 +971,7 @@ function UI02:RefreshYXWDBuffIcon()
         self:ShowYXWDBuffIcon(-2)
     end
 
-    if self.YXWDBuffIconActive == true then
-        self.Button_228:SetVisibility(ESlateVisibility.Visible)
-    else
-        self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
-    end
+    self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
     self:RefreshYXWDPurchaseButton()
     self:RefreshToggleButtonColors()
 end
@@ -1357,6 +1371,10 @@ end
 
 -- 自动拾取
 function UI02:Button_227_OnClicked()
+    if self:HasAutoPickButtonHidden() ~= true then
+        return
+    end
+
     local PC = GameplayStatics.GetPlayerController(self, 0)
     self.bAutoPickEnabled = not self.bAutoPickEnabled
 
@@ -1375,6 +1393,10 @@ function UI02:OnhandleTest(str)
 end
 
 function UI02:Button_93_OnClicked()
+    if self:HasAutoAttackButtonHidden() ~= true then
+        return
+    end
+
     local PC = GameplayStatics.GetPlayerController(self, 0)
     if PC == nil then
         return

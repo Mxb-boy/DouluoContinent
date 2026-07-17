@@ -2269,6 +2269,11 @@ function UGCPlayerController:Client_SetAutoFeatureButtonHidden(FeatureName)
     if self.MainUIInstance ~= nil and self.MainUIInstance.RefreshYXWDPurchaseButton ~= nil then
         self.MainUIInstance:RefreshYXWDPurchaseButton()
     end
+
+    if FeatureName == "AutoAttack" and self.MainUIInstance ~= nil and
+        self.MainUIInstance.EnableDefaultAutoAttackIfUnlocked ~= nil then
+        self.MainUIInstance:EnableDefaultAutoAttackIfUnlocked()
+    end
 end
 
 function UGCPlayerController:Server_SetFeiButton0Hidden(value)
