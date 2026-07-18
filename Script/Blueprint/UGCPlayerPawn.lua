@@ -817,6 +817,27 @@ function UGCPlayerPawn:EndFly()
     end
 end
 
+local function CreateTeamPanelForLocalPlayer()
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+    if PlayerController == nil or PlayerController.TeamPanelInstance ~= nil then
+        return
+    end
+    local Path = UGCGameSystem.GetUGCResourcesFullPath("Asset/Blueprint/UI/TeamPanel.TeamPanel_C")
+    local WidgetClass = UE.LoadClass(Path)
+    if WidgetClass == nil then
+        ugcprint("[Team] Client TeamPanel class load failed: " .. tostring(Path))
+        return
+    end
+    local Widget = UGCWidgetManagerSystem.CreateWidget(WidgetClass)
+    if Widget == nil then
+        ugcprint("[Team] Client TeamPanel create failed")
+        return
+    end
+    PlayerController.TeamPanelInstance = Widget
+    Widget:AddToViewport(10500)
+    ugcprint("[Team] Client TeamPanel created from local Pawn")
+end
+
 function UGCPlayerPawn:ReceiveBeginPlay()
     UGCPlayerPawn.SuperClass.ReceiveBeginPlay(self)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.Test_01)
@@ -836,6 +857,7 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     self:NotifyPropertyChangedIfNeeded(true)
 
     if not self:HasAuthority() then
+        CreateTeamPanelForLocalPlayer()
         return
     end
     self:OnPawnInit()
@@ -1164,6 +1186,25 @@ function UGCPlayerPawn:ShowZhanLi()
     local dengji = HunHuan * 10
     --[[-------------------这边是测试通知的---------------------------]] --
     -- UGCGenericMessageSystem.BroadcastUserDefinedObjectMessage(self, L_Enum_Event.Enum.ReFreshZhanLi, tostring(dengji))
+end
+
+function UGCPlayerPawn:UGC_TakeDamageOverrideEvent(Damage, DamageType, EventInstigator, DamageCauser, Hit)
+    if not self:HasAuthority() then
+        return Damage
+    end
+    local VictimKey = UGCGameSystem.GetPlayerKeyByPlayerPawn(self)
+    local AttackerKey = EventInstigator and EventInstigator.PlayerKey or nil
+    if AttackerKey == nil and EventInstigator ~= nil and EventInstigator.Pawn ~= nil then
+        AttackerKey = UGCGameSystem.GetPlayerKeyByPlayerPawn(EventInstigator.Pawn)
+    end
+    local GameMode = UGCGameSystem.GetGameMode()
+    if GameMode ~= nil and GameMode.ArePlayersInSameSquad ~= nil and
+        GameMode:ArePlayersInSameSquad(VictimKey, AttackerKey) then
+        ugcprint("[Team] Server blocked friendly damage attacker=" .. tostring(AttackerKey) .. " victim=" ..
+                     tostring(VictimKey) .. " damage=" .. tostring(Damage))
+        return 0
+    end
+    return Damage
 end
 
 function UGCPlayerPawn:GetReplicatedProperties()

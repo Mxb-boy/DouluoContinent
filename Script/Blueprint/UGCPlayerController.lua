@@ -104,6 +104,22 @@ function UGCPlayerController:ReceiveBeginPlay()
     ugcprint("[UGCPlayerController] MainUI created")
     self:Client_RefreshTitleBonus()
 
+    if self.TeamPanelInstance == nil then
+        local TeamPanelPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/TeamPanel.TeamPanel_C"
+        local TeamPanelClass = UE.LoadClass(TeamPanelPath)
+        if TeamPanelClass ~= nil then
+            self.TeamPanelInstance = UserWidget.NewWidgetObjectBP(self, TeamPanelClass)
+            if self.TeamPanelInstance ~= nil then
+                self.TeamPanelInstance:AddToViewport(10500)
+                ugcprint("[Team] Client TeamPanel created")
+            else
+                ugcprint("[Team] Client TeamPanel create failed")
+            end
+        else
+            ugcprint("[Team] Client TeamPanel class load failed: " .. TeamPanelPath)
+        end
+    end
+
     local FeiUIPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/Fei.Fei_C"
     local FeiUIClass = UE.LoadClass(FeiUIPath)
 
@@ -136,7 +152,47 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
         "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden",
         "Client_ShowMonsterDamageNumber", 
-        "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress"
+        "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
+        "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam",
+        "ServerRequestKickPlayer", "ServerRequestDisbandTeam"
+end
+
+function UGCPlayerController:ServerRequestInvitePlayer(TargetKey)
+    ugcprint("[Team] Server RPC invite requester=" .. tostring(self.PlayerKey) .. " target=" .. tostring(TargetKey))
+    local GameMode = UGCGameSystem.GetGameMode()
+    if GameMode ~= nil and GameMode.HandleInviteRequest ~= nil then
+        GameMode:HandleInviteRequest(self.PlayerKey, TargetKey)
+    end
+end
+
+function UGCPlayerController:ServerRespondInvite(InviterKey, bAccept)
+    ugcprint("[Team] Server RPC invite response requester=" .. tostring(self.PlayerKey) .. " inviter=" ..
+                 tostring(InviterKey) .. " accept=" .. tostring(bAccept))
+    local GameMode = UGCGameSystem.GetGameMode()
+    if GameMode ~= nil and GameMode.HandleInviteResponse ~= nil then
+        GameMode:HandleInviteResponse(self.PlayerKey, InviterKey, bAccept == true or tonumber(bAccept) == 1)
+    end
+end
+
+function UGCPlayerController:ServerRequestLeaveTeam()
+    local GameMode = UGCGameSystem.GetGameMode()
+    if GameMode ~= nil and GameMode.HandleLeaveTeamRequest ~= nil then
+        GameMode:HandleLeaveTeamRequest(self.PlayerKey)
+    end
+end
+
+function UGCPlayerController:ServerRequestKickPlayer(TargetKey)
+    local GameMode = UGCGameSystem.GetGameMode()
+    if GameMode ~= nil and GameMode.HandleKickRequest ~= nil then
+        GameMode:HandleKickRequest(self.PlayerKey, TargetKey)
+    end
+end
+
+function UGCPlayerController:ServerRequestDisbandTeam()
+    local GameMode = UGCGameSystem.GetGameMode()
+    if GameMode ~= nil and GameMode.HandleDisbandRequest ~= nil then
+        GameMode:HandleDisbandRequest(self.PlayerKey)
+    end
 end
 
 local function StopCurrentZipLine(self)

@@ -60,10 +60,53 @@ local function HasAuthority(Object)
     return Object ~= nil and Object.HasAuthority ~= nil and Object:HasAuthority()
 end
 
+local function GetPlayerKey(Object)
+    if Object == nil then
+        return nil
+    end
+    local DirectKey = SafeGet(Object, "PlayerKey")
+    if DirectKey ~= nil then
+        return DirectKey
+    end
+    local Controller = SafeGet(Object, "Controller")
+    local ControllerKey = SafeGet(Controller, "PlayerKey")
+    if ControllerKey ~= nil then
+        return ControllerKey
+    end
+    local PlayerState = SafeGet(Object, "PlayerState")
+    local StateKey = SafeGet(PlayerState, "PlayerKey")
+    if StateKey ~= nil then
+        return StateKey
+    end
+    if UGCGameSystem.GetPlayerKeyByPlayerPawn ~= nil then
+        local Success, Result = pcall(UGCGameSystem.GetPlayerKeyByPlayerPawn, Object)
+        if Success then
+            return Result
+        end
+    end
+    return nil
+end
+
+local function ShouldBlockSquadDamage(VictimActor, InstigatorController, CauserActor)
+    local VictimKey = GetPlayerKey(VictimActor)
+    local AttackerKey = GetPlayerKey(InstigatorController) or GetPlayerKey(CauserActor)
+    if VictimKey == nil or AttackerKey == nil or tostring(VictimKey) == tostring(AttackerKey) then
+        return false
+    end
+    local GameMode = UGCGameSystem.GetGameMode()
+    return GameMode ~= nil and GameMode.ArePlayersInSameSquad ~= nil and
+               GameMode:ArePlayersInSameSquad(VictimKey, AttackerKey)
+end
+
 function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     local VictimActor = UGCAttributeSystem.GetVictimFromContext(Context)
     local InstigatorController = UGCAttributeSystem.GetInstigatorFromContext(Context)
     local CauserActor = UGCGameSystem.GetPlayerPawnByPlayerController(InstigatorController)
+
+    if ShouldBlockSquadDamage(VictimActor, InstigatorController, CauserActor) then
+        ugcprint("[Team] Server blocked teammate damage")
+        return 0, ExtraResult
+    end
 
     local SkillAttack = UGCAttributeSystem.GetSourceMagnitudeFromContext(Context)
     local bCauserIsPlayer = CauserActor ~= nil and CauserActor.PlayerState ~= nil

@@ -2,6 +2,7 @@
 -- Edit Below--
 local UGCGameMode = {};
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
+local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 --[[--------------------全局引用--------------------------]] --
 L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
@@ -119,71 +120,264 @@ function UGCGameMode:ReceiveBeginPlay()
         self.OnPawnDefeat)
 
     if self:HasAuthority() then
+        self.PlayerKeyList = {}
+        self.OriginalTeamByPlayer = {}
+        self.Squads = {}
+        self.MemberSquad = {}
+        self.PendingInvites = {}
+        self.CampByTeam = {}
+        self.PendingIndependentTeamByPlayer = {}
         DropCleanupSystem.StartSafetyValveTimer()
     end
 end
 
 -- ============================================================
--- 自动补位玩家修复：将非大厅组队的自动补位玩家踢到独立队伍
+-- 局内动态组队：所有入局玩家先拆分为独立合法 TeamID
 -- ============================================================
 
-local function GetUnusedTeamID()
-    local AllTeamIDs = UGCTeamSystem.GetTeamIDs() or {}
-    local UsedIDs = {}
-    for _, tid in ipairs(AllTeamIDs) do
-        UsedIDs[tostring(tid)] = true
+local function IsSamePlayerKey(KeyA, KeyB)
+    return KeyA ~= nil and KeyB ~= nil and tostring(KeyA) == tostring(KeyB)
+end
+
+local function ContainsPlayerKey(List, PlayerKey)
+    for _, ExistingKey in ipairs(List or {}) do
+        if IsSamePlayerKey(ExistingKey, PlayerKey) then
+            return true
+        end
     end
-    for id = 100, 999 do
-        if not UsedIDs[tostring(id)] then
-            return id
+    return false
+end
+
+local function RemovePlayerKey(List, PlayerKey)
+    for Index, ExistingKey in ipairs(List or {}) do
+        if IsSamePlayerKey(ExistingKey, PlayerKey) then
+            table.remove(List, Index)
+            return true
+        end
+    end
+    return false
+end
+
+local function IsTeamIDValid(TeamID)
+    TeamID = tonumber(TeamID)
+    if TeamID == nil or TeamID <= 0 or UGCTeamSystem.IsTeamIDValid == nil then
+        return false
+    end
+    local Success, Result = pcall(UGCTeamSystem.IsTeamIDValid, TeamID)
+    return Success and Result == true
+end
+
+function UGCGameMode:GetPlayerKey(PlayerObject)
+    if PlayerObject == nil then
+        return nil
+    end
+    if PlayerObject.PlayerKey ~= nil then
+        return PlayerObject.PlayerKey
+    end
+    if UGCGameSystem.GetPlayerKeyByPlayerPawn ~= nil then
+        return UGCGameSystem.GetPlayerKeyByPlayerPawn(PlayerObject)
+    end
+    return nil
+end
+
+function UGCGameMode:GetCurrentTeamID(PlayerKey)
+    return tonumber(UGCTeamSystem.GetTeamIDByPlayerKey(PlayerKey)) or 0
+end
+
+function UGCGameMode:GetCandidateTeamIDs()
+    local Candidates = {}
+    local Added = {}
+    local function TryAdd(TeamID)
+        TeamID = tonumber(TeamID)
+        if TeamID ~= nil and not Added[TeamID] and IsTeamIDValid(TeamID) then
+            Added[TeamID] = true
+            table.insert(Candidates, TeamID)
+        end
+    end
+
+    for _, TeamID in ipairs(UGCTeamSystem.GetTeamIDs() or {}) do
+        TryAdd(TeamID)
+    end
+    for TeamID = 1, TeamConfig.MAX_SERVER_PLAYERS do
+        TryAdd(TeamID)
+    end
+    table.sort(Candidates)
+    return Candidates
+end
+
+function UGCGameMode:GetUnusedTeamID(PlayerKey)
+    local Used = {}
+    for ExistingKey, TeamID in pairs(self.OriginalTeamByPlayer or {}) do
+        if not IsSamePlayerKey(ExistingKey, PlayerKey) then
+            Used[tonumber(TeamID)] = true
+        end
+    end
+    for ExistingKey, TeamID in pairs(self.PendingIndependentTeamByPlayer or {}) do
+        if not IsSamePlayerKey(ExistingKey, PlayerKey) then
+            Used[tonumber(TeamID)] = true
+        end
+    end
+    for _, TeamID in ipairs(self:GetCandidateTeamIDs()) do
+        if not Used[TeamID] then
+            return TeamID
         end
     end
     return nil
 end
 
-local function FixAutoMatchedPlayer(PlayerController)
-    if PlayerController == nil then
+function UGCGameMode:EnsureIndependentTeam(PlayerKey)
+    local CurrentTeamID = self:GetCurrentTeamID(PlayerKey)
+    local bConflict = false
+    for ExistingKey, TeamID in pairs(self.OriginalTeamByPlayer or {}) do
+        if not IsSamePlayerKey(ExistingKey, PlayerKey) and tonumber(TeamID) == CurrentTeamID then
+            bConflict = true
+            break
+        end
+    end
+    if IsTeamIDValid(CurrentTeamID) and not bConflict then
+        self.PendingIndependentTeamByPlayer[PlayerKey] = nil
+        return CurrentTeamID
+    end
+
+    local NewTeamID = self.PendingIndependentTeamByPlayer[PlayerKey]
+    if not IsTeamIDValid(NewTeamID) then
+        NewTeamID = self:GetUnusedTeamID(PlayerKey)
+        self.PendingIndependentTeamByPlayer[PlayerKey] = NewTeamID
+    end
+    if NewTeamID == nil then
+        return nil
+    end
+
+    UGCTeamSystem.ChangePlayerTeamID(PlayerKey, NewTeamID)
+    local AppliedTeamID = self:GetCurrentTeamID(PlayerKey)
+    if AppliedTeamID ~= NewTeamID then
+        return nil
+    end
+    self.PendingIndependentTeamByPlayer[PlayerKey] = nil
+    return AppliedTeamID
+end
+
+function UGCGameMode:EnsureCampForTeam(TeamID)
+    TeamID = tonumber(TeamID)
+    if TeamID == nil or TeamID <= 0 then
+        return nil
+    end
+    if self.CampByTeam[TeamID] ~= nil then
+        return self.CampByTeam[TeamID]
+    end
+
+    local CampID = UGCCampSystem.AddCamp("DynamicTeam_" .. tostring(TeamID))
+    if CampID == nil or CampID < 0 then
+        ugcprint("[Team] Server create camp failed team=" .. tostring(TeamID))
+        return nil
+    end
+
+    self.CampByTeam[TeamID] = CampID
+    UGCCampSystem.SetCampForTeam(TeamID, CampID)
+    UGCCampSystem.SetCampRelation(CampID, CampID, TeamConfig.CAMP_RELATION.Same)
+    for _, OtherCampID in pairs(self.CampByTeam) do
+        if OtherCampID ~= CampID then
+            UGCCampSystem.SetCampRelation(CampID, OtherCampID, TeamConfig.CAMP_RELATION.Enemy)
+            UGCCampSystem.SetCampRelation(OtherCampID, CampID, TeamConfig.CAMP_RELATION.Enemy)
+        end
+    end
+    ugcprint("[Team] Server map team=" .. tostring(TeamID) .. " camp=" .. tostring(CampID))
+    return CampID
+end
+
+function UGCGameMode:GetSquadForMember(PlayerKey)
+    local TeamID = self.MemberSquad[PlayerKey]
+    return TeamID and self.Squads[TeamID] or nil, TeamID
+end
+
+function UGCGameMode:GetActiveSquadCount()
+    local Count = 0
+    for _, Squad in pairs(self.Squads or {}) do
+        if Squad ~= nil and Squad.Members ~= nil and #Squad.Members >= 2 then
+            Count = Count + 1
+        end
+    end
+    return Count
+end
+
+function UGCGameMode:ArePlayersInSameSquad(PlayerKeyA, PlayerKeyB)
+    if PlayerKeyA == nil or PlayerKeyB == nil or IsSamePlayerKey(PlayerKeyA, PlayerKeyB) then
+        return false
+    end
+    local SquadIDA = self.MemberSquad[PlayerKeyA]
+    local SquadIDB = self.MemberSquad[PlayerKeyB]
+    return SquadIDA ~= nil and SquadIDA == SquadIDB
+end
+
+function UGCGameMode:BuildTeamRoster()
+    local Roster = {}
+    for _, PlayerKey in ipairs(self.PlayerKeyList or {}) do
+        local PlayerState = UGCGameSystem.GetPlayerStateByPlayerKey(PlayerKey)
+        local Squad, SquadID = self:GetSquadForMember(PlayerKey)
+        table.insert(Roster, {
+            PlayerKey = PlayerKey,
+            PlayerName = PlayerState and (PlayerState.PlayerName or PlayerState.RealPlayerName) or tostring(PlayerKey),
+            TeamID = self:GetCurrentTeamID(PlayerKey),
+            SquadID = SquadID or 0,
+            IsLeader = Squad ~= nil and IsSamePlayerKey(Squad.LeaderKey, PlayerKey),
+            IsGrouped = Squad ~= nil
+        })
+    end
+    return Roster
+end
+
+function UGCGameMode:SyncTeamUI()
+    local GameState = self.GameState or UGCGameSystem.GetGameState()
+    if GameState == nil then
         return
     end
-    local PlayerKey = PlayerController.PlayerKey
+    local Roster = self:BuildTeamRoster()
+    if GameState.UpdateTeamRoster ~= nil then
+        GameState:UpdateTeamRoster(Roster)
+    end
+    if GameState.UpdateNotifications ~= nil then
+        GameState:UpdateNotifications(self.PendingInvites)
+    end
+end
+
+function UGCGameMode:RegisterTeamPlayer(PlayerController)
+    local PlayerKey = PlayerController and PlayerController.PlayerKey
     if PlayerKey == nil then
-        return
+        return false
+    end
+    if ContainsPlayerKey(self.PlayerKeyList, PlayerKey) then
+        return true
     end
 
-    local TeamID = UGCTeamSystem.GetTeamIDByPlayerKey(PlayerKey)
-    if TeamID == nil then
-        return
+    local IndependentTeamID = self:EnsureIndependentTeam(PlayerKey)
+    if IndependentTeamID == nil then
+        return false
     end
 
-    local TeamPlayerKeys = UGCTeamSystem.GetPlayerKeysByTeamID(TeamID)
-    if TeamPlayerKeys == nil or #TeamPlayerKeys <= 1 then
-        return
-    end
+    self.OriginalTeamByPlayer[PlayerKey] = IndependentTeamID
+    table.insert(self.PlayerKeyList, PlayerKey)
+    self:EnsureCampForTeam(IndependentTeamID)
+    ugcprint("[Team] Server player login key=" .. tostring(PlayerKey) .. " originalTeam=" ..
+                 tostring(IndependentTeamID))
+    self:SyncTeamUI()
+    return true
+end
 
-    local LobbyMates = UGCTeamSystem.GetLobbyTeammatePlayerKeysByPlayerKey(PlayerKey)
-    local bHasLobbyMateOnTeam = false
-    if LobbyMates ~= nil then
-        for _, MatePK in ipairs(LobbyMates) do
-            for _, TeamPK in ipairs(TeamPlayerKeys) do
-                if tostring(MatePK) == tostring(TeamPK) then
-                    bHasLobbyMateOnTeam = true
-                    break
-                end
-            end
-            if bHasLobbyMateOnTeam then
-                break
-            end
+function UGCGameMode:ScheduleTeamPlayerRegistration(PlayerController)
+    local RetryCount = 0
+    local MaxRetries = 15
+    local function TryRegister()
+        if self:RegisterTeamPlayer(PlayerController) then
+            return
+        end
+        RetryCount = RetryCount + 1
+        if RetryCount <= MaxRetries then
+            UGCTimerUtility.CreateLuaTimer(1, TryRegister, false)
+        else
+            ugcprint("[Team] Server player registration failed after retries")
         end
     end
-
-    if not bHasLobbyMateOnTeam then
-        local NewTeamID = GetUnusedTeamID()
-        if NewTeamID ~= nil then
-            UGCTeamSystem.ChangePlayerTeamID(PlayerKey, NewTeamID)
-            ugcprint("[UGCGameMode] Auto-matched player " .. tostring(PlayerKey) ..
-                         " reassigned from team " .. tostring(TeamID) .. " to team " .. tostring(NewTeamID))
-        end
-    end
+    UGCTimerUtility.CreateLuaTimer(0.5, TryRegister, false)
 end
 
 -- 玩家登录时: 先加载跨对局存档, 再发初始武器（Pawn可能还没好，等1秒）
@@ -291,14 +485,240 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
         end
     end
     UGCTimerUtility.CreateLuaTimer(1, OnLoginDeferred, false)
-
-    -- 5秒后修复自动补位玩家（确保PlayerKey已初始化，队伍分配已完成）
-    UGCTimerUtility.CreateLuaTimer(5, function()
-        FixAutoMatchedPlayer(PC)
-    end, false)
+    self:ScheduleTeamPlayerRegistration(PC)
 end
 
 -- 此事件提供死亡前的旧 Pawn，必须在这里读取背包和血量。
+function UGCGameMode:ResolveOnlinePlayerKey(PlayerKey)
+    for _, ExistingKey in ipairs(self.PlayerKeyList or {}) do
+        if IsSamePlayerKey(ExistingKey, PlayerKey) then
+            return ExistingKey
+        end
+    end
+    return nil
+end
+
+function UGCGameMode:RestoreOriginalTeam(PlayerKey)
+    local OriginalTeamID = self.OriginalTeamByPlayer[PlayerKey]
+    if not IsTeamIDValid(OriginalTeamID) then
+        return false
+    end
+    UGCTeamSystem.ChangePlayerTeamID(PlayerKey, OriginalTeamID)
+    local bRestored = self:GetCurrentTeamID(PlayerKey) == tonumber(OriginalTeamID)
+    if bRestored then
+        self:EnsureCampForTeam(OriginalTeamID)
+    else
+        ugcprint("[Team] Server restore original team failed key=" .. tostring(PlayerKey))
+    end
+    return bRestored
+end
+
+function UGCGameMode:CreateSquad(LeaderKey)
+    if self.MemberSquad[LeaderKey] ~= nil or self:GetActiveSquadCount() >= TeamConfig.MAX_ACTIVE_TEAMS then
+        return nil
+    end
+    local TeamID = tonumber(self.OriginalTeamByPlayer[LeaderKey])
+    if not IsTeamIDValid(TeamID) or self.Squads[TeamID] ~= nil then
+        return nil
+    end
+    local Squad = {TeamID = TeamID, LeaderKey = LeaderKey, Members = {LeaderKey}}
+    self.Squads[TeamID] = Squad
+    self.MemberSquad[LeaderKey] = TeamID
+    self:EnsureCampForTeam(TeamID)
+    return Squad
+end
+
+function UGCGameMode:AddMemberToSquad(Squad, PlayerKey)
+    if Squad == nil or self.MemberSquad[PlayerKey] ~= nil or #Squad.Members >= TeamConfig.MAX_PLAYERS_PER_TEAM then
+        return false
+    end
+    UGCTeamSystem.ChangePlayerTeamID(PlayerKey, Squad.TeamID)
+    if self:GetCurrentTeamID(PlayerKey) ~= tonumber(Squad.TeamID) then
+        ugcprint("[Team] Server join team change failed key=" .. tostring(PlayerKey))
+        return false
+    end
+    table.insert(Squad.Members, PlayerKey)
+    self.MemberSquad[PlayerKey] = Squad.TeamID
+    self:EnsureCampForTeam(Squad.TeamID)
+    return true
+end
+
+function UGCGameMode:RemoveMemberFromSquad(Squad, PlayerKey, bRestoreTeam)
+    if Squad == nil or not RemovePlayerKey(Squad.Members, PlayerKey) then
+        return false
+    end
+    self.MemberSquad[PlayerKey] = nil
+    if bRestoreTeam ~= false then
+        self:RestoreOriginalTeam(PlayerKey)
+    end
+    return true
+end
+
+function UGCGameMode:ClearInvitesFor(PlayerKey)
+    for Index = #(self.PendingInvites or {}), 1, -1 do
+        local Invite = self.PendingInvites[Index]
+        if IsSamePlayerKey(Invite.FromKey, PlayerKey) or IsSamePlayerKey(Invite.TargetKey, PlayerKey) then
+            table.remove(self.PendingInvites, Index)
+        end
+    end
+end
+
+function UGCGameMode:RemoveInvite(FromKey, TargetKey)
+    for Index = #(self.PendingInvites or {}), 1, -1 do
+        local Invite = self.PendingInvites[Index]
+        if IsSamePlayerKey(Invite.FromKey, FromKey) and IsSamePlayerKey(Invite.TargetKey, TargetKey) then
+            table.remove(self.PendingInvites, Index)
+            return true
+        end
+    end
+    return false
+end
+
+function UGCGameMode:DisbandSquad(Squad, DisconnectedPlayerKey)
+    if Squad == nil then
+        return false
+    end
+    self.Squads[Squad.TeamID] = nil
+    for _, MemberKey in ipairs(Squad.Members or {}) do
+        self.MemberSquad[MemberKey] = nil
+        self:ClearInvitesFor(MemberKey)
+        if not IsSamePlayerKey(MemberKey, DisconnectedPlayerKey) and ContainsPlayerKey(self.PlayerKeyList, MemberKey) then
+            self:RestoreOriginalTeam(MemberKey)
+        end
+    end
+    ugcprint("[Team] Server disband team=" .. tostring(Squad.TeamID))
+    return true
+end
+
+function UGCGameMode:HandleInviteRequest(InviterKey, TargetKey)
+    InviterKey = self:ResolveOnlinePlayerKey(InviterKey)
+    TargetKey = self:ResolveOnlinePlayerKey(TargetKey)
+    if InviterKey == nil or TargetKey == nil or IsSamePlayerKey(InviterKey, TargetKey) or
+        self.MemberSquad[TargetKey] ~= nil then
+        return false
+    end
+
+    local InviterSquad = self:GetSquadForMember(InviterKey)
+    if InviterSquad ~= nil then
+        if not IsSamePlayerKey(InviterSquad.LeaderKey, InviterKey) or
+            #InviterSquad.Members >= TeamConfig.MAX_PLAYERS_PER_TEAM then
+            return false
+        end
+    elseif self:GetActiveSquadCount() >= TeamConfig.MAX_ACTIVE_TEAMS then
+        return false
+    end
+
+    for _, Invite in ipairs(self.PendingInvites) do
+        if IsSamePlayerKey(Invite.FromKey, InviterKey) and IsSamePlayerKey(Invite.TargetKey, TargetKey) then
+            return true
+        end
+    end
+    table.insert(self.PendingInvites, {Type = TeamConfig.INVITE_TYPE, FromKey = InviterKey, TargetKey = TargetKey})
+    ugcprint("[Team] Server invite from=" .. tostring(InviterKey) .. " target=" .. tostring(TargetKey))
+    self:SyncTeamUI()
+    return true
+end
+
+function UGCGameMode:HandleInviteResponse(TargetKey, InviterKey, bAccept)
+    TargetKey = self:ResolveOnlinePlayerKey(TargetKey)
+    InviterKey = self:ResolveOnlinePlayerKey(InviterKey)
+    if TargetKey == nil or InviterKey == nil or not self:RemoveInvite(InviterKey, TargetKey) then
+        return false
+    end
+    if bAccept ~= true then
+        self:SyncTeamUI()
+        return true
+    end
+    if self.MemberSquad[TargetKey] ~= nil then
+        self:SyncTeamUI()
+        return false
+    end
+
+    local Squad = self:GetSquadForMember(InviterKey)
+    if Squad ~= nil then
+        if not IsSamePlayerKey(Squad.LeaderKey, InviterKey) or #Squad.Members >= TeamConfig.MAX_PLAYERS_PER_TEAM then
+            self:SyncTeamUI()
+            return false
+        end
+    else
+        Squad = self:CreateSquad(InviterKey)
+        if Squad == nil then
+            self:SyncTeamUI()
+            return false
+        end
+    end
+
+    if not self:AddMemberToSquad(Squad, TargetKey) then
+        if #Squad.Members == 1 then
+            self.MemberSquad[Squad.LeaderKey] = nil
+            self.Squads[Squad.TeamID] = nil
+        end
+        self:SyncTeamUI()
+        return false
+    end
+    self:ClearInvitesFor(TargetKey)
+    ugcprint("[Team] Server joined key=" .. tostring(TargetKey) .. " team=" .. tostring(Squad.TeamID))
+    self:SyncTeamUI()
+    return true
+end
+
+function UGCGameMode:HandleLeaveTeamRequest(PlayerKey)
+    PlayerKey = self:ResolveOnlinePlayerKey(PlayerKey)
+    local Squad = PlayerKey and self:GetSquadForMember(PlayerKey) or nil
+    if Squad == nil or IsSamePlayerKey(Squad.LeaderKey, PlayerKey) then
+        return false
+    end
+    self:RemoveMemberFromSquad(Squad, PlayerKey, true)
+    self:ClearInvitesFor(PlayerKey)
+    self:SyncTeamUI()
+    return true
+end
+
+function UGCGameMode:HandleKickRequest(LeaderKey, TargetKey)
+    LeaderKey = self:ResolveOnlinePlayerKey(LeaderKey)
+    TargetKey = self:ResolveOnlinePlayerKey(TargetKey)
+    local Squad = LeaderKey and self:GetSquadForMember(LeaderKey) or nil
+    if Squad == nil or TargetKey == nil or not IsSamePlayerKey(Squad.LeaderKey, LeaderKey) or
+        IsSamePlayerKey(LeaderKey, TargetKey) or self.MemberSquad[TargetKey] ~= Squad.TeamID then
+        return false
+    end
+    self:RemoveMemberFromSquad(Squad, TargetKey, true)
+    self:ClearInvitesFor(TargetKey)
+    self:SyncTeamUI()
+    return true
+end
+
+function UGCGameMode:HandleDisbandRequest(LeaderKey)
+    LeaderKey = self:ResolveOnlinePlayerKey(LeaderKey)
+    local Squad = LeaderKey and self:GetSquadForMember(LeaderKey) or nil
+    if Squad == nil or not IsSamePlayerKey(Squad.LeaderKey, LeaderKey) then
+        return false
+    end
+    self:DisbandSquad(Squad)
+    self:SyncTeamUI()
+    return true
+end
+
+function UGCGameMode:UGC_PlayerExitEvent(PlayerController)
+    local PlayerKey = self:ResolveOnlinePlayerKey(self:GetPlayerKey(PlayerController))
+    if PlayerKey == nil then
+        return
+    end
+    local Squad = self:GetSquadForMember(PlayerKey)
+    if Squad ~= nil then
+        if IsSamePlayerKey(Squad.LeaderKey, PlayerKey) then
+            self:DisbandSquad(Squad, PlayerKey)
+        else
+            self:RemoveMemberFromSquad(Squad, PlayerKey, false)
+        end
+    end
+    self:ClearInvitesFor(PlayerKey)
+    RemovePlayerKey(self.PlayerKeyList, PlayerKey)
+    self.OriginalTeamByPlayer[PlayerKey] = nil
+    self.PendingIndependentTeamByPlayer[PlayerKey] = nil
+    self:SyncTeamUI()
+end
+
 function UGCGameMode:UGC_PlayerKilledEvent(Killer, VictimPlayer, VictimPawn, DamageType)
     if VictimPlayer and VictimPawn then
         SaveBackpackSnapshot(VictimPlayer.PlayerKey, VictimPawn)
