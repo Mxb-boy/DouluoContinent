@@ -1,3 +1,5 @@
+local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
+
 --[[-------------------这里放角色状态，重连后可以恢复数据---------------------------]] --
 local UGCPlayerState = {
     HunHuan = 1, -- 大魂环
@@ -170,6 +172,12 @@ function UGCPlayerState:LoadFromArchive(UID)
                 end
             end
         end
+    end
+
+    if PlayerLevelMgr ~= nil and PlayerLevelMgr.GetLevelByExp ~= nil then
+        local PlayerLevel, PlayerMaxExp = PlayerLevelMgr:GetLevelByExp(self:GetPlayerExp())
+        self.PlayerLevel = PlayerLevel
+        self.PlayerMaxExp = PlayerMaxExp
     end
 
     -- 无论循环中是否出错，都必须释放锁，否则后续所有 SaveToArchive 会被永久拦截
