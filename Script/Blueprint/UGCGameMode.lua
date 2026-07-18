@@ -127,7 +127,6 @@ function UGCGameMode:ReceiveBeginPlay()
         self.PendingInvites = {}
         self.CampByTeam = {}
         self.PendingIndependentTeamByPlayer = {}
-        DropCleanupSystem.StartSafetyValveTimer()
     end
 end
 
