@@ -72,7 +72,9 @@ function MonsterSpawnMgr.FirstHitRunAway(monster, EventInstigator, RunAwayTime, 
     end
 
     local SelfLoc = monster:K2_GetActorLocation()
-    local Angle = math.random() * 2 * math.pi
+    local TargetLoc = TargetPawn:K2_GetActorLocation()
+    local BaseAngle = math.atan(SelfLoc.Y - TargetLoc.Y, SelfLoc.X - TargetLoc.X)
+    local Angle = BaseAngle + (math.random() - 0.5) * math.pi
     local MoveLoc = Vector.New(SelfLoc.X + math.cos(Angle) * RunAwayDistance,
         SelfLoc.Y + math.sin(Angle) * RunAwayDistance, SelfLoc.Z)
     local OldSpeed = UGCGenericCharacterSystem.GetMaxSpeed(monster)
