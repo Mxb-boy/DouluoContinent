@@ -1,4 +1,8 @@
 ---@class TeamInvitePopup_C:UUserWidget
+---@field AcceptBtn UButton
+---@field RejectBtn UButton
+--Edit Below--
+---@class TeamInvitePopup_C:UUserWidget
 local TeamInvitePopup = {}
 
 function TeamInvitePopup:GetLocalController()
