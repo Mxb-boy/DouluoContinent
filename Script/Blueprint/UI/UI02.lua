@@ -9,6 +9,7 @@
 ---@field Button_6 UButton
 ---@field Button_7 UButton
 ---@field Button_8 UButton
+---@field Button_10 UButton
 ---@field Button_92 UButton
 ---@field Button_93 UButton
 ---@field Button_94 UButton
@@ -90,7 +91,7 @@
 ---@field TextBlock_114 UTextBlock
 ---@field TextBlock_132 UTextBlock
 ---@field TextBlock_303 UTextBlock
---Edit Below--
+-- Edit Below--
 ---@class UI02_C:UUserWidget
 ---@field Avarar_frame varar_frame_C
 ---@field Button_0 UButton
@@ -641,6 +642,8 @@ function UI02:LuaInit()
     self.Button_6.OnClicked:Add(self.Button_6_OnClicked, self)
     self.Button_7.OnClicked:Add(self.Button_7_OnClicked, self)
     self.Button_8.OnClicked:Add(self.Button_8_OnClicked, self)
+    self.Button_10.OnClicked:Add(self.Button_10_OnClicked, self)
+
     self.Button_2.OnClicked:Add(self.Button_2_OnClicked, self)
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
     self.Button_153.OnClicked:Add(self.Button_153_OnClicked, self)
@@ -662,6 +665,8 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_6)
     self:ApplyButtonEffect(self.Button_7)
     self:ApplyButtonEffect(self.Button_8)
+    self:ApplyButtonEffect(self.Button_10)
+
     self:ApplyButtonEffect(self.Button_2)
     self:ApplyButtonEffect(self.Button_3)
     self:ApplyButtonEffect(self.Button_4)
@@ -1213,6 +1218,18 @@ function UI02:Button_8_OnClicked()
     TeamPanel:OnEntryClicked()
 end
 
+function UI02:Button_10_OnClicked()
+    if self.RedemptionCodeUI08Instance ~= nil then
+        self.RedemptionCodeUI08Instance:SetVisibility(ESlateVisibility.Visible)
+        return
+    end
+
+    local SecondUIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath('Asset/Blueprint/Yan/UI/UI08.UI08_C'))
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    self.RedemptionCodeUI08Instance = UserWidget.NewWidgetObjectBP(PlayerController, SecondUIClass)
+    self.RedemptionCodeUI08Instance:AddToViewport(10000)
+end
+
 function UI02:Button_144_OnClicked()
     self:HideMainButtonRedDot("Button_144")
     if ShopV2Manager == nil then
@@ -1435,7 +1452,7 @@ function UI02:Button_0_OnClicked()
         return
     end
 
-    --L_Com.ShowToast("测试成功")
+    -- L_Com.ShowToast("测试成功")
 
     local KJ04Class = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath("Asset/kj04.kj04_C"))
     if KJ04Class == nil then

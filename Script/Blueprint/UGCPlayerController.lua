@@ -155,7 +155,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden", "Client_ShowMonsterDamageNumber",
         "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
         "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
-        "ServerRequestDisbandTeam"
+        "ServerRequestDisbandTeam", "UseRedemptionCode"
 end
 
 function UGCPlayerController:ServerRequestInvitePlayer(TargetKey)
