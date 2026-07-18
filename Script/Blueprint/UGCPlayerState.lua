@@ -18,6 +18,7 @@ local UGCPlayerState = {
     AutoAttackButtonHidden = 0,
     FeiButton0Hidden = 0,
     KJ04GiftPackPurchased = 0,
+    RankAttackBonus = 0, -- 本局由服务端根据上期排名计算，不写入跨局存档
     ArchiveUID = nil,
     bArchiveLoaded = false, -- 服务器侧标志：LoadFromArchive 成功后置 true
 
@@ -132,7 +133,7 @@ function UGCPlayerState:GetReplicatedProperties()
             "BaseAttack", "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "UnlockedTitles",
             "KillMonsterCount",
             "EquippedTitleID", "FeiButton0Hidden", "KJ04GiftPackPurchased", "PlayerLevel", "PlayerExp",
-            "PlayerMaxExp"}
+            "PlayerMaxExp"}, {"RankAttackBonus", "Lazy"}
 end
 
 -- ------ 跨对局存档 ------ --
@@ -532,6 +533,40 @@ end
 function UGCPlayerState:SetProbability_Bonus(value)
     self.Probability_Bonus = tonumber(value) or 100
     self:SaveToArchive()
+end
+
+function UGCPlayerState:GetRankAttackBonus()
+    return math.max(0, tonumber(self.RankAttackBonus) or 0)
+end
+
+function UGCPlayerState:SetRankAttackBonus(value)
+    if self.HasAuthority ~= nil and self:HasAuthority() == false then
+        return false
+    end
+
+    local NewValue = math.max(0, tonumber(value) or 0)
+    if self.RankAttackBonus == NewValue then
+        return false
+    end
+
+    self.RankAttackBonus = NewValue
+    if _G.DOREPONCE ~= nil then
+        _G.DOREPONCE(self, "RankAttackBonus")
+    end
+    return true
+end
+
+function UGCPlayerState:OnRep_RankAttackBonus()
+    local LocalPlayerState = UGCGameSystem.GetLocalPlayerState()
+    if LocalPlayerState ~= self then
+        return
+    end
+
+    local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+    if StateMgr ~= nil and StateMgr.UI ~= nil and StateMgr.PaiHangTextShow ~= nil then
+        -- 复制回调只刷新本地缓存和 UI；真实攻击力统一由后续的服务端重算入口处理。
+        StateMgr:PaiHangTextShow(self:GetRankAttackBonus(), true)
+    end
 end
 
 return UGCPlayerState

@@ -1,7 +1,18 @@
 local RankMgr = {
     ZhanLiRankID = 1,
     ConsumeRankID = 2,
+    TowerRankID = 3,
+    PreviousRankingCycle = 1,
+    RankBonusTopCount = 50,
+    RankBonusReadyDelaySeconds = 2,
+    RankBonusCycleCheckIntervalSeconds = 60,
+    RankBonusSettlementDelaySeconds = 120,
     LastUploadZhanLi = nil,
+    RankRewardBackpackItemIDs = {
+        [1057] = 8310121, -- 强化保护卷
+        [1044] = 8310069, -- 30分钟十倍魂环爆率
+        [1039] = 8310064, -- 爬塔传送卷
+    },
     BonusByRank = {
         {MinRank = 1, MaxRank = 1, Percent = 100},
         {MinRank = 2, MaxRank = 2, Percent = 82},
@@ -46,6 +57,79 @@ local function GetLocalUID(PlayerController)
     end
 
     return nil
+end
+
+function RankMgr:GrantRankRewardsToBackpackV2(PlayerController, ItemList)
+    if PlayerController == nil or PlayerController.HasAuthority == nil or
+        PlayerController:HasAuthority() == false then
+        print("[RankMgr] GrantRankRewardsToBackpackV2 failed: invalid authority")
+        return false
+    end
+
+    if ItemList == nil then
+        print("[RankMgr] GrantRankRewardsToBackpackV2 failed: invalid ItemList")
+        return false
+    end
+
+    local Pawn = PlayerController.Pawn
+    if Pawn == nil and PlayerController.K2_GetPawn ~= nil then
+        Pawn = PlayerController:K2_GetPawn()
+    end
+    if Pawn == nil or UGCBackpackSystemV2 == nil or UGCBackpackSystemV2.AddItemV2 == nil then
+        print("[RankMgr] GrantRankRewardsToBackpackV2 failed: backpack is unavailable")
+        return false
+    end
+
+    local VirtualItemManager = nil
+    if UGCGamePartSystem ~= nil and UGCGamePartSystem.GetGamePartGlobalActor ~= nil then
+        VirtualItemManager = UGCGamePartSystem.GetGamePartGlobalActor("VirtualItemManager")
+    end
+    if VirtualItemManager == nil or VirtualItemManager.RemoveVirtualItem == nil then
+        print("[RankMgr] GrantRankRewardsToBackpackV2 failed: VirtualItemManager is unavailable")
+        return false
+    end
+
+    local bAllSucceeded = true
+    for RawVirtualItemID, RawNum in pairs(ItemList) do
+        local VirtualItemID = tonumber(RawVirtualItemID)
+        local RequestedNum = math.floor(tonumber(RawNum) or 0)
+        local BackpackItemID = VirtualItemID ~= nil and self.RankRewardBackpackItemIDs[VirtualItemID] or nil
+
+        if BackpackItemID == nil or RequestedNum <= 0 then
+            bAllSucceeded = false
+            print(string.format("[RankMgr] Rank reward mapping missing or invalid: VirtualItemID=%s Num=%s",
+                tostring(RawVirtualItemID), tostring(RawNum)))
+        else
+            local CallOK, AddedCount = pcall(UGCBackpackSystemV2.AddItemV2, Pawn, BackpackItemID, RequestedNum)
+            AddedCount = math.floor(tonumber(AddedCount) or 0)
+            AddedCount = math.max(0, math.min(AddedCount, RequestedNum))
+
+            if not CallOK or AddedCount <= 0 then
+                bAllSucceeded = false
+                print(string.format("[RankMgr] AddItemV2 failed: VirtualItemID=%s BackpackItemID=%s Num=%s",
+                    tostring(VirtualItemID), tostring(BackpackItemID), tostring(RequestedNum)))
+            else
+                local RemoveOK, RemoveResult = pcall(VirtualItemManager.RemoveVirtualItem, VirtualItemManager,
+                    PlayerController, VirtualItemID, AddedCount)
+                if not RemoveOK or RemoveResult == false then
+                    bAllSucceeded = false
+                    print(string.format("[RankMgr] RemoveVirtualItem failed after AddItemV2: VirtualItemID=%s Num=%s",
+                        tostring(VirtualItemID), tostring(AddedCount)))
+                end
+
+                if AddedCount < RequestedNum then
+                    bAllSucceeded = false
+                    print(string.format("[RankMgr] Rank reward partially added: BackpackItemID=%s Requested=%s Added=%s",
+                        tostring(BackpackItemID), tostring(RequestedNum), tostring(AddedCount)))
+                else
+                    print(string.format("[RankMgr] Rank reward added: BackpackItemID=%s Num=%s",
+                        tostring(BackpackItemID), tostring(AddedCount)))
+                end
+            end
+        end
+    end
+
+    return bAllSucceeded
 end
 
 function RankMgr:UpdateZhanLiRank(ZhanLi)
@@ -108,6 +192,11 @@ function RankMgr:NotifyPurchaseSuccess(ProductID, Price, Num)
     return self:UpdateRankScore(self.ConsumeRankID, Amount, true)
 end
 
+-- 每次成功登顶累加 1 分；榜单周期与重置规则由排行榜表配置负责。
+function RankMgr:NotifyTowerTop()
+    return self:UpdateRankScore(self.TowerRankID, 1, true)
+end
+
 function RankMgr:BeginConsumePurchase(ProductID, ItemID, Price, Num)
     ProductID = tonumber(ProductID)
     ItemID = tonumber(ItemID)
@@ -149,11 +238,11 @@ end
 
 function RankMgr:TryUploadCurrentZhanLi()
     local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
-    if StateMgr == nil or StateMgr.GetFinalZhanLi == nil then
+    if StateMgr == nil or StateMgr.GetRankZhanLi == nil then
         return false
     end
 
-    return self:UpdateZhanLiRank(StateMgr:GetFinalZhanLi())
+    return self:UpdateZhanLiRank(StateMgr:GetRankZhanLi())
 end
 
 function RankMgr:GetZhanLiBonusByRank(Rank)
@@ -169,6 +258,44 @@ function RankMgr:GetZhanLiBonusByRank(Rank)
     end
 
     return 0
+end
+
+-- 仅在官方排行榜确认返回上期数据后调用；Rank <= 0 表示上期未进入前 50。
+function RankMgr:ApplyPreviousZhanLiRank(PlayerController, Rank)
+    if PlayerController == nil or PlayerController.HasAuthority == nil or
+        PlayerController:HasAuthority() == false then
+        return false
+    end
+
+    local PlayerState = PlayerController.PlayerState
+    if PlayerState == nil and PlayerController.GetCurPlayerState ~= nil then
+        PlayerState = PlayerController:GetCurPlayerState()
+    end
+    if PlayerState == nil or PlayerState.SetRankAttackBonus == nil then
+        return false
+    end
+
+    Rank = tonumber(Rank) or -1
+    local Bonus = self:GetZhanLiBonusByRank(Rank)
+    local OldBonus = PlayerState.GetRankAttackBonus ~= nil and PlayerState:GetRankAttackBonus() or
+        (tonumber(PlayerState.RankAttackBonus) or 0)
+    local bChanged = PlayerState:SetRankAttackBonus(Bonus)
+    if bChanged then
+        local Pawn = PlayerController.Pawn
+        if Pawn == nil and PlayerController.K2_GetPawn ~= nil then
+            Pawn = PlayerController:K2_GetPawn()
+        end
+        if Pawn ~= nil and Pawn.ApplyRankAttackBonusDelta ~= nil then
+            Pawn:ApplyRankAttackBonusDelta(OldBonus, Bonus)
+        end
+
+        local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
+        if TitleMgr ~= nil and TitleMgr.CheckCombatPowerTitles ~= nil then
+            TitleMgr:CheckCombatPowerTitles(PlayerController)
+        end
+    end
+    ugcprint(string.format("[RankMgr] Previous rank confirmed: Rank=%s Bonus=%s", tostring(Rank), tostring(Bonus)))
+    return true
 end
 
 return RankMgr

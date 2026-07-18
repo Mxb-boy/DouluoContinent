@@ -11,7 +11,7 @@
 ---@field Right UImage
 ---@field Up UImage
 --Edit Below--
-local UGC_RankingList_Item_Style1_UIBP = { bInitDoOnce = false } 
+local UGC_RankingList_Item_Style1_UIBP = { bInitDoOnce = false }
 
 function UGC_RankingList_Item_Style1_UIBP:Construct()
 	self.Button_Item.OnClicked:Add(self.ItemClick, self);

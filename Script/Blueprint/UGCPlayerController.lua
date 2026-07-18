@@ -2258,12 +2258,19 @@ function UGCPlayerController:Server_SetFinalAttack(finalAttack)
     if pawn == nil then
         return
     end
+    -- 客户端参数不包含排行加成；排行百分比只从服务端 PlayerState 读取并补入。
     finalAttack = tonumber(finalAttack) or 40
     -- 存档加载前仅拒绝默认值（40），防止用默认 AttackPower 覆盖服务器正确属性；
     -- 但如果客户端已计算出武器/境界加成后的非默认值，则允许通过。
     local playerState = self.PlayerState
     if playerState ~= nil and playerState.bArchiveLoaded ~= true and finalAttack <= 40 then
         return
+    end
+    if playerState ~= nil then
+        local baseAttack = playerState.GetBaseAttack ~= nil and tonumber(playerState:GetBaseAttack()) or 40
+        local rankBonus = playerState.GetRankAttackBonus ~= nil and tonumber(playerState:GetRankAttackBonus()) or
+            (tonumber(playerState.RankAttackBonus) or 0)
+        finalAttack = finalAttack + (baseAttack or 40) * math.max(0, rankBonus or 0) / 100
     end
     UGCAttributeSystem.SetGameAttributeValue(pawn, "AttackPower", finalAttack)
     TitleMgr:CheckCombatPowerTitles(self)

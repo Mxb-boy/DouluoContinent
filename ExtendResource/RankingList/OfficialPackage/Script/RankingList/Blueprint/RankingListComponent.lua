@@ -11,10 +11,215 @@
 local RankingListComponent = {
     PlayerAccountInfo = {},
     RequestMark = "RankingList";
+    bAddItemResultDelegateBinded = false;
+    bRankAttackBonusRequested = false;
+    bRankAttackBonusResolved = false;
+    RankAttackBonusReadyTime = nil;
+    RankAttackBonusPollTimer = nil;
+    RankAttackBonusPollCount = 0;
+    LastRankAttackBonusCycleKey = nil;
+    LastRankAttackBonusCycleCheckTime = nil;
+    PendingRankAttackBonusCycleKey = nil;
+    PendingRankAttackBonusRefreshTime = nil;
 }
 
 UGCGameSystem.UGCRequire("ExtendResource.RankingList.OfficialPackage." .. "Script.RankingList.RankingListManager");
 UGCGameSystem.UGCRequire("ExtendResource.RankingList.OfficialPackage." .. "Script.Common.Common");
+local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr");
+
+function RankingListComponent:BindAddItemResultDelegate()
+    if self.bAddItemResultDelegateBinded == true then
+        return;
+    end
+
+    local VirtualItemManager = self:GetVirtualItemManager();
+    if UE.IsValid(VirtualItemManager) then
+        VirtualItemManager.AddItemResultDelegate:Add(self.OnAddVirtualItem, self);
+        self.bAddItemResultDelegateBinded = true;
+    end
+end
+
+function RankingListComponent:StopRankAttackBonusPoll()
+    if self.RankAttackBonusPollTimer ~= nil then
+        Timer.RemoveTimer(self.RankAttackBonusPollTimer);
+        self.RankAttackBonusPollTimer = nil;
+    end
+end
+
+function RankingListComponent:ResolveRankAttackBonusData()
+    if self.bRankAttackBonusResolved == true then
+        return false;
+    end
+
+    local PlayerController = self:GetOwner();
+    local RankingListGlobalActor = self:GetRankingListGlobalActor();
+    local UID = tonumber(self:GetSelfUID()) or 0;
+    if not UE.IsValid(PlayerController) or PlayerController:HasAuthority() == false or
+        not UE.IsValid(RankingListGlobalActor) or UID <= 0 then
+        return false;
+    end
+
+    local PlayerRankData = RankingListGlobalActor:GetPlayerRankData(UID, RankMgr.ZhanLiRankID,
+        RankMgr.PreviousRankingCycle);
+    if PlayerRankData == nil then
+        return false;
+    end
+
+    if RankMgr:ApplyPreviousZhanLiRank(PlayerController, PlayerRankData.Rank) then
+        self.bRankAttackBonusResolved = true;
+        return true;
+    end
+    return false;
+end
+
+function RankingListComponent:StartRankAttackBonusPoll()
+    self:StopRankAttackBonusPoll();
+    self.RankAttackBonusPollCount = 0;
+    self.RankAttackBonusReadyTime = nil;
+    self.RankAttackBonusPollTimer = Timer.InsertTimer(
+        0.5,
+        function ()
+            local RankingListGlobalActor = self:GetRankingListGlobalActor();
+            self.RankAttackBonusPollCount = self.RankAttackBonusPollCount + 1;
+            if not UE.IsValid(RankingListGlobalActor) then
+                self:StopRankAttackBonusPoll();
+                return;
+            end
+
+            if RankingListGlobalActor:GetIsRequesting(RankMgr.ZhanLiRankID, RankMgr.PreviousRankingCycle) then
+                self.RankAttackBonusReadyTime = nil;
+                -- 最多等待 10 秒；超时保持当前已确认加成，不误写 0。
+                if self.RankAttackBonusPollCount >= 20 then
+                    self:StopRankAttackBonusPoll();
+                end
+                return;
+            end
+
+            -- 官方结束 Requesting 后再固定等待，确保最后的缓存通知已经完成。
+            local ServerTime = UGCGameSystem.GetServerTimeSec();
+            if self.RankAttackBonusReadyTime == nil then
+                self.RankAttackBonusReadyTime = ServerTime + RankMgr.RankBonusReadyDelaySeconds;
+                return;
+            end
+            if ServerTime < self.RankAttackBonusReadyTime then
+                return;
+            end
+
+            self:StopRankAttackBonusPoll();
+            self:ResolveRankAttackBonusData();
+        end,
+        true,
+        "RankAttackBonusPollTimer",
+        1
+    );
+end
+
+function RankingListComponent:RequestRankAttackBonusData()
+    if self.bRankAttackBonusRequested == true or RankMgr == nil then
+        return false;
+    end
+
+    local PlayerController = self:GetOwner();
+    local RankingListGlobalActor = self:GetRankingListGlobalActor();
+    local UID = tonumber(self:GetSelfUID()) or 0;
+    if not UE.IsValid(PlayerController) or PlayerController:HasAuthority() == false or
+        not UE.IsValid(RankingListGlobalActor) or UID <= 0 then
+        return false;
+    end
+
+    self.bRankAttackBonusRequested = true;
+    self.bRankAttackBonusResolved = false;
+    RankingListGlobalActor:RequestRankingListData(UID, RankMgr.ZhanLiRankID, 1, RankMgr.RankBonusTopCount,
+        RankMgr.PreviousRankingCycle);
+    self:StartRankAttackBonusPoll();
+    return true;
+end
+
+-- 官方周榜固定在每周一 00:00 切期。用服务端时间生成当前周键，避免依赖客户端时间。
+function RankingListComponent:GetRankAttackBonusWeeklyCycle(ServerTime)
+    ServerTime = tonumber(ServerTime)
+    if ServerTime == nil or ServerTime <= 0 then
+        return nil, nil;
+    end
+
+    local CurrentTime = os.date("*t", ServerTime);
+    local WeekDay = tonumber(os.date("%w", ServerTime));
+    if CurrentTime == nil or WeekDay == nil then
+        return nil, nil;
+    end
+
+    local Offset = (WeekDay - 1) % 7;
+    local CycleStartTime = os.time({
+        year = CurrentTime.year,
+        month = CurrentTime.month,
+        day = CurrentTime.day - Offset,
+        hour = 0,
+        min = 0,
+        sec = 0,
+    });
+    return os.date("%Y%m%d", CycleStartTime), CycleStartTime;
+end
+
+function RankingListComponent:RefreshRankAttackBonusForNewCycle()
+    -- 只重置本组件的请求状态，不改 PlayerState；新榜确认前继续使用旧加成。
+    self:StopRankAttackBonusPoll();
+    self.bRankAttackBonusRequested = false;
+    self.bRankAttackBonusResolved = false;
+    self.RankAttackBonusReadyTime = nil;
+    return self:RequestRankAttackBonusData();
+end
+
+function RankingListComponent:CheckRankAttackBonusCycle(ServerTime)
+    local PlayerController = self:GetOwner();
+    if not UE.IsValid(PlayerController) or PlayerController:HasAuthority() == false then
+        return;
+    end
+
+    ServerTime = tonumber(ServerTime);
+    if ServerTime == nil or ServerTime <= 0 then
+        return;
+    end
+
+    if self.LastRankAttackBonusCycleCheckTime ~= nil and
+        ServerTime - self.LastRankAttackBonusCycleCheckTime < RankMgr.RankBonusCycleCheckIntervalSeconds then
+        return;
+    end
+    self.LastRankAttackBonusCycleCheckTime = ServerTime;
+
+    local CycleKey, CycleStartTime = self:GetRankAttackBonusWeeklyCycle(ServerTime);
+    if CycleKey == nil then
+        return;
+    end
+
+    if self.LastRankAttackBonusCycleKey == nil then
+        self.LastRankAttackBonusCycleKey = CycleKey;
+        local SettlementReadyTime = CycleStartTime + RankMgr.RankBonusSettlementDelaySeconds;
+        if ServerTime < SettlementReadyTime then
+            -- 玩家在切期保护窗口内才登录时，初次请求可能仍命中旧缓存；窗口结束后再确认一次。
+            self.PendingRankAttackBonusCycleKey = CycleKey;
+            self.PendingRankAttackBonusRefreshTime = SettlementReadyTime;
+            ugcprint(string.format(
+                "[RankingListComponent] Rank bonus settlement grace refresh scheduled: Cycle=%s RefreshAfter=%s",
+                tostring(CycleKey), tostring(SettlementReadyTime)));
+        end
+    elseif self.LastRankAttackBonusCycleKey ~= CycleKey then
+        self.LastRankAttackBonusCycleKey = CycleKey;
+        self.PendingRankAttackBonusCycleKey = CycleKey;
+        self.PendingRankAttackBonusRefreshTime = CycleStartTime + RankMgr.RankBonusSettlementDelaySeconds;
+        ugcprint(string.format("[RankingListComponent] Rank bonus cycle changed: Cycle=%s RefreshAfter=%s",
+            tostring(CycleKey), tostring(self.PendingRankAttackBonusRefreshTime)));
+    end
+
+    if self.PendingRankAttackBonusCycleKey ~= nil and self.PendingRankAttackBonusRefreshTime ~= nil and
+        ServerTime >= self.PendingRankAttackBonusRefreshTime then
+        if self:RefreshRankAttackBonusForNewCycle() then
+            ugcprint(string.format("[RankingListComponent] Rank bonus refresh requested: Cycle=%s",
+                tostring(self.PendingRankAttackBonusCycleKey)));
+            self.PendingRankAttackBonusCycleKey = nil;
+            self.PendingRankAttackBonusRefreshTime = nil;
+        end
+    end
+end
 
 function RankingListComponent:ReceiveBeginPlay()
     print("[RankingListComponent] ReceiveBeginPlay")
@@ -25,7 +230,9 @@ function RankingListComponent:ReceiveBeginPlay()
     if UGCGamePartSystem.IsGamePartLoaded("RankingListManager") then
         if UE.IsValid(self:GetRankingListGlobalActor()) then
             self:GetRankingListGlobalActor().ClaimRankListAwardDelegate:Add(self.AddRankListAwardsDelegate, self);
-            if PlayerController:HasAuthority() == false then
+            if PlayerController:HasAuthority() == true then
+                self:RequestRankAttackBonusData();
+            else
                 self:GetRankingListGlobalActor().ProfileDataChangeDelegate:Add(self.UpdateProfileData, self);
                 self:GetRankingListGlobalActor().ShowRankDataChangeDelegate:Add(self.UpdateShowRankData, self);
                 self:GetRankingListGlobalActor().ShowPlayerRankDataChangeDelegate:Add(self.UpdateShowPlayerRankData, self);
@@ -33,9 +240,7 @@ function RankingListComponent:ReceiveBeginPlay()
         end
     end
     if PlayerController:HasAuthority() and UGCGamePartSystem.IsGamePartLoaded("VirtualItemManager") then
-        if UE.IsValid(self:GetVirtualItemManager()) then
-            self:GetVirtualItemManager().AddItemResultDelegate:Add(self.OnAddVirtualItem, self);
-        end
+        self:BindAddItemResultDelegate();
     end
     if PlayerController:HasAuthority() == true then
         GMP.GlobalMessage.BindUObject(PlayerController, "UGC.GamePart.GamePartLoadedForPlayer", self, self.InitGamePart);
@@ -59,7 +264,9 @@ function RankingListComponent:ReceiveBeginPlay()
             1,
             function ()
                 local ServerTime = UGCGameSystem.GetServerTimeSec();
-                if PlayerController:HasAuthority() == false then
+                if PlayerController:HasAuthority() == true then
+                    self:CheckRankAttackBonusCycle(ServerTime);
+                else
                     if ShowRankListBtn == false and (self.LastCheckRankListTime == nil or ServerTime - self.LastCheckRankListTime >= 60) then
                         local RankList = RankingListManager:GetLegalRankListTableData();
                         if RankList and next(RankList) ~= nil then
@@ -91,9 +298,10 @@ function RankingListComponent:ReceiveEndPlay()
     RankingListComponent.SuperClass.ReceiveEndPlay(self);
 
     local PC = self:GetOwner();
-    if PC:HasAuthority() == true and UE.IsValid(self:GetVirtualItemManager()) then
+    if PC:HasAuthority() == true and self.bAddItemResultDelegateBinded == true and UE.IsValid(self:GetVirtualItemManager()) then
         self:GetVirtualItemManager().AddItemResultDelegate:Remove(self.OnAddVirtualItem, self);
     end
+    self.bAddItemResultDelegateBinded = false;
     if UE.IsValid(self:GetRankingListGlobalActor()) then
         if PC:HasAuthority() == false then
             self:GetRankingListGlobalActor().ProfileDataChangeDelegate:Remove(self.UpdateProfileData, self);
@@ -102,6 +310,14 @@ function RankingListComponent:ReceiveEndPlay()
         end
         self:GetRankingListGlobalActor().ClaimRankListAwardDelegate:Remove(self.AddRankListAwardsDelegate, self);
     end
+    self.bRankAttackBonusRequested = false;
+    self.bRankAttackBonusResolved = false;
+    self.RankAttackBonusReadyTime = nil;
+    self.LastRankAttackBonusCycleKey = nil;
+    self.LastRankAttackBonusCycleCheckTime = nil;
+    self.PendingRankAttackBonusCycleKey = nil;
+    self.PendingRankAttackBonusRefreshTime = nil;
+    self:StopRankAttackBonusPoll();
 
     if self.RankingListTimer ~= nil then
         Timer.RemoveTimer(self.RankingListTimer);
@@ -127,7 +343,7 @@ function RankingListComponent:InitGamePart(GamePartName)
     if GamePartName == "VirtualItemManager" then
         if UE.IsValid(self:GetVirtualItemManager()) then
             if PlayerController:HasAuthority() == true then
-                self:GetVirtualItemManager().AddItemResultDelegate:Add(self.OnAddVirtualItem, self);
+                self:BindAddItemResultDelegate();
             end
         end
         print(string.format("[RankingListComponent] VirtualItemManager is Nil: %s", self.VirtualItemManager == nil));
@@ -137,7 +353,9 @@ function RankingListComponent:InitGamePart(GamePartName)
         end
         if UE.IsValid(self:GetRankingListGlobalActor()) then
             self:GetRankingListGlobalActor().ClaimRankListAwardDelegate:Add(self.AddRankListAwardsDelegate, self);
-            if PlayerController:HasAuthority() == false then
+            if PlayerController:HasAuthority() == true then
+                self:RequestRankAttackBonusData();
+            else
                 self:GetRankingListGlobalActor().ProfileDataChangeDelegate:Add(self.UpdateProfileData, self);
                 self:GetRankingListGlobalActor().ShowRankDataChangeDelegate:Add(self.UpdateShowRankData, self);
                 self:GetRankingListGlobalActor().ShowPlayerRankDataChangeDelegate:Add(self.UpdateShowPlayerRankData, self);
@@ -158,6 +376,7 @@ function RankingListComponent:LoadData()
     self.PlayerAccountInfo.Gender = PlayerAccountInfo.Gender;
     self.PlayerAccountInfo.IconURL = PlayerAccountInfo.IconURL;
     _G.DOREPONCE(self, "PlayerAccountInfo");
+    self:RequestRankAttackBonusData();
 end
 
 function RankingListComponent:OnRep_PlayerAccountInfo()
@@ -389,6 +608,9 @@ function RankingListComponent:OnAddVirtualItem(Result)
     local SelfPlayerKey = PlayerController:GetInt64PlayerKey();
     print(string.format("[RankingListComponent] OnAddVirtualItem PlayerKey: %d SelfPlayerKey: %d", PlayerKey, SelfPlayerKey));
     if bSucceeded and PlayerKey == SelfPlayerKey and RequestMark == self.RequestMark then
+        if RankMgr ~= nil and RankMgr.GrantRankRewardsToBackpackV2 ~= nil then
+            RankMgr:GrantRankRewardsToBackpackV2(PlayerController, ItemList);
+        end
         local AwardList = {};
         for ItemID, ItemNum in pairs(ItemList) do
             table.insert(AwardList, {ItemID = ItemID, ItemNum = ItemNum});

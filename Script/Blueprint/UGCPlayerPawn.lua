@@ -121,6 +121,16 @@ local function CountBackpackWeaponAttackBonus(player)
     return WeaponCount * BACKPACK_WEAPON_ATTACK_PER_ITEM, WeaponCount
 end
 
+local function GetRankAttackBonus(player)
+    if player == nil or player.PlayerState == nil then
+        return 0
+    end
+    if player.PlayerState.GetRankAttackBonus ~= nil then
+        return math.max(0, tonumber(player.PlayerState:GetRankAttackBonus()) or 0)
+    end
+    return math.max(0, tonumber(player.PlayerState.RankAttackBonus) or 0)
+end
+
 local function SetWeaponBonusPercent(player, AttackPercent, bForce)
     AttackPercent = tonumber(AttackPercent) or 0
     local BackpackWeaponAttackPercent, BackpackWeaponCount = CountBackpackWeaponAttackBonus(player)
@@ -1016,7 +1026,8 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     end
     local BaseAttack = GetWeaponBaseAttack(self)
     local BackpackWeaponAttackPercent = CountBackpackWeaponAttackBonus(self)
-    local TotalAttackPercent = AttackPercent + BackpackWeaponAttackPercent
+    local RankAttackPercent = GetRankAttackBonus(self)
+    local TotalAttackPercent = AttackPercent + BackpackWeaponAttackPercent + RankAttackPercent
     local NormalizedAttackPercent = NormalizePercent(TotalAttackPercent)
     local FinalAttack = BaseAttack * (1 + NormalizedAttackPercent)
     SetWeaponBonusPercent(self, AttackPercent, bForce)
@@ -1041,10 +1052,30 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
         "[UGCPlayerPawn:RefreshWeaponAttackBonus] item=" .. tostring(ItemID) .. ", series=" .. tostring(SeriesKey) ..
             ", name=" .. tostring(ItemName) .. ", level=" .. tostring(Level) .. ", attackPercent=" ..
             tostring(AttackPercent) .. ", backpackAttackPercent=" .. tostring(BackpackWeaponAttackPercent) ..
+            ", rankAttackPercent=" .. tostring(RankAttackPercent) ..
             ", totalAttackPercent=" .. tostring(TotalAttackPercent) .. ", baseAttack=" .. tostring(BaseAttack) .. ", finalAttack=" ..
             tostring(FinalAttack) .. ", setBaseAttackSuccess=" .. tostring(bSetBaseAttackSuccess))
 
     -- self:ForceRefreshPropertySnapshot()
+end
+
+-- 服务端按基础攻击应用排行百分比差值；覆盖新旧值，不对当前攻击力重复乘算。
+function UGCPlayerPawn:ApplyRankAttackBonusDelta(OldBonus, NewBonus)
+    if self.HasAuthority == nil or self:HasAuthority() == false then
+        return false
+    end
+
+    local BaseAttack = GetWeaponBaseAttack(self)
+    local CurrentAttack = tonumber(UGCAttributeSystem.GetGameAttributeValue(self, "AttackPower")) or BaseAttack
+    OldBonus = math.max(0, tonumber(OldBonus) or 0)
+    NewBonus = math.max(0, tonumber(NewBonus) or 0)
+    local FinalAttack = math.max(0, CurrentAttack + BaseAttack * (NewBonus - OldBonus) / 100)
+
+    UGCAttributeSystem.SetGameAttributeValue(self, "AttackPower", FinalAttack)
+    self:ForceRefreshPropertySnapshot()
+    ugcprint(string.format("[UGCPlayerPawn] Rank attack applied: Old=%s New=%s Base=%s Final=%s",
+        tostring(OldBonus), tostring(NewBonus), tostring(BaseAttack), tostring(FinalAttack)))
+    return true
 end
 
 function UGCPlayerPawn:ForceRefreshPropertySnapshot()

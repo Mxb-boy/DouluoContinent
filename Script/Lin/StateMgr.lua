@@ -12,6 +12,7 @@ local StateMgr = {
     JingJieName = "",
     JingJieAddMaxHp = 0,
     JingJieAddAtk = 0,
+    RankZhanLi = 0,
     BeiLv = 100,
     bServerSynced = false -- 客户端侧标志：收到服务器首次属性同步后才允许 RPC，防止用默认值覆盖服务器
 }
@@ -25,6 +26,7 @@ local DefaultBaseMaxHp = 100
 
 local L_Com = UGCGameSystem.UGCRequire('Script.Lin.L_Com')
 local Ma_NumShow = UGCGameSystem.UGCRequire("Script.Ma.Ma_NumShow")
+local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
 
 function StateMgr:SetUI(ui)
     self.UI = ui
@@ -49,6 +51,11 @@ function StateMgr:SyncFromPlayerState()
     else
         self.BeiLv = tonumber(playerState.Probability_Bonus) or self.BeiLv
     end
+    if playerState.GetRankAttackBonus ~= nil then
+        self.PaiHangAdd = playerState:GetRankAttackBonus()
+    else
+        self.PaiHangAdd = tonumber(playerState.RankAttackBonus) or 0
+    end
     return true
 end
 
@@ -62,7 +69,7 @@ end
 
 function StateMgr:Init()
     self:SyncFromPlayerState()
-    self:PaiHangTextShow(0, true)
+    self:PaiHangTextShow(self.PaiHangAdd, true)
     self:ChiBangTextShow(0, true)
     self:WuQiTextShow(0, true)
     self:ChengHaoTextShow(0, true)
@@ -149,9 +156,10 @@ function StateMgr:CountFinalAttack(pawn)
     if pawn.HasAuthority ~= nil and pawn:HasAuthority() then
         UGCAttributeSystem.SetGameAttributeValue(pawn, "AttackPower", FinalAttack)
     elseif self.bServerSynced then
-        -- 仅在服务器首次同步后才 RPC，避免用默认 BaseAttack 覆盖服务器正确值
+        -- 排行加成由服务器按 PlayerState 权威值补入，客户端只提交其余加成，避免复制延迟或伪造覆盖。
+        local ServerAttackWithoutRank = baseAttack * (1 + (AttackAddForce - self.PaiHangAdd) / 100)
         local pc = GameplayStatics.GetPlayerController(self.UI, 0)
-        UnrealNetwork.CallUnrealRPC(pc, pc, "Server_SetFinalAttack", FinalAttack)
+        UnrealNetwork.CallUnrealRPC(pc, pc, "Server_SetFinalAttack", ServerAttackWithoutRank)
     end
     if self.UI ~= nil and self.UI.gjl ~= nil then
         self.UI.gjl:SetText("攻击力:" .. Ma_NumShow.Format(FinalAttack))
@@ -204,12 +212,26 @@ end
 
 function StateMgr:CountFinalZhanLi()
     local FinalZhanLi = FinalAttack + FinalMaxHp
+    local RankAttackAddForce = self.ChiBang + self.WuQi + self.ChengHao + self.JingJieAddAtk
+    local RankAttack = self.BaseAttack * (1 + RankAttackAddForce / 100)
+
     self.FinalZhanLi = FinalZhanLi
+    -- 排行榜分数不包含排行自身带来的攻击加成，避免加成反向抬高下一期排名。
+    self.RankZhanLi = RankAttack + FinalMaxHp
     self.UI.TextBlock_303:SetText("战力" .. Ma_NumShow.Format(FinalZhanLi))
+
+    -- 首次服务端属性同步完成后才上报；相同分数由 RankMgr 去重，连续更新由官方排行榜合并。
+    if self.bServerSynced and RankMgr ~= nil and RankMgr.TryUploadCurrentZhanLi ~= nil then
+        RankMgr:TryUploadCurrentZhanLi()
+    end
 end
 
 function StateMgr:GetFinalZhanLi()
     return self.FinalZhanLi
+end
+
+function StateMgr:GetRankZhanLi()
+    return self.RankZhanLi
 end
 
 function StateMgr:GetFinalMaxHp()

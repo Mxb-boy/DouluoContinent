@@ -22,6 +22,7 @@ local TowerTopUI = {
 }
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
+local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
 
 function TowerTopUI:Construct()
     self:LuaInit()
@@ -43,6 +44,7 @@ function TowerTopUI:Button_109_OnClicked()
         --[[------------------通知获得物品----------------------------]] --
         UnrealNetwork.CallUnrealRPC(pc, pc, "Server_ClaimTowerTopReward")
         TaskMgr:RequestAddTaskProgress(L_Enum.AllTask.TowerPass, 1)
+        RankMgr:NotifyTowerTop()
         pc.TowerTopUIInstance = nil
     end
 
