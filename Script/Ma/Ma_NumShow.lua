@@ -9,17 +9,26 @@ local Units = {
     { Value = 10000, Text = "万", ImagePath = ProjectRootPath .. 'Asset/Blueprint/Ma/NEW/WAN.WAN' },
 }
 
+local function TruncateNumber(value, DecimalCount)
+    local Number = tonumber(value) or 0
+    local Scale = 10 ^ (tonumber(DecimalCount) or 0)
+    if Number >= 0 then
+        return math.floor(Number * Scale) / Scale
+    end
+    return math.ceil(Number * Scale) / Scale
+end
+
 function Ma_NumShow.GetNumShowData(value)
     local number = tonumber(value) or 0
     local absNumber = math.abs(number)
 
     for _, unit in ipairs(Units) do
         if absNumber >= unit.Value then
-            return string.format("%.1f", number / unit.Value), unit.Text, unit.ImagePath
+            return string.format("%.1f", TruncateNumber(number / unit.Value, 1)), unit.Text, unit.ImagePath
         end
     end
 
-    return string.format("%.0f", number), nil, nil
+    return tostring(TruncateNumber(number, 0)), nil, nil
 end
 
 function Ma_NumShow.Format(value)
