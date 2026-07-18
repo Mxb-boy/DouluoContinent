@@ -47,6 +47,13 @@ local function IsLocalPlayerPawn(player)
     return UGCGameSystem.GetLocalPlayerPawn() == player
 end
 
+local function SyncTeamCombatPower()
+    local GameMode = UGCGameSystem.GetGameMode()
+    if GameMode ~= nil and GameMode.SyncTeamUI ~= nil then
+        GameMode:SyncTeamUI()
+    end
+end
+
 local function GetWeaponBaseAttack(player)
     if player == nil then
         return DEFAULT_BASE_ATTACK
@@ -1046,6 +1053,7 @@ function UGCPlayerPawn:ApplyWeaponAttackBonusByItemID(ItemID, SeriesKey, ItemNam
     -- 服务端直接写入 AttackPower，不依赖客户端 RPC（避免 bArchiveLoaded 拦截导致武器伤害失效）
     if self:HasAuthority() then
         UGCAttributeSystem.SetGameAttributeValue(self, "AttackPower", FinalAttack)
+        SyncTeamCombatPower()
     end
 
     ugcprint(
@@ -1072,6 +1080,7 @@ function UGCPlayerPawn:ApplyRankAttackBonusDelta(OldBonus, NewBonus)
     local FinalAttack = math.max(0, CurrentAttack + BaseAttack * (NewBonus - OldBonus) / 100)
 
     UGCAttributeSystem.SetGameAttributeValue(self, "AttackPower", FinalAttack)
+    SyncTeamCombatPower()
     self:ForceRefreshPropertySnapshot()
     ugcprint(string.format("[UGCPlayerPawn] Rank attack applied: Old=%s New=%s Base=%s Final=%s",
         tostring(OldBonus), tostring(NewBonus), tostring(BaseAttack), tostring(FinalAttack)))

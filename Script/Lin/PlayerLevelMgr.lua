@@ -14,6 +14,10 @@ local ATTR_GROWTH = 1.025 -- 属性单级成长系数
 local PLAYER_SKILL_1_REQUIRED_LEVEL = 50 -- 解锁玩家技能1所需等级
 local PLAYER_SKILL_1_PATH = "Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/PlayerSkill_1.PlayerSkill_1_C"
 
+local function IsSamePlayerKey(KeyA, KeyB)
+    return KeyA ~= nil and KeyB ~= nil and tostring(KeyA) == tostring(KeyB)
+end
+
 --[[----------------------公式结果取整------------------------]] --
 function PlayerLevelMgr:RoundFormula(value)
     return math.floor((tonumber(value) or 0) + 0.5)
@@ -88,12 +92,12 @@ function PlayerLevelMgr:GetCurrentLevelMaxExp(level, nextTotalExp)
     return self:GetLevelStepExp(level)
 end
 
---[[----------------------给玩家增加经验------------------------]] --
+--[[----------------------给单个玩家增加经验------------------------]] --
 -- PlayerController：获得经验的玩家控制器
 -- amount：增加的经验值
 -- 返回值：是否升级
 -- 返回值：增加经验后的等级
-function PlayerLevelMgr:AddExp(PlayerController, amount)
+function PlayerLevelMgr:AddExpToPlayer(PlayerController, amount)
     amount = tonumber(amount) or 0
     if PlayerController == nil or amount <= 0 then
         return false, DEFAULT_PLAYER_LEVEL
@@ -131,6 +135,49 @@ function PlayerLevelMgr:AddExp(PlayerController, amount)
         self:GetCurrentLevelExp(newExp, newLevel), self:GetCurrentLevelMaxExp(newLevel, playerState:GetPlayerMaxExp()),
         newLevel)
     return newLevel > oldLevel, newLevel
+end
+
+--[[----------------------按动态队伍共享经验------------------------]] --
+-- 同队每名在线成员获得完整经验，不分摊、不限制距离；未组队时仅发给原玩家。
+-- 返回值保持原约定：返回原获得者是否升级、增加经验后的等级。
+function PlayerLevelMgr:AddExp(PlayerController, amount)
+    amount = tonumber(amount) or 0
+    if PlayerController == nil or amount <= 0 then
+        return false, DEFAULT_PLAYER_LEVEL
+    end
+
+    local PlayerKey = PlayerController.PlayerKey
+    local GameMode = UGCGameSystem.GetGameMode()
+    local Squad = GameMode ~= nil and GameMode.GetSquadForMember ~= nil and PlayerKey ~= nil and
+                      GameMode:GetSquadForMember(PlayerKey) or nil
+    if Squad == nil or Squad.Members == nil then
+        return self:AddExpToPlayer(PlayerController, amount)
+    end
+
+    local GrantedPlayerKeys = {}
+    local bOriginalPlayerGranted = false
+    local bOriginalPlayerLevelUp = false
+    local OriginalPlayerLevel = DEFAULT_PLAYER_LEVEL
+    for _, MemberKey in ipairs(Squad.Members) do
+        local MemberKeyText = tostring(MemberKey)
+        if MemberKey ~= nil and GrantedPlayerKeys[MemberKeyText] ~= true then
+            GrantedPlayerKeys[MemberKeyText] = true
+            local MemberController = UGCGameSystem.GetPlayerControllerByPlayerKey(MemberKey)
+            if MemberController ~= nil then
+                local bLevelUp, NewLevel = self:AddExpToPlayer(MemberController, amount)
+                if IsSamePlayerKey(MemberKey, PlayerKey) then
+                    bOriginalPlayerGranted = true
+                    bOriginalPlayerLevelUp = bLevelUp
+                    OriginalPlayerLevel = NewLevel
+                end
+            end
+        end
+    end
+
+    if not bOriginalPlayerGranted then
+        bOriginalPlayerLevelUp, OriginalPlayerLevel = self:AddExpToPlayer(PlayerController, amount)
+    end
+    return bOriginalPlayerLevelUp, OriginalPlayerLevel
 end
 
 --[[----------------------升级后应用属性加成------------------------]] --

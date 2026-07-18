@@ -2252,6 +2252,10 @@ function UGCPlayerController:Server_SetFinalMaxHp(finalMaxHp, bFillHealth)
     end
     UGCPawnAttrSystem.SetHealth(pawn, math.min(oldHp, finalMaxHp))
     TitleMgr:CheckCombatPowerTitles(self)
+    local GameMode = UGCGameSystem.GetGameMode()
+    if GameMode ~= nil and GameMode.SyncTeamUI ~= nil then
+        GameMode:SyncTeamUI()
+    end
 end
 
 function UGCPlayerController:Server_SetFinalAttack(finalAttack)
@@ -2275,6 +2279,10 @@ function UGCPlayerController:Server_SetFinalAttack(finalAttack)
     end
     UGCAttributeSystem.SetGameAttributeValue(pawn, "AttackPower", finalAttack)
     TitleMgr:CheckCombatPowerTitles(self)
+    local GameMode = UGCGameSystem.GetGameMode()
+    if GameMode ~= nil and GameMode.SyncTeamUI ~= nil then
+        GameMode:SyncTeamUI()
+    end
 end
 
 local AUTO_PICK_RANGE = 600

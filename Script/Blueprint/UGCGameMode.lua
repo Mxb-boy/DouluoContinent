@@ -313,10 +313,20 @@ function UGCGameMode:BuildTeamRoster()
     local Roster = {}
     for _, PlayerKey in ipairs(self.PlayerKeyList or {}) do
         local PlayerState = UGCGameSystem.GetPlayerStateByPlayerKey(PlayerKey)
+        local PlayerController = UGCGameSystem.GetPlayerControllerByPlayerKey(PlayerKey)
+        local PlayerPawn = PlayerController and PlayerController.Pawn or nil
+        local AttackPower = PlayerPawn and tonumber(UGCAttributeSystem.GetGameAttributeValue(PlayerPawn, "AttackPower")) or 0
+        local MaxHealth = PlayerPawn and tonumber(UGCPawnAttrSystem.GetHealthMax(PlayerPawn)) or 0
+        if PlayerPawn == nil and PlayerState ~= nil then
+            AttackPower = PlayerState.GetBaseAttack ~= nil and tonumber(PlayerState:GetBaseAttack()) or 0
+            MaxHealth = PlayerState.GetBaseMaxHp ~= nil and tonumber(PlayerState:GetBaseMaxHp()) or 0
+        end
+        local CombatPower = math.max(0, math.floor(AttackPower + MaxHealth + 0.5))
         local Squad, SquadID = self:GetSquadForMember(PlayerKey)
         table.insert(Roster, {
             PlayerKey = PlayerKey,
             PlayerName = PlayerState and (PlayerState.PlayerName or PlayerState.RealPlayerName) or tostring(PlayerKey),
+            CombatPower = CombatPower,
             TeamID = self:GetCurrentTeamID(PlayerKey),
             SquadID = SquadID or 0,
             IsLeader = Squad ~= nil and IsSamePlayerKey(Squad.LeaderKey, PlayerKey),

@@ -8,6 +8,7 @@
 ---@field PlayerScroll UScrollBox
 --Edit Below--
 local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
+local Ma_NumShow = UGCGameSystem.UGCRequire("Script.Ma.Ma_NumShow")
 
 local UI015 = {}
 local Visible = 0
@@ -163,7 +164,6 @@ function UI015:CreatePlayerCells()
             self:SetCellWidgetVisibility(Cell, ButtonName, Collapsed)
         end
         self:SetCellWidgetVisibility(Cell, "Button_1", Collapsed)
-        self:SetCellWidgetVisibility(Cell, "TextBlock_76", Collapsed)
         self:SetCellWidgetVisibility(Cell, "TextBlock_160", Collapsed)
         self:SetCellWidgetVisibility(Cell, "Image_113", Collapsed)
         self:SetCellWidgetVisibility(Cell, "TextBlock_156", Collapsed)
@@ -318,6 +318,11 @@ function UI015:RefreshRows()
             local NameText = self:GetCellWidget(Cell, "TextBlock_75")
             if NameText ~= nil then
                 NameText:SetText(tostring(Info.PlayerName))
+            end
+            local CombatPowerText = self:GetCellWidget(Cell, "TextBlock_76")
+            if CombatPowerText ~= nil then
+                CombatPowerText:SetText("战力：" .. Ma_NumShow.Format(tonumber(Info.CombatPower) or 0))
+                CombatPowerText:SetVisibility(Visible)
             end
             Cell:SetVisibility(Visible)
         elseif Cell ~= nil then
