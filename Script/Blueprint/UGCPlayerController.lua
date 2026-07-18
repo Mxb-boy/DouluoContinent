@@ -148,13 +148,12 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult",
         "Server_RequestLotteryStateSync", "Client_SyncLotteryState", "Client_RefreshProperty",
         "Client_RefreshPlayerExp", "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Server_RequestRefreshProperty",
-        "Client_StartAutoMeleeAttack", "Server_SetAutoFeatureButtonHidden",
-        "Client_SetAutoFeatureButtonHidden", "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI",
-        "Server_ClaimTowerTopReward", "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden",
-        "Client_ShowMonsterDamageNumber", 
+        "Client_StartAutoMeleeAttack", "Server_SetAutoFeatureButtonHidden", "Client_SetAutoFeatureButtonHidden",
+        "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI", "Server_ClaimTowerTopReward",
+        "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden", "Client_ShowMonsterDamageNumber",
         "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
-        "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam",
-        "ServerRequestKickPlayer", "ServerRequestDisbandTeam"
+        "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
+        "ServerRequestDisbandTeam"
 end
 
 function UGCPlayerController:ServerRequestInvitePlayer(TargetKey)
@@ -955,7 +954,8 @@ local function FindHeldWeaponItemIDBySeries(PlayerController, SeriesKey)
             for _, ItemDefineID in pairs(AllItemDefineIDs) do
                 local ItemID = tonumber(GetItemIDFromDefineID(ItemDefineID))
                 local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
-                if WeaponInfo ~= nil and WeaponInfo.SeriesKey == SeriesKey and GetItemCount(PlayerController, ItemID) > 0 then
+                if WeaponInfo ~= nil and WeaponInfo.SeriesKey == SeriesKey and GetItemCount(PlayerController, ItemID) >
+                    0 then
                     local Level = tonumber(WeaponInfo.Level) or 1
                     if Level > BestLevel then
                         BestItemID = ItemID
@@ -1122,13 +1122,14 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID, UseProtect)
             return
         end
         ugcprint("[UGCPlayerController:Server_ForgeWeapon] selected item missing, use current series item: " ..
-            tostring(ItemID) .. "->" .. tostring(CurrentItemID))
+                     tostring(ItemID) .. "->" .. tostring(CurrentItemID))
         ItemID = CurrentItemID
         WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
     end
 
     local CurrentItemDefineID = FindBackpackItemDefineID(self, ItemID)
-    local CurrentLevel = GetWeaponLevelFromItemDefineID(CurrentItemDefineID, WeaponInfo, 1) or tonumber(WeaponInfo.Level) or 1
+    local CurrentLevel = GetWeaponLevelFromItemDefineID(CurrentItemDefineID, WeaponInfo, 1) or
+                             tonumber(WeaponInfo.Level) or 1
     local Cost = WeaponLevelConfig.GetForgeCost(ItemID, CurrentLevel)
     if Cost == nil then
         ugcprint(
@@ -1210,7 +1211,7 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID, UseProtect)
                 local ItemDefineID = FindBackpackItemDefineID(self, ItemID)
                 local bSavedLevel = RollResultType ~= "Destroy" or bUseProtectThisForge
                 bSavedLevel = bSavedLevel and ItemDefineID ~= nil and
-                                        SetWeaponLevelToItemDefineID(ItemDefineID, WeaponInfo, ResultLevel, 1) == true
+                                  SetWeaponLevelToItemDefineID(ItemDefineID, WeaponInfo, ResultLevel, 1) == true
                 if not bSavedLevel then
                     AddItem(self, ForgeMaterialItemIDs.HGRJ, Cost.HGRJ or 0)
                     AddItem(self, ForgeMaterialItemIDs.QNHH, Cost.QNHH or 0)
@@ -1226,7 +1227,7 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID, UseProtect)
                 ResultItemID = ItemID
                 bKeptOriginalWeapon = true
                 ugcprint("[UGCPlayerController:Server_ForgeWeapon] Remove old weapon failed, saved level on item: " ..
-                    tostring(ItemID) .. ", level=" .. tostring(ResultLevel))
+                             tostring(ItemID) .. ", level=" .. tostring(ResultLevel))
             end
             if RollResultType ~= "Destroy" or bUseProtectThisForge then
                 if not bKeptOriginalWeapon and not AddItem(self, ResultItemID, 1) then
@@ -1240,7 +1241,7 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID, UseProtect)
                         CurrentLevel)
                     ClearForgeWeaponBusy()
                     ugcprint("[UGCPlayerController:Server_ForgeWeapon] Add result weapon failed: " ..
-                        tostring(ResultItemID))
+                                 tostring(ResultItemID))
                     return
                 end
             end
@@ -2269,7 +2270,7 @@ function UGCPlayerController:Server_SetFinalAttack(finalAttack)
     if playerState ~= nil then
         local baseAttack = playerState.GetBaseAttack ~= nil and tonumber(playerState:GetBaseAttack()) or 40
         local rankBonus = playerState.GetRankAttackBonus ~= nil and tonumber(playerState:GetRankAttackBonus()) or
-            (tonumber(playerState.RankAttackBonus) or 0)
+                              (tonumber(playerState.RankAttackBonus) or 0)
         finalAttack = finalAttack + (baseAttack or 40) * math.max(0, rankBonus or 0) / 100
     end
     UGCAttributeSystem.SetGameAttributeValue(pawn, "AttackPower", finalAttack)
@@ -2623,6 +2624,30 @@ function UGCPlayerController:Server_TestCompensation(TestType, CommodityID, Coun
     elseif TestType == 3 then
         -- 模拟跨局商品变化
         self:OnBuyUGCCommodityResultBetweenGames(self.PlayerKey, 0, CommodityID, Count)
+    end
+end
+
+--[[----------------------测试兑换码------------------------]]
+function UGCPlayerController:UseRedemptionCode(RedemptionCode)
+    if not self.bUseRedemptionCodeResultDelegateInit then
+        self.bUseRedemptionCodeResultDelegateInit = true
+        UGCCommoditySystem.UseRedemptionCodeResultDelegate:Add(self.OnUseRedemptionCodeResult, self)
+    end
+
+    local PlayerPawn = self:GetPlayerCharacterSafety()
+    local UID = UGCPawnAttrSystem.GetPlayerUID(PlayerPawn)
+    print(string.format("[UseRedemptionCode] UID=%s Code=%s", tostring(UID), tostring(RedemptionCode)))
+    UGCCommoditySystem.UseRedemptionCode(tonumber(UID), RedemptionCode)
+end
+
+--[[----------------------打印兑换码结果------------------------]]
+function UGCPlayerController:OnUseRedemptionCodeResult(Result, PlayerKey, UID, CommodityID, Count, ProductID)
+    if Result == EUseRedemptionCodeResult.Success then
+        print(string.format("[UseRedemptionCode] Success UID=%s CommodityID=%s Count=%s ProductID=%s", tostring(UID),
+            tostring(CommodityID), tostring(Count), tostring(ProductID)))
+    else
+        print(string.format("[UseRedemptionCode] Failed Result=%s UID=%s PlayerKey=%s", tostring(Result), tostring(UID),
+            tostring(PlayerKey)))
     end
 end
 
