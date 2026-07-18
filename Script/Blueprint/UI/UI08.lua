@@ -2,6 +2,7 @@
 ---@field BreakHh BreakHh_C
 ---@field Btn_Break UButton
 ---@field Btn_Close UButton
+---@field Btn_OK UButton
 ---@field Image_4 UImage
 ---@field Image_35 UImage
 ---@field Image_36 UImage
@@ -11,14 +12,17 @@
 ---@field Image_103 UImage
 ---@field Image_107 UImage
 ---@field Image_187 UImage
+---@field Image_OK UImage
 ---@field Img_Current UImage
 ---@field Img_NeedItem_1 UImage
 ---@field Img_NeedItem_2 UImage
 ---@field Img_NeedItem_3 UImage
+---@field Text_baodicishu UTextBlock
 ---@field Text_CurrentName UTextBlock
 ---@field Text_NextName UTextBlock
 ---@field Text_NextValue UTextBlock
 ---@field Text_NowValue UTextBlock
+---@field Text_tupogailv UTextBlock
 ---@field TextBlock_0 UTextBlock
 ---@field TextBlock_1 UTextBlock
 ---@field TextBlock_2 UTextBlock
@@ -44,9 +48,12 @@ function UI08:LuaInit()
 
     self.bInitDoOnce = true
     self.CurrentRealmLevel = self:GetPlayerRealmLevel()
+    self.bLuckyCardSelected = false
 
     self:BindButton(self.Btn_Close, self.Btn_Close_OnClicked)
     self:BindButton(self.Btn_Break, self.Btn_Break_OnClicked)
+    self:BindButton(self.Btn_OK, self.Btn_OK_OnClicked)
+    self:RefreshLuckyCheckmark()
     self:HideBreakHh()
     self:Refresh()
 end
@@ -71,14 +78,49 @@ end
 function UI08:Open()
     self:SetBattleUIVisible(false)
     self.CurrentRealmLevel = self:GetPlayerRealmLevel()
+    self:SetLuckyCardSelected(false)
     self:HideBreakHh()
     self:Refresh()
     self:SetVisibility(ESlateVisibility.Visible)
 end
 
 function UI08:Btn_Close_OnClicked()
+    self:SetLuckyCardSelected(false)
     self:SetBattleUIVisible(true)
     self:SetVisibility(ESlateVisibility.Collapsed)
+end
+
+function UI08:Btn_OK_OnClicked()
+    if self.bLuckyCardSelected == true then
+        self:SetLuckyCardSelected(false)
+        return
+    end
+
+    if self:GetBackpackItemCount(RealmConfig.LuckyItemID) <= 0 then
+        if L_Com ~= nil and L_Com.ShowToast ~= nil then
+            L_Com.ShowToast("缺少幸运符")
+        end
+        return
+    end
+
+    self:SetLuckyCardSelected(true)
+end
+
+function UI08:SetLuckyCardSelected(Selected)
+    self.bLuckyCardSelected = Selected == true
+    self:RefreshLuckyCheckmark()
+    local NextConfig = RealmConfig.GetNext(self.CurrentRealmLevel)
+    if NextConfig ~= nil then
+        self:SetText(self:GetWidget("Text_tupogailv"), self:BuildBreakRateText(NextConfig))
+    end
+end
+
+function UI08:RefreshLuckyCheckmark()
+    local Image = self:GetWidget("Image_OK")
+    if Image ~= nil then
+        Image:SetVisibility(self.bLuckyCardSelected == true
+            and ESlateVisibility.SelfHitTestInvisible or ESlateVisibility.Collapsed)
+    end
 end
 
 function UI08:Btn_Break_OnClicked()
@@ -108,6 +150,15 @@ function UI08:Btn_Break_OnClicked()
         return
     end
 
+    if self.bLuckyCardSelected == true
+        and self:GetBackpackItemCount(RealmConfig.LuckyItemID) <= 0 then
+        self:SetLuckyCardSelected(false)
+        if L_Com ~= nil and L_Com.ShowToast ~= nil then
+            L_Com.ShowToast("缺少幸运符")
+        end
+        return
+    end
+
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
         or GameplayStatics.GetPlayerController(self, 0)
 
@@ -116,7 +167,8 @@ function UI08:Btn_Break_OnClicked()
             PlayerController,
             PlayerController,
             "Server_BreakRealm",
-            self.CurrentRealmLevel + 1
+            self.CurrentRealmLevel + 1,
+            self.bLuckyCardSelected == true
         )
         return
     end
@@ -138,6 +190,10 @@ function UI08:RefreshNextRealm(CurrentConfig, NextConfig)
         self:SetText(self:GetWidget("Text_NowValue"), self:BuildCurrentBonusText(CurrentConfig.SuccessBonuses))
         self:SetText(self:GetWidget("Text_NextValue"), "")
         self:SetText(self:GetWidget("TextZhanli"), "所需战力：已满")
+        self:SetText(self:GetWidget("Text_baodicishu"), "")
+        self:SetText(self:GetWidget("Text_tupogailv"), "")
+        self:SetLuckyCardSelected(false)
+        self:SetButtonEnabled(self.Btn_OK, false)
         self:RefreshNeedItems(nil)
         self:SetButtonEnabled(self.Btn_Break, false)
         return
@@ -148,7 +204,31 @@ function UI08:RefreshNextRealm(CurrentConfig, NextConfig)
     self:SetText(self:GetWidget("Text_NowValue"), self:BuildCompareLeftText(CurrentBonuses, Bonuses))
     self:SetText(self:GetWidget("Text_NextValue"), self:BuildCompareRightText(Bonuses))
     self:SetText(self:GetWidget("TextZhanli"), self:BuildNeedPowerText(NextConfig))
+    if self.bLuckyCardSelected == true and self:GetBackpackItemCount(RealmConfig.LuckyItemID) <= 0 then
+        self.bLuckyCardSelected = false
+    end
+    self:RefreshLuckyCheckmark()
+    self:SetText(self:GetWidget("Text_baodicishu"), self:BuildGuaranteeText(NextConfig))
+    self:SetText(self:GetWidget("Text_tupogailv"), self:BuildBreakRateText(NextConfig))
+    self:SetButtonEnabled(self.Btn_OK, true)
     self:RefreshBreakButton(NextConfig)
+end
+
+function UI08:BuildGuaranteeText(Config)
+    local GuaranteeFailCount = tonumber(Config and Config.GuaranteeFailCount) or 0
+    if GuaranteeFailCount <= 0 then
+        return ""
+    end
+    return "失败" .. tostring(GuaranteeFailCount) .. "次必定成功"
+end
+
+function UI08:BuildBreakRateText(Config)
+    local SuccessRate = tonumber(Config and Config.SuccessRate) or 0
+    local Text = "突破概率：" .. tostring(SuccessRate) .. "%"
+    if self.bLuckyCardSelected == true then
+        Text = Text .. "+" .. tostring(RealmConfig.LuckyExtraRate) .. "%"
+    end
+    return Text
 end
 
 function UI08:BuildCurrentBonusText(Bonuses)
@@ -406,6 +486,7 @@ function UI08:OnRealmLevelChanged(NewLevel)
 end
 function UI08:OnRealmBreakResult(Success, NewLevel, TargetLevel, FailCount, UsedRate, IsGuaranteed)
     self.CurrentRealmLevel = math.max(1, math.min(RealmConfig.MaxLevel, tonumber(NewLevel) or 1))
+    self.bLuckyCardSelected = false
     self:Refresh()
     if Success then
         if StateMgr ~= nil and StateMgr.UI ~= nil and StateMgr.JingJieTextShow ~= nil then

@@ -1,6 +1,8 @@
 ﻿local RealmConfig = {}
 
 RealmConfig.MaxLevel = 10
+RealmConfig.LuckyItemID = 8310062
+RealmConfig.LuckyExtraRate = 15
 
 local ProjectRootPath = UGCMapInfoLib.GetRootLongPackagePath()
 
@@ -40,7 +42,8 @@ local ItemIDs = {
 }
 
 RealmConfig.LuckyItemText =
-    "幸运道具：突破成功率+15%，单境界单次最多叠加1张\n例：基础15%，用护符后 15+15=30%"
+    "幸运道具：突破成功率+" .. tostring(RealmConfig.LuckyExtraRate) ..
+    "%，单次突破最多使用1张\n例：基础15%，勾选后 15+15=30%"
 
 RealmConfig.Levels = {
     [1] = {

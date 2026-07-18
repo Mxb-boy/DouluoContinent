@@ -1372,45 +1372,23 @@ local function GetRealmCombatPower(PlayerController)
     return AttackPower + MaxHP
 end
 
-function UGCPlayerController:CanUseRealmLuckyCard()
-    if GetRealmLevel(self) >= RealmConfig.MaxLevel then
-        return false
-    end
-    if tonumber(self.RealmLuckyTargetLevel) ~= nil and tonumber(self.RealmLuckyTargetLevel) <= GetRealmLevel(self) then
-        self.RealmLuckyExtraRate = 0
-        self.RealmLuckyTargetLevel = nil
-    end
-    return (tonumber(self.RealmLuckyExtraRate) or 0) <= 0
-end
-
-function UGCPlayerController:UseRealmLuckyCard()
-    if not self:CanUseRealmLuckyCard() then
-        return false
-    end
-
-    self.RealmLuckyExtraRate = 15
-    self.RealmLuckyTargetLevel = math.min(RealmConfig.MaxLevel, GetRealmLevel(self) + 1)
-    ugcprint("[UGCPlayerController:UseRealmLuckyCard] target=" .. tostring(self.RealmLuckyTargetLevel) .. ", rate=15")
-    return true
-end
-
-local function TakeRealmLuckyExtraRate(PlayerController, TargetLevel)
-    if tonumber(PlayerController.RealmLuckyTargetLevel) ~= tonumber(TargetLevel) then
-        if tonumber(PlayerController.RealmLuckyExtraRate) ~= nil then
-            PlayerController.RealmLuckyExtraRate = 0
-            PlayerController.RealmLuckyTargetLevel = nil
-        end
-        return 0
-    end
-
-    local ExtraRate = tonumber(PlayerController.RealmLuckyExtraRate) or 0
-    PlayerController.RealmLuckyExtraRate = 0
-    PlayerController.RealmLuckyTargetLevel = nil
-    return math.max(0, ExtraRate)
-end
-
-local function HasRealmNeedItems(PlayerController, Config)
+local function BuildRealmConsumeItems(Config, UseLuckyCard)
+    local Items = {}
     for _, Item in ipairs(Config.NeedItems or {}) do
+        table.insert(Items, Item)
+    end
+    if UseLuckyCard then
+        table.insert(Items, {
+            ItemID = RealmConfig.LuckyItemID,
+            Count = 1,
+            Name = "突破幸运符"
+        })
+    end
+    return Items
+end
+
+local function HasRealmNeedItems(PlayerController, Config, UseLuckyCard)
+    for _, Item in ipairs(BuildRealmConsumeItems(Config, UseLuckyCard)) do
         local ItemID = tonumber(Item.ItemID)
         local NeedCount = tonumber(Item.Count) or 0
         if ItemID ~= nil and GetItemCount(PlayerController, ItemID) < NeedCount then
@@ -1421,9 +1399,9 @@ local function HasRealmNeedItems(PlayerController, Config)
     return true, nil
 end
 
-local function RemoveRealmNeedItems(PlayerController, Config)
+local function RemoveRealmNeedItems(PlayerController, Config, UseLuckyCard)
     local RemovedItems = {}
-    for _, Item in ipairs(Config.NeedItems or {}) do
+    for _, Item in ipairs(BuildRealmConsumeItems(Config, UseLuckyCard)) do
         local ItemID = tonumber(Item.ItemID)
         local NeedCount = tonumber(Item.Count) or 0
         if ItemID ~= nil and NeedCount > 0 then
@@ -1444,8 +1422,9 @@ local function RemoveRealmNeedItems(PlayerController, Config)
     return true, nil
 end
 
-function UGCPlayerController:Server_BreakRealm(TargetLevel)
+function UGCPlayerController:Server_BreakRealm(TargetLevel, UseLuckyCard)
     TargetLevel = tonumber(TargetLevel)
+    UseLuckyCard = UseLuckyCard == true or tonumber(UseLuckyCard) == 1
     local CurrentLevel = GetRealmLevel(self)
     local ExpectedLevel = CurrentLevel + 1
 
@@ -1473,7 +1452,7 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
     end
 
     local FailCount = GetRealmFailCount(self, TargetLevel)
-    local HasItems, MissingItem = HasRealmNeedItems(self, Config)
+    local HasItems, MissingItem = HasRealmNeedItems(self, Config, UseLuckyCard)
     if not HasItems then
         ugcprint("[UGCPlayerController:Server_BreakRealm] item not enough: " ..
                      tostring(MissingItem and MissingItem.Name or "nil") .. ", target=" .. tostring(TargetLevel))
@@ -1482,7 +1461,7 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
         return
     end
 
-    local RemoveSuccess, RemoveFailedItem = RemoveRealmNeedItems(self, Config)
+    local RemoveSuccess, RemoveFailedItem = RemoveRealmNeedItems(self, Config, UseLuckyCard)
     if not RemoveSuccess then
         ugcprint("[UGCPlayerController:Server_BreakRealm] remove item failed: " ..
                      tostring(RemoveFailedItem and RemoveFailedItem.Name or "nil") .. ", target=" ..
@@ -1492,7 +1471,7 @@ function UGCPlayerController:Server_BreakRealm(TargetLevel)
         return
     end
 
-    local ExtraRate = TakeRealmLuckyExtraRate(self, TargetLevel)
+    local ExtraRate = UseLuckyCard and RealmConfig.LuckyExtraRate or 0
     local Success, IsGuaranteed, UsedRate = RealmConfig.RollBreakResult(TargetLevel, FailCount, ExtraRate)
     local NewLevel = CurrentLevel
 
