@@ -8,6 +8,7 @@
 ---@field Button_5 UButton
 ---@field Button_6 UButton
 ---@field Button_7 UButton
+---@field Button_9 UButton
 ---@field Button_92 UButton
 ---@field Button_93 UButton
 ---@field Button_94 UButton
