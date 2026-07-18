@@ -7,7 +7,7 @@ local First_Hit_Run_Away_Time = 2 -- 首次受击乱跑时间
 local First_Hit_Run_Away_Distance = 900 -- 首次受击随机移动距离
 local First_Hit_Run_Away_Stop_Radius = 80 -- 首次受击移动停止距离
 local First_Hit_Run_Away_Reason = "FirstHitRunAway" -- 首次受击暂停行为树原因
-local First_Hit_Run_Away_Speed_Scale = 2.5 -- 首次受击随机移动速度倍率
+local First_Hit_Run_Away_Speed_Scale = 1 -- 首次受击随机移动速度倍率
 local First_Hit_Run_Away_Speed_Reason = 1001 -- 首次受击移动速度修改原因
 
 --[[----------------------禁用怪物碰撞------------------------]]
