@@ -8,7 +8,6 @@
 ---@field Button_5 UButton
 ---@field Button_6 UButton
 ---@field Button_7 UButton
----@field Button_9 UButton
 ---@field Button_92 UButton
 ---@field Button_93 UButton
 ---@field Button_94 UButton
@@ -1154,10 +1153,51 @@ end
 -- 商城
 function UI02:Button_6_OnClicked()
     self:HideMainButtonRedDot("Button_6")
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        return
+    end
+
+    if self.UI016Instance ~= nil then
+        self.UI016Instance:SetVisibility(ESlateVisibility.Visible)
+        return
+    end
+
+    local UI016Class = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath("Asset/UI016.UI016_C"))
+    if UI016Class == nil then
+        ugcprint("[UI02:Button_6_OnClicked] UI016 class load failed")
+        return
+    end
+
+    self.UI016Instance = UserWidget.NewWidgetObjectBP(PlayerController, UI016Class)
+    if self.UI016Instance == nil then
+        ugcprint("[UI02:Button_6_OnClicked] UI016 create failed")
+        return
+    end
+
+    self.UI016Instance:AddToViewport(12000)
 end
 
 function UI02:Button_7_OnClicked()
     self:HideMainButtonRedDot("Button_7")
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        return
+    end
+
+    local KJ06Class = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath("Asset/kj06.kj06_C"))
+    if KJ06Class == nil then
+        ugcprint("[UI02:Button_7_OnClicked] kj06 class load failed")
+        return
+    end
+
+    local KJ06Instance = UserWidget.NewWidgetObjectBP(PlayerController, KJ06Class)
+    if KJ06Instance == nil then
+        ugcprint("[UI02:Button_7_OnClicked] kj06 create failed")
+        return
+    end
+
+    KJ06Instance:AddToViewport(12000)
 end
 
 function UI02:Button_144_OnClicked()

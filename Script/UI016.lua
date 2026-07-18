@@ -51,11 +51,28 @@
 --Edit Below--
 local UI016 = { bInitDoOnce = false } 
 
---[==[ Construct
 function UI016:Construct()
-	
+    self:LuaInit()
 end
--- Construct ]==]
+
+function UI016:LuaInit()
+    if self.bInitDoOnce then
+        return
+    end
+    self.bInitDoOnce = true
+
+    if self.Button_0 ~= nil then
+        self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
+    end
+end
+
+function UI016:Button_0_OnClicked()
+    if self.RemoveFromParent ~= nil then
+        self:RemoveFromParent()
+    elseif self.SetVisibility ~= nil then
+        self:SetVisibility(ESlateVisibility.Collapsed)
+    end
+end
 
 -- function UI016:Tick(MyGeometry, InDeltaTime)
 
