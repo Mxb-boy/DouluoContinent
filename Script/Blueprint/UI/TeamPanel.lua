@@ -1,10 +1,6 @@
 ---@class TeamPanel_C:UUserWidget
 ---@field ActionInput UEditableTextBox
 ---@field CloseBtn UButton
----@field DisbandBtn UButton
----@field InviteBtn UButton
----@field KickBtn UButton
----@field LeaveBtn UButton
 ---@field PlayerRow1 UButton
 ---@field PlayerRow10 UButton
 ---@field PlayerRow11 UButton
@@ -18,6 +14,54 @@
 ---@field PlayerRow8 UButton
 ---@field PlayerRow9 UButton
 ---@field RefreshBtn UButton
+---@field RowDisbandBtn1 UButton
+---@field RowDisbandBtn10 UButton
+---@field RowDisbandBtn11 UButton
+---@field RowDisbandBtn12 UButton
+---@field RowDisbandBtn2 UButton
+---@field RowDisbandBtn3 UButton
+---@field RowDisbandBtn4 UButton
+---@field RowDisbandBtn5 UButton
+---@field RowDisbandBtn6 UButton
+---@field RowDisbandBtn7 UButton
+---@field RowDisbandBtn8 UButton
+---@field RowDisbandBtn9 UButton
+---@field RowInviteBtn1 UButton
+---@field RowInviteBtn10 UButton
+---@field RowInviteBtn11 UButton
+---@field RowInviteBtn12 UButton
+---@field RowInviteBtn2 UButton
+---@field RowInviteBtn3 UButton
+---@field RowInviteBtn4 UButton
+---@field RowInviteBtn5 UButton
+---@field RowInviteBtn6 UButton
+---@field RowInviteBtn7 UButton
+---@field RowInviteBtn8 UButton
+---@field RowInviteBtn9 UButton
+---@field RowKickBtn1 UButton
+---@field RowKickBtn10 UButton
+---@field RowKickBtn11 UButton
+---@field RowKickBtn12 UButton
+---@field RowKickBtn2 UButton
+---@field RowKickBtn3 UButton
+---@field RowKickBtn4 UButton
+---@field RowKickBtn5 UButton
+---@field RowKickBtn6 UButton
+---@field RowKickBtn7 UButton
+---@field RowKickBtn8 UButton
+---@field RowKickBtn9 UButton
+---@field RowLeaveBtn1 UButton
+---@field RowLeaveBtn10 UButton
+---@field RowLeaveBtn11 UButton
+---@field RowLeaveBtn12 UButton
+---@field RowLeaveBtn2 UButton
+---@field RowLeaveBtn3 UButton
+---@field RowLeaveBtn4 UButton
+---@field RowLeaveBtn5 UButton
+---@field RowLeaveBtn6 UButton
+---@field RowLeaveBtn7 UButton
+---@field RowLeaveBtn8 UButton
+---@field RowLeaveBtn9 UButton
 ---@field TeamEntryBtn UButton
 --Edit Below--
 ---@class TeamPanel_C:UUserWidget
@@ -25,6 +69,7 @@ local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 
 local TeamPanel = {}
 local Visible = 0
+local Collapsed = 1
 local Hidden = 2
 local MAX_ROWS = TeamConfig.MAX_SERVER_PLAYERS
 
@@ -142,8 +187,7 @@ function TeamPanel:Construct()
 
     local WidgetNames = {
         "TeamEntryBtn", "TeamEntryBtnText", "PlayerListText", "PlayerScroll", "PlayerRows", "SelectedText",
-        "ActionInput", "InviteBtn", "InviteBtnText", "KickBtn", "KickBtnText", "DisbandBtn", "DisbandBtnText",
-        "LeaveBtn", "LeaveBtnText", "RefreshBtn", "RefreshBtnText", "CloseBtn", "CloseBtnText"
+        "ActionInput", "RefreshBtn", "RefreshBtnText", "CloseBtn", "CloseBtnText"
     }
     for _, Name in ipairs(WidgetNames) do
         self:GetWidget(Name)
@@ -152,18 +196,30 @@ function TeamPanel:Construct()
     for Index = 1, MAX_ROWS do
         local RowIndex = Index
         local ButtonName = "PlayerRow" .. tostring(RowIndex)
+        self:GetWidget("PlayerRowContainer" .. tostring(RowIndex))
         self:GetWidget(ButtonName)
         self:GetWidget("PlayerRowText" .. tostring(RowIndex))
+        for _, Action in ipairs({"Invite", "Kick", "Disband", "Leave"}) do
+            self:GetWidget("Row" .. Action .. "Btn" .. tostring(RowIndex))
+            self:GetWidget("Row" .. Action .. "Btn" .. tostring(RowIndex) .. "Text")
+        end
         self:BindButton(ButtonName, function()
             self:OnPlayerRowClicked(RowIndex)
         end)
+        self:BindButton("RowInviteBtn" .. tostring(RowIndex), function()
+            self:OnRowActionClicked(RowIndex, "Invite")
+        end)
+        self:BindButton("RowKickBtn" .. tostring(RowIndex), function()
+            self:OnRowActionClicked(RowIndex, "Kick")
+        end)
+        self:BindButton("RowDisbandBtn" .. tostring(RowIndex), function()
+            self:OnRowActionClicked(RowIndex, "Disband")
+        end)
+        self:BindButton("RowLeaveBtn" .. tostring(RowIndex), function()
+            self:OnRowActionClicked(RowIndex, "Leave")
+        end)
     end
-
     self:BindButton("TeamEntryBtn", self.OnEntryClicked)
-    self:BindButton("InviteBtn", self.OnInviteClicked)
-    self:BindButton("KickBtn", self.OnKickClicked)
-    self:BindButton("DisbandBtn", self.OnDisbandClicked)
-    self:BindButton("LeaveBtn", self.OnLeaveClicked)
     self:BindButton("RefreshBtn", self.OnRefreshClicked)
     self:BindButton("CloseBtn", self.OnCloseClicked)
 
@@ -179,8 +235,7 @@ end
 function TeamPanel:SetPanelOpen(bOpen)
     self.bOpen = bOpen == true
     self:SetWidgetVisibility("TeamEntryBtn", self.bOpen and Hidden or Visible)
-    local PanelWidgets = {"PlayerListText", "PlayerScroll", "PlayerRows", "SelectedText", "InviteBtn", "KickBtn",
-                          "DisbandBtn", "LeaveBtn", "RefreshBtn", "CloseBtn"}
+    local PanelWidgets = {"PlayerListText", "PlayerScroll", "PlayerRows", "SelectedText", "RefreshBtn", "CloseBtn"}
     for _, Name in ipairs(PanelWidgets) do
         self:SetWidgetVisibility(Name, self.bOpen and Visible or Hidden)
     end
@@ -208,7 +263,44 @@ function TeamPanel:RefreshEntry()
         Popup:ClosePopup()
     end
 end
-
+function TeamPanel:GetTeamSize(Info)
+    if Info == nil or Info.IsGrouped ~= true then
+        return 0
+    end
+    local Count = 0
+    for _, RosterInfo in ipairs(self:GetRoster()) do
+        if RosterInfo.IsGrouped == true and tonumber(RosterInfo.SquadID) == tonumber(Info.SquadID) then
+            Count = Count + 1
+        end
+    end
+    return Count
+end
+function TeamPanel:RefreshRowActions(Index, Info, LocalInfo, LocalTeamSize)
+    local Prefixes = {"Invite", "Kick", "Disband", "Leave"}
+    for _, Prefix in ipairs(Prefixes) do
+        self:SetWidgetVisibility("Row" .. Prefix .. "Btn" .. tostring(Index), Collapsed)
+    end
+    if Info == nil or LocalInfo == nil then
+        return
+    end
+    local bSelf = IsSamePlayerKey(Info.PlayerKey, self.LocalPlayerKey)
+    local bLocalGrouped = LocalInfo.IsGrouped == true
+    local bLeader = LocalInfo.IsLeader == true
+    if bSelf then
+        if bLeader then
+            self:SetWidgetVisibility("RowDisbandBtn" .. tostring(Index), Visible)
+        elseif bLocalGrouped then
+            self:SetWidgetVisibility("RowLeaveBtn" .. tostring(Index), Visible)
+        end
+        return
+    end
+    if bLeader and Info.IsGrouped == true and tonumber(Info.SquadID) == tonumber(LocalInfo.SquadID) then
+        self:SetWidgetVisibility("RowKickBtn" .. tostring(Index), Visible)
+    elseif Info.IsGrouped ~= true and (not bLocalGrouped or bLeader) and
+        (not bLeader or LocalTeamSize < TeamConfig.MAX_PLAYERS_PER_TEAM) then
+        self:SetWidgetVisibility("RowInviteBtn" .. tostring(Index), Visible)
+    end
+end
 function TeamPanel:RefreshRows()
     local ViewRoster = {}
     for _, Info in ipairs(self:GetRoster()) do
@@ -231,9 +323,11 @@ function TeamPanel:RefreshRows()
         end
         return tostring(A.PlayerName) < tostring(B.PlayerName)
     end)
-
     self.RowPlayerKeys = {}
+    local LocalInfo = self:GetLocalInfo()
+    local LocalTeamSize = self:GetTeamSize(LocalInfo)
     for Index = 1, MAX_ROWS do
+        local Container = self:GetWidget("PlayerRowContainer" .. tostring(Index))
         local Button = self:GetWidget("PlayerRow" .. tostring(Index))
         local Text = self:GetWidget("PlayerRowText" .. tostring(Index))
         local Info = ViewRoster[Index]
@@ -247,28 +341,21 @@ function TeamPanel:RefreshRows()
             if Button ~= nil then
                 Button:SetVisibility(Visible)
             end
-        elseif Button ~= nil then
-            Button:SetVisibility(Hidden)
+            if Container ~= nil then
+                Container:SetVisibility(Visible)
+            end
+        else
+            if Container ~= nil then
+                Container:SetVisibility(Collapsed)
+            elseif Button ~= nil then
+                Button:SetVisibility(Collapsed)
+            end
         end
+        self:RefreshRowActions(Index, Info, LocalInfo, LocalTeamSize)
     end
 end
-
 function TeamPanel:RefreshActions()
-    local LocalInfo = self:GetLocalInfo()
     local SelectedInfo = self:FindRosterInfo(self.SelectedPlayerKey)
-    local bGrouped = LocalInfo ~= nil and LocalInfo.IsGrouped == true
-    local bLeader = LocalInfo ~= nil and LocalInfo.IsLeader == true
-    local bCanInvite = (not bGrouped or bLeader) and SelectedInfo ~= nil and
-                           not IsSamePlayerKey(SelectedInfo.PlayerKey, self.LocalPlayerKey) and
-                           SelectedInfo.IsGrouped ~= true
-    local bCanKick = bLeader and SelectedInfo ~= nil and
-                         tonumber(SelectedInfo.SquadID) == tonumber(LocalInfo.SquadID) and
-                         not IsSamePlayerKey(SelectedInfo.PlayerKey, self.LocalPlayerKey)
-
-    self:SetWidgetVisibility("InviteBtn", bCanInvite and Visible or Hidden)
-    self:SetWidgetVisibility("KickBtn", bCanKick and Visible or Hidden)
-    self:SetWidgetVisibility("DisbandBtn", bLeader and Visible or Hidden)
-    self:SetWidgetVisibility("LeaveBtn", bGrouped and not bLeader and Visible or Hidden)
     self:SetWidgetVisibility("RefreshBtn", Visible)
     self:SetWidgetVisibility("CloseBtn", Visible)
     local SelectedText = self:GetWidget("SelectedText")
@@ -336,6 +423,23 @@ function TeamPanel:OnPlayerRowClicked(Index)
     self.SelectedPlayerKey = self.RowPlayerKeys[Index]
     self:RefreshUI()
 end
+function TeamPanel:OnRowActionClicked(Index, Action)
+    self.SelectedPlayerKey = self.RowPlayerKeys[Index]
+    if self.SelectedPlayerKey == nil then
+        return
+    end
+    self:RefreshRows()
+    self:RefreshActions()
+    if Action == "Invite" then
+        self:OnInviteClicked()
+    elseif Action == "Kick" then
+        self:OnKickClicked()
+    elseif Action == "Disband" then
+        self:OnDisbandClicked()
+    elseif Action == "Leave" then
+        self:OnLeaveClicked()
+    end
+end
 
 function TeamPanel:OnInviteClicked()
     if self.SelectedPlayerKey ~= nil then
@@ -381,4 +485,4 @@ function TeamPanel:Destruct()
     end
 end
 
-return TeamPanel
+return TeamPanel

@@ -105,13 +105,13 @@ function UGCPlayerController:ReceiveBeginPlay()
     self:Client_RefreshTitleBonus()
 
     if self.TeamPanelInstance == nil then
-        local TeamPanelPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/TeamPanel.TeamPanel_C"
+        local TeamPanelPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/UI015.UI015_C"
         local TeamPanelClass = UE.LoadClass(TeamPanelPath)
         if TeamPanelClass ~= nil then
             self.TeamPanelInstance = UserWidget.NewWidgetObjectBP(self, TeamPanelClass)
             if self.TeamPanelInstance ~= nil then
                 self.TeamPanelInstance:AddToViewport(10500)
-                ugcprint("[Team] Client TeamPanel created")
+                ugcprint("[Team] Client UI015 team panel created")
             else
                 ugcprint("[Team] Client TeamPanel create failed")
             end

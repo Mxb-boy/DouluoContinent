@@ -8,6 +8,7 @@
 ---@field Button_5 UButton
 ---@field Button_6 UButton
 ---@field Button_7 UButton
+---@field Button_8 UButton
 ---@field Button_92 UButton
 ---@field Button_93 UButton
 ---@field Button_94 UButton
@@ -639,6 +640,7 @@ function UI02:LuaInit()
     self.Button_5.OnClicked:Add(self.Button_1_OnClicked, self)
     self.Button_6.OnClicked:Add(self.Button_6_OnClicked, self)
     self.Button_7.OnClicked:Add(self.Button_7_OnClicked, self)
+    self.Button_8.OnClicked:Add(self.Button_8_OnClicked, self)
     self.Button_2.OnClicked:Add(self.Button_2_OnClicked, self)
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
     self.Button_153.OnClicked:Add(self.Button_153_OnClicked, self)
@@ -659,6 +661,7 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_5)
     self:ApplyButtonEffect(self.Button_6)
     self:ApplyButtonEffect(self.Button_7)
+    self:ApplyButtonEffect(self.Button_8)
     self:ApplyButtonEffect(self.Button_2)
     self:ApplyButtonEffect(self.Button_3)
     self:ApplyButtonEffect(self.Button_4)
@@ -1198,6 +1201,16 @@ function UI02:Button_7_OnClicked()
     end
 
     KJ06Instance:AddToViewport(12000)
+end
+
+function UI02:Button_8_OnClicked()
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+    local TeamPanel = PlayerController and PlayerController.TeamPanelInstance or nil
+    if TeamPanel == nil or TeamPanel.OnEntryClicked == nil then
+        ugcprint("[UI02:Button_8_OnClicked] UI015 team panel is not ready")
+        return
+    end
+    TeamPanel:OnEntryClicked()
 end
 
 function UI02:Button_144_OnClicked()

@@ -832,7 +832,7 @@ local function CreateTeamPanelForLocalPlayer()
     if PlayerController == nil or PlayerController.TeamPanelInstance ~= nil then
         return
     end
-    local Path = UGCGameSystem.GetUGCResourcesFullPath("Asset/Blueprint/UI/TeamPanel.TeamPanel_C")
+    local Path = UGCGameSystem.GetUGCResourcesFullPath("Asset/UI015.UI015_C")
     local WidgetClass = UE.LoadClass(Path)
     if WidgetClass == nil then
         ugcprint("[Team] Client TeamPanel class load failed: " .. tostring(Path))
@@ -845,7 +845,7 @@ local function CreateTeamPanelForLocalPlayer()
     end
     PlayerController.TeamPanelInstance = Widget
     Widget:AddToViewport(10500)
-    ugcprint("[Team] Client TeamPanel created from local Pawn")
+    ugcprint("[Team] Client UI015 team panel created from local Pawn")
 end
 
 function UGCPlayerPawn:ReceiveBeginPlay()
