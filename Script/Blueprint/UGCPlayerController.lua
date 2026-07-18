@@ -24,6 +24,8 @@ local ForgeMaterialItemIDs = {
     QNHH = 8310036,
     Protect = 8310121
 }
+local FORGE_FAIL_REFUND_RATE = 70
+local FORGE_FAIL_REFUND_PERCENT = 0.5
 local DisuseItemFunctionNames = {"DisuseItemV2", "UnUseItemV2", "CancelUseItemV2", "StopUseItemV2"}
 local SoulRingItemIDs = {8310048, 8310049, 8310051, 8310053, 8310054, 8310055, 8310056, 8310057, 8310052, 8310050}
 
@@ -885,6 +887,30 @@ local function AddItem(PlayerController, ItemID, Count)
     return false
 end
 
+local function TryRefundForgeFailMaterials(PlayerController, Cost)
+    if Cost == nil then
+        return false
+    end
+
+    if math.random(1, 100) > FORGE_FAIL_REFUND_RATE then
+        return false
+    end
+
+    local HGRJRefund = math.floor((tonumber(Cost.HGRJ) or 0) * FORGE_FAIL_REFUND_PERCENT)
+    local QNHHRefund = math.floor((tonumber(Cost.QNHH) or 0) * FORGE_FAIL_REFUND_PERCENT)
+
+    if HGRJRefund > 0 then
+        AddItem(PlayerController, ForgeMaterialItemIDs.HGRJ, HGRJRefund)
+    end
+    if QNHHRefund > 0 then
+        AddItem(PlayerController, ForgeMaterialItemIDs.QNHH, QNHHRefund)
+    end
+
+    ugcprint("[UGCPlayerController:TryRefundForgeFailMaterials] HGRJ=" .. tostring(HGRJRefund) .. ", QNHH=" ..
+                 tostring(QNHHRefund))
+    return HGRJRefund > 0 or QNHHRefund > 0
+end
+
 local function RemoveItem(PlayerController, ItemID, Count)
     Count = tonumber(Count) or 0
     if Count <= 0 then
@@ -1260,6 +1286,10 @@ function UGCPlayerController:Server_ForgeWeapon(ItemID, UseProtect)
         end
         if self.SyncWeaponBackpackNames ~= nil then
             self:SyncWeaponBackpackNames()
+        end
+
+        if RollResultType ~= "Success" then
+            TryRefundForgeFailMaterials(self, Cost)
         end
 
         UnrealNetwork.CallUnrealRPC(self, self, "Client_ForgeWeaponResult", ResultType, ItemID, ResultItemID or 0,
