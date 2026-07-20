@@ -29,7 +29,10 @@ local UGCPlayerState = {
     --[[-------------------玩家等级相关---------------------------]] --
     PlayerLevel = 1, -- 玩家等级
     PlayerExp = 0, -- 当前累计经验
-    PlayerMaxExp = 60 -- 下一级经验的阈值
+    PlayerMaxExp = 60, -- 下一级经验的阈值
+
+    --[[------------------免费爬塔更新的日期----------------------------]] --
+    PaTaRefreshDay = 0
 
 }
 
@@ -129,13 +132,18 @@ table.insert(ARCHIVE_KEYS, {
     field = "PlayerMaxExp",
     default = 60
 })
+table.insert(ARCHIVE_KEYS, {
+    key = "PaTaRefreshDay",
+    field = "PaTaRefreshDay",
+    default = 0
+})
 
 function UGCPlayerState:GetReplicatedProperties()
-    return {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "WeaponLevels",
-            "BaseAttack", "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "UnlockedTitles",
-            "KillMonsterCount",
-            "EquippedTitleID", "FeiButton0Hidden", "KJ04GiftPackPurchased", "PlayerLevel", "PlayerExp",
-            "PlayerMaxExp"}, {"RankAttackBonus", "Lazy"}
+    return
+        {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "WeaponLevels",
+         "BaseAttack", "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "UnlockedTitles",
+         "KillMonsterCount", "EquippedTitleID", "FeiButton0Hidden", "KJ04GiftPackPurchased", "PlayerLevel", "PlayerExp",
+         "PlayerMaxExp", "PaTaRefreshDay"}, {"RankAttackBonus", "Lazy"}
 end
 
 -- ------ 跨对局存档 ------ --
@@ -284,6 +292,20 @@ end
 function UGCPlayerState:SetPlayerMaxExp(value)
     self.PlayerMaxExp = tonumber(value) or 60
     self:SaveToArchive()
+end
+
+--[[----------------------获取免费爬塔刷新日期------------------------]]
+function UGCPlayerState:GetPaTaRefreshDay()
+    return tonumber(self.PaTaRefreshDay) or 0
+end
+
+--[[----------------------设置免费爬塔刷新日期------------------------]]
+function UGCPlayerState:SetPaTaRefreshDay(value)
+    self.PaTaRefreshDay = tonumber(value) or 0
+    self:SaveToArchive()
+    if _G.DOREPONCE ~= nil then
+        _G.DOREPONCE(self, "PaTaRefreshDay")
+    end
 end
 
 function UGCPlayerState:GetAutoPickButtonHidden()

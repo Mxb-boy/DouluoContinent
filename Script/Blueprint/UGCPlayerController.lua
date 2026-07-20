@@ -19,6 +19,8 @@ local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
+local PaTa_Spawn_Point_ID = 201 -- 爬塔出生点
+local PaTa_Ticket_Item_ID = 8310064 -- 爬塔传送券
 local ForgeMaterialItemIDs = {
     HGRJ = 8310035,
     QNHH = 8310036,
@@ -154,6 +156,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI", "Server_ClaimTowerTopReward",
         "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden", "Client_ShowMonsterDamageNumber",
         "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
+        "Server_RequestFreePaTa", "Server_RequestTicketPaTa",
         "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
         "ServerRequestDisbandTeam", "UseRedemptionCode"
 end
@@ -233,6 +236,58 @@ end
 
 function UGCPlayerController:Server_TeleportToSpawn(bornPointID)
     TeleportToSpawn(self, bornPointID)
+end
+
+--[[----------------------获取当天日期标记------------------------]]
+local function GetPaTaToday()
+    return tonumber(os.date("%Y%m%d", os.time())) or 0
+end
+
+--[[----------------------免费爬塔传送------------------------]]
+function UGCPlayerController:Server_RequestFreePaTa()
+    if self.PlayerState == nil then
+        return
+    end
+
+    EnsurePlayerStateArchiveUID(self)
+    local Today = GetPaTaToday()
+    local RefreshDay = self.PlayerState.GetPaTaRefreshDay ~= nil and self.PlayerState:GetPaTaRefreshDay() or
+                           (tonumber(self.PlayerState.PaTaRefreshDay) or 0)
+    if RefreshDay == Today then
+        return
+    end
+
+    if self.PlayerState.SetPaTaRefreshDay ~= nil then
+        self.PlayerState:SetPaTaRefreshDay(Today)
+    else
+        self.PlayerState.PaTaRefreshDay = Today
+        if self.PlayerState.SaveToArchive ~= nil then
+            self.PlayerState:SaveToArchive()
+        end
+    end
+
+    TeleportToSpawn(self, PaTa_Spawn_Point_ID)
+end
+
+--[[----------------------用券爬塔传送------------------------]]
+function UGCPlayerController:Server_RequestTicketPaTa()
+    local Pawn = self.Pawn or self:K2_GetPawn()
+    if Pawn == nil or UGCBackpackSystemV2 == nil or UGCBackpackSystemV2.GetItemCountV2 == nil or
+        UGCBackpackSystemV2.RemoveItemV2 == nil then
+        return
+    end
+
+    local TicketCount = tonumber(UGCBackpackSystemV2.GetItemCountV2(Pawn, PaTa_Ticket_Item_ID)) or 0
+    if TicketCount <= 0 then
+        return
+    end
+
+    local RemovedCount = tonumber(UGCBackpackSystemV2.RemoveItemV2(Pawn, PaTa_Ticket_Item_ID, 1)) or 0
+    if RemovedCount <= 0 then
+        return
+    end
+
+    TeleportToSpawn(self, PaTa_Spawn_Point_ID)
 end
 
 --- 打开通关奖励UI
