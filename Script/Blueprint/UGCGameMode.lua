@@ -3,6 +3,7 @@
 local UGCGameMode = {};
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
+local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 --[[--------------------全局引用--------------------------]] --
 L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
@@ -23,6 +24,20 @@ local function AddV2ItemIfMissing(PlayerPawn, ItemID, Count)
     if CurrentCount <= 0 then
         UGCBackpackSystemV2.AddItemV2(PlayerPawn, ItemID, Count)
     end
+end
+
+local function SyncPlayerExpToClient(PlayerController)
+    local PlayerState = PlayerController and PlayerController.PlayerState
+    if PlayerState == nil or PlayerLevelMgr == nil then
+        return
+    end
+
+    local playerExp = PlayerState:GetPlayerExp()
+    local playerLevel = PlayerState:GetPlayerLevel()
+    local currentExp = PlayerLevelMgr:GetCurrentLevelExp(playerExp, playerLevel)
+    local currentMaxExp = PlayerLevelMgr:GetCurrentLevelMaxExp(playerLevel, PlayerState:GetPlayerMaxExp())
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_RefreshPlayerExp", currentExp, currentMaxExp,
+        playerLevel)
 end
 
 local function TryDisuseItem(PlayerPawn, ItemDefineID)
@@ -425,6 +440,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             if PlayerState and PlayerState.LoadFromArchive then
                 local UID = UGCPawnAttrSystem.GetPlayerUID(PC.Pawn)
                 PlayerState:LoadFromArchive(tonumber(UID))
+                SyncPlayerExpToClient(PC)
                 -- PlayerState 的复制可能晚于客户端主界面创建。存档恢复后显式同步一次
                 -- 永久解锁状态，避免 Button_5 / Button_2 按默认值 0 再次显示。
                 if PlayerState.GetAutoPickButtonHidden ~= nil and PlayerState:GetAutoPickButtonHidden() == true then

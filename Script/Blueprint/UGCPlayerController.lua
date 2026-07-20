@@ -106,6 +106,13 @@ function UGCPlayerController:ReceiveBeginPlay()
     if self.ClientYXWDInvincibleBuffEnabled == true and self.MainUIInstance.OnYXWDInvincibleBuffChanged ~= nil then
         self.MainUIInstance:OnYXWDInvincibleBuffChanged(1, self.ClientYXWDInvincibleBuffDurationSeconds or -2)
     end
+    if self.ClientPlayerExp ~= nil and self.MainUIInstance.RefreshPlayerExpUI ~= nil then
+        self.MainUIInstance:RefreshPlayerExpUI(self.ClientPlayerExp, self.ClientPlayerMaxExp)
+        if self.MainUIInstance.Avarar_frame ~= nil and self.ClientPlayerLevel ~= nil then
+            self.MainUIInstance.Avarar_frame:SetPlayerStateLevel(self.ClientPlayerLevel)
+            self.MainUIInstance.Avarar_frame:ShowUI()
+        end
+    end
     ugcprint("[UGCPlayerController] MainUI created")
     self:Client_RefreshTitleBonus()
 
@@ -2162,6 +2169,9 @@ end
 
 --[[----------------------刷新玩家经验显示和等级显示------------------------]]
 function UGCPlayerController:Client_RefreshPlayerExp(playerExp, playerMaxExp, playerLevel)
+    self.ClientPlayerExp = playerExp
+    self.ClientPlayerMaxExp = playerMaxExp
+    self.ClientPlayerLevel = playerLevel
     if self.MainUIInstance ~= nil and self.MainUIInstance.RefreshPlayerExpUI ~= nil then
         self.MainUIInstance:RefreshPlayerExpUI(playerExp, playerMaxExp)
         --[[-----------------------刷新等级显示-----------------------]] --
