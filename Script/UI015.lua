@@ -19,6 +19,15 @@ local function IsSamePlayerKey(KeyA, KeyB)
     return KeyA ~= nil and KeyB ~= nil and tostring(KeyA) == tostring(KeyB)
 end
 
+local function RPCArgsToString(...)
+    local Values = {...}
+    local Parts = {}
+    for Index = 1, #Values do
+        Parts[Index] = tostring(Values[Index])
+    end
+    return table.concat(Parts, ",")
+end
+
 function UI015:GetLocalController()
     return UGCGameSystem.GetLocalPlayerController()
 end
@@ -119,13 +128,29 @@ function UI015:MarkInviteResponded(InviterKey, bAccepted)
 end
 
 function UI015:CallServerRPC(RPCName, ...)
+    self:RefreshLocalPlayerKey()
     local PlayerController = self:GetLocalController()
     if PlayerController == nil then
         ugcprint("[Team] Client RPC rejected: PlayerController is nil, rpc=" .. tostring(RPCName))
         return false
     end
+    ugcprint("[Team] Client RPC send build=" .. tostring(TeamConfig.BUILD_ID) .. " rpc=" .. tostring(RPCName) ..
+                 " localKey=" .. tostring(self.LocalPlayerKey) .. " args=" .. RPCArgsToString(...))
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, RPCName, ...)
     return true
+end
+
+function UI015:RefreshLocalPlayerKey()
+    local CurrentKey = UGCGameSystem.GetLocalPlayerKey()
+    if CurrentKey == nil then
+        local PlayerController = self:GetLocalController()
+        CurrentKey = PlayerController and PlayerController.PlayerKey or nil
+    end
+    if CurrentKey ~= nil and not IsSamePlayerKey(CurrentKey, self.LocalPlayerKey) then
+        ugcprint("[Team] Client local key refreshed old=" .. tostring(self.LocalPlayerKey) .. " new=" ..
+                     tostring(CurrentKey) .. " newType=" .. type(CurrentKey))
+        self.LocalPlayerKey = CurrentKey
+    end
 end
 
 function UI015:CreatePlayerCells()
@@ -186,8 +211,11 @@ function UI015:Construct()
     self.bLoggedRosterOverflow = false
     self.RespondedInviteKeys = {}
 
-    local PlayerController = self:GetLocalController()
-    self.LocalPlayerKey = PlayerController and PlayerController.PlayerKey or nil
+    self.LocalPlayerKey = UGCGameSystem.GetLocalPlayerKey()
+    if self.LocalPlayerKey == nil then
+        local PlayerController = self:GetLocalController()
+        self.LocalPlayerKey = PlayerController and PlayerController.PlayerKey or nil
+    end
     self:GetWidget("PlayerScroll")
     self:GetWidget("PlayerCellGrid")
     self:GetWidget("Button_71")
@@ -204,7 +232,8 @@ function UI015:Construct()
         self.BlinkPhase = not self.BlinkPhase
         self:RefreshUI()
     end, true)
-    ugcprint("[Team] UI015 Construct local=" .. tostring(self.LocalPlayerKey))
+    ugcprint("[Team] UI015 Construct build=" .. tostring(TeamConfig.BUILD_ID) .. " local=" ..
+                 tostring(self.LocalPlayerKey) .. " keyType=" .. type(self.LocalPlayerKey))
 end
 
 function UI015:SetPanelOpen(bOpen)
@@ -333,10 +362,7 @@ function UI015:RefreshRows()
 end
 
 function UI015:RefreshUI()
-    if self.LocalPlayerKey == nil then
-        local PlayerController = self:GetLocalController()
-        self.LocalPlayerKey = PlayerController and PlayerController.PlayerKey or nil
-    end
+    self:RefreshLocalPlayerKey()
     self:RefreshEntry()
     if not self.bOpen then
         return
@@ -365,7 +391,7 @@ function UI015:OpenInvitePopup(Pending)
             return
         end
         PlayerController.TeamInvitePopupInstance = Popup
-        Popup:AddToViewport(16000)
+        Popup:AddToViewport(TeamConfig.UI_Z_ORDER + 6000)
     end
 
     local InviterInfo = self:FindRosterInfo(Pending.FromKey)
@@ -376,6 +402,8 @@ function UI015:OpenInvitePopup(Pending)
 end
 
 function UI015:OnEntryClicked()
+    ugcprint("[Team] Client entry click build=" .. tostring(TeamConfig.BUILD_ID) .. " local=" ..
+                 tostring(self.LocalPlayerKey))
     local Pending = self:GetPendingInvite()
     if Pending ~= nil then
         self:OpenInvitePopup(Pending)
@@ -390,6 +418,9 @@ function UI015:OnRowActionClicked(Index, Action)
     if self.SelectedPlayerKey == nil then
         return
     end
+    ugcprint("[Team] Client row action click build=" .. tostring(TeamConfig.BUILD_ID) .. " action=" ..
+                 tostring(Action) .. " local=" .. tostring(self.LocalPlayerKey) .. " target=" ..
+                 tostring(self.SelectedPlayerKey))
     if Action == "Invite" then
         self:CallServerRPC("ServerRequestInvitePlayer", self.SelectedPlayerKey)
     elseif Action == "Kick" then
@@ -402,6 +433,8 @@ function UI015:OnRowActionClicked(Index, Action)
 end
 
 function UI015:OnCloseClicked()
+    ugcprint("[Team] Client close click build=" .. tostring(TeamConfig.BUILD_ID) .. " local=" ..
+                 tostring(self.LocalPlayerKey))
     self:SetPanelOpen(false)
     self:RefreshUI()
 end

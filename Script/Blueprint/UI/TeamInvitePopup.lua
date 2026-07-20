@@ -3,6 +3,7 @@
 ---@field RejectBtn UButton
 --Edit Below--
 ---@class TeamInvitePopup_C:UUserWidget
+local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 local TeamInvitePopup = {}
 
 function TeamInvitePopup:GetLocalController()
@@ -51,7 +52,15 @@ function TeamInvitePopup:RespondToInvite(bAccepted)
     if TeamPanel ~= nil and TeamPanel.MarkInviteResponded ~= nil then
         TeamPanel:MarkInviteResponded(self.InviterKey, bAccepted)
     end
-    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "ServerRespondInvite", self.InviterKey, bAccepted)
+    ugcprint("[Team] Client invite response click build=" .. tostring(TeamConfig.BUILD_ID) .. " local=" ..
+                 tostring(PlayerController.PlayerKey) .. " inviter=" .. tostring(self.InviterKey) .. " accept=" ..
+                 tostring(bAccepted))
+    if TeamPanel ~= nil and TeamPanel.CallServerRPC ~= nil then
+        TeamPanel:CallServerRPC("ServerRespondInvite", self.InviterKey, bAccepted)
+    else
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "ServerRespondInvite", self.InviterKey,
+            bAccepted)
+    end
     self:ClosePopup()
 end
 

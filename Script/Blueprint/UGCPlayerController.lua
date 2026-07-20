@@ -7,6 +7,7 @@
 ---@field SignInEventComponent SignInEventComponent_C
 -- Edit Below--
 local UGCPlayerController = {}
+local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
@@ -108,22 +109,6 @@ function UGCPlayerController:ReceiveBeginPlay()
     ugcprint("[UGCPlayerController] MainUI created")
     self:Client_RefreshTitleBonus()
 
-    if self.TeamPanelInstance == nil then
-        local TeamPanelPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/UI015.UI015_C"
-        local TeamPanelClass = UE.LoadClass(TeamPanelPath)
-        if TeamPanelClass ~= nil then
-            self.TeamPanelInstance = UserWidget.NewWidgetObjectBP(self, TeamPanelClass)
-            if self.TeamPanelInstance ~= nil then
-                self.TeamPanelInstance:AddToViewport(10500)
-                ugcprint("[Team] Client UI015 team panel created")
-            else
-                ugcprint("[Team] Client TeamPanel create failed")
-            end
-        else
-            ugcprint("[Team] Client TeamPanel class load failed: " .. TeamPanelPath)
-        end
-    end
-
     local FeiUIPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/Fei.Fei_C"
     local FeiUIClass = UE.LoadClass(FeiUIPath)
 
@@ -162,40 +147,57 @@ function UGCPlayerController:GetAvailableServerRPCs()
 end
 
 function UGCPlayerController:ServerRequestInvitePlayer(TargetKey)
-    ugcprint("[Team] Server RPC invite requester=" .. tostring(self.PlayerKey) .. " target=" .. tostring(TargetKey))
+    ugcprint("[Team] Server RPC invite build=" .. tostring(TeamConfig.BUILD_ID) .. " requester=" ..
+                 tostring(self.PlayerKey) .. " target=" .. tostring(TargetKey))
     local GameMode = UGCGameSystem.GetGameMode()
     if GameMode ~= nil and GameMode.HandleInviteRequest ~= nil then
-        GameMode:HandleInviteRequest(self.PlayerKey, TargetKey)
+        GameMode:HandleInviteRequest(self, TargetKey)
+    else
+        ugcprint("[Team] Server RPC invite rejected: GameMode is nil")
     end
 end
 
 function UGCPlayerController:ServerRespondInvite(InviterKey, bAccept)
-    ugcprint("[Team] Server RPC invite response requester=" .. tostring(self.PlayerKey) .. " inviter=" ..
-                 tostring(InviterKey) .. " accept=" .. tostring(bAccept))
+    ugcprint("[Team] Server RPC invite response build=" .. tostring(TeamConfig.BUILD_ID) .. " requester=" ..
+                 tostring(self.PlayerKey) .. " inviter=" .. tostring(InviterKey) .. " accept=" .. tostring(bAccept))
     local GameMode = UGCGameSystem.GetGameMode()
     if GameMode ~= nil and GameMode.HandleInviteResponse ~= nil then
-        GameMode:HandleInviteResponse(self.PlayerKey, InviterKey, bAccept == true or tonumber(bAccept) == 1)
+        GameMode:HandleInviteResponse(self, InviterKey, bAccept == true or tonumber(bAccept) == 1)
+    else
+        ugcprint("[Team] Server RPC invite response rejected: GameMode is nil")
     end
 end
 
 function UGCPlayerController:ServerRequestLeaveTeam()
+    ugcprint("[Team] Server RPC leave build=" .. tostring(TeamConfig.BUILD_ID) .. " requester=" ..
+                 tostring(self.PlayerKey))
     local GameMode = UGCGameSystem.GetGameMode()
     if GameMode ~= nil and GameMode.HandleLeaveTeamRequest ~= nil then
-        GameMode:HandleLeaveTeamRequest(self.PlayerKey)
+        GameMode:HandleLeaveTeamRequest(self)
+    else
+        ugcprint("[Team] Server RPC leave rejected: GameMode is nil")
     end
 end
 
 function UGCPlayerController:ServerRequestKickPlayer(TargetKey)
+    ugcprint("[Team] Server RPC kick build=" .. tostring(TeamConfig.BUILD_ID) .. " requester=" ..
+                 tostring(self.PlayerKey) .. " target=" .. tostring(TargetKey))
     local GameMode = UGCGameSystem.GetGameMode()
     if GameMode ~= nil and GameMode.HandleKickRequest ~= nil then
-        GameMode:HandleKickRequest(self.PlayerKey, TargetKey)
+        GameMode:HandleKickRequest(self, TargetKey)
+    else
+        ugcprint("[Team] Server RPC kick rejected: GameMode is nil")
     end
 end
 
 function UGCPlayerController:ServerRequestDisbandTeam()
+    ugcprint("[Team] Server RPC disband build=" .. tostring(TeamConfig.BUILD_ID) .. " requester=" ..
+                 tostring(self.PlayerKey))
     local GameMode = UGCGameSystem.GetGameMode()
     if GameMode ~= nil and GameMode.HandleDisbandRequest ~= nil then
-        GameMode:HandleDisbandRequest(self.PlayerKey)
+        GameMode:HandleDisbandRequest(self)
+    else
+        ugcprint("[Team] Server RPC disband rejected: GameMode is nil")
     end
 end
 

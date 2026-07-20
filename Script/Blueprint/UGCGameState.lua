@@ -18,6 +18,7 @@ end
 
 function UGCGameState:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
+    ugcprint("[GameState] ReceiveBeginPlay build=" .. tostring(TeamConfig.BUILD_ID))
 
     if UGCGameSystem.IsServer() then
         self.TeamRoster = {}
@@ -82,11 +83,12 @@ function UGCGameState:UpdateNotifications(PendingInvites)
     end
 
     self.PendingNotifications = {}
-    for _, Invite in ipairs(PendingInvites or {}) do
+    for _, Invite in pairs(PendingInvites or {}) do
         table.insert(self.PendingNotifications, {
             Type = Invite.Type or TeamConfig.INVITE_TYPE,
             TargetKey = Invite.TargetKey,
-            FromKey = Invite.FromKey
+            FromKey = Invite.FromKey,
+            TeamID = Invite.TeamID
         })
     end
     ugcprint("[Team] Server replicate invite count=" .. tostring(#self.PendingNotifications))

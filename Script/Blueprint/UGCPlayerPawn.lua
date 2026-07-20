@@ -3,6 +3,7 @@
 ---@class UGCPlayerPawn_C:BP_UGCPlayerPawn_C
 -- Edit Below--
 local UGCPlayerPawn = {}
+local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
@@ -25,6 +26,8 @@ local SOUL_SCALE = Vector.New(300, 300, 300)
 local SOUL_OFFSET = Vector.New(0, 0, 0)
 local SOUL_ROTATION = Rotator.New(90, 0, 0)
 local DEFAULT_BASE_ATTACK = 40
+local bTeamPanelCreated = false
+local bLobbyQuitScheduled = false
 
 local function Round2(value)
     value = tonumber(value) or 0
@@ -834,7 +837,25 @@ function UGCPlayerPawn:EndFly()
     end
 end
 
+local function ScheduleQuitLobbyTeam()
+    if bLobbyQuitScheduled then
+        return
+    end
+    bLobbyQuitScheduled = true
+    UGCTimerUtility.CreateLuaTimer(TeamConfig.LOBBY_QUIT_DELAY, function()
+        local LocalKey = UGCGameSystem.GetLocalPlayerKey()
+        ugcprint("[Team] Client quit lobby team begin build=" .. tostring(TeamConfig.BUILD_ID) .. " localKey=" ..
+                     tostring(LocalKey) .. " keyType=" .. type(LocalKey))
+        UGCTeamSystem.QuitLobbyTeam()
+        ugcprint("[Team] Client quit lobby team requested build=" .. tostring(TeamConfig.BUILD_ID) .. " localKey=" ..
+                     tostring(LocalKey))
+    end, false)
+end
+
 local function CreateTeamPanelForLocalPlayer()
+    if bTeamPanelCreated then
+        return
+    end
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
     if PlayerController == nil or PlayerController.TeamPanelInstance ~= nil then
         return
@@ -851,8 +872,10 @@ local function CreateTeamPanelForLocalPlayer()
         return
     end
     PlayerController.TeamPanelInstance = Widget
-    Widget:AddToViewport(10500)
-    ugcprint("[Team] Client UI015 team panel created from local Pawn")
+    bTeamPanelCreated = true
+    Widget:AddToViewport(TeamConfig.UI_Z_ORDER)
+    ugcprint("[Team] Client UI015 team panel created from local Pawn build=" .. tostring(TeamConfig.BUILD_ID) ..
+                 " zOrder=" .. tostring(TeamConfig.UI_Z_ORDER))
 end
 
 function UGCPlayerPawn:ReceiveBeginPlay()
@@ -874,6 +897,7 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     self:NotifyPropertyChangedIfNeeded(true)
 
     if not self:HasAuthority() then
+        ScheduleQuitLobbyTeam()
         CreateTeamPanelForLocalPlayer()
         return
     end
