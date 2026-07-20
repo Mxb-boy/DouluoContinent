@@ -13,6 +13,14 @@
 ---@field BigLevel int32
 local TowerMgr = {}
 
+local function IsPlayerPawn(actor)
+    if actor == nil then
+        return false
+    end
+
+    return actor.GetPlayerControllerSafety ~= nil
+end
+
 function TowerMgr:ReceiveBeginPlay()
     TowerMgr.SuperClass.ReceiveBeginPlay(self)
 
@@ -27,8 +35,10 @@ function TowerMgr:ReceiveBeginPlay()
     self.SpawnPointRespawnTokens = {}
     self.MonsterSpawnPoints = {}
 
-    	self.Capsule.OnComponentBeginOverlap:Add(self.Capsule_OnComponentBeginOverlap, self);
-	self.Capsule.OnComponentEndOverlap:Add(self.Capsule_OnComponentEndOverlap, self);
+    if self.Capsule ~= nil then
+        self.Capsule.OnComponentBeginOverlap:Add(self.Capsule_OnComponentBeginOverlap, self);
+        self.Capsule.OnComponentEndOverlap:Add(self.Capsule_OnComponentEndOverlap, self);
+    end
 end
 
 function TowerMgr:ReceiveEndPlay()
