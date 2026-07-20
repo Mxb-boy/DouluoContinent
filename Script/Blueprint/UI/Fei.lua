@@ -203,13 +203,24 @@ function Fei:SetButton0Hidden(value)
 end
 
 function Fei:SetTowerButtonsHidden(value)
-    if value == true or tonumber(value) == 1 then
-        self.TowerButtonsHiddenCount = (self.TowerButtonsHiddenCount or 0) + 1
-    else
-        self.TowerButtonsHiddenCount = math.max(0, (self.TowerButtonsHiddenCount or 0) - 1)
+    self.bTowerButtonsHidden = value == true or tonumber(value) == 1
+    local Visibility = self.bTowerButtonsHidden and ESlateVisibility.Collapsed or ESlateVisibility.Visible
+
+    if self.bTowerButtonsHidden then
+        self.bFlyButtonHeld = false
+        self.bFlyKeyboardHeld = false
+        self.FlyButtonReleaseGraceRemaining = nil
+        self:StopFly()
     end
 
-    local Visibility = (self.TowerButtonsHiddenCount or 0) > 0 and ESlateVisibility.Collapsed or ESlateVisibility.Visible
+    if self.SetVisibility ~= nil then
+        if self.bTowerButtonsHidden then
+            self:SetVisibility(ESlateVisibility.Collapsed)
+        else
+            self:SetupRootHitTest()
+        end
+    end
+
     if self.Button_0 ~= nil then
         if Visibility == ESlateVisibility.Visible then
             self:RefreshButton0Visibility()
@@ -224,6 +235,11 @@ end
 
 function Fei:RefreshButton0Visibility()
     if self.Button_0 == nil then
+        return
+    end
+
+    if self.bTowerButtonsHidden == true then
+        self.Button_0:SetVisibility(ESlateVisibility.Collapsed)
         return
     end
 
@@ -475,6 +491,16 @@ function Fei:UpdateButtonReleaseGrace(InDeltaTime)
 end
 
 function Fei:RefreshFlyHoldState()
+    if self.bTowerButtonsHidden == true then
+        self.bFlyButtonHeld = false
+        self.bFlyKeyboardHeld = false
+        self.FlyButtonReleaseGraceRemaining = nil
+        if self.bFlying then
+            self:StopFly()
+        end
+        return
+    end
+
     local bShouldFly = self.bFlyButtonHeld == true or self.bFlyKeyboardHeld == true
     if bShouldFly and not self.bFlying then
         self:StartFly()

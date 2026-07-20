@@ -449,9 +449,14 @@ function TowerMgr:Capsule_OnComponentEndOverlap(OverlappedComponent, OtherActor,
 end
 
 function TowerMgr:SetPlayerFeiTowerButtonsHidden(OtherActor, bHidden)
-    local PlayerController = OtherActor and OtherActor.Controller
+    local PlayerController = nil
+    if UGCGameSystem.GetPlayerControllerByPlayerPawn ~= nil then
+        PlayerController = UGCGameSystem.GetPlayerControllerByPlayerPawn(OtherActor)
+    end
+    PlayerController = PlayerController or (OtherActor and OtherActor.Controller)
     if PlayerController ~= nil then
-        UnrealNetwork.CallUnrealRPC(self, PlayerController, "Client_SetFeiTowerButtonsHidden", bHidden and 1 or 0)
+        PlayerController.bFeiTowerHidden = bHidden == true
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_SetFeiTowerButtonsHidden", bHidden and 1 or 0)
     end
 end
 

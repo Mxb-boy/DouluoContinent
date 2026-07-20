@@ -124,6 +124,9 @@ function UGCPlayerController:ReceiveBeginPlay()
     end
 
     self.FeiUIInstance:AddToViewport()
+    if self.ClientFeiTowerButtonsHidden ~= nil and self.FeiUIInstance.SetTowerButtonsHidden ~= nil then
+        self.FeiUIInstance:SetTowerButtonsHidden(self.ClientFeiTowerButtonsHidden)
+    end
     ugcprint("[UGCPlayerController] Fei UI created")
 end
 
@@ -209,6 +212,13 @@ local function StopCurrentZipLine(self)
     self.CurrentZipLineChild = nil
 end
 
+local function SetFeiTowerHidden(PlayerController, bHidden)
+    if PlayerController ~= nil then
+        PlayerController.bFeiTowerHidden = bHidden == true
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_SetFeiTowerButtonsHidden", bHidden and 1 or 0)
+    end
+end
+
 local function TeleportToSpawn(self, bornPointID)
     local pawn = self:K2_GetPawn()
     if not pawn then
@@ -237,7 +247,7 @@ local function TeleportToSpawn(self, bornPointID)
 end
 
 function UGCPlayerController:Server_TeleportToSpawn(bornPointID)
-    TeleportToSpawn(self, bornPointID)
+    return TeleportToSpawn(self, bornPointID)
 end
 
 --[[----------------------获取当天日期标记------------------------]]
@@ -268,7 +278,9 @@ function UGCPlayerController:Server_RequestFreePaTa()
         end
     end
 
-    TeleportToSpawn(self, PaTa_Spawn_Point_ID)
+    if TeleportToSpawn(self, PaTa_Spawn_Point_ID) then
+        SetFeiTowerHidden(self, true)
+    end
 end
 
 --[[----------------------用券爬塔传送------------------------]]
@@ -289,7 +301,9 @@ function UGCPlayerController:Server_RequestTicketPaTa()
         return
     end
 
-    TeleportToSpawn(self, PaTa_Spawn_Point_ID)
+    if TeleportToSpawn(self, PaTa_Spawn_Point_ID) then
+        SetFeiTowerHidden(self, true)
+    end
 end
 
 --- 打开通关奖励UI
@@ -316,7 +330,9 @@ function UGCPlayerController:Server_ClaimTowerTopReward()
     if pawn ~= nil then
         UGCBackpackSystemV2.AddItemV2(pawn, 8310071, 1)
     end
-    TeleportToSpawn(self, 1)
+    if TeleportToSpawn(self, 1) then
+        SetFeiTowerHidden(self, false)
+    end
 end
 
 --- 传送玩家到指定坐标
@@ -2492,6 +2508,7 @@ function UGCPlayerController:Client_SetFeiButton0Hidden(value)
 end
 
 function UGCPlayerController:Client_SetFeiTowerButtonsHidden(value)
+    self.ClientFeiTowerButtonsHidden = value
     if self.FeiUIInstance ~= nil and self.FeiUIInstance.SetTowerButtonsHidden ~= nil then
         self.FeiUIInstance:SetTowerButtonsHidden(value)
     end

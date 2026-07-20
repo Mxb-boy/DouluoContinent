@@ -13,8 +13,11 @@ function PTCSJ:OnUseV2()
     local OwnBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(self)
     local PlayerController = OwnBackpackComponent:GetOwner()
     if PlayerController then
-        PlayerController:Server_TeleportToSpawn(CSPoint)
-        UGCBackpackSystemV2.RemoveItemV2(PlayerController, tonumber(self.ItemID), 1)
+        if PlayerController:Server_TeleportToSpawn(CSPoint) then
+            PlayerController.bFeiTowerHidden = true
+            UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_SetFeiTowerButtonsHidden", 1)
+            UGCBackpackSystemV2.RemoveItemV2(PlayerController, tonumber(self.ItemID), 1)
+        end
     end
 end
 --[[V2背包事件]] --
