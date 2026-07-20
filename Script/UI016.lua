@@ -117,10 +117,11 @@ function UI016:Button_71_OnClicked()
 end
 
 function UI016:CloseSelf()
-    if self.RemoveFromParent ~= nil then
-        self:RemoveFromParent()
-    elseif self.SetVisibility ~= nil then
+    self:HideTjDetail()
+    if self.SetVisibility ~= nil then
         self:SetVisibility(ESlateVisibility.Collapsed)
+    elseif self.RemoveFromParent ~= nil then
+        self:RemoveFromParent()
     end
 end
 
