@@ -828,11 +828,6 @@ function UGCGameMode:UGC_PlayerRespawnEvent(RespawnedController)
     local PC = RespawnedController
     local PlayerKey = PC.PlayerKey
 
-    if PC.bFeiTowerHidden == true then
-        PC.bFeiTowerHidden = false
-        UnrealNetwork.CallUnrealRPC(PC, PC, "Client_SetFeiTowerButtonsHidden", 0)
-    end
-
     UGCTimerUtility.CreateLuaTimer(1, function()
         if PC and PC.Pawn then
             RestoreBackpackSnapshot(PlayerKey, PC.Pawn)
@@ -865,10 +860,6 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
     UGCTimerUtility.CreateLuaTimer(3, function()
         local RespawnedController = UGCGameSystem.GetPlayerControllerByPlayerKey(VictimPlayerKey)
         if RespawnedController and RespawnedController.Pawn then
-            if RespawnedController.bFeiTowerHidden == true then
-                RespawnedController.bFeiTowerHidden = false
-                UnrealNetwork.CallUnrealRPC(RespawnedController, RespawnedController, "Client_SetFeiTowerButtonsHidden", 0)
-            end
             RestoreBackpackSnapshot(VictimPlayerKey, RespawnedController.Pawn)
             DisuseEquippedWings(RespawnedController.Pawn)
             if RespawnedController.Pawn.RefreshStateMgrProperty ~= nil then
