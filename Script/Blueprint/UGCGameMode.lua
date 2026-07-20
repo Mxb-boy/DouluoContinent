@@ -141,8 +141,26 @@ function UGCGameMode:ReceiveBeginPlay()
         self.MemberSquad = {}
         self.PendingInvites = {}
         self.CampByTeam = {}
+        self.BackfillRequestPending = false
+        self.BackfillRequestedTeamID = nil
+        self.BackfillPlayerCountAtRequest = 0
+        self.BackfillLoginSerial = 0
+        self.BackfillLoginSerialAtRequest = 0
+        self.BackfillRequestSerial = 0
+        self.BackfillMatchCallbackSeen = false
+        self.BackfillMatchedUID = nil
+        self.BackfillRefreshScheduled = false
         UGCCampSystem.SetDefaultCampRelation(TeamConfig.CAMP_RELATION.Enemy)
-        UGCGameSystem.OpenPlayerJoin()
+        if TeamConfig.BACKFILL_ENABLED then
+            local Delegate = UGCGameSystem.ApplyPlayerJoinSucceededDelegate
+            if Delegate ~= nil then
+                Delegate:Add(self.OnPlayerJoinSucceeded, self)
+            else
+                ugcprint("[Backfill] Server WARNING ApplyPlayerJoinSucceededDelegate is nil")
+            end
+            UGCGameSystem.OpenPlayerJoin()
+            ugcprint("[Backfill] Server opened build=" .. tostring(TeamConfig.BUILD_ID))
+        end
         ugcprint("[Team] Server begin build=" .. tostring(TeamConfig.BUILD_ID))
     end
 end
@@ -216,7 +234,7 @@ function UGCGameMode:IsTeamIDAssignedToOther(TeamID, PlayerKey)
     return false
 end
 
-function UGCGameMode:IsTeamIDUsable(TeamID, PlayerKey)
+function UGCGameMode:IsTeamIDUsable(TeamID, PlayerKey, bAllowConfiguredFutureID)
     TeamID = tonumber(TeamID) or 0
     if TeamID <= 0 or TeamID > TeamConfig.MAX_MATCH_PLAYERS or
         self:IsTeamIDAssignedToOther(TeamID, PlayerKey) then
@@ -224,7 +242,7 @@ function UGCGameMode:IsTeamIDUsable(TeamID, PlayerKey)
     end
     if UGCTeamSystem.IsTeamIDValid ~= nil then
         local Success, Result = pcall(UGCTeamSystem.IsTeamIDValid, TeamID)
-        if Success and Result == false then
+        if Success and Result == false and not bAllowConfiguredFutureID then
             return false
         end
     end
@@ -253,6 +271,140 @@ function UGCGameMode:FindUnusedTeamID(PlayerKey)
         end
     end
     return nil
+end
+
+-- 局内补人使用滚动单名额，避免匹配池只有一人时无法满足批量申请。
+function UGCGameMode:FindBackfillTeamID()
+    for TeamID = 1, TeamConfig.MAX_MATCH_PLAYERS do
+        if self:IsTeamIDUsable(TeamID, nil, true) then
+            local Success, Result = pcall(function()
+                return UGCTeamSystem.IsTeamIDValid(TeamID)
+            end)
+            ugcprint("[Backfill] Server candidate team=" .. tostring(TeamID) .. " validCall=" ..
+                         tostring(Success) .. " validResult=" .. tostring(Result) .. " configuredMax=" ..
+                         tostring(TeamConfig.MAX_MATCH_PLAYERS))
+            return TeamID
+        end
+    end
+    return nil
+end
+
+function UGCGameMode:ClearBackfillRequest(Reason)
+    ugcprint("[Backfill] Server clear request reason=" .. tostring(Reason) .. " team=" ..
+                 tostring(self.BackfillRequestedTeamID) .. " requestSerial=" ..
+                 tostring(self.BackfillRequestSerial) .. " loginSerial=" .. tostring(self.BackfillLoginSerial) ..
+                 " requestLoginSerial=" .. tostring(self.BackfillLoginSerialAtRequest) .. " matchedUID=" ..
+                 tostring(self.BackfillMatchedUID) .. " online=" .. tostring(#self.PlayerKeyList))
+    self.BackfillRequestPending = false
+    self.BackfillRequestedTeamID = nil
+    self.BackfillPlayerCountAtRequest = #self.PlayerKeyList
+    self.BackfillLoginSerialAtRequest = self.BackfillLoginSerial
+    self.BackfillMatchCallbackSeen = false
+    self.BackfillMatchedUID = nil
+end
+
+function UGCGameMode:ScheduleBackfillRefresh(Reason, Delay)
+    if not TeamConfig.BACKFILL_ENABLED or not UGCGameSystem.IsServer() or self.BackfillRefreshScheduled then
+        return
+    end
+    self.BackfillRefreshScheduled = true
+    local RefreshDelay = tonumber(Delay) or TeamConfig.BACKFILL_REFRESH_DELAY
+    UGCTimerUtility.CreateLuaTimer(RefreshDelay, function()
+        self.BackfillRefreshScheduled = false
+        self:TryApplyRollingBackfill(Reason)
+    end, false)
+end
+
+function UGCGameMode:TryApplyRollingBackfill(Reason)
+    if not TeamConfig.BACKFILL_ENABLED or not UGCGameSystem.IsServer() then
+        return false
+    end
+    if self.BackfillRequestPending then
+        ugcprint("[Backfill] Server keep pending reason=" .. tostring(Reason) .. " team=" ..
+                     tostring(self.BackfillRequestedTeamID) .. " online=" .. tostring(#self.PlayerKeyList))
+        return false
+    end
+    if #self.PlayerKeyList >= TeamConfig.MAX_MATCH_PLAYERS then
+        ugcprint("[Backfill] Server full, no request online=" .. tostring(#self.PlayerKeyList))
+        return false
+    end
+
+    local TeamID = self:FindBackfillTeamID()
+    if TeamID == nil then
+        ugcprint("[Backfill] Server no unused TeamID online=" .. tostring(#self.PlayerKeyList))
+        return false
+    end
+
+    self.BackfillRequestPending = true
+    self.BackfillRequestedTeamID = TeamID
+    self.BackfillPlayerCountAtRequest = #self.PlayerKeyList
+    self.BackfillLoginSerialAtRequest = self.BackfillLoginSerial
+    self.BackfillRequestSerial = (tonumber(self.BackfillRequestSerial) or 0) + 1
+    self.BackfillMatchCallbackSeen = false
+    self.BackfillMatchedUID = nil
+    local RequestCount = 1
+    if tonumber(TeamConfig.BACKFILL_REQUEST_COUNT) ~= 1 then
+        ugcprint("[Backfill] Server WARNING request count forced to 1, configured=" ..
+                     tostring(TeamConfig.BACKFILL_REQUEST_COUNT))
+    end
+    local Success, Result = pcall(function()
+        return UGCGameSystem.ApplyPlayerJoinLimitCount({
+            [TeamID] = RequestCount
+        })
+    end)
+    local Accepted = Success and Result ~= false
+    ugcprint("[Backfill] Server apply build=" .. tostring(TeamConfig.BUILD_ID) .. " reason=" .. tostring(Reason) ..
+                 " team=" .. tostring(TeamID) .. " count=" .. tostring(RequestCount) .. " requestSerial=" ..
+                 tostring(self.BackfillRequestSerial) .. " loginSerial=" .. tostring(self.BackfillLoginSerial) ..
+                 " online=" .. tostring(#self.PlayerKeyList) .. " result=" .. tostring(Result) .. " resultType=" ..
+                 type(Result) .. " accepted=" .. tostring(Accepted))
+
+    if not Accepted then
+        self:ClearBackfillRequest("apply-failed")
+        self:ScheduleBackfillRefresh("retry", TeamConfig.BACKFILL_RETRY_DELAY)
+        return false
+    end
+    return true
+end
+
+function UGCGameMode:CompleteBackfillRequestIfPlayerJoined(Reason)
+    if not self.BackfillRequestPending then
+        return false
+    end
+    local LoginSerial = tonumber(self.BackfillLoginSerial) or 0
+    local RequestLoginSerial = tonumber(self.BackfillLoginSerialAtRequest) or 0
+    local bLoginSeen = LoginSerial > RequestLoginSerial
+    if not self.BackfillMatchCallbackSeen or not bLoginSeen then
+        ugcprint("[Backfill] Server wait completion reason=" .. tostring(Reason) .. " requestSerial=" ..
+                     tostring(self.BackfillRequestSerial) .. " callbackSeen=" ..
+                     tostring(self.BackfillMatchCallbackSeen) .. " loginSeen=" .. tostring(bLoginSeen) ..
+                     " loginSerial=" .. tostring(LoginSerial) .. " requestLoginSerial=" ..
+                     tostring(RequestLoginSerial) .. " online=" .. tostring(#self.PlayerKeyList))
+        return false
+    end
+    self:ClearBackfillRequest(Reason)
+    self:ScheduleBackfillRefresh("next-slot")
+    return true
+end
+
+function UGCGameMode:OnPlayerJoinSucceeded(UID, RemainingPlayerCountToJoin)
+    if not UGCGameSystem.IsServer() then
+        return
+    end
+    if not self.BackfillRequestPending then
+        ugcprint("[Backfill] Server orphan matched callback uid=" .. tostring(UID) .. " remaining=" ..
+                     tostring(RemainingPlayerCountToJoin) .. " requestSerial=" ..
+                     tostring(self.BackfillRequestSerial) .. " online=" .. tostring(#self.PlayerKeyList))
+        return
+    end
+    self.BackfillMatchCallbackSeen = true
+    self.BackfillMatchedUID = UID
+    ugcprint("[Backfill] Server matched uid=" .. tostring(UID) .. " remaining=" ..
+                 tostring(RemainingPlayerCountToJoin) .. " team=" .. tostring(self.BackfillRequestedTeamID) ..
+                 " requestSerial=" .. tostring(self.BackfillRequestSerial) .. " loginSerial=" ..
+                 tostring(self.BackfillLoginSerial) .. " requestLoginSerial=" ..
+                 tostring(self.BackfillLoginSerialAtRequest) .. " online=" .. tostring(#self.PlayerKeyList))
+    self:CompleteBackfillRequestIfPlayerJoined("match-callback")
 end
 
 function UGCGameMode:ChangePlayerTeamAndVerify(PlayerKey, TeamID, Reason)
@@ -402,11 +554,17 @@ function UGCGameMode:RegisterTeamPlayer(PlayerController)
 
     self.OriginalTeamByPlayer[PlayerKey] = IndependentTeamID
     table.insert(self.PlayerKeyList, PlayerKey)
+    self.BackfillLoginSerial = (tonumber(self.BackfillLoginSerial) or 0) + 1
     self:EnsureCampForTeam(IndependentTeamID)
     ugcprint("[Team] Server player login build=" .. tostring(TeamConfig.BUILD_ID) .. " key=" ..
                  tostring(PlayerKey) .. " keyType=" .. type(PlayerKey) .. " originalTeam=" ..
-                 tostring(IndependentTeamID))
+                 tostring(IndependentTeamID) .. " loginSerial=" .. tostring(self.BackfillLoginSerial) ..
+                 " pending=" .. tostring(self.BackfillRequestPending) .. " requestSerial=" ..
+                 tostring(self.BackfillRequestSerial))
     self:SyncTeamUI()
+    if not self:CompleteBackfillRequestIfPlayerJoined("player-login") then
+        self:ScheduleBackfillRefresh("player-login")
+    end
     return true
 end
 
@@ -808,7 +966,14 @@ function UGCGameMode:UGC_PlayerExitEvent(PlayerController)
     self:ClearInvitesFor(PlayerKey)
     RemovePlayerKey(self.PlayerKeyList, PlayerKey)
     self.OriginalTeamByPlayer[PlayerKey] = nil
+    ugcprint("[Backfill] Server player exit key=" .. tostring(PlayerKey) .. " online=" ..
+                 tostring(#self.PlayerKeyList) .. " pending=" .. tostring(self.BackfillRequestPending) ..
+                 " requestSerial=" .. tostring(self.BackfillRequestSerial) .. " loginSerial=" ..
+                 tostring(self.BackfillLoginSerial) .. " requestLoginSerial=" ..
+                 tostring(self.BackfillLoginSerialAtRequest) .. " callbackSeen=" ..
+                 tostring(self.BackfillMatchCallbackSeen))
     self:SyncTeamUI()
+    self:ScheduleBackfillRefresh("player-exit")
 end
 
 function UGCGameMode:UGC_PlayerKilledEvent(Killer, VictimPlayer, VictimPawn, DamageType)

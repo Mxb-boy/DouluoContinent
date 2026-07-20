@@ -19,10 +19,10 @@ bOpenSkillEditorV1=0
 bOpenParticleEditorV1=0
 
 [MatchSetting]
-NumberOfTeams=1
-TeamPlayers=1
+NumberOfTeams=4
+TeamPlayers=4
 bIsAllowStageMatching=1
-TeamSettings="{\"TeamSettings\": [{\"NumberOfTeams\": 12,\"TeamPlayers\": 1}]}"
+TeamSettings="{\"TeamSettings\": [{\"NumberOfTeams\": 4,\"TeamPlayers\": 4},{\"NumberOfTeams\": 16,\"TeamPlayers\": 1},{\"NumberOfTeams\": 3,\"TeamPlayers\": 4},{\"NumberOfTeams\": 2,\"TeamPlayers\": 4},{\"NumberOfTeams\": 1,\"TeamPlayers\": 4},{\"NumberOfTeams\": 1,\"TeamPlayers\": 3},{\"NumberOfTeams\": 1,\"TeamPlayers\": 2},{\"NumberOfTeams\": 1,\"TeamPlayers\": 1}]}"
 bEnableChat=0
 bEnableRoomChat=1
 ChannelName=本局
