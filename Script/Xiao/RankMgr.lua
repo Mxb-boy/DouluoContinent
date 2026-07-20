@@ -1,6 +1,7 @@
 local RankMgr = {
     ZhanLiRankID = 1,
-    ConsumeRankID = 2,
+    WealthRankID = 2,
+    ConsumeRankID = 2, -- 兼容旧调用：财富榜按成功消费金额累计
     TowerRankID = 3,
     PreviousRankingCycle = 1,
     RankBonusTopCount = 50,
@@ -189,7 +190,7 @@ function RankMgr:NotifyPurchaseSuccess(ProductID, Price, Num)
         return false
     end
 
-    return self:UpdateRankScore(self.ConsumeRankID, Amount, true)
+    return self:UpdateRankScore(self.WealthRankID, Amount, true)
 end
 
 -- 每次成功登顶累加 1 分；榜单周期与重置规则由排行榜表配置负责。
