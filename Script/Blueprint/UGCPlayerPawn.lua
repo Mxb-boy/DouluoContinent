@@ -842,14 +842,35 @@ local function ScheduleQuitLobbyTeam()
         return
     end
     bLobbyQuitScheduled = true
-    UGCTimerUtility.CreateLuaTimer(TeamConfig.LOBBY_QUIT_DELAY, function()
+    local Attempt = 0
+    local MaxAttempts = math.max(1, tonumber(TeamConfig.LOBBY_QUIT_RETRY_COUNT) or 1)
+    local function TryQuitLobbyTeam()
+        Attempt = Attempt + 1
+        local PlayerController = UGCGameSystem.GetLocalPlayerController()
         local LocalKey = UGCGameSystem.GetLocalPlayerKey()
-        ugcprint("[Team] Client quit lobby team begin build=" .. tostring(TeamConfig.BUILD_ID) .. " localKey=" ..
-                     tostring(LocalKey) .. " keyType=" .. type(LocalKey))
-        UGCTeamSystem.QuitLobbyTeam()
-        ugcprint("[Team] Client quit lobby team requested build=" .. tostring(TeamConfig.BUILD_ID) .. " localKey=" ..
-                     tostring(LocalKey))
-    end, false)
+        if LocalKey == nil and PlayerController ~= nil then
+            LocalKey = PlayerController.PlayerKey
+        end
+
+        local bReady = PlayerController ~= nil and LocalKey ~= nil
+        ugcprint("[Team] Client quit lobby team attempt build=" .. tostring(TeamConfig.BUILD_ID) .. " attempt=" ..
+                     tostring(Attempt) .. "/" .. tostring(MaxAttempts) .. " ready=" .. tostring(bReady) ..
+                     " localKey=" .. tostring(LocalKey) .. " keyType=" .. type(LocalKey))
+        if bReady then
+            local Success, Result = pcall(UGCTeamSystem.QuitLobbyTeam)
+            ugcprint("[Team] Client quit lobby team requested build=" .. tostring(TeamConfig.BUILD_ID) ..
+                         " attempt=" .. tostring(Attempt) .. " callSuccess=" .. tostring(Success) .. " result=" ..
+                         tostring(Result) .. " localKey=" .. tostring(LocalKey))
+        end
+
+        if Attempt < MaxAttempts then
+            UGCTimerUtility.CreateLuaTimer(TeamConfig.LOBBY_QUIT_RETRY_INTERVAL, TryQuitLobbyTeam, false)
+        elseif not bReady then
+            ugcprint("[Team] Client quit lobby team stopped: local player not ready build=" ..
+                         tostring(TeamConfig.BUILD_ID))
+        end
+    end
+    UGCTimerUtility.CreateLuaTimer(TeamConfig.LOBBY_QUIT_DELAY, TryQuitLobbyTeam, false)
 end
 
 local function CreateTeamPanelForLocalPlayer()

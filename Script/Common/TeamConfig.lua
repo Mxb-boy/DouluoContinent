@@ -1,7 +1,7 @@
 local TeamConfig = {}
 
 -- 每次生成新的真机包时更新，用日志确认客户端与服务器运行的是同一版本。
-TeamConfig.BUILD_ID = "TEAM_DOULUO_KONG_SYNC_20260721_03"
+TeamConfig.BUILD_ID = "TEAM_DOULUO_LOBBY_SPLIT_FIX_20260721_04"
 
 TeamConfig.MAX_SERVER_PLAYERS = 16
 TeamConfig.MAX_PLAYERS_PER_TEAM = 4
@@ -9,6 +9,8 @@ TeamConfig.MAX_ACTIVE_TEAMS = 8
 TeamConfig.MAX_MATCH_PLAYERS = TeamConfig.MAX_SERVER_PLAYERS
 TeamConfig.UI_Z_ORDER = 10000
 TeamConfig.LOBBY_QUIT_DELAY = 1.0
+TeamConfig.LOBBY_QUIT_RETRY_COUNT = 4
+TeamConfig.LOBBY_QUIT_RETRY_INTERVAL = 1.5
 TeamConfig.BACKFILL_ENABLED = true
 TeamConfig.BACKFILL_REQUEST_COUNT = 1
 TeamConfig.BACKFILL_REFRESH_DELAY = 5.0

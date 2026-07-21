@@ -267,28 +267,20 @@ function UGCGameMode:IsTeamIDUsable(TeamID, PlayerKey, bAllowConfiguredFutureID)
     return true
 end
 
-function UGCGameMode:FindUnusedTeamID(PlayerKey)
+function UGCGameMode:GetUnusedTeamIDCandidates(PlayerKey)
     local Candidates = {}
-    local Seen = {}
-    for _, TeamID in pairs(UGCTeamSystem.GetTeamIDs() or {}) do
-        TeamID = tonumber(TeamID)
-        if TeamID ~= nil and not Seen[TeamID] then
-            Seen[TeamID] = true
-            table.insert(Candidates, TeamID)
-        end
-    end
     for TeamID = 1, TeamConfig.MAX_MATCH_PLAYERS do
-        if not Seen[TeamID] then
+        -- IsTeamIDValid may temporarily return false for configured teams that have
+        -- not been instantiated yet, especially during mobile login.
+        if self:IsTeamIDUsable(TeamID, PlayerKey, true) then
             table.insert(Candidates, TeamID)
         end
     end
-    table.sort(Candidates)
-    for _, TeamID in ipairs(Candidates) do
-        if self:IsTeamIDUsable(TeamID, PlayerKey) then
-            return TeamID
-        end
-    end
-    return nil
+    return Candidates
+end
+
+function UGCGameMode:FindUnusedTeamID(PlayerKey)
+    return self:GetUnusedTeamIDCandidates(PlayerKey)[1]
 end
 
 -- 局内补人使用滚动单名额，避免匹配池只有一人时无法满足批量申请。
@@ -447,16 +439,30 @@ function UGCGameMode:EnsureIndependentOriginalTeam(PlayerKey)
     -- The platform has already assigned a valid initial TeamID in most login flows.
     -- On mobile, IsTeamIDValid can temporarily return false while team state is settling;
     -- only reassign when the ID is missing or actually collides with another player.
-    local bNeedsReassign = CurrentTeamID <= 0 or self:IsTeamIDAssignedToOther(CurrentTeamID, PlayerKey)
+    local bNeedsReassign = CurrentTeamID <= 0 or CurrentTeamID > TeamConfig.MAX_MATCH_PLAYERS or
+                               self:IsTeamIDAssignedToOther(CurrentTeamID, PlayerKey)
     if bNeedsReassign then
-        local NewTeamID = self:FindUnusedTeamID(PlayerKey)
-        if NewTeamID ~= nil and self:ChangePlayerTeamAndVerify(PlayerKey, NewTeamID, "login-independent") then
-            CurrentTeamID = NewTeamID
-        else
+        local AssignedTeamID = nil
+        for _, NewTeamID in ipairs(self:GetUnusedTeamIDCandidates(PlayerKey)) do
+            local ValidCall = false
+            local ValidResult = nil
+            if UGCTeamSystem.IsTeamIDValid ~= nil then
+                ValidCall, ValidResult = pcall(UGCTeamSystem.IsTeamIDValid, NewTeamID)
+            end
+            ugcprint("[Team] Server independent candidate player=" .. tostring(PlayerKey) .. " current=" ..
+                         tostring(CurrentTeamID) .. " target=" .. tostring(NewTeamID) .. " validCall=" ..
+                         tostring(ValidCall) .. " validResult=" .. tostring(ValidResult))
+            if self:ChangePlayerTeamAndVerify(PlayerKey, NewTeamID, "login-independent") then
+                AssignedTeamID = NewTeamID
+                break
+            end
+        end
+        if AssignedTeamID == nil then
             ugcprint("[Team] Server ERROR no independent TeamID player=" .. tostring(PlayerKey) .. " current=" ..
                          tostring(CurrentTeamID))
             return nil
         end
+        CurrentTeamID = AssignedTeamID
     end
     return CurrentTeamID
 end
@@ -599,9 +605,14 @@ function UGCGameMode:ScheduleTeamPlayerRegistration(PlayerController)
         end
         RetryCount = RetryCount + 1
         if RetryCount <= MaxRetries then
+            local PlayerKey = PlayerController and PlayerController.PlayerKey
+            ugcprint("[Team] Server player registration retry build=" .. tostring(TeamConfig.BUILD_ID) .. " player=" ..
+                         tostring(PlayerKey) .. " attempt=" .. tostring(RetryCount) .. "/" .. tostring(MaxRetries) ..
+                         " currentTeam=" .. tostring(PlayerKey and self:GetCurrentTeamID(PlayerKey) or 0))
             UGCTimerUtility.CreateLuaTimer(1, TryRegister, false)
         else
-            ugcprint("[Team] Server player registration failed after retries")
+            ugcprint("[Team] Server player registration failed after retries build=" .. tostring(TeamConfig.BUILD_ID) ..
+                         " player=" .. tostring(PlayerController and PlayerController.PlayerKey))
         end
     end
     UGCTimerUtility.CreateLuaTimer(0.5, TryRegister, false)
