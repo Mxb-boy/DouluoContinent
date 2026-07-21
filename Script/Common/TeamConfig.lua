@@ -1,7 +1,7 @@
 local TeamConfig = {}
 
 -- 每次生成新的真机包时更新，用日志确认客户端与服务器运行的是同一版本。
-TeamConfig.BUILD_ID = "TEAM_DOULUO_BACKFILL_20260720_02"
+TeamConfig.BUILD_ID = "TEAM_DOULUO_KONG_SYNC_20260721_03"
 
 TeamConfig.MAX_SERVER_PLAYERS = 16
 TeamConfig.MAX_PLAYERS_PER_TEAM = 4

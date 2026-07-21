@@ -36,13 +36,13 @@ MaxMessageLines=6
 bEnableSystemChannel=1
 bEnableChatBubble=0
 BubbleLifetime=10
-MatchMethod=0
+MatchMethod=1
 InitialScore=2000
 MinScore=0
 MaxScore=4000
 RankDensity=100
-BeyondRankTime=100
-BeyondRankNum=100
+BeyondRankTime=10
+BeyondRankNum=10
 TeamScoreCalculation=0
 bUseMultiModeMatchSetting=0
 MultiModeSettingNum=1
@@ -77,13 +77,13 @@ UGCReservedAction_07=
 UGCReservedAction_08=
 
 [JobOption]
-LastJobId=-1
+LastJobId=600114169
 LastWindowsJobId=-1
 LastAndroidJobId=-1
 LastIOSJobId=-1
-PakOnly=0
-LastSkipBake=False
-LastTargetPlatform=LinuxServer
+PakOnly=1
+LastSkipBake=True
+LastTargetPlatform=LinuxServer+Android_ETC2+IOS+OpenHarmony_ETC2
 
 [UGCUploadOption]
 PlatformIndex=0

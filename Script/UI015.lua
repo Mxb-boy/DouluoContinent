@@ -13,7 +13,7 @@ local Ma_NumShow = UGCGameSystem.UGCRequire("Script.Ma.Ma_NumShow")
 local UI015 = {}
 local Visible = 0
 local Collapsed = 1
-local MAX_ROWS = TeamConfig.MAX_SERVER_PLAYERS
+local MAX_ROWS = TeamConfig.MAX_MATCH_PLAYERS
 
 local function IsSamePlayerKey(KeyA, KeyB)
     return KeyA ~= nil and KeyB ~= nil and tostring(KeyA) == tostring(KeyB)

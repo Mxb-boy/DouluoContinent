@@ -4,6 +4,24 @@ local UGCGameMode = {};
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
+
+-- Keep safe defaults on the Lua class as some mobile/server lifecycle callbacks may arrive
+-- before ReceiveBeginPlay has finished initializing the per-match state.
+UGCGameMode.PlayerKeyList = {}
+UGCGameMode.OriginalTeamByPlayer = {}
+UGCGameMode.Squads = {}
+UGCGameMode.MemberSquad = {}
+UGCGameMode.PendingInvites = {}
+UGCGameMode.CampByTeam = {}
+UGCGameMode.BackfillRequestPending = false
+UGCGameMode.BackfillRequestedTeamID = nil
+UGCGameMode.BackfillPlayerCountAtRequest = 0
+UGCGameMode.BackfillLoginSerial = 0
+UGCGameMode.BackfillLoginSerialAtRequest = 0
+UGCGameMode.BackfillRequestSerial = 0
+UGCGameMode.BackfillMatchCallbackSeen = false
+UGCGameMode.BackfillMatchedUID = nil
+UGCGameMode.BackfillRefreshScheduled = false
 --[[--------------------全局引用--------------------------]] --
 L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
@@ -134,7 +152,7 @@ function UGCGameMode:ReceiveBeginPlay()
     UGCGenericMessageSystem.ListenGlobalMessage(self, UGCGenericMessageSystem.Messages.UGC.PlayerPawn.PawnDefeat, self,
         self.OnPawnDefeat)
 
-    if self:HasAuthority() then
+    if UGCGameSystem.IsServer() then
         self.PlayerKeyList = {}
         self.OriginalTeamByPlayer = {}
         self.Squads = {}
@@ -426,7 +444,11 @@ end
 
 function UGCGameMode:EnsureIndependentOriginalTeam(PlayerKey)
     local CurrentTeamID = self:GetCurrentTeamID(PlayerKey)
-    if not self:IsTeamIDUsable(CurrentTeamID, PlayerKey) then
+    -- The platform has already assigned a valid initial TeamID in most login flows.
+    -- On mobile, IsTeamIDValid can temporarily return false while team state is settling;
+    -- only reassign when the ID is missing or actually collides with another player.
+    local bNeedsReassign = CurrentTeamID <= 0 or self:IsTeamIDAssignedToOther(CurrentTeamID, PlayerKey)
+    if bNeedsReassign then
         local NewTeamID = self:FindUnusedTeamID(PlayerKey)
         if NewTeamID ~= nil and self:ChangePlayerTeamAndVerify(PlayerKey, NewTeamID, "login-independent") then
             CurrentTeamID = NewTeamID
@@ -588,6 +610,9 @@ end
 -- 玩家登录时: 先加载跨对局存档, 再发初始武器（Pawn可能还没好，等1秒）
 -- 若 Pawn 在 1 秒后仍未就绪，则重试（最多 10 次），避免 LoadFromArchive 被整体跳过导致存档丢失
 function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
+    if not UGCGameSystem.IsServer() then
+        return
+    end
     local PC = PlayerController
     local RetryCount = 0
     local MaxRetries = 10
@@ -951,6 +976,9 @@ function UGCGameMode:HandleDisbandRequest(LeaderObject)
 end
 
 function UGCGameMode:UGC_PlayerExitEvent(PlayerController)
+    if not UGCGameSystem.IsServer() then
+        return
+    end
     local PlayerKey = self:GetCanonicalPlayerKey(self:GetPlayerKey(PlayerController))
     if PlayerKey == nil then
         return
