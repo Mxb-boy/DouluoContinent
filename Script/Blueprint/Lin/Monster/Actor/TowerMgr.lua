@@ -264,7 +264,9 @@ function TowerMgr:ScheduleMonsterRespawn(monster)
     self.SpawnPointRespawnTokens[spawnPoint] = token
 
     local respawnDelay = 5
-    if self.Scene == Scene_Enum.duplicate then
+    if self.Scene == Scene_Enum.Tower then
+        respawnDelay = 12
+    elseif self.Scene == Scene_Enum.duplicate then
         respawnDelay = 10
     end
 

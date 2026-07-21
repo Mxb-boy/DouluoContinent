@@ -3,7 +3,7 @@
 ---@field OutBox UBoxComponent
 ---@field HitBox UCapsuleComponent
 ---@field TowerLevelID int32
---Edit Below--
+-- Edit Below--
 ---@class Tower_Mons_1_C:BP_UGC_GenericMobPawn_Base_C
 ---@field InBox UBoxComponent
 ---@field OutBox UBoxComponent
@@ -24,9 +24,9 @@ function Tower_Mons_1:ReceiveBeginPlay()
     self.ShakingPlayers = {}
     self.OutBox.OnComponentHit:Add(self.OutBox_OnComponentHit, self);
     self.InBox.OnComponentBeginOverlap:Add(self.InBox_OnComponentBeginOverlap, self);
-	self.InBox.OnComponentEndOverlap:Add(self.InBox_OnComponentEndOverlap, self);
-	self.OutBox.OnComponentBeginOverlap:Add(self.OutBox_OnComponentBeginOverlap, self);
-	self.OutBox.OnComponentEndOverlap:Add(self.OutBox_OnComponentEndOverlap, self);
+    self.InBox.OnComponentEndOverlap:Add(self.InBox_OnComponentEndOverlap, self);
+    self.OutBox.OnComponentBeginOverlap:Add(self.OutBox_OnComponentBeginOverlap, self);
+    self.OutBox.OnComponentEndOverlap:Add(self.OutBox_OnComponentEndOverlap, self);
 end
 -- function Tower_Mons_1:ReceiveBeginPlay()
 --     Tower_Mons_1.SuperClass.ReceiveBeginPlay(self)
@@ -159,14 +159,15 @@ function Tower_Mons_1:LuaInit()
     -- [Editor Generated Lua] BindingProperty End;
 
     -- [Editor Generated Lua] BindingEvent Begin:
-	-- [Editor Generated Lua] BindingEvent End;
+    -- [Editor Generated Lua] BindingEvent End;
 end
 
 function Tower_Mons_1:OutBox_OnComponentHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit)
     return nil;
 end
 
-function Tower_Mons_1:InBox_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
+function Tower_Mons_1:InBox_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex,
+    bFromSweep, SweepResult)
     if not self:HasAuthority() then
         return
     end
@@ -176,14 +177,17 @@ function Tower_Mons_1:InBox_OnComponentBeginOverlap(OverlappedComponent, OtherAc
         return
     end
 
+    pc.Is_Tower_Death_Respawn = true -- 本次死亡从爬塔出生点复活
     UGCGameSystem.ApplyDamage(OtherActor, 99999999999999999, pc, self, {})
+
 end
 
 function Tower_Mons_1:InBox_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
-	return nil;
+    return nil;
 end
 
-function Tower_Mons_1:OutBox_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
+function Tower_Mons_1:OutBox_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex,
+    bFromSweep, SweepResult)
     if not self:HasAuthority() then
         return
     end

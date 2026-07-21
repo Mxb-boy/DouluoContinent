@@ -1032,6 +1032,11 @@ function UGCGameMode:UGC_PlayerRespawnEvent(RespawnedController)
     local PC = RespawnedController
     local PlayerKey = PC.PlayerKey
 
+    if PC.Is_Tower_Death_Respawn == true then
+        PC.Is_Tower_Death_Respawn = nil
+        PC:Server_TeleportToSpawn(201)
+    end
+
     UGCTimerUtility.CreateLuaTimer(1, function()
         if PC and PC.Pawn then
             RestoreBackpackSnapshot(PlayerKey, PC.Pawn)
