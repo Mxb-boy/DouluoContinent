@@ -218,7 +218,8 @@ function StateMgr:CountFinalZhanLi()
     self.FinalZhanLi = FinalZhanLi
     -- 排行榜分数不包含排行自身带来的攻击加成，避免加成反向抬高下一期排名。
     self.RankZhanLi = RankAttack + FinalMaxHp
-    self.UI.TextBlock_303:SetText("战力" .. Ma_NumShow.Format(FinalZhanLi))
+    local DisplayZhanLi = math.floor(FinalZhanLi + 0.5)
+    self.UI.TextBlock_303:SetText("战力" .. Ma_NumShow.Format(DisplayZhanLi))
 
     -- 首次服务端属性同步完成后才上报；相同分数由 RankMgr 去重，连续更新由官方排行榜合并。
     if self.bServerSynced and RankMgr ~= nil and RankMgr.TryUploadCurrentZhanLi ~= nil then
