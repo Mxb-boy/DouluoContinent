@@ -33,6 +33,14 @@ EGiftPackType = {
 }; 
 
 
+---@enum ESignInEventType
+ESignInEventType = { 
+    Monthly = 0,
+    Weekly = 1,
+    OneOff = 2,
+}; 
+
+
 ---@enum ELotteryResetType
 ELotteryResetType = { 
     NotReset = 0,
