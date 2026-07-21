@@ -15,6 +15,24 @@
 ---@field NewUGCWidgetBlueprint2_C_6 NewUGCWidgetBlueprint2_C
 ---@field ScrollBox_82 UScrollBox
 ---@field TextBlock_75 UTextBlock
+--Edit Below--
+---@class UI12_C:UUserWidget
+---@field Button_151 UButton
+---@field CanvasPanel_0 UCanvasPanel
+---@field Image_0 UImage
+---@field Image_45 UImage
+---@field Image_46 UImage
+---@field Image_47 UImage
+---@field NewUGCWidgetBlueprint2 NewUGCWidgetBlueprint2_C
+---@field NewUGCWidgetBlueprint2_C_0 NewUGCWidgetBlueprint2_C
+---@field NewUGCWidgetBlueprint2_C_1 NewUGCWidgetBlueprint2_C
+---@field NewUGCWidgetBlueprint2_C_2 NewUGCWidgetBlueprint2_C
+---@field NewUGCWidgetBlueprint2_C_3 NewUGCWidgetBlueprint2_C
+---@field NewUGCWidgetBlueprint2_C_4 NewUGCWidgetBlueprint2_C
+---@field NewUGCWidgetBlueprint2_C_5 NewUGCWidgetBlueprint2_C
+---@field NewUGCWidgetBlueprint2_C_6 NewUGCWidgetBlueprint2_C
+---@field ScrollBox_82 UScrollBox
+---@field TextBlock_75 UTextBlock
 -- Edit Below--
 local UI12 = {}
 
@@ -30,6 +48,11 @@ local function FormatPowerText(power)
         return "(无限制)"
     end
     return "(" .. tostring(power) .. "战力限制)"
+end
+
+--- 计算推荐战力显示文本: "（推荐战力123万）"
+local function FormatRecommendedPowerText(text)
+    return "（推荐战力" .. tostring(text) .. "）"
 end
 
 --- 判断战力是否满足要求
@@ -114,19 +137,23 @@ function UI12:RefreshList()
         else
             local powerText = FormatPowerText(point.power)
             local canEnter = CanEnter(currentPower, point.power)
+            local recommendedPower = tonumber(point.recommendedPower) or 0
+            local recommendedPowerText = FormatRecommendedPowerText(point.recommendedPowerText or recommendedPower)
+            local meetsRecommendedPower = currentPower >= recommendedPower
             -- 先 AddChild 让 widget 进入控件树、触发 Construct，
             -- 之后再调 Setup 才能保证子控件 (TextBlock/Button) 已初始化
             self.ScrollBox_82:AddChild(widget)
             local ok, err = pcall(function()
                 widget:Setup(i, point.name, powerText, canEnter, function(idx)
                     DoTeleport(idx, self)
-                end)
+                end, recommendedPowerText, meetsRecommendedPower, point.imagePath)
             end)
             if not ok then
                 ugcprint("[UI12] Setup error at index " .. tostring(i) .. ": " .. tostring(err))
             else
-                ugcprint("[UI12] item " .. tostring(i) .. " OK: " .. point.name .. " " .. powerText .. " enabled=" ..
-                             tostring(canEnter))
+                ugcprint("[UI12] item " .. tostring(i) .. " OK: " .. point.name .. " " .. powerText .. " " ..
+                             recommendedPowerText .. " enabled=" .. tostring(canEnter) .. " recommendedReached=" ..
+                             tostring(meetsRecommendedPower))
             end
         end
     end
