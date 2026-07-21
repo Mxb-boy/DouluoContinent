@@ -145,6 +145,7 @@ function Tower_Mons_4:InBox_OnComponentBeginOverlap(OverlappedComponent, OtherAc
         return
     end
 
+    pc.Is_Tower_Death_Respawn = true -- 本次死亡从爬塔出生点复活
     UGCGameSystem.ApplyDamage(OtherActor, 99999999999999999, pc, self, {})
 end
 
