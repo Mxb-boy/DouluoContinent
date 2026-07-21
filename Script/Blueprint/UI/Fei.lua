@@ -596,6 +596,17 @@ function Fei:CacheMeshAnimationState(Mesh)
     end
 end
 
+local function RestoreAnimInstanceClass(Mesh, AnimClass)
+    if Mesh == nil or Mesh.SetAnimInstanceClass == nil or AnimClass == nil then
+        return
+    end
+
+    local Success = pcall(Mesh.SetAnimInstanceClass, Mesh, AnimClass, true)
+    if not Success then
+        pcall(Mesh.SetAnimInstanceClass, Mesh, AnimClass)
+    end
+end
+
 function Fei:PlayFlyAnimationByPath(AnimPath, bLoop)
     local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
     local Mesh = PlayerPawn ~= nil and PlayerPawn.Mesh or nil
@@ -681,7 +692,7 @@ function Fei:StopFlyAnimation()
             pcall(Mesh.SetAnimationMode, Mesh, self.CacheMeshAnimationMode)
         end
         if Mesh.SetAnimInstanceClass ~= nil and self.CacheMeshAnimClass ~= nil then
-            pcall(Mesh.SetAnimInstanceClass, Mesh, self.CacheMeshAnimClass)
+            RestoreAnimInstanceClass(Mesh, self.CacheMeshAnimClass)
         end
     end
 
