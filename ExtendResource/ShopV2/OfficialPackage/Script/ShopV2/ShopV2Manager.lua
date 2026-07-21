@@ -517,7 +517,7 @@ function ShopV2Manager:OnAddVirtualItem(Result)
 
     for ItemID, Num in pairs(Result.ItemList) do
         print("[ShopV2] OnAddVirtualItem: ItemID=" .. tostring(ItemID) .. " Num=" .. tostring(Num))
-        self:ShowItemGetPopup(ItemID, Num);
+        -- self:ShowItemGetPopup(ItemID, Num);
 
         local BackpackItemID = VIRTUAL_TO_BACKPACK[ItemID]
         if BackpackItemID then
