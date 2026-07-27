@@ -1,28 +1,26 @@
----@class BaseMons_2_C:BP_UGC_GenericMobPawn_Base_C
+---@class BaseMons_C:BP_UGC_GenericMobPawn_Base_C
 ---@field HitBox UCapsuleComponent
 ---@field MonsterID int32
 --Edit Below--
-local BaseMons_2 = {}
+local test1 = {}
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
-local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
 local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 
-
--- function BaseMons_2:ReceiveBeginPlay()
---     BaseMons_2.SuperClass.ReceiveBeginPlay(self)
+-- function test1:ReceiveBeginPlay()
+--     test1.SuperClass.ReceiveBeginPlay(self)
 -- end
 
--- function BaseMons_2:ReceiveTick(DeltaTime)
---     BaseMons_2.SuperClass.ReceiveTick(self, DeltaTime)
+-- function test1:ReceiveTick(DeltaTime)
+--     test1.SuperClass.ReceiveTick(self, DeltaTime)
 -- end
 
--- function BaseMons_2:ReceiveEndPlay()
---     BaseMons_2.SuperClass.ReceiveEndPlay(self) 
+-- function test1:ReceiveEndPlay()
+--     test1.SuperClass.ReceiveEndPlay(self) 
 -- end
 
--- function BaseMons_2:GetReplicatedProperties()
+-- function test1:GetReplicatedProperties()
 --     return
 -- end
 
@@ -32,7 +30,7 @@ local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 -- ---@param EventInstigator AController 伤害来源的Controller
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
--- function BaseMons_2:PreTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function test1:PreTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
      
 -- end
 
@@ -42,9 +40,14 @@ local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 -- ---@param EventInstigator AController 伤害来源的Controller
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
--- function BaseMons_2:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function test1:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
     
 -- end
+
+--[[----------------------首次受击随机移动后追击攻击者------------------------]]
+function test1:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+    MonsterSpawnMgr.FirstHitRunAway(self, EventInstigator)
+end
 
 -- ---受击前置伤害修改
 -- ---生效范围：服务器
@@ -53,7 +56,7 @@ local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- ---@return float 修改后的伤害值
--- function BaseMons_2:PreOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function test1:PreOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
 --     return Damage
 -- end
 
@@ -64,7 +67,7 @@ local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- ---@return float 修改后的伤害值
--- function BaseMons_2:PostOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function test1:PostOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
 --     return Damage
 -- end
 
@@ -75,7 +78,7 @@ local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 ---@param DamageCauser AActor 伤害来源
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
-function BaseMons_2:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
+function test1:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
     MonsterSpawnMgr.DisableMonsterCollision(self)
 
     if self:HasAuthority() and self.SpawnWall ~= nil then
@@ -105,7 +108,6 @@ function BaseMons_2:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEv
 
     if self:HasAuthority() then
         TaskMgr:AddTeamTaskProgressOnServer(L_Enum.AllTask.KillMonster, 1, EventInstigator)
-        TitleMgr:OnDungeonClear(EventInstigator, 2)
     end
 
 end
@@ -113,7 +115,7 @@ end
 -- ---状态进入事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 进入的状态
--- function BaseMons_2:OnEnterTagState_BP(DynamicState)
+-- function test1:OnEnterTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnEnterTagState_BP: ' .. Tag)
 -- end
@@ -121,7 +123,7 @@ end
 -- ---状态退出事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 退出的状态
--- function BaseMons_2:OnLeaveTagState_BP(DynamicState)
+-- function test1:OnLeaveTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnLeaveTagState_BP: ' .. Tag)
 -- end
@@ -129,7 +131,7 @@ end
 -- ---状态打断事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 打断的状态
--- function BaseMons_2:OnInterruptTagState_BP(DynamicState)
+-- function test1:OnInterruptTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnInterruptTagState_BP' .. Tag)
 -- end
@@ -137,7 +139,7 @@ end
 -- ---行为树消息
 -- ---生效范围：服务器
 -- ---@param NotifyMsg string 消息
--- function BaseMons_2:OnBehaviorNotify_BP(NotifyMsg)
+-- function test1:OnBehaviorNotify_BP(NotifyMsg)
 --     ugcprint('OnBehaviorNotify_BP: ' .. NotifyMsg)
 -- end
 
@@ -145,8 +147,8 @@ end
 -- ---生效范围：服务器&客户端
 -- ---@param NewTarget AActor 新目标
 -- ---@param OldTarget AActor 旧目标
--- function BaseMons_2:OnTargetChange_BP(NewTarget, OldTarget)
+-- function test1:OnTargetChange_BP(NewTarget, OldTarget)
     
 -- end
 
-return BaseMons_2
+return test1
