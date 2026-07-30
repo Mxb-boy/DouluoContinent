@@ -1,12 +1,8 @@
-﻿---@class BaseMons_C:BP_UGC_GenericMobPawn_Base_C
+---@class BaseMons_C:BP_UGC_GenericMobPawn_Base_C
 ---@field HitBox UCapsuleComponent
----@field MonsterID int32
+---@field MosterID int32
 --Edit Below--
 local BaseMons = {}
-local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
-local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
-local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
-local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 
 -- function BaseMons:ReceiveBeginPlay()
 --     BaseMons.SuperClass.ReceiveBeginPlay(self)
@@ -44,11 +40,6 @@ local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
     
 -- end
 
---[[----------------------首次受击随机移动后追击攻击者------------------------]]
-function BaseMons:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
-    MonsterSpawnMgr.FirstHitRunAway(self, EventInstigator)
-end
-
 -- ---受击前置伤害修改
 -- ---生效范围：服务器
 -- ---@param Damage float 伤害值
@@ -79,37 +70,10 @@ end
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
 function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
-    MonsterSpawnMgr.DisableMonsterCollision(self)
-
-    if self:HasAuthority() and self.SpawnWall ~= nil then
-        self.SpawnWall:OnMonsterDied(self)
-    end
-
     if self:HasAuthority() then
-        local DropID = self.MonsterID
-        if EventInstigator ~= nil and EventInstigator.PlayerState ~= nil then
-            local Probability_Bonus = (EventInstigator.PlayerState.Probability_Bonus or 100) - 100
-            DropID = Probability_Bonus * 100 + self.MonsterID
-        end
-
         -- 只有服务端才可以掉落
-        if DropID ~= nil then
-            self.UGCPresetCommonDropItemComponent:StartDropByProduceID(
-                DropID,
-                -1,
-                EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor,
-                nil
-            )
-        end
-        --[[----------------------怪物死亡给击杀者加经验------------------------]] --
-        local KillExp = PlayerLevelMgr:GetWaveKillExp(self.MonsterID)
-        PlayerLevelMgr:AddExp(EventInstigator, KillExp)
+        self.UGCPresetCommonDropItemComponent:StartDrop(self, EventInstigator, {})
     end
-
-    if self:HasAuthority() then
-        TaskMgr:AddTeamTaskProgressOnServer(L_Enum.AllTask.KillMonster, 1, EventInstigator)
-    end
-
 end
 
 -- ---状态进入事件

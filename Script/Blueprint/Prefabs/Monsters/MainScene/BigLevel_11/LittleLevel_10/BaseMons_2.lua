@@ -1,23 +1,22 @@
 ---@class BaseMons_C:BP_UGC_GenericMobPawn_Base_C
 ---@field HitBox UCapsuleComponent
----@field SK_CH_UGC_Titan_weapon UStaticMeshComponent
 ---@field MonsterID int32
 --Edit Below--
-local BaseMons = {}
+local BaseMons_2 = {}
 
--- function BaseMons:ReceiveBeginPlay()
---     BaseMons.SuperClass.ReceiveBeginPlay(self)
+-- function BaseMons_2:ReceiveBeginPlay()
+--     BaseMons_2.SuperClass.ReceiveBeginPlay(self)
 -- end
 
--- function BaseMons:ReceiveTick(DeltaTime)
---     BaseMons.SuperClass.ReceiveTick(self, DeltaTime)
+-- function BaseMons_2:ReceiveTick(DeltaTime)
+--     BaseMons_2.SuperClass.ReceiveTick(self, DeltaTime)
 -- end
 
--- function BaseMons:ReceiveEndPlay()
---     BaseMons.SuperClass.ReceiveEndPlay(self) 
+-- function BaseMons_2:ReceiveEndPlay()
+--     BaseMons_2.SuperClass.ReceiveEndPlay(self) 
 -- end
 
--- function BaseMons:GetReplicatedProperties()
+-- function BaseMons_2:GetReplicatedProperties()
 --     return
 -- end
 
@@ -27,7 +26,7 @@ local BaseMons = {}
 -- ---@param EventInstigator AController 伤害来源的Controller
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
--- function BaseMons:PreTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function BaseMons_2:PreTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
      
 -- end
 
@@ -37,7 +36,7 @@ local BaseMons = {}
 -- ---@param EventInstigator AController 伤害来源的Controller
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
--- function BaseMons:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function BaseMons_2:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
     
 -- end
 
@@ -48,7 +47,7 @@ local BaseMons = {}
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- ---@return float 修改后的伤害值
--- function BaseMons:PreOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function BaseMons_2:PreOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
 --     return Damage
 -- end
 
@@ -59,7 +58,7 @@ local BaseMons = {}
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- ---@return float 修改后的伤害值
--- function BaseMons:PostOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function BaseMons_2:PostOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
 --     return Damage
 -- end
 
@@ -70,7 +69,7 @@ local BaseMons = {}
 ---@param DamageCauser AActor 伤害来源
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
-function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
+function BaseMons_2:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
     if self:HasAuthority() then
         -- 只有服务端才可以掉落
         self.UGCPresetCommonDropItemComponent:StartDrop(self, EventInstigator, {})
@@ -80,7 +79,7 @@ end
 -- ---状态进入事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 进入的状态
--- function BaseMons:OnEnterTagState_BP(DynamicState)
+-- function BaseMons_2:OnEnterTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnEnterTagState_BP: ' .. Tag)
 -- end
@@ -88,7 +87,7 @@ end
 -- ---状态退出事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 退出的状态
--- function BaseMons:OnLeaveTagState_BP(DynamicState)
+-- function BaseMons_2:OnLeaveTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnLeaveTagState_BP: ' .. Tag)
 -- end
@@ -96,7 +95,7 @@ end
 -- ---状态打断事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 打断的状态
--- function BaseMons:OnInterruptTagState_BP(DynamicState)
+-- function BaseMons_2:OnInterruptTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnInterruptTagState_BP' .. Tag)
 -- end
@@ -104,7 +103,7 @@ end
 -- ---行为树消息
 -- ---生效范围：服务器
 -- ---@param NotifyMsg string 消息
--- function BaseMons:OnBehaviorNotify_BP(NotifyMsg)
+-- function BaseMons_2:OnBehaviorNotify_BP(NotifyMsg)
 --     ugcprint('OnBehaviorNotify_BP: ' .. NotifyMsg)
 -- end
 
@@ -112,8 +111,8 @@ end
 -- ---生效范围：服务器&客户端
 -- ---@param NewTarget AActor 新目标
 -- ---@param OldTarget AActor 旧目标
--- function BaseMons:OnTargetChange_BP(NewTarget, OldTarget)
+-- function BaseMons_2:OnTargetChange_BP(NewTarget, OldTarget)
     
 -- end
 
-return BaseMons
+return BaseMons_2

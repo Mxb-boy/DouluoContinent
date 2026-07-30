@@ -1,23 +1,26 @@
 ---@class BaseMons_C:BP_UGC_GenericMobPawn_Base_C
 ---@field HitBox UCapsuleComponent
----@field SK_CH_UGC_Titan_weapon UStaticMeshComponent
 ---@field MonsterID int32
 --Edit Below--
-local BaseMons = {}
+local TEST = {}
+local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
+local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
+local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
+local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 
--- function BaseMons:ReceiveBeginPlay()
---     BaseMons.SuperClass.ReceiveBeginPlay(self)
+-- function TEST:ReceiveBeginPlay()
+--     TEST.SuperClass.ReceiveBeginPlay(self)
 -- end
 
--- function BaseMons:ReceiveTick(DeltaTime)
---     BaseMons.SuperClass.ReceiveTick(self, DeltaTime)
+-- function TEST:ReceiveTick(DeltaTime)
+--     TEST.SuperClass.ReceiveTick(self, DeltaTime)
 -- end
 
--- function BaseMons:ReceiveEndPlay()
---     BaseMons.SuperClass.ReceiveEndPlay(self) 
+-- function TEST:ReceiveEndPlay()
+--     TEST.SuperClass.ReceiveEndPlay(self) 
 -- end
 
--- function BaseMons:GetReplicatedProperties()
+-- function TEST:GetReplicatedProperties()
 --     return
 -- end
 
@@ -27,7 +30,7 @@ local BaseMons = {}
 -- ---@param EventInstigator AController 伤害来源的Controller
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
--- function BaseMons:PreTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function TEST:PreTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
      
 -- end
 
@@ -37,9 +40,14 @@ local BaseMons = {}
 -- ---@param EventInstigator AController 伤害来源的Controller
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
--- function BaseMons:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function TEST:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
     
 -- end
+
+--[[----------------------首次受击随机移动后追击攻击者------------------------]]
+function TEST:PostTakeDamageEvent(Damage, EventInstigator, DamageCauser, DamageContext)
+    MonsterSpawnMgr.FirstHitRunAway(self, EventInstigator)
+end
 
 -- ---受击前置伤害修改
 -- ---生效范围：服务器
@@ -48,7 +56,7 @@ local BaseMons = {}
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- ---@return float 修改后的伤害值
--- function BaseMons:PreOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function TEST:PreOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
 --     return Damage
 -- end
 
@@ -59,7 +67,7 @@ local BaseMons = {}
 -- ---@param DamageCauser AActor 伤害来源
 -- ---@param DamageContext FGameMagnitudeContext  伤害上下文
 -- ---@return float 修改后的伤害值
--- function BaseMons:PostOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
+-- function TEST:PostOverrideDamage(Damage, EventInstigator, DamageCauser, DamageContext)
 --     return Damage
 -- end
 
@@ -70,17 +78,44 @@ local BaseMons = {}
 ---@param DamageCauser AActor 伤害来源
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
-function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
-    if self:HasAuthority() then
-        -- 只有服务端才可以掉落
-        self.UGCPresetCommonDropItemComponent:StartDrop(self, EventInstigator, {})
+function TEST:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
+    MonsterSpawnMgr.DisableMonsterCollision(self)
+
+    if self:HasAuthority() and self.SpawnWall ~= nil then
+        self.SpawnWall:OnMonsterDied(self)
     end
+
+    if self:HasAuthority() then
+        local DropID = self.MonsterID
+        if EventInstigator ~= nil and EventInstigator.PlayerState ~= nil then
+            local Probability_Bonus = (EventInstigator.PlayerState.Probability_Bonus or 100) - 100
+            DropID = Probability_Bonus * 100 + self.MonsterID
+        end
+
+        -- 只有服务端才可以掉落
+        if DropID ~= nil then
+            self.UGCPresetCommonDropItemComponent:StartDropByProduceID(
+                DropID,
+                -1,
+                EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor,
+                nil
+            )
+        end
+        --[[----------------------怪物死亡给击杀者加经验------------------------]] --
+        local KillExp = PlayerLevelMgr:GetWaveKillExp(self.MonsterID)
+        PlayerLevelMgr:AddExp(EventInstigator, KillExp)
+    end
+
+    if self:HasAuthority() then
+        TaskMgr:AddTeamTaskProgressOnServer(L_Enum.AllTask.KillMonster, 1, EventInstigator)
+    end
+
 end
 
 -- ---状态进入事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 进入的状态
--- function BaseMons:OnEnterTagState_BP(DynamicState)
+-- function TEST:OnEnterTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnEnterTagState_BP: ' .. Tag)
 -- end
@@ -88,7 +123,7 @@ end
 -- ---状态退出事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 退出的状态
--- function BaseMons:OnLeaveTagState_BP(DynamicState)
+-- function TEST:OnLeaveTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnLeaveTagState_BP: ' .. Tag)
 -- end
@@ -96,7 +131,7 @@ end
 -- ---状态打断事件
 -- ---生效范围：服务器&客户端
 -- ---@param DynamicState FGameplayTag 打断的状态
--- function BaseMons:OnInterruptTagState_BP(DynamicState)
+-- function TEST:OnInterruptTagState_BP(DynamicState)
 --     local Tag = BlueprintGameplayTagLibrary.GetTagName(DynamicState)
 --     ugcprint('OnInterruptTagState_BP' .. Tag)
 -- end
@@ -104,7 +139,7 @@ end
 -- ---行为树消息
 -- ---生效范围：服务器
 -- ---@param NotifyMsg string 消息
--- function BaseMons:OnBehaviorNotify_BP(NotifyMsg)
+-- function TEST:OnBehaviorNotify_BP(NotifyMsg)
 --     ugcprint('OnBehaviorNotify_BP: ' .. NotifyMsg)
 -- end
 
@@ -112,8 +147,8 @@ end
 -- ---生效范围：服务器&客户端
 -- ---@param NewTarget AActor 新目标
 -- ---@param OldTarget AActor 旧目标
--- function BaseMons:OnTargetChange_BP(NewTarget, OldTarget)
+-- function TEST:OnTargetChange_BP(NewTarget, OldTarget)
     
 -- end
 
-return BaseMons
+return TEST
