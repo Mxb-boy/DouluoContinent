@@ -3,6 +3,11 @@
 ---@field MonsterID int32
 --Edit Below--
 local BaseMons = {}
+local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
+local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
+local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
+local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
+local MonsterSpawnMgr = UGCGameSystem.UGCRequire("Script.Lin.MonsSpawMgr")
 
 -- function BaseMons:ReceiveBeginPlay()
 --     BaseMons.SuperClass.ReceiveBeginPlay(self)
@@ -70,9 +75,21 @@ local BaseMons = {}
 ---@param FDamageEvent DamageEvent 伤害事件
 ---@param DamageTypeID int32 伤害类型
 function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEvent, DamageTypeID)
+    MonsterSpawnMgr.DisableMonsterCollision(self)
+
+    if self:HasAuthority() and self.SpawnWall ~= nil then
+        self.SpawnWall:OnMonsterDied(self)
+    end
+
     if self:HasAuthority() then
         -- 只有服务端才可以掉落
         self.UGCPresetCommonDropItemComponent:StartDrop(self, EventInstigator, {})
+
+        local KillExp = PlayerLevelMgr:GetWaveKillExp(self.MonsterID)
+        PlayerLevelMgr:AddExp(EventInstigator, KillExp)
+
+        TaskMgr:AddTeamTaskProgressOnServer(L_Enum.AllTask.KillMonster, 1, EventInstigator)
+        TitleMgr:OnDungeonClear(EventInstigator, 5)
     end
 end
 

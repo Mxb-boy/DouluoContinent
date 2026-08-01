@@ -11,6 +11,60 @@
 ---@class FTaskTemplateConfig
 ---@field TaskLineName FString
 
+---@class FWaveExpConfigRow
+---@field  int32
+---@field KillExp float
+
+---@class UGCTemplateRowStruct_HunHuanConfig
+---@field HunHuanID int32
+---@field Add_Health float
+---@field Add_MaxHealth float
+---@field Add_Attack float
+
+---@class UGCTemplateRowStruct_JingJieConfig
+---@field Name FString
+---@field AddMaxHp int32
+---@field AddAtk int32
+
+---@class UGCTemplateRowStruct_LotteryAwardConfig
+---@field ItemID int32
+---@field PoolID int32
+---@field Weight int32
+---@field IconPath UTexture2D
+---@field AwardIndex int32
+---@field ItemName FText
+---@field Count int32
+
+---@class UGCTemplateRowStruct_LotteryPoolConfig
+---@field PoolID int32
+---@field PoolName FText
+---@field GrandPrizeRound int32
+---@field IsOpen bool
+
+---@class UGCTemplateRowStruct_TjConfig
+---@field Name FText
+---@field tp FString
+---@field JS FText
+---@field HQTJ FText
+
+---@class UGCTemplateRowStruct_WqLevelConfig
+---@field ID int32
+---@field Name FText
+---@field Level int32
+---@field Attack int32
+---@field SuccessRate int32
+---@field KeepRate int32
+---@field DownRate int32
+---@field DestroyRate int32
+---@field CL_0 int32
+---@field CL_1 int32
+
+---@class UGCTemplateRowStruct_WuQiConfig
+---@field Name FText
+---@field WPID int32
+---@field ID int32
+---@field MaxLevel int32
+
 ---@class FSignInEventConfig
 ---@field EventID int32
 ---@field EventName FString
@@ -71,49 +125,11 @@
 ---@field ItemID int32
 ---@field ItemNum int32
 
----@class UGCTemplateRowStruct_HunHuanConfig
----@field HunHuanID int32
----@field Add_Health int32
----@field Add_MaxHealth int32
----@field Add_Attack int32
-
----@class UGCTemplateRowStruct_JingJieConfig
----@field Name FString
----@field AddMaxHp int32
----@field AddAtk int32
-
----@class UGCTemplateRowStruct_LotteryAwardConfig
----@field ItemID int32
----@field PoolID int32
----@field Weight int32
----@field IconPath UTexture2D
----@field AwardIndex int32
----@field ItemName FText
----@field Count int32
-
----@class UGCTemplateRowStruct_LotteryPoolConfig
----@field PoolID int32
----@field PoolName FText
----@field GrandPrizeRound int32
----@field IsOpen bool
-
----@class UGCTemplateRowStruct_WqLevelConfig
----@field ID int32
----@field Name FText
----@field Level int32
----@field Attack int32
----@field SuccessRate int32
----@field KeepRate int32
----@field DownRate int32
----@field DestroyRate int32
----@field CL_0 int32
----@field CL_1 int32
-
----@class UGCTemplateRowStruct_WuQiConfig
----@field Name FText
----@field WPID int32
----@field ID int32
----@field MaxLevel int32
+---@class FPlayerLevelConfigRow_IntTest1
+---@field  int32
+---@field  int32
+---@field  float
+---@field  float
 
 ---@class LotteryDrawItemInfo
 ---@field ID int32
@@ -163,30 +179,4 @@
 ---@field EventID int32
 ---@field TabName FString
 ---@field ShowPeriod bool
-
----@class FPlayerLevelConfigRow
----@field  int32
----@field  int32
----@field  float
----@field  float
-
----@class FWaveExpConfigRow
----@field  int32
----@field  int32
-
----@class FWaveExpConfigRow
----@field  int32
----@field  int32
-
----@class FPlayerLevelConfigRow_IntTest1
----@field  int32
----@field  int32
----@field  float
----@field  float
-
----@class FPlayerLevelConfigRow
----@field  int32
----@field  int32
----@field  int32
----@field  int32
 

@@ -38,7 +38,10 @@ local ForgeMaterialItemIDs = {
 local FORGE_FAIL_REFUND_RATE = 70
 local FORGE_FAIL_REFUND_PERCENT = 0.5
 local DisuseItemFunctionNames = {"DisuseItemV2", "UnUseItemV2", "CancelUseItemV2", "StopUseItemV2"}
-local SoulRingItemIDs = {8310048, 8310049, 8310051, 8310053, 8310054, 8310055, 8310056, 8310057, 8310052, 8310050}
+local SoulRingItemIDs = {
+    8310048, 8310049, 8310051, 8310053, 8310054, 8310055, 8310056, 8310057, 8310052, 8310050,
+    8310122, 8310123, 8310124, 8310125, 8310126, 8310127, 8310128, 8310129, 8310130, 8310131
+}
 
 local function EnsurePlayerStateArchiveUID(PlayerController)
     if PlayerController == nil or PlayerController.PlayerState == nil then

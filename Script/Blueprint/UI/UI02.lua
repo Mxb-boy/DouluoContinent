@@ -632,6 +632,7 @@ local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
+local Ma_NumShow = UGCGameSystem.UGCRequire("Script.Ma.Ma_NumShow")
 
 local UI02 = {
     bInitDoOnce = false
@@ -957,7 +958,7 @@ function UI02:RefreshPlayerExpUI(playerExp, playerMaxExp)
     end
 
     self.ProgressBar_171:SetPercent(Percent)
-    self.TextBlock_132:SetText(tostring(Exp) .. "/" .. tostring(MaxExp))
+    self.TextBlock_132:SetText(Ma_NumShow.Format(Exp) .. "/" .. Ma_NumShow.Format(MaxExp))
 end
 
 function UI02:HasYXWDInvincibleBuff()
