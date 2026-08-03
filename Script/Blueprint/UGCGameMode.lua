@@ -4,6 +4,7 @@ local UGCGameMode = {};
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
+local PlayerInitialData = UGCGameSystem.UGCRequire("Script.Common.PlayerInitialData")
 
 -- Keep safe defaults on the Lua class as some mobile/server lifecycle callbacks may arrive
 -- before ReceiveBeginPlay has finished initializing the per-match state.
@@ -36,13 +37,6 @@ local WingItemIDs = {
     [8310010] = true
 }
 local DisuseItemFunctionNames = {"DisuseItemV2", "UnUseItemV2", "CancelUseItemV2", "StopUseItemV2"}
-
-local function AddV2ItemIfMissing(PlayerPawn, ItemID, Count)
-    local CurrentCount = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID) or 0
-    if CurrentCount <= 0 then
-        UGCBackpackSystemV2.AddItemV2(PlayerPawn, ItemID, Count)
-    end
-end
 
 local function SyncPlayerExpToClient(PlayerController)
     local PlayerState = PlayerController and PlayerController.PlayerState
@@ -669,46 +663,11 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                 end
             end
 
-            -- 2. 发初始武器
-            for _, ItemID in ipairs(WeaponLevelConfig.GetAllBaseItemIDs()) do
-                AddV2ItemIfMissing(PC.Pawn, ItemID, 1)
-            end
+            -- 2. 发初始武器和物资。GM 重置复用同一入口，避免两套初始配置漂移。
+            PlayerInitialData.Grant(PC.Pawn, HTCLv2ItemID)
             if PC.SyncWeaponBackpackNames ~= nil then
                 PC:SyncWeaponBackpackNames()
             end
-            if HTCLv2ItemID ~= nil then
-                AddV2ItemIfMissing(PC.Pawn, HTCLv2ItemID, 1)
-            end
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310064, 10)
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310047, 1)
-            -- 锻造材料
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310035, 80000)
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310036, 1000)
-            -- --境界升级材料先发背包
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310037, 10)
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310038, 10)
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310039, 10)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310040, 99)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310041, 99)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310042, 99)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310043, 99)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310044, 99)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310045, 99)
-            -- --魂环也先发
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310048, 10)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310049, 10)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310051, 10)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310053, 10)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310054, 99)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310055, 99)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310056, 99)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310057, 99)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310052, 99)
-            -- UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310050, 99)
-
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310008, 1000)
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310007, 1)
-            UGCBackpackSystemV2.AddItemV2(PC.Pawn, 8310009, 1)
             DisuseEquippedWings(PC.Pawn)
 
             if PC.Pawn.RefreshWeaponAttackBonus ~= nil then

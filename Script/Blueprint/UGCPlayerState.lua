@@ -138,6 +138,29 @@ table.insert(ARCHIVE_KEYS, {
     default = 0
 })
 
+-- GM“玩家数据重置”保留的字段：这些字段对应官方/扩展系统状态或付费功能权益，
+-- 不属于本次角色养成数据重置范围。
+local GM_RESET_PRESERVED_FIELDS = {
+    SignInEvent = true,
+    YXWD_InvincibleBuff = true,
+    AutoPickButtonHidden = true,
+    AutoAttackButtonHidden = true,
+    FeiButton0Hidden = true,
+    KJ04GiftPackPurchased = true
+}
+
+local function CloneArchiveDefault(DefaultValue)
+    if type(DefaultValue) ~= "table" then
+        return DefaultValue
+    end
+
+    local Copy = {}
+    for Key, Value in pairs(DefaultValue) do
+        Copy[Key] = type(Value) == "table" and CloneArchiveDefault(Value) or Value
+    end
+    return Copy
+end
+
 function UGCPlayerState:GetReplicatedProperties()
     return
         {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "WeaponLevels",
@@ -217,6 +240,33 @@ function UGCPlayerState:SaveToArchive()
     end
 
     UGCPlayerStateSystem.SavePlayerArchiveData(UID, data, 1)
+end
+
+--- 将项目自有的角色养成数据恢复为 ARCHIVE_KEYS 中声明的默认值，并一次性覆盖保存 Chunk 1。
+--- 官方/扩展系统状态和付费功能权益由 GM_RESET_PRESERVED_FIELDS 明确保留。
+---@return boolean
+function UGCPlayerState:ResetProgressionToDefaults()
+    if self.ArchiveUID == nil or tonumber(self.ArchiveUID) == 0 then
+        return false
+    end
+
+    self.bLoadingArchive = true
+    local ResetFields = {}
+    for _, Entry in ipairs(ARCHIVE_KEYS) do
+        if not GM_RESET_PRESERVED_FIELDS[Entry.field] then
+            self[Entry.field] = CloneArchiveDefault(Entry.default)
+            table.insert(ResetFields, Entry.field)
+        end
+    end
+    self.bLoadingArchive = false
+
+    self:SaveToArchive()
+    if _G.DOREPONCE ~= nil then
+        for _, FieldName in ipairs(ResetFields) do
+            _G.DOREPONCE(self, FieldName)
+        end
+    end
+    return true
 end
 
 -- ------ 属性读写 ------ --

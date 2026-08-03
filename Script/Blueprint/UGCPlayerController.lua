@@ -159,7 +159,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI", "Server_ClaimTowerTopReward",
         "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden", "Client_ShowMonsterDamageNumber",
         "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
-        "Server_RequestFreePaTa", "Server_RequestTicketPaTa",
+        "Server_RequestFreePaTa", "Server_RequestTicketPaTa", "Client_ShowToast", "Client_PlayerDataReset",
         "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
         "ServerRequestDisbandTeam", "UseRedemptionCode"
 end
@@ -1901,6 +1901,14 @@ function UGCPlayerController:Client_SyncTitleState(unlockedTitles, equippedTitle
     local titleUI = self.MainUIInstance and self.MainUIInstance.TitleUIInstance or nil
     if titleUI ~= nil then
         titleUI.EquippedTitleID = self.EquippedTitleID
+        titleUI.UnlockedTitles = {}
+        for titleID = 1, TitleConfig.MaxTitleID do
+            titleUI.UnlockedTitles[titleID] = self.UnlockedTitles[titleID] == true or
+                                                   self.UnlockedTitles[tostring(titleID)] == true
+            if titleUI.RefreshTitleLockState ~= nil then
+                titleUI:RefreshTitleLockState(titleID)
+            end
+        end
         for id, unlocked in pairs(self.UnlockedTitles) do
             if unlocked and titleUI.UnlockTitle ~= nil then
                 titleUI:UnlockTitle(id)
@@ -2179,6 +2187,39 @@ end
 
 function UGCPlayerController:Client_ShowToast(text)
     L_Com.ShowToast(tostring(text or ""))
+end
+
+--- GM 重置完成后的客户端收口刷新，不触发“突破成功/失败”等业务提示。
+function UGCPlayerController:Client_PlayerDataReset()
+    self.RealmLevel = 1
+    local PlayerState = self.PlayerState
+    if PlayerState ~= nil then
+        PlayerState.HunHuan = 1
+        PlayerState.Probability_Bonus = 100
+        PlayerState.BaseAttack = 40
+        PlayerState.BaseMaxHp = 100
+        PlayerState.PlayerLevel = 1
+        PlayerState.PlayerExp = 0
+        PlayerState.PlayerMaxExp = 60
+        PlayerState.LotteryState = {}
+        PlayerState.WeaponLevels = {}
+        PlayerState.UnlockedTitles = {}
+        PlayerState.KillMonsterCount = 0
+        PlayerState.EquippedTitleID = 0
+    end
+
+    local PlayerPawn = self:K2_GetPawn()
+    if PlayerPawn ~= nil and PlayerPawn.RefreshSoulMesh ~= nil then
+        PlayerPawn:RefreshSoulMesh(1)
+    end
+    if self.MainUIInstance ~= nil and self.MainUIInstance.RefreshRealmNameText ~= nil then
+        self.MainUIInstance:RefreshRealmNameText()
+    end
+
+    local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+    if StateMgr ~= nil and StateMgr.UI ~= nil and StateMgr.JingJieTextShow ~= nil then
+        StateMgr:JingJieTextShow(1, true)
+    end
 end
 
 --[[-------------------------固定添加属性---------------------]] --
