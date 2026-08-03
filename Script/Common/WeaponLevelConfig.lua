@@ -439,23 +439,15 @@ function WeaponLevelConfig.GetForgeRate(WPID, Level)
 end
 
 function WeaponLevelConfig.GetBaseAttribute(WPID, Level)
-    local LevelConfig = WeaponLevelConfig.GetLevelConfig(WPID, Level)
-    if LevelConfig == nil then
-        return nil
-    end
     return {
-        AttackPercent = ToNumber(LevelConfig.AttackPercent, 0),
+        AttackPercent = WeaponLevelConfig.GetAttackPercentByWeaponID(WPID, Level),
     }
 end
 
 function WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponID, Level)
     WeaponLevelConfig.EnsureLoaded()
-    local Levels = WeaponLevelConfig.LevelByID[tonumber(WeaponID)]
-    local LevelConfig = Levels ~= nil and Levels[math.max(1, tonumber(Level) or 1)] or nil
-    if LevelConfig == nil then
-        return 0
-    end
-    return ToNumber(LevelConfig.AttackPercent, 0)
+    Level = math.max(1, tonumber(Level) or 1)
+    return Level * 5
 end
 
 function WeaponLevelConfig.GetTotalAttribute(WPID, Level)

@@ -116,19 +116,32 @@ local function CountBackpackWeaponAttackBonus(player)
     end
 
     local WeaponCount = 0
-    local SeenWeaponSeries = {}
+    local AttackPercentBySeries = {}
     for _, ItemData in pairs(AllItemData) do
         local ItemID = tonumber(ItemData.ItemID or ItemData.ItemId or ItemData.itemID or ItemData.TypeSpecificID)
         local Count = tonumber(ItemData.Count or ItemData.ItemCount or ItemData.ItemNum or ItemData.Num) or 1
         local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
         local SeriesKey = WeaponInfo ~= nil and (WeaponInfo.SeriesKey or WeaponInfo.ID) or nil
-        if Count > 0 and SeriesKey ~= nil and SeenWeaponSeries[SeriesKey] ~= true then
-            SeenWeaponSeries[SeriesKey] = true
-            WeaponCount = WeaponCount + 1
+        if Count > 0 and SeriesKey ~= nil then
+            local Level = WeaponInfo ~= nil and WeaponInfo.Level or 1
+            local AttackPercent = WeaponInfo ~= nil and WeaponLevelConfig.GetAttackPercentByWeaponID(WeaponInfo.ID, Level) or
+                                      BACKPACK_WEAPON_ATTACK_PER_ITEM
+            local OldAttackPercent = AttackPercentBySeries[SeriesKey]
+            if OldAttackPercent == nil then
+                WeaponCount = WeaponCount + 1
+                AttackPercentBySeries[SeriesKey] = AttackPercent
+            elseif AttackPercent > OldAttackPercent then
+                AttackPercentBySeries[SeriesKey] = AttackPercent
+            end
         end
     end
 
-    return WeaponCount * BACKPACK_WEAPON_ATTACK_PER_ITEM, WeaponCount
+    local TotalAttackPercent = 0
+    for _, AttackPercent in pairs(AttackPercentBySeries) do
+        TotalAttackPercent = TotalAttackPercent + (tonumber(AttackPercent) or 0)
+    end
+
+    return TotalAttackPercent, WeaponCount
 end
 
 local function GetRankAttackBonus(player)
