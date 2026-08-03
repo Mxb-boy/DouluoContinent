@@ -1,8 +1,20 @@
 local GM = {}
 local PlayerInitialData = UGCGameSystem.UGCRequire("Script.Common.PlayerInitialData")
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
+local TitleConfig = UGCGameSystem.UGCRequire("Script.Common.TitleConfig")
 
 local PLAYER_SKILL_1_PATH = "Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/PlayerSkill_1.PlayerSkill_1_C"
+
+local function GetTitleOptionText()
+    local Options = {}
+    for TitleID = 1, TitleConfig.MaxTitleID do
+        local Config = TitleConfig.GetTitle(TitleID)
+        if Config ~= nil then
+            table.insert(Options, tostring(TitleID) .. ". " .. tostring(Config.Name))
+        end
+    end
+    return "称号ID对照：\n" .. table.concat(Options, "\n")
+end
 
 function GM:Register(DebugUI)
     local UGCGMUI = require("client.ingame.ugc.ugc_gmui")
@@ -16,6 +28,10 @@ function GM:Register(DebugUI)
         ["一键完成任务"] = {
             {UGCGMUI.ItemTypeEnum.Button, { {"完成每日和每周任务"}, {"完成当前玩家全部每日、每周任务，不自动领取奖励"} },
              "S_CompleteDailyWeeklyTasks"}
+        },
+        ["自定义获取称号"] = {
+            {UGCGMUI.ItemTypeEnum.TextInput, { {"获取并解锁称号", "输入称号ID（1-15）"}, {GetTitleOptionText()} },
+             "S_GrantCustomTitle"}
         }
     }
     return CurFuncList
@@ -174,6 +190,66 @@ function GM:S_CompleteDailyWeeklyTasks(Param, PlayerController)
                  " dailyAlready=" .. tostring(DailyResult.AlreadyCompleted) ..
                  " weeklyUpdated=" .. tostring(WeeklyResult.Completed) ..
                  " weeklyAlready=" .. tostring(WeeklyResult.AlreadyCompleted))
+end
+
+local function ShowTitleToast(PlayerController, Message)
+    if PlayerController ~= nil then
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast", Message)
+    end
+end
+
+--- 服务端 GM：校验称号 ID，并为当前玩家直接解锁称号，不自动装备。
+function GM:S_GrantCustomTitle(Param, PlayerController)
+    if not UGCGameSystem.IsServer() then
+        return
+    end
+    if PlayerController == nil or PlayerController.PlayerKey == nil then
+        ugcprint("[GMTitle] grant rejected: PlayerController or PlayerKey is nil")
+        return
+    end
+
+    local TitleID = tonumber(Param)
+    if TitleID == nil or TitleID ~= math.floor(TitleID) or TitleID < 1 or TitleID > TitleConfig.MaxTitleID then
+        ShowTitleToast(PlayerController, "称号ID无效，请输入1-" .. tostring(TitleConfig.MaxTitleID) .. "的整数")
+        ugcprint("[GMTitle] grant rejected player=" .. tostring(PlayerController.PlayerKey) ..
+                     " param=" .. tostring(Param))
+        return
+    end
+
+    local Config = TitleConfig.GetTitle(TitleID)
+    if Config == nil then
+        ShowTitleToast(PlayerController, "找不到对应称号配置")
+        ugcprint("[GMTitle] grant rejected player=" .. tostring(PlayerController.PlayerKey) ..
+                     " titleID=" .. tostring(TitleID) .. " config=nil")
+        return
+    end
+
+    local PlayerKey = tostring(PlayerController.PlayerKey)
+    local PlayerState = PlayerController.PlayerState
+    if PlayerState == nil or PlayerState.IsTitleUnlocked == nil or PlayerController.UnlockTitle == nil then
+        ShowTitleToast(PlayerController, "称号系统尚未就绪，请稍后重试")
+        ugcprint("[GMTitle] grant rejected player=" .. PlayerKey .. " titleID=" .. tostring(TitleID) ..
+                     " reason=title_system_not_ready")
+        return
+    end
+
+    if PlayerState:IsTitleUnlocked(TitleID) then
+        ShowTitleToast(PlayerController, "已经拥有称号“" .. tostring(Config.Name) .. "”")
+        ugcprint("[GMTitle] grant skipped player=" .. PlayerKey .. " titleID=" .. tostring(TitleID) ..
+                     " reason=already_unlocked")
+        return
+    end
+
+    PlayerController:UnlockTitle(TitleID)
+    if not PlayerState:IsTitleUnlocked(TitleID) then
+        ShowTitleToast(PlayerController, "称号发放失败，请查看服务端日志")
+        ugcprint("[GMTitle] grant failed player=" .. PlayerKey .. " titleID=" .. tostring(TitleID))
+        return
+    end
+
+    ShowTitleToast(PlayerController, "称号“" .. tostring(Config.Name) .. "”已发放，请在称号界面装备")
+    ugcprint("[GMTitle] completed player=" .. PlayerKey .. " titleID=" .. tostring(TitleID) ..
+                 " titleName=" .. tostring(Config.Name))
 end
 
 return GM
