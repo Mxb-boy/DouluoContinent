@@ -1,5 +1,6 @@
 TaskMgr = TaskMgr or {}
 local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
+local TaskConfigEnum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 --[[------------------任务进度管理器----------------------------]] --
 -- 使用教程：先引用，在直接调用这个方法RequestAddTaskProgress
 -- 任务要调用L_Enum.AllTask.LotterySummon
@@ -48,6 +49,83 @@ function TaskMgr:AddTeamTaskProgressOnServer(TaskConfig, AddValue, PlayerControl
         self:AddTaskProgressOnServer(TaskConfig, AddValue, TeamPlayerController)
         TitleMgr:OnTaskProgress(TaskConfig.Key, AddValue, TeamPlayerController)
     end
+end
+
+--- 使用官方任务模板 API，将指定活跃任务线中的全部任务精确补到目标进度。
+--- 只更新任务进度，不调用任何奖励领取接口。
+---@param TaskLineType string "EveryDay" 或 "EveryWeek"
+---@param PlayerController userdata
+---@return table
+function TaskMgr:CompletePercentTaskLineOnServer(TaskLineType, PlayerController)
+    local Result = {
+        Total = 0,
+        Completed = 0,
+        AlreadyCompleted = 0,
+        Failed = 0
+    }
+    if TaskLineType ~= "EveryDay" and TaskLineType ~= "EveryWeek" then
+        Result.Failed = 1
+        return Result
+    end
+
+    local Component, GlobalActor, TargetPC = self:GetTaskComponents(PlayerController)
+    if Component == nil or GlobalActor == nil or TargetPC == nil then
+        Result.Failed = 1
+        ugcprint("[GMTask] task component unavailable lineType=" .. tostring(TaskLineType))
+        return Result
+    end
+
+    for _, TaskConfig in pairs(TaskConfigEnum.AllTask or {}) do
+        local TaskInfo = TaskConfig[TaskLineType]
+        if TaskInfo ~= nil and TaskInfo.TaskLineName ~= nil and TaskInfo.TaskIndex ~= nil and
+            TaskInfo.TaskID ~= nil then
+            Result.Total = Result.Total + 1
+
+            local TargetSuccess, TargetValue = pcall(GlobalActor.GetTaskTarget, GlobalActor, TaskInfo.TaskID)
+            local CurrentSuccess, CurrentValue = pcall(Component.GetPercentTaskProgress, Component,
+                TaskInfo.TaskLineName, TaskInfo.TaskIndex)
+            TargetValue = tonumber(TargetValue)
+            CurrentValue = tonumber(CurrentValue)
+
+            if not TargetSuccess or not CurrentSuccess or TargetValue == nil or TargetValue <= 0 or
+                CurrentValue == nil then
+                Result.Failed = Result.Failed + 1
+                ugcprint("[GMTask] target lookup failed key=" .. tostring(TaskConfig.Key) .. " taskID=" ..
+                             tostring(TaskInfo.TaskID))
+            elseif CurrentValue >= TargetValue then
+                Result.AlreadyCompleted = Result.AlreadyCompleted + 1
+            else
+                local TaskIndex = {
+                    TaskLineName = TaskInfo.TaskLineName,
+                    PercentTaskIndex = TaskInfo.TaskIndex,
+                    LevelTaskLevelIndex = 0,
+                    LevelTaskIndex = 0
+                }
+                local UpdateSuccess = pcall(GlobalActor.UpdateTaskProgress, GlobalActor, TaskIndex, TargetPC,
+                    TargetValue)
+                local VerifySuccess, NewValue = pcall(Component.GetPercentTaskProgress, Component,
+                    TaskInfo.TaskLineName, TaskInfo.TaskIndex)
+                if UpdateSuccess and VerifySuccess and (tonumber(NewValue) or 0) >= TargetValue then
+                    Result.Completed = Result.Completed + 1
+                else
+                    Result.Failed = Result.Failed + 1
+                    ugcprint("[GMTask] update failed key=" .. tostring(TaskConfig.Key) .. " taskID=" ..
+                                 tostring(TaskInfo.TaskID) .. " target=" .. tostring(TargetValue) ..
+                                 " current=" .. tostring(NewValue))
+                end
+            end
+        end
+    end
+    return Result
+end
+
+--- 一次完成当前玩家的全部每日和每周任务，但不领取任何奖励。
+---@param PlayerController userdata
+---@return table, table
+function TaskMgr:CompleteDailyWeeklyTasksOnServer(PlayerController)
+    local DailyResult = self:CompletePercentTaskLineOnServer("EveryDay", PlayerController)
+    local WeeklyResult = self:CompletePercentTaskLineOnServer("EveryWeek", PlayerController)
+    return DailyResult, WeeklyResult
 end
 
 --[[---------------------获取任务组件-------------------------]] --

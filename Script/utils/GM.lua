@@ -1,5 +1,6 @@
 local GM = {}
 local PlayerInitialData = UGCGameSystem.UGCRequire("Script.Common.PlayerInitialData")
+local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 
 local PLAYER_SKILL_1_PATH = "Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/PlayerSkill_1.PlayerSkill_1_C"
 
@@ -11,6 +12,10 @@ function GM:Register(DebugUI)
         ["玩家数据重置"] = {
             {UGCGMUI.ItemTypeEnum.Button, { {"重置当前玩家数据"}, {"清空当前玩家养成和背包，并重新发放初始物资"} },
              "S_ResetCurrentPlayerData"}
+        },
+        ["一键完成任务"] = {
+            {UGCGMUI.ItemTypeEnum.Button, { {"完成每日和每周任务"}, {"完成当前玩家全部每日、每周任务，不自动领取奖励"} },
+             "S_CompleteDailyWeeklyTasks"}
         }
     }
     return CurFuncList
@@ -139,6 +144,36 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
         "玩家数据已重置，初始物资已重新发放")
     ugcprint("[GMReset] completed: player=" .. tostring(PlayerController.PlayerKey) ..
                  " removedItemInstances=" .. tostring(RemovedCount))
+end
+
+--- 服务端 GM：将点击按钮玩家的每日、每周任务补到目标进度，不领取奖励。
+function GM:S_CompleteDailyWeeklyTasks(Param, PlayerController)
+    if not UGCGameSystem.IsServer() then
+        return
+    end
+    if PlayerController == nil then
+        ugcprint("[GMTask] rejected: PlayerController is nil")
+        return
+    end
+
+    local DailyResult, WeeklyResult = TaskMgr:CompleteDailyWeeklyTasksOnServer(PlayerController)
+    local FailedCount = (DailyResult.Failed or 0) + (WeeklyResult.Failed or 0)
+    if FailedCount > 0 then
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+            "任务完成操作部分失败，请查看服务端日志")
+        ugcprint("[GMTask] partially failed player=" .. tostring(PlayerController.PlayerKey) ..
+                     " dailyFailed=" .. tostring(DailyResult.Failed) ..
+                     " weeklyFailed=" .. tostring(WeeklyResult.Failed))
+        return
+    end
+
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+        "每日和每周任务已全部完成，请手动领取奖励")
+    ugcprint("[GMTask] completed player=" .. tostring(PlayerController.PlayerKey) ..
+                 " dailyUpdated=" .. tostring(DailyResult.Completed) ..
+                 " dailyAlready=" .. tostring(DailyResult.AlreadyCompleted) ..
+                 " weeklyUpdated=" .. tostring(WeeklyResult.Completed) ..
+                 " weeklyAlready=" .. tostring(WeeklyResult.AlreadyCompleted))
 end
 
 return GM
