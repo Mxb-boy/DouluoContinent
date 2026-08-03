@@ -801,6 +801,7 @@ function UI02:LuaInit()
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestRefreshProperty")
     end
     self:RefreshPlayerExpUI()
+    self:DelayRefreshPlayerExpUI()
     self:RefreshRealmNameText()
 
     self:SetTowerOutBoxImageVisible(false)
@@ -959,6 +960,13 @@ function UI02:RefreshPlayerExpUI(playerExp, playerMaxExp)
 
     self.ProgressBar_171:SetPercent(Percent)
     self.TextBlock_132:SetText(Ma_NumShow.Format(Exp) .. "/" .. Ma_NumShow.Format(MaxExp))
+end
+
+--[[----------------------延迟刷新玩家经验显示------------------------]]
+function UI02:DelayRefreshPlayerExpUI()
+    UGCTimerUtility.CreateLuaTimer(2, function()
+        self:RefreshPlayerExpUI()
+    end, false)
 end
 
 function UI02:HasYXWDInvincibleBuff()
