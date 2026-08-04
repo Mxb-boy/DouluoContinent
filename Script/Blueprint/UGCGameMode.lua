@@ -45,7 +45,7 @@ local function SyncPlayerExpToClient(PlayerController)
     end
 
     local playerExp = PlayerState:GetPlayerExp()
-    local playerLevel = PlayerState:GetPlayerLevel()
+    local playerLevel = PlayerLevelMgr:GetLevelByExp(playerExp)
     local currentExp = PlayerLevelMgr:GetCurrentLevelExp(playerExp, playerLevel)
     local currentMaxExp = PlayerLevelMgr:GetCurrentLevelMaxExp(playerLevel, PlayerState:GetPlayerMaxExp())
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_RefreshPlayerExp", currentExp, currentMaxExp,

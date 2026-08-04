@@ -2153,7 +2153,7 @@ function UGCPlayerController:Server_RequestRefreshProperty()
 
     if PlayerLevelMgr ~= nil and playerState.GetPlayerExp ~= nil and playerState.GetPlayerLevel ~= nil then
         local playerExp = playerState:GetPlayerExp()
-        local playerLevel = playerState:GetPlayerLevel()
+        local playerLevel = PlayerLevelMgr:GetLevelByExp(playerExp)
         local currentExp = PlayerLevelMgr:GetCurrentLevelExp(playerExp, playerLevel)
         local currentMaxExp = PlayerLevelMgr:GetCurrentLevelMaxExp(playerLevel, playerState:GetPlayerMaxExp())
         UnrealNetwork.CallUnrealRPC(self, self, "Client_RefreshPlayerExp", currentExp, currentMaxExp, playerLevel)
