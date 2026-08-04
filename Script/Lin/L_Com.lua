@@ -46,4 +46,31 @@ function L_Com:GetJingJieName(index)
     return cfg.Name
 end
 
+--[[----------------------在指定位置播放一次性粒子特效------------------------]]
+function L_Com.PlayParticleAtLocation(World_Context, Particle_Path, Location, Rotation, Scale)
+    local Particle_System = UE.LoadObject(Particle_Path) -- 粒子特效资源
+    if not Particle_System then
+        return
+    end
+
+    return UGCGameSystem.SpawnEmitterAtLocation(World_Context, Particle_System, Location, Rotation or {}, Scale or {
+        X = 1,
+        Y = 1,
+        Z = 1
+    }, true)
+end
+
+--[[----------------------播放2D音效------------------------]]
+function L_Com.PlaySound2D()
+    if UGCGameSystem.IsServer() then
+        return
+    end
+
+    local Sound_Path = UGCGameSystem.GetUGCResourcesFullPath('Asset/WwiseEvent/EventNotice.EventNotice') -- 音效资源路径
+
+    local Sound_Asset = UE.LoadObject(Sound_Path)
+
+    return UGCSoundManagerSystem.PlaySound2D(Sound_Asset)
+end
+
 return L_Com
