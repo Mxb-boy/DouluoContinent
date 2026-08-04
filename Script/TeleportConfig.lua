@@ -13,11 +13,11 @@ local POINT_LOCATIONS = {
     { x = 20230, y = 32230,  z = 99  },  -- cj1.BlockingVolume4  第一块区域
     { x = 20260, y = 49350,  z = 109 },  -- cj2.BlockingVolume7  第二块区域
     { x = 20300, y = 63020,  z = 109 },  -- cj2.BlockingVolume11 第三块区域
-    { x = 20348, y = 69469,  z = 450 },  -- cj2.SM_decodoor      第四块区域
+    { x = 20348, y = 69169,  z = 450 },  -- cj2.SM_decodoor      第四块区域
     { x = 20250, y = 86130,  z = 109 },  -- cj3.BlockingVolume26 第五块区域
-    { x = 20348, y = 109649, z = 450 },  -- cj3.SM_decodoor8     第六块区域
+    { x = 20348, y = 109349, z = 450 },  -- cj3.SM_decodoor8     第六块区域
     { x = 20280, y = 126440, z = 109 },  -- cj4.BlockingVolume33 第七块区域
-    { x = 20378, y = 149959, z = 450 },  -- cj4.SM_decodoor10    第八块区域
+    { x = 20378, y = 140659, z = 450 },  -- cj4.SM_decodoor10    第八块区域
     { x = 20290, y = 166680, z = 109 },  -- cj5.BlockingVolume42 第九块区域
     { x = 153441.234375, y = 89125.09375, z = 1462.835205078125 },  -- jianz.NewWorld_Rock_SurfaceStone494 第十块区域
 }
