@@ -20,8 +20,9 @@ local function IsPlayerPawn(actor)
     if actor == nil then
         return false
     end
-    -- 玩家 Pawn 才有 GetPlayerControllerSafety 方法
-    return actor.GetPlayerControllerSafety ~= nil
+
+    local ok, PlayerController = pcall(UGCGameSystem.GetPlayerControllerByPlayerPawn, actor)
+    return ok and PlayerController ~= nil
 end
 
 function CreateMonsWall:ReceiveBeginPlay()
@@ -94,6 +95,13 @@ end
 
 function CreateMonsWall:SpawnWave()
     if self:HasAuthority() == false then
+        return
+    end
+
+    -- 爬塔怪物统一交给刷怪管理器生成
+    if self.Scene == Scene_Enum.Tower then
+        self.AliveMonsters = {}
+        self.IsWaitingRespawn = false
         return
     end
 
@@ -233,6 +241,11 @@ end
 
 function CreateMonsWall:ScheduleMonsterRespawn(monster)
     if self:HasAuthority() == false or self:HasPlayerInside() == false then
+        return
+    end
+
+    -- 爬塔怪物统一由刷怪管理器负责复活
+    if self.Scene == Scene_Enum.Tower then
         return
     end
 

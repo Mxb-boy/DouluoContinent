@@ -13,14 +13,6 @@
 ---@field BigLevel int32
 local TowerMgr = {}
 
-local function IsPlayerPawn(actor)
-    if actor == nil then
-        return false
-    end
-
-    return actor.GetPlayerControllerSafety ~= nil
-end
-
 function TowerMgr:ReceiveBeginPlay()
     TowerMgr.SuperClass.ReceiveBeginPlay(self)
 
@@ -61,18 +53,6 @@ function TowerMgr:GetBossClass()
     return MonsterSpawnMgr.GetCachedClass(bossPath)
 end
 
-function TowerMgr:GetTowerMonsterClass(index)
-    local monsterPath = UGCGameSystem.GetUGCResourcesFullPath(
-        string.format(
-            'Asset/Blueprint/Prefabs/Monsters/TowerMonster/Tower_Mons_%d.Tower_Mons_%d_C',
-            index,
-            index
-        )
-    )
-
-    return MonsterSpawnMgr.GetCachedClass(monsterPath)
-end
-
 function TowerMgr:ResumeWaveLoop()
     if self:HasPlayerInside() == false then
         self.IsCheckingWave = false
@@ -96,6 +76,13 @@ function TowerMgr:SpawnWave()
         return
     end
 
+    -- 爬塔怪物统一交给刷怪管理器生成
+    if self.Scene == Scene_Enum.Tower then
+        self.AliveMonsters = {}
+        self.IsWaitingRespawn = false
+        return
+    end
+
     if self:HasPlayerInside() == false then
         self.IsWaitingRespawn = false
         return
@@ -105,35 +92,7 @@ function TowerMgr:SpawnWave()
     self.SpawnPointRespawnTokens = {}
     self.MonsterSpawnPoints = {}
 
-    if self.Scene == Scene_Enum.Tower then
-        self.AliveMonsters = {}
-
-        local points = MonsterSpawnMgr.GetCachedLevelPoints(
-            UGCGameSystem.GameMode,
-            self.Scene,
-            self.BigLevel,
-            self.LittleLevel
-        )
-        local pointMap = {}
-
-        for _, point in ipairs(points or {}) do
-            pointMap[point.StartPoint or 0] = point
-        end
-
-        for index = 1, 10 do
-            local monsterClass = self:GetTowerMonsterClass(index)
-            local monster = MonsterSpawnMgr.SpawnAtPointWithClass(
-                UGCGameSystem.GameMode,
-                monsterClass,
-                pointMap[index],
-                nil
-            )
-
-            if monster then
-                table.insert(self.AliveMonsters, monster)
-            end
-        end
-    elseif self.Scene == Scene_Enum.duplicate then
+    if self.Scene == Scene_Enum.duplicate then
         self.AliveMonsters = {}
 
         local bossClass = self:GetBossClass()
@@ -244,6 +203,11 @@ function TowerMgr:ScheduleMonsterRespawn(monster)
         return
     end
 
+    -- 爬塔怪物统一由刷怪管理器负责复活
+    if self.Scene == Scene_Enum.Tower then
+        return
+    end
+
     if monster == nil then
         return
     end
@@ -264,9 +228,7 @@ function TowerMgr:ScheduleMonsterRespawn(monster)
     self.SpawnPointRespawnTokens[spawnPoint] = token
 
     local respawnDelay = 5
-    if self.Scene == Scene_Enum.Tower then
-        respawnDelay = 12
-    elseif self.Scene == Scene_Enum.duplicate then
+    if self.Scene == Scene_Enum.duplicate then
         respawnDelay = 10
     end
 
@@ -286,14 +248,7 @@ function TowerMgr:ScheduleMonsterRespawn(monster)
 
         wall.SpawnPointRespawnTokens[spawnPoint] = nil
         local newMonster = nil
-        if wall.Scene == Scene_Enum.Tower then
-            newMonster = MonsterSpawnMgr.SpawnAtPointWithClass(
-                UGCGameSystem.GameMode,
-                wall:GetTowerMonsterClass(spawnPoint.StartPoint or 1),
-                spawnPoint,
-                nil
-            )
-        elseif wall.Scene == Scene_Enum.duplicate then
+        if wall.Scene == Scene_Enum.duplicate then
             newMonster = MonsterSpawnMgr.SpawnAtPointWithClass(
                 UGCGameSystem.GameMode,
                 wall:GetBossClass(),
@@ -472,7 +427,8 @@ function TowerMgr:GetPlayerUID(OtherActor)
         return nil
     end
 
-    if IsPlayerPawn(OtherActor) then
+    local ok, PlayerController = pcall(UGCGameSystem.GetPlayerControllerByPlayerPawn, OtherActor)
+    if ok and PlayerController ~= nil then
         local ok, uid = pcall(UGCGameSystem.GetUIDByPlayerPawn, OtherActor)
         if ok and uid ~= nil then
             return uid
