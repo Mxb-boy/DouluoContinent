@@ -965,6 +965,10 @@ end
 --[[----------------------延迟刷新玩家经验显示------------------------]]
 function UI02:DelayRefreshPlayerExpUI()
     UGCTimerUtility.CreateLuaTimer(2, function()
+        local Player_Controller = GameplayStatics.GetPlayerController(self, 0) -- 本地玩家控制器
+        if Player_Controller ~= nil then
+            UnrealNetwork.CallUnrealRPC(Player_Controller, Player_Controller, "Server_RequestRefreshProperty")
+        end
         self:RefreshPlayerExpUI()
     end, false)
 end
