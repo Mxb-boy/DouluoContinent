@@ -2223,6 +2223,13 @@ function UGCPlayerController:Client_PlayerDataReset()
 end
 
 --[[-------------------------固定添加属性---------------------]] --
+local function FormatAFKRewardValue(value)
+    local text = string.format("%.2f", tonumber(value) or 0)
+    text = string.gsub(text, "0+$", "")
+    text = string.gsub(text, "%.$", "")
+    return text
+end
+
 function UGCPlayerController:Server_AddFixedBaseProperty()
     local playerState = self.PlayerState
     if playerState == nil then
@@ -2246,6 +2253,11 @@ function UGCPlayerController:Server_AddFixedBaseProperty()
     playerState:SetBaseMaxHp(newBaseMaxHp)
 
     UnrealNetwork.CallUnrealRPC(self, self, "Client_RefreshProperty", newBaseAttack, newBaseMaxHp)
+    local rewardText = "挂机修炼收益：最大生命 +" .. FormatAFKRewardValue(addMaxHp) ..
+                           "，攻击 +" .. FormatAFKRewardValue(addAttack)
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_ShowToast", rewardText)
+    ugcprint("[AFKZone] reward player=" .. tostring(self.PlayerKey) ..
+                 " addMaxHp=" .. tostring(addMaxHp) .. " addAttack=" .. tostring(addAttack))
 end
 
 function UGCPlayerController:Client_SetTowerOutBoxVisible(bVisible)
