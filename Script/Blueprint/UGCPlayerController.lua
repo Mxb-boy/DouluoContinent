@@ -160,6 +160,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden", "Client_ShowMonsterDamageNumber",
         "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
         "Server_RequestFreePaTa", "Server_RequestTicketPaTa", "Client_ShowToast", "Client_PlayerDataReset",
+        "Client_PlayerDataResetStarted",
         "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
         "ServerRequestDisbandTeam", "UseRedemptionCode"
 end
@@ -348,6 +349,9 @@ end
 
 --[[---------------------服务端增加任务进度-------------------------]] --
 function UGCPlayerController:Server_AddTaskProgress(TaskKey, AddValue)
+    if self.bGMResetInProgress == true then
+        return
+    end
     TaskMgr:AddTaskProgressOnServer(L_Enum.AllTask[TaskKey], tonumber(AddValue) or 1, self)
 end
 
@@ -1923,6 +1927,9 @@ function UGCPlayerController:Client_SyncTitleState(unlockedTitles, equippedTitle
 end
 
 function UGCPlayerController:UnlockTitle(titleID)
+    if self.bGMResetInProgress == true then
+        return
+    end
     titleID = tonumber(titleID) or 0
     if titleID < 1 or titleID > TitleConfig.MaxTitleID then
         return
@@ -1972,6 +1979,9 @@ end
 
 -- Title equip
 function UGCPlayerController:Server_EquipTitle(titleID)
+    if self.bGMResetInProgress == true then
+        return
+    end
     titleID = tonumber(titleID) or 0
 
     if titleID < 1 or titleID > TitleConfig.MaxTitleID then
@@ -2190,8 +2200,18 @@ function UGCPlayerController:Client_ShowToast(text)
 end
 
 --- GM 重置完成后的客户端收口刷新，不触发“突破成功/失败”等业务提示。
+function UGCPlayerController:Client_PlayerDataResetStarted()
+    local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+    if StateMgr ~= nil then
+        StateMgr.bPlayerDataResetInProgress = true
+        StateMgr.bServerSynced = false
+    end
+end
+
 function UGCPlayerController:Client_PlayerDataReset()
     self.RealmLevel = 1
+    self.UnlockedTitles = {}
+    self.EquippedTitleID = 0
     local PlayerState = self.PlayerState
     if PlayerState ~= nil then
         PlayerState.HunHuan = 1
@@ -2217,9 +2237,30 @@ function UGCPlayerController:Client_PlayerDataReset()
     end
 
     local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
-    if StateMgr ~= nil and StateMgr.UI ~= nil and StateMgr.JingJieTextShow ~= nil then
-        StateMgr:JingJieTextShow(1, true)
+    if StateMgr ~= nil then
+        StateMgr.bPlayerDataResetInProgress = true
+        StateMgr.bServerSynced = false
+        StateMgr.BaseAttack = 40
+        StateMgr.BaseMaxHp = 100
     end
+    local TitleUI = self.MainUIInstance and self.MainUIInstance.TitleUIInstance or nil
+    if TitleUI ~= nil then
+        TitleUI.SelectedTitleID = nil
+    end
+    self:Client_SyncTitleState({}, 0, 0)
+    if StateMgr ~= nil and StateMgr.UI ~= nil and StateMgr.JingJieTextShow ~= nil then
+        StateMgr:ChiBangTextShow(0, true)
+        StateMgr:WuQiTextShow(0, true, 0, 0)
+        StateMgr:ChengHaoTextShow(0, true)
+        StateMgr:JingJieTextShow(1, true)
+        StateMgr:CountAll(nil, 100, 100, true)
+    end
+
+    UGCTimerUtility.CreateLuaTimer(1.5, function()
+        if UGCGameSystem.ReturnToLobby ~= nil then
+            UGCGameSystem.ReturnToLobby()
+        end
+    end, false)
 end
 
 --[[-------------------------固定添加属性---------------------]] --
@@ -2368,6 +2409,9 @@ function UGCPlayerController:Client_YXWDInvincibleActiveChanged(bActive)
 end
 
 function UGCPlayerController:Server_SetFinalMaxHp(finalMaxHp, bFillHealth)
+    if self.bGMResetInProgress == true then
+        return
+    end
     local pawn = self.Pawn
     if pawn == nil then
         return
@@ -2399,6 +2443,9 @@ function UGCPlayerController:Server_SetFinalMaxHp(finalMaxHp, bFillHealth)
 end
 
 function UGCPlayerController:Server_SetFinalAttack(finalAttack)
+    if self.bGMResetInProgress == true then
+        return
+    end
     local pawn = self.Pawn
     if pawn == nil then
         return

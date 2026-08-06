@@ -4,6 +4,13 @@ local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TitleConfig = UGCGameSystem.UGCRequire("Script.Common.TitleConfig")
 
 local PLAYER_SKILL_1_PATH = "Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/PlayerSkill_1.PlayerSkill_1_C"
+local RESET_RETRY_DELAY = 0.5
+local RESET_CLEAR_MAX_ATTEMPTS = 6
+local RESET_ARCHIVE_MAX_ATTEMPTS = 3
+local RESET_TASK_MAX_ATTEMPTS = 3
+local RESET_GRANT_MAX_ATTEMPTS = 4
+local ResetTransactions = {}
+local FailReset
 
 local function GetTitleOptionText()
     local Options = {}
@@ -71,7 +78,54 @@ local function RemoveLevelSkill(PlayerPawn)
     end
 end
 
-local function RefreshClientAndPawn(PlayerController, PlayerPawn, PlayerState)
+local function ScheduleResetStep(Callback)
+    UGCTimerUtility.CreateLuaTimer(RESET_RETRY_DELAY, function()
+        local Success, Error = pcall(Callback)
+        if not Success then
+            for PlayerKey, Transaction in pairs(ResetTransactions) do
+                FailReset(Transaction.PlayerController, PlayerKey, "stage_exception_" .. tostring(Error))
+                break
+            end
+        end
+    end, false)
+end
+
+local function GetActiveResetContext(PlayerController, PlayerKey)
+    local Transaction = ResetTransactions[PlayerKey]
+    if Transaction == nil or Transaction.PlayerController ~= PlayerController or
+        PlayerController == nil or (UE.IsValid ~= nil and not UE.IsValid(PlayerController)) then
+        return nil, nil, nil
+    end
+    local PlayerPawn = GetPlayerPawn(PlayerController)
+    local PlayerState = PlayerController.PlayerState
+    if PlayerPawn == nil or PlayerState == nil then
+        return Transaction, nil, nil
+    end
+    return Transaction, PlayerPawn, PlayerState
+end
+
+FailReset = function(PlayerController, PlayerKey, Reason)
+    local Transaction, PlayerPawn = GetActiveResetContext(PlayerController, PlayerKey)
+    if Transaction ~= nil and Transaction.BackpackCleared and PlayerPawn ~= nil then
+        local GrantCallSucceeded, Granted = pcall(PlayerInitialData.Grant, PlayerPawn)
+        local Verified = false
+        if GrantCallSucceeded and Granted then
+            local VerifyCallSucceeded, VerifyResult = pcall(PlayerInitialData.VerifyGrant, PlayerPawn)
+            Verified = VerifyCallSucceeded and VerifyResult == true
+        end
+        ugcprint("[GMReset] compensation player=" .. tostring(PlayerKey) ..
+                     " granted=" .. tostring(GrantCallSucceeded and Granted) .. " verified=" .. tostring(Verified))
+    end
+    ResetTransactions[PlayerKey] = nil
+    if PlayerController ~= nil and (UE.IsValid == nil or UE.IsValid(PlayerController)) then
+        PlayerController.bGMResetInProgress = false
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+            "玩家数据重置失败，请查看日志后重试")
+    end
+    ugcprint("[GMReset] failed player=" .. tostring(PlayerKey) .. " reason=" .. tostring(Reason))
+end
+
+local function FinalizeServerState(PlayerController, PlayerPawn, PlayerState)
     PlayerController.ProbabilityBonusPermanent = nil
     PlayerController.ProbabilityBonusPermanentValue = nil
     PlayerController.ProbabilityBonusRemainingSeconds = 0
@@ -80,50 +134,27 @@ local function RefreshClientAndPawn(PlayerController, PlayerPawn, PlayerState)
         UGCTimerUtility.RemoveLuaTimerByName("ProbabilityBonus_" .. tostring(PlayerController.PlayerKey))
     end
 
-    -- 保留无敌功能的购买权益，但将本局开关恢复为关闭。
     if PlayerState.SetYXWD_InvincibleBuffActive ~= nil then
         PlayerState:SetYXWD_InvincibleBuffActive(false)
     else
         PlayerState.YXWD_InvincibleBuffActive = false
     end
     PlayerState.YXWD_InvincibleBuffToken = (tonumber(PlayerState.YXWD_InvincibleBuffToken) or 0) + 1
-    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_YXWDInvincibleActiveChanged", 0)
 
     PlayerPawn.EquippedTitleID = 0
     PlayerController.EquippedTitleID = 0
+    PlayerController.UnlockedTitles = {}
     local TitleActor = PlayerPawn.PlayerTitleActor
     if TitleActor ~= nil and UE.IsValid(TitleActor) and TitleActor.SetTitle ~= nil then
         TitleActor:SetTitle(0)
     end
-
     RemoveLevelSkill(PlayerPawn)
-    if PlayerPawn.RefreshStateMgrProperty ~= nil then
-        PlayerPawn:RefreshStateMgrProperty(true)
-    else
-        UGCPawnAttrSystem.SetHealthMax(PlayerPawn, 100)
-        UGCPawnAttrSystem.SetHealth(PlayerPawn, 100)
-        UGCAttributeSystem.SetGameAttributeValue(PlayerPawn, "AttackPower", 40)
-    end
-    if PlayerPawn.RefreshSoulMesh ~= nil then
-        PlayerPawn:RefreshSoulMesh(1, true)
-    end
-    if PlayerPawn.RefreshWeaponAttackBonus ~= nil then
-        PlayerPawn:RefreshWeaponAttackBonus(true)
-    end
-    if PlayerPawn.ForceRefreshPropertySnapshot ~= nil then
-        PlayerPawn:ForceRefreshPropertySnapshot()
-    end
 
-    if PlayerController.SyncWeaponBackpackNames ~= nil then
-        PlayerController:SyncWeaponBackpackNames()
-    end
-    if PlayerController.SyncSavedTitleState ~= nil then
-        PlayerController:SyncSavedTitleState()
-    end
-    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_SyncLotteryState", {})
-    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ProbabilityBonusChanged", 100)
-    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_RefreshPlayerExp", 0, 60, 1)
-    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_PlayerDataReset")
+    local BaseAttack = PlayerState.GetBaseAttack ~= nil and tonumber(PlayerState:GetBaseAttack()) or 40
+    local BaseMaxHp = PlayerState.GetBaseMaxHp ~= nil and tonumber(PlayerState:GetBaseMaxHp()) or 100
+    UGCAttributeSystem.SetGameAttributeValue(PlayerPawn, "AttackPower", BaseAttack)
+    UGCPawnAttrSystem.SetHealthMax(PlayerPawn, BaseMaxHp)
+    UGCPawnAttrSystem.SetHealth(PlayerPawn, BaseMaxHp)
 end
 
 --- 服务端 GM：只重置点击按钮的当前玩家。
@@ -134,7 +165,9 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
 
     local PlayerPawn = GetPlayerPawn(PlayerController)
     local PlayerState = PlayerController and PlayerController.PlayerState or nil
-    if PlayerController == nil or PlayerPawn == nil or PlayerState == nil then
+    local PlayerKey = PlayerController ~= nil and PlayerController.PlayerKey ~= nil and
+                          tostring(PlayerController.PlayerKey) or nil
+    if PlayerController == nil or PlayerPawn == nil or PlayerState == nil or PlayerKey == nil then
         ugcprint("[GMReset] rejected: PlayerController, Pawn or PlayerState is nil")
         return
     end
@@ -142,24 +175,168 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
         ugcprint("[GMReset] rejected: player archive is not ready")
         return
     end
-
-    local BackpackCleared, RemovedCount = PlayerInitialData.ClearBackpack(PlayerPawn)
-    if not BackpackCleared then
-        ugcprint("[GMReset] failed: backpack still has items, player=" .. tostring(PlayerController.PlayerKey))
+    if ResetTransactions[PlayerKey] ~= nil or PlayerController.bGMResetInProgress == true then
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+            "玩家数据正在重置，请勿重复点击")
+        ugcprint("[GMReset] rejected: reset already in progress player=" .. PlayerKey)
         return
     end
 
-    if not PlayerState:ResetProgressionToDefaults() then
-        ugcprint("[GMReset] failed: archive reset rejected, player=" .. tostring(PlayerController.PlayerKey))
-        return
-    end
-
-    PlayerInitialData.Grant(PlayerPawn, _G.HTCLv2ItemID)
-    RefreshClientAndPawn(PlayerController, PlayerPawn, PlayerState)
+    local Transaction = {
+        PlayerController = PlayerController,
+        RemovedItemInstances = 0,
+        BackpackCleared = false
+    }
+    ResetTransactions[PlayerKey] = Transaction
+    PlayerController.bGMResetInProgress = true
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_PlayerDataResetStarted")
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
-        "玩家数据已重置，初始物资已重新发放")
-    ugcprint("[GMReset] completed: player=" .. tostring(PlayerController.PlayerKey) ..
-                 " removedItemInstances=" .. tostring(RemovedCount))
+        "正在重置玩家数据，请稍候")
+    ugcprint("[GMReset] request player=" .. PlayerKey)
+
+    local ClearBackpackStep
+    local ResetArchiveStep
+    local ResetTasksStep
+    local GrantItemsStep
+
+    ClearBackpackStep = function(Attempt)
+        local ActiveTransaction, ActivePawn = GetActiveResetContext(PlayerController, PlayerKey)
+        if ActiveTransaction == nil or ActivePawn == nil then
+            FailReset(PlayerController, PlayerKey, "player_context_lost_during_clear")
+            return
+        end
+
+        local Cleared, RemovedCount, Remaining = PlayerInitialData.ClearBackpack(ActivePawn)
+        ActiveTransaction.RemovedItemInstances = ActiveTransaction.RemovedItemInstances +
+                                                     (tonumber(RemovedCount) or 0)
+        if Cleared then
+            ActiveTransaction.BackpackCleared = true
+            ugcprint("[GMReset] backpack cleared player=" .. PlayerKey ..
+                         " attempts=" .. tostring(Attempt))
+            ResetArchiveStep(1)
+            return
+        end
+        if Attempt >= RESET_CLEAR_MAX_ATTEMPTS then
+            FailReset(PlayerController, PlayerKey,
+                "backpack_remaining_" .. tostring(Remaining ~= nil and #Remaining or -1))
+            return
+        end
+        ScheduleResetStep(function()
+            ClearBackpackStep(Attempt + 1)
+        end)
+    end
+
+    ResetArchiveStep = function(Attempt)
+        local ActiveTransaction, _, ActiveState = GetActiveResetContext(PlayerController, PlayerKey)
+        if ActiveTransaction == nil or ActiveState == nil then
+            FailReset(PlayerController, PlayerKey, "player_context_lost_during_archive")
+            return
+        end
+
+        local Saved, Reason = ActiveState:ResetProgressionToDefaults()
+        if Saved then
+            ugcprint("[GMReset] archive defaults verified player=" .. PlayerKey ..
+                         " attempts=" .. tostring(Attempt))
+            ResetTasksStep(1)
+            return
+        end
+        if Attempt >= RESET_ARCHIVE_MAX_ATTEMPTS then
+            FailReset(PlayerController, PlayerKey, "archive_" .. tostring(Reason))
+            return
+        end
+        ScheduleResetStep(function()
+            ResetArchiveStep(Attempt + 1)
+        end)
+    end
+
+    ResetTasksStep = function(Attempt)
+        local ActiveTransaction = GetActiveResetContext(PlayerController, PlayerKey)
+        if ActiveTransaction == nil then
+            FailReset(PlayerController, PlayerKey, "player_context_lost_during_tasks")
+            return
+        end
+
+        local Requested, RequestReason = TaskMgr:ResetDailyWeeklyTasksOnServer(PlayerController)
+        if not Requested then
+            if Attempt >= RESET_TASK_MAX_ATTEMPTS then
+                FailReset(PlayerController, PlayerKey, "tasks_" .. tostring(RequestReason))
+            else
+                ScheduleResetStep(function()
+                    ResetTasksStep(Attempt + 1)
+                end)
+            end
+            return
+        end
+
+        ScheduleResetStep(function()
+            local VerifyTransaction = GetActiveResetContext(PlayerController, PlayerKey)
+            if VerifyTransaction == nil then
+                FailReset(PlayerController, PlayerKey, "player_context_lost_during_task_verify")
+                return
+            end
+            local Verified, VerifyReason = TaskMgr:VerifyDailyWeeklyTasksReset(PlayerController)
+            if Verified then
+                ugcprint("[GMReset] task lines verified player=" .. PlayerKey ..
+                             " attempts=" .. tostring(Attempt))
+                GrantItemsStep(1)
+            elseif Attempt >= RESET_TASK_MAX_ATTEMPTS then
+                FailReset(PlayerController, PlayerKey, "tasks_" .. tostring(VerifyReason))
+            else
+                ResetTasksStep(Attempt + 1)
+            end
+        end)
+    end
+
+    GrantItemsStep = function(Attempt)
+        local ActiveTransaction, ActivePawn, ActiveState = GetActiveResetContext(PlayerController, PlayerKey)
+        if ActiveTransaction == nil or ActivePawn == nil or ActiveState == nil then
+            FailReset(PlayerController, PlayerKey, "player_context_lost_during_grant")
+            return
+        end
+
+        PlayerInitialData.Grant(ActivePawn)
+        ScheduleResetStep(function()
+            local VerifyTransaction, VerifyPawn, VerifyState =
+                GetActiveResetContext(PlayerController, PlayerKey)
+            if VerifyTransaction == nil or VerifyPawn == nil or VerifyState == nil then
+                FailReset(PlayerController, PlayerKey, "player_context_lost_during_grant_verify")
+                return
+            end
+
+            local Verified, Mismatches = PlayerInitialData.VerifyGrant(VerifyPawn)
+            if not Verified then
+                if Attempt >= RESET_GRANT_MAX_ATTEMPTS then
+                    local First = Mismatches ~= nil and Mismatches[1] or nil
+                    local Detail = First ~= nil and
+                                       (tostring(First.ItemID) .. "_" .. tostring(First.Actual) .. "_of_" ..
+                                           tostring(First.Expected)) or "unknown"
+                    FailReset(PlayerController, PlayerKey, "initial_items_" .. Detail)
+                else
+                    GrantItemsStep(Attempt + 1)
+                end
+                return
+            end
+
+            FinalizeServerState(PlayerController, VerifyPawn, VerifyState)
+            UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+                "玩家数据已重置，即将返回大厅")
+            UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_PlayerDataReset")
+            ugcprint("[GMReset] completed player=" .. PlayerKey ..
+                         " removedItemInstances=" .. tostring(ActiveTransaction.RemovedItemInstances) ..
+                         " grantAttempts=" .. tostring(Attempt))
+            ResetTransactions[PlayerKey] = nil
+            UGCTimerUtility.CreateLuaTimer(8, function()
+                if PlayerController ~= nil and (UE.IsValid == nil or UE.IsValid(PlayerController)) then
+                    PlayerController.bGMResetInProgress = false
+                end
+            end, false)
+        end)
+    end
+
+    local StartSucceeded, StartError = pcall(ClearBackpackStep, 1)
+    if not StartSucceeded then
+        FailReset(PlayerController, PlayerKey, "stage_exception_" .. tostring(StartError))
+    end
 end
 
 --- 服务端 GM：将点击按钮玩家的每日、每周任务补到目标进度，不领取奖励。
@@ -167,7 +344,7 @@ function GM:S_CompleteDailyWeeklyTasks(Param, PlayerController)
     if not UGCGameSystem.IsServer() then
         return
     end
-    if PlayerController == nil then
+    if PlayerController == nil or PlayerController.bGMResetInProgress == true then
         ugcprint("[GMTask] rejected: PlayerController is nil")
         return
     end
@@ -203,7 +380,8 @@ function GM:S_GrantCustomTitle(Param, PlayerController)
     if not UGCGameSystem.IsServer() then
         return
     end
-    if PlayerController == nil or PlayerController.PlayerKey == nil then
+    if PlayerController == nil or PlayerController.PlayerKey == nil or
+        PlayerController.bGMResetInProgress == true then
         ugcprint("[GMTitle] grant rejected: PlayerController or PlayerKey is nil")
         return
     end

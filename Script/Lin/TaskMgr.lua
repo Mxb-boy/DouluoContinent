@@ -18,6 +18,9 @@ end
 
 --[[----------------------服务端调用------------------------]] --
 function TaskMgr:AddTaskProgressOnServer(TaskConfig, AddValue, PlayerController)
+    if PlayerController == nil or PlayerController.bGMResetInProgress == true then
+        return
+    end
     local Component, GM, TargetPC = self:GetTaskComponents(PlayerController)
 
     for _, TaskLineType in ipairs({"EveryDay", "EveryWeek"}) do
@@ -35,7 +38,8 @@ end
 
 --[[----------------------给同队玩家增加任务进度------------------------]] --
 function TaskMgr:AddTeamTaskProgressOnServer(TaskConfig, AddValue, PlayerController)
-    if PlayerController == nil or PlayerController.PlayerKey == nil then
+    if PlayerController == nil or PlayerController.PlayerKey == nil or
+        PlayerController.bGMResetInProgress == true then
         return
     end
 
@@ -126,6 +130,120 @@ function TaskMgr:CompleteDailyWeeklyTasksOnServer(PlayerController)
     local DailyResult = self:CompletePercentTaskLineOnServer("EveryDay", PlayerController)
     local WeeklyResult = self:CompletePercentTaskLineOnServer("EveryWeek", PlayerController)
     return DailyResult, WeeklyResult
+end
+
+local RESET_TASK_LINE_TYPES = {"EveryDay", "EveryWeek"}
+
+local function GetConfiguredTaskLineNames()
+    local Names = {}
+    local Count = 0
+    for _, TaskConfig in pairs(TaskConfigEnum.AllTask or {}) do
+        for _, TaskLineType in ipairs(RESET_TASK_LINE_TYPES) do
+            local TaskInfo = TaskConfig[TaskLineType]
+            if TaskInfo ~= nil and TaskInfo.TaskLineName ~= nil and Names[TaskInfo.TaskLineName] ~= true then
+                Names[TaskInfo.TaskLineName] = true
+                Count = Count + 1
+            end
+        end
+    end
+    return Names, Count
+end
+
+--- 重置当前玩家的每日、每周活跃任务线，包括进度、活跃度和奖励状态。
+---@param PlayerController userdata
+---@return boolean, string|nil
+function TaskMgr:ResetDailyWeeklyTasksOnServer(PlayerController)
+    local Component, _, TargetPC = self:GetTaskComponents(PlayerController)
+    if Component == nil or TargetPC == nil or Component.ResetPercentTaskLine == nil then
+        return false, "task_component_unavailable"
+    end
+
+    local TaskLineNames, TaskLineCount = GetConfiguredTaskLineNames()
+    if TaskLineCount == 0 then
+        return false, "no_configured_task_lines"
+    end
+    for TaskLineName in pairs(TaskLineNames) do
+        local Success, Error = pcall(Component.ResetPercentTaskLine, Component, TaskLineName)
+        if not Success then
+            ugcprint("[GMTaskReset] reset failed line=" .. tostring(TaskLineName) ..
+                         " error=" .. tostring(Error))
+            return false, "reset_failed_" .. tostring(TaskLineName)
+        end
+    end
+    return true, nil
+end
+
+---@param PlayerController userdata
+---@return boolean, string|nil
+function TaskMgr:VerifyDailyWeeklyTasksReset(PlayerController)
+    local Component, _, TargetPC = self:GetTaskComponents(PlayerController)
+    if Component == nil or TargetPC == nil or Component.GetPercentTaskProgress == nil or
+        Component.GetTaskLineProgress == nil or Component.GetPercentTaskState == nil or
+        Component.GetPercentTaskLineAwardStateList == nil then
+        return false, "task_component_unavailable"
+    end
+
+    local TaskLineNames, TaskLineCount = GetConfiguredTaskLineNames()
+    if TaskLineCount == 0 then
+        return false, "no_configured_task_lines"
+    end
+    for TaskLineName in pairs(TaskLineNames) do
+        local Success, Progress = pcall(Component.GetTaskLineProgress, Component, TaskLineName)
+        Progress = tonumber(Progress)
+        if not Success or Progress == nil or Progress ~= 0 then
+            return false, "task_line_progress_" .. tostring(TaskLineName)
+        end
+
+        local AwardSuccess, AwardStates = pcall(Component.GetPercentTaskLineAwardStateList, Component, TaskLineName)
+        if not AwardSuccess or type(AwardStates) ~= "table" then
+            return false, "task_line_award_state_" .. tostring(TaskLineName)
+        end
+        for AwardIndex, AwardInfo in pairs(AwardStates) do
+            local AwardState = AwardInfo
+            if AwardInfo ~= nil then
+                local StateReadSucceeded, ReadState = pcall(function()
+                    return AwardInfo.AwardState
+                end)
+                if StateReadSucceeded and ReadState ~= nil then
+                    AwardState = ReadState
+                end
+            end
+            local HasClaimed = (EUGCTaskLineAwardState ~= nil and EUGCTaskLineAwardState.HasClaimed) or 2
+            if AwardState == nil or AwardState == HasClaimed then
+                ugcprint("[GMTaskReset] verify award state failed line=" .. tostring(TaskLineName) ..
+                             " index=" .. tostring(AwardIndex) .. " state=" .. tostring(AwardState))
+                return false, "task_line_award_state_" .. tostring(TaskLineName)
+            end
+        end
+    end
+
+    for _, TaskConfig in pairs(TaskConfigEnum.AllTask or {}) do
+        for _, TaskLineType in ipairs(RESET_TASK_LINE_TYPES) do
+            local TaskInfo = TaskConfig[TaskLineType]
+            if TaskInfo ~= nil then
+                local Success, Progress = pcall(Component.GetPercentTaskProgress, Component,
+                    TaskInfo.TaskLineName, TaskInfo.TaskIndex)
+                Progress = tonumber(Progress)
+                if not Success or Progress == nil or Progress ~= 0 then
+                    ugcprint("[GMTaskReset] verify failed key=" .. tostring(TaskConfig.Key) ..
+                                 " line=" .. tostring(TaskInfo.TaskLineName) ..
+                                 " progress=" .. tostring(Progress))
+                    return false, "task_progress_" .. tostring(TaskConfig.Key)
+                end
+                local StateSuccess, TaskState = pcall(Component.GetPercentTaskState, Component,
+                    TaskInfo.TaskLineName, TaskInfo.TaskIndex)
+                local CompletedNotClaimed = (EUGCTaskState ~= nil and EUGCTaskState.CompletedNotClaimed) or 2
+                local RewardClaimed = (EUGCTaskState ~= nil and EUGCTaskState.RewardClaimed) or 3
+                if not StateSuccess or TaskState == nil or TaskState == CompletedNotClaimed or
+                    TaskState == RewardClaimed then
+                    ugcprint("[GMTaskReset] verify task state failed key=" .. tostring(TaskConfig.Key) ..
+                                 " state=" .. tostring(TaskState))
+                    return false, "task_state_" .. tostring(TaskConfig.Key)
+                end
+            end
+        end
+    end
+    return true, nil
 end
 
 --[[---------------------获取任务组件-------------------------]] --

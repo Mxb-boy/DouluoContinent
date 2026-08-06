@@ -33,11 +33,36 @@ local function TryDisuseItem(PlayerPawn, ItemDefineID)
     return false
 end
 
-local function AddItemIfMissing(PlayerPawn, ItemID, Count)
-    local CurrentCount = tonumber(UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID)) or 0
-    if CurrentCount <= 0 then
-        UGCBackpackSystemV2.AddItemV2(PlayerPawn, ItemID, Count)
+local function BuildTargetItemCounts(ExtraBaseItemID)
+    local Targets = {}
+    for _, ItemID in ipairs(WeaponLevelConfig.GetAllBaseItemIDs()) do
+        ItemID = tonumber(ItemID)
+        if ItemID ~= nil then
+            Targets[ItemID] = math.max(Targets[ItemID] or 0, 1)
+        end
     end
+    ExtraBaseItemID = tonumber(ExtraBaseItemID) or WeaponLevelConfig.GetItemID("HTC", 2) or 8310015
+    Targets[ExtraBaseItemID] = math.max(Targets[ExtraBaseItemID] or 0, 1)
+    for _, Item in ipairs(INITIAL_STACK_ITEMS) do
+        local ItemID = tonumber(Item.ItemID)
+        local Count = math.max(0, tonumber(Item.Count) or 0)
+        if ItemID ~= nil then
+            Targets[ItemID] = math.max(Targets[ItemID] or 0, Count)
+        end
+    end
+    return Targets
+end
+
+local function AddMissingItemCount(PlayerPawn, ItemID, TargetCount)
+    local CurrentCount = tonumber(UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID)) or 0
+    local MissingCount = math.max(0, TargetCount - CurrentCount)
+    if MissingCount == 0 then
+        return true
+    end
+
+    local AddedCount = UGCBackpackSystemV2.AddItemV2(PlayerPawn, ItemID, MissingCount)
+    AddedCount = tonumber(AddedCount)
+    return AddedCount ~= nil and AddedCount >= MissingCount
 end
 
 --- 发放与 UGCGameMode 登录流程一致的基础武器和初始物资。
@@ -48,31 +73,51 @@ function PlayerInitialData.Grant(PlayerPawn, ExtraBaseItemID)
         return false
     end
 
-    for _, ItemID in ipairs(WeaponLevelConfig.GetAllBaseItemIDs()) do
-        AddItemIfMissing(PlayerPawn, ItemID, 1)
+    local AllRequestsSucceeded = true
+    for ItemID, TargetCount in pairs(BuildTargetItemCounts(ExtraBaseItemID)) do
+        if not AddMissingItemCount(PlayerPawn, ItemID, TargetCount) then
+            AllRequestsSucceeded = false
+            ugcprint("[PlayerInitialData] grant request incomplete itemID=" .. tostring(ItemID) ..
+                         " target=" .. tostring(TargetCount))
+        end
     end
-    if ExtraBaseItemID ~= nil then
-        AddItemIfMissing(PlayerPawn, ExtraBaseItemID, 1)
+    return AllRequestsSucceeded
+end
+
+---@param PlayerPawn userdata
+---@param ExtraBaseItemID number|nil
+---@return boolean, table|nil
+function PlayerInitialData.VerifyGrant(PlayerPawn, ExtraBaseItemID)
+    if PlayerPawn == nil or UGCBackpackSystemV2 == nil then
+        return false, nil
     end
 
-    for _, Item in ipairs(INITIAL_STACK_ITEMS) do
-        UGCBackpackSystemV2.AddItemV2(PlayerPawn, Item.ItemID, Item.Count)
+    local Mismatches = {}
+    for ItemID, TargetCount in pairs(BuildTargetItemCounts(ExtraBaseItemID)) do
+        local ActualCount = tonumber(UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID)) or 0
+        if ActualCount ~= TargetCount then
+            table.insert(Mismatches, {
+                ItemID = ItemID,
+                Expected = TargetCount,
+                Actual = ActualCount
+            })
+        end
     end
-    return true
+    return #Mismatches == 0, Mismatches
 end
 
 --- 清空当前 Pawn 的 V2 背包。仅操作背包，不触碰虚拟物品或官方扩展系统数据。
 ---@param PlayerPawn userdata
----@return boolean, number
+---@return boolean, number, table
 function PlayerInitialData.ClearBackpack(PlayerPawn)
     if PlayerPawn == nil or UGCBackpackSystemV2 == nil or
         UGCBackpackSystemV2.GetAllItemDefineIDsV2 == nil then
-        return false, 0
+        return false, 0, {}
     end
 
     local AllItemData = UGCBackpackSystemV2.GetAllItemDefineIDsV2(PlayerPawn)
     if AllItemData == nil then
-        return true, 0
+        return false, 0, {}
     end
 
     -- 先复制实例 ID，避免删除物品时修改引擎返回的容器导致漏删。
@@ -107,11 +152,16 @@ function PlayerInitialData.ClearBackpack(PlayerPawn)
     end
 
     local Remaining = UGCBackpackSystemV2.GetAllItemDefineIDsV2(PlayerPawn)
-    local RemainingCount = 0
-    for _ in pairs(Remaining or {}) do
-        RemainingCount = RemainingCount + 1
+    if Remaining == nil then
+        return false, RemovedInstanceCount, {}
     end
-    return RemainingCount == 0, RemovedInstanceCount
+    local RemainingCount = 0
+    local RemainingDefineIDs = {}
+    for _, ItemDefineID in pairs(Remaining or {}) do
+        RemainingCount = RemainingCount + 1
+        table.insert(RemainingDefineIDs, ItemDefineID)
+    end
+    return RemainingCount == 0, RemovedInstanceCount, RemainingDefineIDs
 end
 
 return PlayerInitialData

@@ -664,7 +664,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             end
 
             -- 2. 发初始武器和物资。GM 重置复用同一入口，避免两套初始配置漂移。
-            PlayerInitialData.Grant(PC.Pawn, HTCLv2ItemID)
+            PlayerInitialData.Grant(PC.Pawn)
             if PC.SyncWeaponBackpackNames ~= nil then
                 PC:SyncWeaponBackpackNames()
             end
