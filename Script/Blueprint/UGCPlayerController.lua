@@ -27,6 +27,7 @@ local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
+local ShadowDisabler = UGCGameSystem.UGCRequire("Script.Common.ShadowDisabler")
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
 local PaTa_Spawn_Point_ID = 201 -- 爬塔出生点
 local PaTa_Ticket_Item_ID = 8310064 -- 爬塔传送券
@@ -88,6 +89,8 @@ function UGCPlayerController:ReceiveBeginPlay()
     if self:HasAuthority() then
         return
     end
+
+    ShadowDisabler.Start(self)
 
     -- Prevent duplicate MainUI instances.
     if self.MainUIInstance ~= nil then
