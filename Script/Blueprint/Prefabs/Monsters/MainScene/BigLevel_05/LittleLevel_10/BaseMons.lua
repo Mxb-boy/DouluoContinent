@@ -82,15 +82,31 @@ function BaseMons:BPDie(KillingDamage, EventInstigator, DamageCauser, DamageEven
     end
 
     if self:HasAuthority() then
-        -- 只有服务端才可以掉落
-        self.UGCPresetCommonDropItemComponent:StartDrop(self, EventInstigator, {})
+        local DropID = self.MonsterID
+        if EventInstigator ~= nil and EventInstigator.PlayerState ~= nil then
+            local Probability_Bonus = (EventInstigator.PlayerState.Probability_Bonus or 100) - 100
+            DropID = Probability_Bonus * 100 + self.MonsterID
+        end
 
+        -- 只有服务端才可以掉落
+        if DropID ~= nil then
+            self.UGCPresetCommonDropItemComponent:StartDropByProduceID(
+                DropID,
+                -1,
+                EUGCGenerateItemEntityType.GenerateItemEntity_WrapperActor,
+                nil
+            )
+        end
+        --[[----------------------怪物死亡给击杀者加经验------------------------]] --
         local KillExp = PlayerLevelMgr:GetWaveKillExp(self.MonsterID)
         PlayerLevelMgr:AddExp(EventInstigator, KillExp)
+    end
 
+    if self:HasAuthority() then
         TaskMgr:AddTeamTaskProgressOnServer(L_Enum.AllTask.KillMonster, 1, EventInstigator)
         TitleMgr:OnDungeonClear(EventInstigator, 5)
     end
+
 end
 
 -- ---状态进入事件
