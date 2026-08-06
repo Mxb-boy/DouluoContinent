@@ -20,7 +20,6 @@
 ---@field Image_93 UImage
 ---@field Image_97 UImage
 ---@field Image_98 UImage
----@field Image_132 UImage
 ---@field Image_143 UImage
 ---@field Image_144 UImage
 ---@field Img_10 UImage
