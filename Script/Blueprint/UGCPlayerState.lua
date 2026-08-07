@@ -161,6 +161,32 @@ local function CloneArchiveDefault(DefaultValue)
     return Copy
 end
 
+local function ArchiveValuesEqual(Left, Right)
+    if Left == nil and type(Right) == "table" and next(Right) == nil then
+        return true
+    end
+    if Right == nil and type(Left) == "table" and next(Left) == nil then
+        return true
+    end
+    if type(Left) ~= type(Right) then
+        return false
+    end
+    if type(Left) ~= "table" then
+        return Left == Right
+    end
+    for Key, Value in pairs(Left) do
+        if not ArchiveValuesEqual(Value, Right[Key]) then
+            return false
+        end
+    end
+    for Key in pairs(Right) do
+        if Left[Key] == nil then
+            return false
+        end
+    end
+    return true
+end
+
 function UGCPlayerState:GetReplicatedProperties()
     return
         {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "WeaponLevels",
@@ -180,26 +206,27 @@ function UGCPlayerState:LoadFromArchive(UID)
     end
 
     self.ArchiveUID = UID
-    self.bArchiveLoaded = true
-
-    local ArchiveData = UGCPlayerStateSystem.GetPlayerArchiveData(UID, 1)
-    if ArchiveData == nil then
-        return
+    local ReadSucceeded, ArchiveData = pcall(UGCPlayerStateSystem.GetPlayerArchiveData, UID, 1)
+    if not ReadSucceeded then
+        self.bArchiveLoaded = false
+        return false
     end
 
     -- 加载过程中锁定 SaveToArchive，防止 Setter 中尚未还原的字段默认值被写入存档造成数据损坏
     self.bLoadingArchive = true
 
-    for _, entry in ipairs(ARCHIVE_KEYS) do
-        local val = ArchiveData[entry.key]
-        if val ~= nil then
-            local setterName = "Set" .. entry.field
-            if self[setterName] then
-                -- pcall 保护：单个 Setter 失败不影响其他字段加载，且确保锁一定能释放
-                local ok, err = pcall(self[setterName], self, val)
-                if not ok then
-                    print(string.format("[UGCPlayerState] LoadFromArchive: %s failed for key %s: %s", setterName,
-                        entry.key, tostring(err)))
+    if type(ArchiveData) == "table" then
+        for _, entry in ipairs(ARCHIVE_KEYS) do
+            local val = ArchiveData[entry.key]
+            if val ~= nil then
+                local setterName = "Set" .. entry.field
+                if self[setterName] then
+                    -- pcall 保护：单个 Setter 失败不影响其他字段加载，且确保锁一定能释放
+                    local ok, err = pcall(self[setterName], self, val)
+                    if not ok then
+                        print(string.format("[UGCPlayerState] LoadFromArchive: %s failed for key %s: %s", setterName,
+                            entry.key, tostring(err)))
+                    end
                 end
             end
         end
@@ -213,7 +240,8 @@ function UGCPlayerState:LoadFromArchive(UID)
 
     -- 无论循环中是否出错，都必须释放锁，否则后续所有 SaveToArchive 会被永久拦截
     self.bLoadingArchive = false
-    self:SaveToArchive()
+    self.bArchiveLoaded = self:SaveToArchive() == true
+    return self.bArchiveLoaded
 end
 
 --- 将注册表中所有字段的最新值写入官方存档系统（chunk 1）
@@ -221,12 +249,12 @@ end
 function UGCPlayerState:SaveToArchive()
     -- 加载存档期间禁止写入，防止 Setter 将尚未还原的字段默认值写入存档，导致数据损坏
     if self.bLoadingArchive then
-        return
+        return false
     end
 
     local UID = self.ArchiveUID
     if UID == nil or UID == 0 then
-        return
+        return false
     end
 
     local data = {}
@@ -239,15 +267,21 @@ function UGCPlayerState:SaveToArchive()
         data[entry.key] = v
     end
 
-    UGCPlayerStateSystem.SavePlayerArchiveData(UID, data, 1)
+    local CallSucceeded, SaveSucceeded = pcall(UGCPlayerStateSystem.SavePlayerArchiveData, UID, data, 1)
+    if not CallSucceeded or SaveSucceeded ~= true then
+        ugcprint("[UGCPlayerState] SaveToArchive failed uid=" .. tostring(UID) ..
+                     " result=" .. tostring(SaveSucceeded))
+        return false
+    end
+    return true
 end
 
 --- 将项目自有的角色养成数据恢复为 ARCHIVE_KEYS 中声明的默认值，并一次性覆盖保存 Chunk 1。
 --- 官方/扩展系统状态和付费功能权益由 GM_RESET_PRESERVED_FIELDS 明确保留。
----@return boolean
+---@return boolean, string|nil
 function UGCPlayerState:ResetProgressionToDefaults()
     if self.ArchiveUID == nil or tonumber(self.ArchiveUID) == 0 then
-        return false
+        return false, "invalid_archive_uid"
     end
 
     self.bLoadingArchive = true
@@ -260,13 +294,29 @@ function UGCPlayerState:ResetProgressionToDefaults()
     end
     self.bLoadingArchive = false
 
-    self:SaveToArchive()
+    if not self:SaveToArchive() then
+        return false, "save_failed"
+    end
+
+    local ReadSucceeded, SavedData = pcall(UGCPlayerStateSystem.GetPlayerArchiveData,
+        tonumber(self.ArchiveUID), 1)
+    if not ReadSucceeded or type(SavedData) ~= "table" then
+        return false, "readback_failed"
+    end
+    for _, Entry in ipairs(ARCHIVE_KEYS) do
+        if not GM_RESET_PRESERVED_FIELDS[Entry.field] and
+            not ArchiveValuesEqual(SavedData[Entry.key], Entry.default) then
+            ugcprint("[UGCPlayerState] reset readback mismatch field=" .. tostring(Entry.field))
+            return false, "readback_mismatch_" .. tostring(Entry.field)
+        end
+    end
+
     if _G.DOREPONCE ~= nil then
         for _, FieldName in ipairs(ResetFields) do
             _G.DOREPONCE(self, FieldName)
         end
     end
-    return true
+    return true, nil
 end
 
 -- ------ 属性读写 ------ --

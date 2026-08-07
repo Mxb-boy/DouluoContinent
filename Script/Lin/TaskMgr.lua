@@ -18,6 +18,9 @@ end
 
 --[[----------------------服务端调用------------------------]] --
 function TaskMgr:AddTaskProgressOnServer(TaskConfig, AddValue, PlayerController)
+    if PlayerController == nil or PlayerController.bGMResetInProgress == true then
+        return
+    end
     local Component, GM, TargetPC = self:GetTaskComponents(PlayerController)
 
     for _, TaskLineType in ipairs({"EveryDay", "EveryWeek"}) do
@@ -35,7 +38,8 @@ end
 
 --[[----------------------给同队玩家增加任务进度------------------------]] --
 function TaskMgr:AddTeamTaskProgressOnServer(TaskConfig, AddValue, PlayerController)
-    if PlayerController == nil or PlayerController.PlayerKey == nil then
+    if PlayerController == nil or PlayerController.PlayerKey == nil or
+        PlayerController.bGMResetInProgress == true then
         return
     end
 
@@ -46,8 +50,10 @@ function TaskMgr:AddTeamTaskProgressOnServer(TaskConfig, AddValue, PlayerControl
 
     local TeamPlayerControllers = UGCTeamSystem.GetPlayerControllersByTeamID(TeamID) or {}
     for _, TeamPlayerController in ipairs(TeamPlayerControllers) do
-        self:AddTaskProgressOnServer(TaskConfig, AddValue, TeamPlayerController)
-        TitleMgr:OnTaskProgress(TaskConfig.Key, AddValue, TeamPlayerController)
+        if TeamPlayerController ~= nil and TeamPlayerController.bGMResetInProgress ~= true then
+            self:AddTaskProgressOnServer(TaskConfig, AddValue, TeamPlayerController)
+            TitleMgr:OnTaskProgress(TaskConfig.Key, AddValue, TeamPlayerController)
+        end
     end
 end
 
@@ -126,6 +132,113 @@ function TaskMgr:CompleteDailyWeeklyTasksOnServer(PlayerController)
     local DailyResult = self:CompletePercentTaskLineOnServer("EveryDay", PlayerController)
     local WeeklyResult = self:CompletePercentTaskLineOnServer("EveryWeek", PlayerController)
     return DailyResult, WeeklyResult
+end
+
+local RESET_TASK_LINE_TYPES = {"EveryDay", "EveryWeek"}
+
+local function GetConfiguredTaskLineNames()
+    local Names = {}
+    local Count = 0
+    for _, TaskConfig in pairs(TaskConfigEnum.AllTask or {}) do
+        for _, TaskLineType in ipairs(RESET_TASK_LINE_TYPES) do
+            local TaskInfo = TaskConfig[TaskLineType]
+            if TaskInfo ~= nil and TaskInfo.TaskLineName ~= nil and Names[TaskInfo.TaskLineName] ~= true then
+                Names[TaskInfo.TaskLineName] = true
+                Count = Count + 1
+            end
+        end
+    end
+    return Names, Count
+end
+
+--- 重置当前玩家的每日、每周活跃任务线，包括进度、活跃度和奖励状态。
+---@param PlayerController userdata
+---@return boolean, string|nil
+function TaskMgr:ResetDailyWeeklyTasksOnServer(PlayerController)
+    local Component, _, TargetPC = self:GetTaskComponents(PlayerController)
+    if Component == nil or TargetPC == nil or Component.ResetPercentTaskLine == nil then
+        return false, "task_component_unavailable"
+    end
+
+    local TaskLineNames, TaskLineCount = GetConfiguredTaskLineNames()
+    if TaskLineCount == 0 then
+        return false, "no_configured_task_lines"
+    end
+    for TaskLineName in pairs(TaskLineNames) do
+        local Success, Error = pcall(Component.ResetPercentTaskLine, Component, TaskLineName)
+        if not Success then
+            ugcprint("[GMTaskReset] reset failed line=" .. tostring(TaskLineName) ..
+                         " error=" .. tostring(Error))
+            return false, "reset_failed_" .. tostring(TaskLineName) .. "_error_" .. tostring(Error)
+        end
+    end
+    return true, nil
+end
+
+---@param PlayerController userdata
+---@return boolean, string|nil
+function TaskMgr:VerifyDailyWeeklyTasksReset(PlayerController)
+    local Component, _, TargetPC = self:GetTaskComponents(PlayerController)
+    if Component == nil or TargetPC == nil or Component.GetPercentTaskProgress == nil or
+        Component.GetTaskLineProgress == nil or Component.GetPercentTaskState == nil then
+        return false, "task_component_unavailable"
+    end
+
+    local TaskLineNames, TaskLineCount = GetConfiguredTaskLineNames()
+    if TaskLineCount == 0 then
+        return false, "no_configured_task_lines"
+    end
+    for TaskLineName in pairs(TaskLineNames) do
+        local Success, Progress = pcall(Component.GetTaskLineProgress, Component, TaskLineName)
+        Progress = tonumber(Progress)
+        if not Success or Progress == nil or Progress ~= 0 then
+            return false, "task_line_progress_" .. tostring(TaskLineName) .. "_actual_" ..
+                              tostring(Progress) .. "_callSucceeded_" .. tostring(Success)
+        end
+
+        -- ResetPercentTaskLine is the documented API that resets line progress and rewards.
+        -- GetPercentTaskLineAwardStateList is not part of the public API and is absent on
+        -- some PC/mobile runtimes, so verification must not depend on it.
+    end
+
+    for _, TaskConfig in pairs(TaskConfigEnum.AllTask or {}) do
+        for _, TaskLineType in ipairs(RESET_TASK_LINE_TYPES) do
+            local TaskInfo = TaskConfig[TaskLineType]
+            if TaskInfo ~= nil then
+                local Success, Progress = pcall(Component.GetPercentTaskProgress, Component,
+                    TaskInfo.TaskLineName, TaskInfo.TaskIndex)
+                Progress = tonumber(Progress)
+                if not Success or Progress == nil or Progress ~= 0 then
+                    ugcprint("[GMTaskReset] verify failed key=" .. tostring(TaskConfig.Key) ..
+                                 " line=" .. tostring(TaskInfo.TaskLineName) ..
+                                 " progress=" .. tostring(Progress))
+                    return false, "task_progress_" .. tostring(TaskConfig.Key) .. "_actual_" ..
+                                      tostring(Progress) .. "_callSucceeded_" .. tostring(Success)
+                end
+                local StateSuccess, TaskState = pcall(Component.GetPercentTaskState, Component,
+                    TaskInfo.TaskLineName, TaskInfo.TaskIndex)
+                if not StateSuccess or TaskState == nil then
+                    ugcprint("[GMTaskReset] verify task state failed key=" .. tostring(TaskConfig.Key) ..
+                                 " state=" .. tostring(TaskState))
+                    return false, "task_state_" .. tostring(TaskConfig.Key) .. "_actual_" ..
+                                      tostring(TaskState) .. "_callSucceeded_" .. tostring(StateSuccess)
+                end
+                -- Enum values differ between template/runtime versions. Only reject
+                -- completed states that the current runtime exposes by name; never
+                -- guess numeric fallback values.
+                local NotClaimed = EUGCTaskState ~= nil and EUGCTaskState.NotClaimed or nil
+                local HasClaimed = EUGCTaskState ~= nil and EUGCTaskState.HasClaimed or nil
+                if (NotClaimed ~= nil and TaskState == NotClaimed) or
+                    (HasClaimed ~= nil and TaskState == HasClaimed) then
+                    ugcprint("[GMTaskReset] completed state remained after reset key=" ..
+                                 tostring(TaskConfig.Key) .. " state=" .. tostring(TaskState))
+                    return false, "task_completed_state_" .. tostring(TaskConfig.Key) .. "_actual_" ..
+                                      tostring(TaskState)
+                end
+            end
+        end
+    end
+    return true, nil
 end
 
 --[[---------------------获取任务组件-------------------------]] --

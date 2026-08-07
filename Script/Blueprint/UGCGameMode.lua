@@ -1,6 +1,8 @@
 ---@class UGCGameMode_C:BP_UGCGameBase_C
 -- Edit Below--
 local UGCGameMode = {};
+local RuntimeLog = UGCGameSystem.UGCRequire("Script.Common.RuntimeLog")
+RuntimeLog.Install("SERVER")
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
@@ -664,7 +666,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             end
 
             -- 2. 发初始武器和物资。GM 重置复用同一入口，避免两套初始配置漂移。
-            PlayerInitialData.Grant(PC.Pawn, HTCLv2ItemID)
+            PlayerInitialData.Grant(PC.Pawn)
             if PC.SyncWeaponBackpackNames ~= nil then
                 PC:SyncWeaponBackpackNames()
             end

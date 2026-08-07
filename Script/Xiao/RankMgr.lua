@@ -239,7 +239,8 @@ end
 
 function RankMgr:TryUploadCurrentZhanLi()
     local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
-    if StateMgr == nil or StateMgr.GetRankZhanLi == nil then
+    if StateMgr == nil or StateMgr.GetRankZhanLi == nil or
+        StateMgr.bPlayerDataResetInProgress == true then
         return false
     end
 

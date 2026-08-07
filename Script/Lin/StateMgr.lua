@@ -31,6 +31,7 @@ local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
 function StateMgr:SetUI(ui)
     self.UI = ui
     self.bServerSynced = false -- 新 UI/新对局时重置，等待服务器首次同步
+    self.bPlayerDataResetInProgress = false
     self:Init()
 
     local pawn = UGCGameSystem.GetLocalPlayerPawn()
@@ -222,7 +223,8 @@ function StateMgr:CountFinalZhanLi()
     self.UI.TextBlock_303:SetText("战力" .. Ma_NumShow.Format(DisplayZhanLi))
 
     -- 首次服务端属性同步完成后才上报；相同分数由 RankMgr 去重，连续更新由官方排行榜合并。
-    if self.bServerSynced and RankMgr ~= nil and RankMgr.TryUploadCurrentZhanLi ~= nil then
+    if self.bServerSynced and self.bPlayerDataResetInProgress ~= true and RankMgr ~= nil and
+        RankMgr.TryUploadCurrentZhanLi ~= nil then
         RankMgr:TryUploadCurrentZhanLi()
     end
 end

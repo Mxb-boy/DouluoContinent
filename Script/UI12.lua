@@ -97,7 +97,6 @@ function UI12:OnCloseClicked()
     self:SetVisibility(ESlateVisibility.Collapsed)
 end
 
---- 刷新传送点列表（每次打开都会重新评估战力门槛）
 function UI12:RefreshList()
     -- 获取当前战力
     local playerPawn = UGCGameSystem.GetLocalPlayerPawn()
