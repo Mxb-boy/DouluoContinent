@@ -1,7 +1,10 @@
 ---@class wq1_C:UUserWidget
----@field Btn_LeftSlot_1 UButton
----@field Img_LeftLong_1 UImage
----@field Img_LeftSelected_1 UImage
+---@field Button_0 UButton
+---@field Button_154 UButton
+---@field Image_0 UImage
+---@field Image_1 UImage
+---@field Image_181 UImage
+---@field Image_182 UImage
 --Edit Below--
 local wq1 = { bInitDoOnce = false } 
 
