@@ -2,10 +2,12 @@ local GM = {}
 local PlayerInitialData = UGCGameSystem.UGCRequire("Script.Common.PlayerInitialData")
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TitleConfig = UGCGameSystem.UGCRequire("Script.Common.TitleConfig")
+local GMResetLog = UGCGameSystem.UGCRequire("Script.Common.GMResetLog")
 
 local PLAYER_SKILL_1_PATH = "Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/PlayerSkill_1.PlayerSkill_1_C"
 local RESET_RETRY_DELAY = 0.5
-local RESET_CLEAR_MAX_ATTEMPTS = 6
+local RESET_CLEAR_MAX_ATTEMPTS = 128
+local RESET_CLEAR_MAX_STALLED_ATTEMPTS = 4
 local RESET_ARCHIVE_MAX_ATTEMPTS = 3
 local RESET_TASK_MAX_ATTEMPTS = 3
 local RESET_GRANT_MAX_ATTEMPTS = 4
@@ -41,7 +43,45 @@ function GM:Register(DebugUI)
              "S_GrantCustomTitle"}
         }
     }
+    CurFuncList["调试"]["运行日志"] = {
+        {UGCGMUI.ItemTypeEnum.Button, { {"打开运行日志"}, {"查看当前客户端和服务端Lua日志"} },
+         "C_OpenRuntimeLog"},
+        {UGCGMUI.ItemTypeEnum.TextInput,
+         { {"搜索运行日志", "输入关键词后过滤当前日志"}, {"输入关键词后打开过滤结果"} },
+         "C_SearchRuntimeLog"},
+        {UGCGMUI.ItemTypeEnum.Button, { {"清空运行日志"}, {"清空当前客户端日志缓存"} },
+         "C_ClearRuntimeLog"}
+    }
     return CurFuncList
+end
+
+function GM:C_OpenRuntimeLog(Param)
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+    if PlayerController ~= nil and PlayerController.OpenRuntimeLogConsole ~= nil then
+        PlayerController:OpenRuntimeLogConsole("")
+    end
+end
+
+function GM:C_SearchRuntimeLog(Param)
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+    if PlayerController ~= nil and PlayerController.OpenRuntimeLogConsole ~= nil then
+        PlayerController:OpenRuntimeLogConsole(tostring(Param or ""))
+    end
+end
+
+function GM:C_ClearRuntimeLog(Param)
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+    if PlayerController ~= nil and PlayerController.ClearRuntimeLogs ~= nil then
+        PlayerController:ClearRuntimeLogs()
+    end
+end
+
+GM.C_OpenGMResetLog = GM.C_OpenRuntimeLog
+GM.C_SearchGMResetLog = GM.C_SearchRuntimeLog
+GM.C_ClearGMResetLog = GM.C_ClearRuntimeLog
+
+local function LogReset(PlayerController, Level, Stage, Message)
+    GMResetLog.Emit(PlayerController, Level, Stage, Message)
 end
 
 local function GetPlayerPawn(PlayerController)
@@ -70,22 +110,36 @@ local function RemoveLevelSkill(PlayerPawn)
         return
     end
 
-    if type(Skills) ~= "table" then
-        Skills = {Skills}
+    local SkillInstances = {}
+    local CountSucceeded, SkillCount = pcall(function()
+        return #Skills
+    end)
+    if CountSucceeded and tonumber(SkillCount) ~= nil then
+        for Index = 1, tonumber(SkillCount) do
+            local ReadSucceeded, SkillInstance = pcall(function()
+                return Skills[Index]
+            end)
+            if ReadSucceeded and SkillInstance ~= nil then
+                table.insert(SkillInstances, SkillInstance)
+            end
+        end
+    elseif Skills ~= nil then
+        table.insert(SkillInstances, Skills)
     end
-    for _, SkillInstance in pairs(Skills) do
+
+    -- Release the engine array wrapper before removals mutate the source array.
+    Skills = nil
+    for _, SkillInstance in ipairs(SkillInstances) do
         pcall(UGCPersistEffectSystem.RemoveSkillInstance, PlayerPawn, SkillInstance)
     end
 end
 
-local function ScheduleResetStep(Callback)
+local function ScheduleResetStep(PlayerController, PlayerKey, Stage, Callback)
     UGCTimerUtility.CreateLuaTimer(RESET_RETRY_DELAY, function()
         local Success, Error = pcall(Callback)
         if not Success then
-            for PlayerKey, Transaction in pairs(ResetTransactions) do
-                FailReset(Transaction.PlayerController, PlayerKey, "stage_exception_" .. tostring(Error))
-                break
-            end
+            LogReset(PlayerController, "ERROR", Stage, "exception=" .. tostring(Error))
+            FailReset(PlayerController, PlayerKey, "stage_exception_" .. tostring(Stage))
         end
     end, false)
 end
@@ -106,23 +160,29 @@ end
 
 FailReset = function(PlayerController, PlayerKey, Reason)
     local Transaction, PlayerPawn = GetActiveResetContext(PlayerController, PlayerKey)
-    if Transaction ~= nil and Transaction.BackpackCleared and PlayerPawn ~= nil then
+    local BackpackWasModified = Transaction ~= nil and
+                                    (Transaction.BackpackCleared == true or
+                                        (tonumber(Transaction.RemoveRequests) or 0) > 0)
+    if BackpackWasModified and PlayerPawn ~= nil then
         local GrantCallSucceeded, Granted = pcall(PlayerInitialData.Grant, PlayerPawn)
         local Verified = false
         if GrantCallSucceeded and Granted then
             local VerifyCallSucceeded, VerifyResult = pcall(PlayerInitialData.VerifyGrant, PlayerPawn)
             Verified = VerifyCallSucceeded and VerifyResult == true
         end
-        ugcprint("[GMReset] compensation player=" .. tostring(PlayerKey) ..
-                     " granted=" .. tostring(GrantCallSucceeded and Granted) .. " verified=" .. tostring(Verified))
+        LogReset(PlayerController, Verified and "WARN" or "ERROR", "compensation",
+            "grant=" .. tostring(GrantCallSucceeded and Granted) .. " verified=" .. tostring(Verified))
     end
     ResetTransactions[PlayerKey] = nil
     if PlayerController ~= nil and (UE.IsValid == nil or UE.IsValid(PlayerController)) then
         PlayerController.bGMResetInProgress = false
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
             "玩家数据重置失败，请查看日志后重试")
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_PlayerDataResetFailed")
     end
-    ugcprint("[GMReset] failed player=" .. tostring(PlayerKey) .. " reason=" .. tostring(Reason))
+    local RemovedCount = Transaction ~= nil and Transaction.RemoveRequests or 0
+    LogReset(PlayerController, "ERROR", "failed",
+        "reason=" .. tostring(Reason) .. " removedItemInstances=" .. tostring(RemovedCount))
 end
 
 local function FinalizeServerState(PlayerController, PlayerPawn, PlayerState)
@@ -168,65 +228,91 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
     local PlayerKey = PlayerController ~= nil and PlayerController.PlayerKey ~= nil and
                           tostring(PlayerController.PlayerKey) or nil
     if PlayerController == nil or PlayerPawn == nil or PlayerState == nil or PlayerKey == nil then
-        ugcprint("[GMReset] rejected: PlayerController, Pawn or PlayerState is nil")
+        LogReset(PlayerController, "ERROR", "validation", "player_controller_pawn_or_state_nil")
         return
     end
     if PlayerState.bArchiveLoaded ~= true or PlayerState.ResetProgressionToDefaults == nil then
-        ugcprint("[GMReset] rejected: player archive is not ready")
+        LogReset(PlayerController, "ERROR", "validation", "archive_not_ready")
         return
     end
     if ResetTransactions[PlayerKey] ~= nil or PlayerController.bGMResetInProgress == true then
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
             "玩家数据正在重置，请勿重复点击")
-        ugcprint("[GMReset] rejected: reset already in progress player=" .. PlayerKey)
+        LogReset(PlayerController, "WARN", "validation", "reset_already_in_progress")
         return
     end
 
     local Transaction = {
         PlayerController = PlayerController,
-        RemovedItemInstances = 0,
-        BackpackCleared = false
+        RemoveRequests = 0,
+        BackpackCleared = false,
+        LastBackpackRemaining = nil,
+        ClearStalledAttempts = 0
     }
     ResetTransactions[PlayerKey] = Transaction
     PlayerController.bGMResetInProgress = true
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_PlayerDataResetStarted")
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
         "正在重置玩家数据，请稍候")
-    ugcprint("[GMReset] request player=" .. PlayerKey)
+    LogReset(PlayerController, "INFO", "start", "reset transaction accepted")
 
     local ClearBackpackStep
     local ResetArchiveStep
     local ResetTasksStep
     local GrantItemsStep
 
-    ClearBackpackStep = function(Attempt)
+    ClearBackpackStep = function(Attempt, VerifyOnly)
+        LogReset(PlayerController, "INFO", "backpack_clear",
+            "attempt=" .. tostring(Attempt) .. " verifyOnly=" .. tostring(VerifyOnly == true))
         local ActiveTransaction, ActivePawn = GetActiveResetContext(PlayerController, PlayerKey)
         if ActiveTransaction == nil or ActivePawn == nil then
             FailReset(PlayerController, PlayerKey, "player_context_lost_during_clear")
             return
         end
 
-        local Cleared, RemovedCount, Remaining = PlayerInitialData.ClearBackpack(ActivePawn)
-        ActiveTransaction.RemovedItemInstances = ActiveTransaction.RemovedItemInstances +
-                                                     (tonumber(RemovedCount) or 0)
+        local Cleared, RemovedCount, RemainingCount, Detail =
+            PlayerInitialData.ClearBackpack(ActivePawn, VerifyOnly)
+        ActiveTransaction.RemoveRequests = ActiveTransaction.RemoveRequests + (tonumber(RemovedCount) or 0)
+        if ActiveTransaction.LastBackpackRemaining ~= nil and RemainingCount >= 0 and
+            RemainingCount >= ActiveTransaction.LastBackpackRemaining then
+            ActiveTransaction.ClearStalledAttempts = ActiveTransaction.ClearStalledAttempts + 1
+        else
+            ActiveTransaction.ClearStalledAttempts = 0
+        end
+        ActiveTransaction.LastBackpackRemaining = RemainingCount
+        LogReset(PlayerController, Cleared and "INFO" or "WARN", "backpack_clear",
+            "attempt=" .. tostring(Attempt) .. " cleared=" .. tostring(Cleared) ..
+                " removeRequests=" .. tostring(RemovedCount) .. " remaining=" ..
+                tostring(RemainingCount) .. " stalled=" ..
+                tostring(ActiveTransaction.ClearStalledAttempts) .. " detail=" .. tostring(Detail))
         if Cleared then
             ActiveTransaction.BackpackCleared = true
-            ugcprint("[GMReset] backpack cleared player=" .. PlayerKey ..
-                         " attempts=" .. tostring(Attempt))
             ResetArchiveStep(1)
             return
         end
-        if Attempt >= RESET_CLEAR_MAX_ATTEMPTS then
+        if ActiveTransaction.ClearStalledAttempts >= RESET_CLEAR_MAX_STALLED_ATTEMPTS then
             FailReset(PlayerController, PlayerKey,
-                "backpack_remaining_" .. tostring(Remaining ~= nil and #Remaining or -1))
+                "backpack_stalled_" .. tostring(RemainingCount) .. "_" .. tostring(Detail))
             return
         end
-        ScheduleResetStep(function()
+        if VerifyOnly == true then
+            FailReset(PlayerController, PlayerKey,
+                "backpack_attempt_limit_remaining_" .. tostring(RemainingCount))
+            return
+        end
+        if Attempt >= RESET_CLEAR_MAX_ATTEMPTS then
+            ScheduleResetStep(PlayerController, PlayerKey, "backpack_final_verify", function()
+                ClearBackpackStep(Attempt + 1, true)
+            end)
+            return
+        end
+        ScheduleResetStep(PlayerController, PlayerKey, "backpack_retry", function()
             ClearBackpackStep(Attempt + 1)
         end)
     end
 
     ResetArchiveStep = function(Attempt)
+        LogReset(PlayerController, "INFO", "archive_reset", "attempt=" .. tostring(Attempt))
         local ActiveTransaction, _, ActiveState = GetActiveResetContext(PlayerController, PlayerKey)
         if ActiveTransaction == nil or ActiveState == nil then
             FailReset(PlayerController, PlayerKey, "player_context_lost_during_archive")
@@ -234,9 +320,10 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
         end
 
         local Saved, Reason = ActiveState:ResetProgressionToDefaults()
+        LogReset(PlayerController, Saved and "INFO" or "WARN", "archive_reset",
+            "attempt=" .. tostring(Attempt) .. " verified=" .. tostring(Saved) ..
+                " reason=" .. tostring(Reason))
         if Saved then
-            ugcprint("[GMReset] archive defaults verified player=" .. PlayerKey ..
-                         " attempts=" .. tostring(Attempt))
             ResetTasksStep(1)
             return
         end
@@ -244,12 +331,13 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
             FailReset(PlayerController, PlayerKey, "archive_" .. tostring(Reason))
             return
         end
-        ScheduleResetStep(function()
+        ScheduleResetStep(PlayerController, PlayerKey, "archive_retry", function()
             ResetArchiveStep(Attempt + 1)
         end)
     end
 
     ResetTasksStep = function(Attempt)
+        LogReset(PlayerController, "INFO", "tasks_reset", "attempt=" .. tostring(Attempt))
         local ActiveTransaction = GetActiveResetContext(PlayerController, PlayerKey)
         if ActiveTransaction == nil then
             FailReset(PlayerController, PlayerKey, "player_context_lost_during_tasks")
@@ -257,27 +345,31 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
         end
 
         local Requested, RequestReason = TaskMgr:ResetDailyWeeklyTasksOnServer(PlayerController)
+        LogReset(PlayerController, Requested and "INFO" or "WARN", "tasks_reset",
+            "attempt=" .. tostring(Attempt) .. " requested=" .. tostring(Requested) ..
+                " reason=" .. tostring(RequestReason))
         if not Requested then
             if Attempt >= RESET_TASK_MAX_ATTEMPTS then
                 FailReset(PlayerController, PlayerKey, "tasks_" .. tostring(RequestReason))
             else
-                ScheduleResetStep(function()
+                ScheduleResetStep(PlayerController, PlayerKey, "tasks_retry", function()
                     ResetTasksStep(Attempt + 1)
                 end)
             end
             return
         end
 
-        ScheduleResetStep(function()
+        ScheduleResetStep(PlayerController, PlayerKey, "tasks_verify", function()
             local VerifyTransaction = GetActiveResetContext(PlayerController, PlayerKey)
             if VerifyTransaction == nil then
                 FailReset(PlayerController, PlayerKey, "player_context_lost_during_task_verify")
                 return
             end
             local Verified, VerifyReason = TaskMgr:VerifyDailyWeeklyTasksReset(PlayerController)
+            LogReset(PlayerController, Verified and "INFO" or "WARN", "tasks_verify",
+                "attempt=" .. tostring(Attempt) .. " verified=" .. tostring(Verified) ..
+                    " reason=" .. tostring(VerifyReason))
             if Verified then
-                ugcprint("[GMReset] task lines verified player=" .. PlayerKey ..
-                             " attempts=" .. tostring(Attempt))
                 GrantItemsStep(1)
             elseif Attempt >= RESET_TASK_MAX_ATTEMPTS then
                 FailReset(PlayerController, PlayerKey, "tasks_" .. tostring(VerifyReason))
@@ -288,14 +380,22 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
     end
 
     GrantItemsStep = function(Attempt)
+        LogReset(PlayerController, "INFO", "initial_items_grant", "attempt=" .. tostring(Attempt))
         local ActiveTransaction, ActivePawn, ActiveState = GetActiveResetContext(PlayerController, PlayerKey)
         if ActiveTransaction == nil or ActivePawn == nil or ActiveState == nil then
             FailReset(PlayerController, PlayerKey, "player_context_lost_during_grant")
             return
         end
 
-        PlayerInitialData.Grant(ActivePawn)
-        ScheduleResetStep(function()
+        local GrantCallSucceeded, GrantResult = pcall(PlayerInitialData.Grant, ActivePawn)
+        LogReset(PlayerController, GrantCallSucceeded and GrantResult and "INFO" or "WARN",
+            "initial_items_grant", "attempt=" .. tostring(Attempt) .. " callSucceeded=" ..
+                tostring(GrantCallSucceeded) .. " result=" .. tostring(GrantResult))
+        if not GrantCallSucceeded then
+            FailReset(PlayerController, PlayerKey, "initial_items_grant_exception")
+            return
+        end
+        ScheduleResetStep(PlayerController, PlayerKey, "initial_items_verify", function()
             local VerifyTransaction, VerifyPawn, VerifyState =
                 GetActiveResetContext(PlayerController, PlayerKey)
             if VerifyTransaction == nil or VerifyPawn == nil or VerifyState == nil then
@@ -304,9 +404,15 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
             end
 
             local Verified, Mismatches = PlayerInitialData.VerifyGrant(VerifyPawn)
+            local First = Mismatches ~= nil and Mismatches[1] or nil
+            local MismatchDetail = First ~= nil and
+                                       (" itemID=" .. tostring(First.ItemID) .. " actual=" ..
+                                           tostring(First.Actual) .. " expected=" .. tostring(First.Expected)) or ""
+            LogReset(PlayerController, Verified and "INFO" or "WARN", "initial_items_verify",
+                "attempt=" .. tostring(Attempt) .. " verified=" .. tostring(Verified) ..
+                    " mismatchCount=" .. tostring(Mismatches ~= nil and #Mismatches or 0) .. MismatchDetail)
             if not Verified then
                 if Attempt >= RESET_GRANT_MAX_ATTEMPTS then
-                    local First = Mismatches ~= nil and Mismatches[1] or nil
                     local Detail = First ~= nil and
                                        (tostring(First.ItemID) .. "_" .. tostring(First.Actual) .. "_of_" ..
                                            tostring(First.Expected)) or "unknown"
@@ -321,9 +427,9 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
             UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
                 "玩家数据已重置，即将返回大厅")
             UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_PlayerDataReset")
-            ugcprint("[GMReset] completed player=" .. PlayerKey ..
-                         " removedItemInstances=" .. tostring(ActiveTransaction.RemovedItemInstances) ..
-                         " grantAttempts=" .. tostring(Attempt))
+            LogReset(PlayerController, "INFO", "completed",
+                "removeRequests=" .. tostring(ActiveTransaction.RemoveRequests) ..
+                    " grantAttempts=" .. tostring(Attempt) .. " returningToLobby=true")
             ResetTransactions[PlayerKey] = nil
             UGCTimerUtility.CreateLuaTimer(8, function()
                 if PlayerController ~= nil and (UE.IsValid == nil or UE.IsValid(PlayerController)) then
@@ -335,6 +441,7 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
 
     local StartSucceeded, StartError = pcall(ClearBackpackStep, 1)
     if not StartSucceeded then
+        LogReset(PlayerController, "ERROR", "start", "exception=" .. tostring(StartError))
         FailReset(PlayerController, PlayerKey, "stage_exception_" .. tostring(StartError))
     end
 end

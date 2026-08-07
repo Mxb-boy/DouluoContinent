@@ -15,6 +15,8 @@
 ---@field SignInEventComponent SignInEventComponent_C
 -- Edit Below--
 local UGCPlayerController = {}
+local RuntimeLog = UGCGameSystem.UGCRequire("Script.Common.RuntimeLog")
+RuntimeLog.Install(UGCGameSystem.IsServer() and "SERVER" or "CLIENT")
 local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
@@ -69,6 +71,8 @@ end
 
 function UGCPlayerController:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
+    -- Retry after engine globals are injected so the real ugcprint is captured.
+    RuntimeLog.Install(UGCGameSystem.IsServer() and "SERVER" or "CLIENT")
 
     -- 临时修复：官方公告模块未加载时，防止引擎框架报 nil 索引警告
     if UpdateNoticeInGameUI == nil then
@@ -163,7 +167,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden", "Client_ShowMonsterDamageNumber",
         "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
         "Server_RequestFreePaTa", "Server_RequestTicketPaTa", "Client_ShowToast", "Client_PlayerDataReset",
-        "Client_PlayerDataResetStarted",
+        "Client_PlayerDataResetStarted", "Client_PlayerDataResetFailed", "Client_GMResetLogEntry",
+        "Server_RequestRuntimeLogs", "Server_RuntimeLogProbe", "Client_RuntimeLogBatch",
         "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
         "ServerRequestDisbandTeam", "UseRedemptionCode"
 end
@@ -2026,6 +2031,10 @@ end
 
 -- WBP_RankingListBtn 更新排行榜服务端--要走官方测试按钮暂时没开
 function UGCPlayerController:Server_UpdateRankingListScore(UID, RankID, Score, IsIncremental)
+    if self.bGMResetInProgress == true then
+        ugcprint("[GMReset] ranking update blocked during reset player=" .. tostring(self.PlayerKey))
+        return
+    end
     local RankingListGlobalActor = UGCGamePartSystem.GetGamePartGlobalActor("RankingListManager")
     if RankingListGlobalActor == nil then
         ugcprint("[UGCPlayerController:Server_UpdateRankingListScore] RankingListManager global actor is nil")
@@ -2202,6 +2211,133 @@ function UGCPlayerController:Client_ShowToast(text)
     L_Com.ShowToast(tostring(text or ""))
 end
 
+function UGCPlayerController:Client_GMResetLogEntry(Level, Stage, Message, TimeText, Sequence)
+    local Text = "[GM_RESET][" .. tostring(Stage or "unknown") .. "] seq=" ..
+                     tostring(Sequence or 0) .. " " .. tostring(Message or "")
+    -- Keep a distinct source so this dedicated RPC does not advance the generic
+    -- server-log sequence cursor with a client-local sequence number.
+    RuntimeLog.AppendForwarded("SERVER_GM", TimeText, Level, Text)
+    if self.RuntimeLogUIInstance ~= nil and
+        (UE.IsValid == nil or UE.IsValid(self.RuntimeLogUIInstance)) and
+        self.RuntimeLogUIInstance.RefreshRuntimeLogs ~= nil then
+        self.RuntimeLogUIInstance.PageIndex = 1
+        self.RuntimeLogUIInstance:RefreshRuntimeLogs()
+    end
+end
+
+function UGCPlayerController:Server_RequestRuntimeLogs(AfterSequence)
+    if not UGCGameSystem.IsServer() then
+        return
+    end
+    local Batch, LastSequence, HasMore = RuntimeLog.GetServerBatch(AfterSequence, RuntimeLog.BATCH_SIZE)
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_RuntimeLogBatch", Batch, LastSequence, HasMore)
+end
+
+function UGCPlayerController:Server_RuntimeLogProbe()
+    if not UGCGameSystem.IsServer() then
+        return
+    end
+    RuntimeLog.Info("[LOG_PROBE][SERVER][INFO] server capture path active")
+    RuntimeLog.Warn("[LOG_PROBE][SERVER][WARN] sample warning for search validation")
+    RuntimeLog.Error("[LOG_PROBE][SERVER][ERROR] sample error for red level validation")
+end
+
+function UGCPlayerController:Client_RuntimeLogBatch(BatchText, LastSequence, HasMore)
+    self.RuntimeLogSyncPending = false
+    for Line in string.gmatch(tostring(BatchText or ""), "[^\n]+") do
+        local Sequence, TimeText, Level, Message = string.match(Line, "^(.-)\t(.-)\t(.-)\t(.*)$")
+        if Sequence ~= nil then
+            RuntimeLog.AppendRemote(tonumber(Sequence), TimeText, Level, Message)
+        end
+    end
+    RuntimeLog.SetServerCursor(tonumber(LastSequence) or 0)
+    if tonumber(HasMore) ~= 1 and self.RuntimeLogUIInstance ~= nil and
+        (UE.IsValid == nil or UE.IsValid(self.RuntimeLogUIInstance)) and
+        self.RuntimeLogUIInstance.RefreshRuntimeLogs ~= nil then
+        self.RuntimeLogUIInstance:RefreshRuntimeLogs()
+    end
+    if tonumber(HasMore) == 1 then
+        local ContinueSync = function()
+            self:RequestRuntimeLogSync()
+        end
+        if UGCTimerUtility ~= nil and UGCTimerUtility.CreateLuaTimer ~= nil then
+            UGCTimerUtility.CreateLuaTimer(0.05, ContinueSync, false)
+        else
+            ContinueSync()
+        end
+    end
+end
+
+function UGCPlayerController:RequestRuntimeLogSync()
+    if self:HasAuthority() then
+        return
+    end
+    if self.RuntimeLogSyncPending == true then
+        return
+    end
+    self.RuntimeLogSyncPending = true
+    local Success = pcall(UnrealNetwork.CallUnrealRPC, self, self, "Server_RequestRuntimeLogs",
+        RuntimeLog.GetLatestServerSequence())
+    if not Success then
+        self.RuntimeLogSyncPending = false
+    end
+end
+
+function UGCPlayerController:ClearRuntimeLogs()
+    RuntimeLog.Clear()
+    if self.RuntimeLogUIInstance ~= nil and
+        (UE.IsValid == nil or UE.IsValid(self.RuntimeLogUIInstance)) and
+        self.RuntimeLogUIInstance.RefreshRuntimeLogs ~= nil then
+        self.RuntimeLogUIInstance:RefreshRuntimeLogs()
+    end
+    self:Client_ShowToast("日志已清空")
+end
+
+function UGCPlayerController:OpenRuntimeLogConsole(SearchText)
+    RuntimeLog.Info("[LOG_PROBE][CLIENT][INFO] client capture path active")
+    RuntimeLog.Warn("[LOG_PROBE][CLIENT][WARN] sample warning for search validation")
+    RuntimeLog.Error("[LOG_PROBE][CLIENT][ERROR] sample error for red level validation")
+    pcall(UnrealNetwork.CallUnrealRPC, self, self, "Server_RuntimeLogProbe")
+    local Existing = self.RuntimeLogUIInstance
+    if Existing ~= nil and (UE.IsValid == nil or UE.IsValid(Existing)) then
+        Existing:SetVisibility(ESlateVisibility.Visible)
+        if Existing.OpenRuntimeLogs ~= nil then
+            Existing:OpenRuntimeLogs(tostring(SearchText or ""))
+        end
+        self:RequestRuntimeLogSync()
+        return
+    end
+
+    local UIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath(
+        "Asset/Blueprint/UI/GMLogConsole.GMLogConsole_C"))
+    if UIClass == nil then
+        self:Client_ShowToast("日志界面加载失败")
+        ugcprint("[RuntimeLogUI] GMLogConsole class load failed")
+        return
+    end
+    local Widget = UserWidget.NewWidgetObjectBP(self, UIClass)
+    if Widget == nil then
+        self:Client_ShowToast("日志界面创建失败")
+        ugcprint("[RuntimeLogUI] GMLogConsole widget create failed")
+        return
+    end
+    self.RuntimeLogUIInstance = Widget
+    Widget:AddToViewport(12000)
+    if Widget.OpenRuntimeLogs ~= nil then
+        Widget:OpenRuntimeLogs(tostring(SearchText or ""))
+    end
+    self:RequestRuntimeLogSync()
+end
+
+-- Compatibility aliases keep existing GM scripts working while using the new console.
+function UGCPlayerController:OpenGMResetLogUI(SearchText)
+    self:OpenRuntimeLogConsole(SearchText)
+end
+
+function UGCPlayerController:ClearGMResetLogs()
+    self:ClearRuntimeLogs()
+end
+
 --- GM 重置完成后的客户端收口刷新，不触发“突破成功/失败”等业务提示。
 function UGCPlayerController:Client_PlayerDataResetStarted()
     local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
@@ -2209,6 +2345,15 @@ function UGCPlayerController:Client_PlayerDataResetStarted()
         StateMgr.bPlayerDataResetInProgress = true
         StateMgr.bServerSynced = false
     end
+end
+
+function UGCPlayerController:Client_PlayerDataResetFailed()
+    local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+    if StateMgr ~= nil then
+        StateMgr.bPlayerDataResetInProgress = false
+        StateMgr.bServerSynced = false
+    end
+    UnrealNetwork.CallUnrealRPC(self, self, "Server_RequestRefreshProperty")
 end
 
 function UGCPlayerController:Client_PlayerDataReset()
@@ -2275,6 +2420,10 @@ local function FormatAFKRewardValue(value)
 end
 
 function UGCPlayerController:Server_AddFixedBaseProperty()
+    if self.bGMResetInProgress == true then
+        ugcprint("[GMReset] fixed property reward blocked during reset player=" .. tostring(self.PlayerKey))
+        return
+    end
     local playerState = self.PlayerState
     if playerState == nil then
         return

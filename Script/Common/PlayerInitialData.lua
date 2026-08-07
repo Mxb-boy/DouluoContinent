@@ -14,25 +14,6 @@ local INITIAL_STACK_ITEMS = {
     {ItemID = 8310009, Count = 1}
 }
 
-local DISUSE_FUNCTION_NAMES = {"DisuseItemV2", "UnUseItemV2", "CancelUseItemV2", "StopUseItemV2"}
-
-local function TryDisuseItem(PlayerPawn, ItemDefineID)
-    if PlayerPawn == nil or ItemDefineID == nil or UGCBackpackSystemV2 == nil then
-        return false
-    end
-
-    for _, FunctionName in ipairs(DISUSE_FUNCTION_NAMES) do
-        local Func = UGCBackpackSystemV2[FunctionName]
-        if Func ~= nil then
-            local Success, Result = pcall(Func, PlayerPawn, ItemDefineID)
-            if Success and Result ~= false then
-                return true
-            end
-        end
-    end
-    return false
-end
-
 local function BuildTargetItemCounts(ExtraBaseItemID)
     local Targets = {}
     for _, ItemID in ipairs(WeaponLevelConfig.GetAllBaseItemIDs()) do
@@ -108,60 +89,78 @@ end
 
 --- 清空当前 Pawn 的 V2 背包。仅操作背包，不触碰虚拟物品或官方扩展系统数据。
 ---@param PlayerPawn userdata
----@return boolean, number, table
-function PlayerInitialData.ClearBackpack(PlayerPawn)
+---@param VerifyOnly boolean|nil
+---@return boolean, number, number, string
+function PlayerInitialData.ClearBackpack(PlayerPawn, VerifyOnly)
     if PlayerPawn == nil or UGCBackpackSystemV2 == nil or
-        UGCBackpackSystemV2.GetAllItemDefineIDsV2 == nil then
-        return false, 0, {}
+        UGCBackpackSystemV2.GetAllItemDefineIDsV2 == nil or
+        UGCBackpackSystemV2.RemoveItemByDefineIDV2 == nil then
+        return false, 0, -1, "backpack_api_unavailable"
     end
 
     local AllItemData = UGCBackpackSystemV2.GetAllItemDefineIDsV2(PlayerPawn)
     if AllItemData == nil then
-        return false, 0, {}
+        return false, 0, -1, "item_array_nil"
     end
 
-    -- 先复制实例 ID，避免删除物品时修改引擎返回的容器导致漏删。
-    local ItemDefineIDs = {}
-    for _, ItemDefineID in pairs(AllItemData) do
-        table.insert(ItemDefineIDs, ItemDefineID)
+    -- Never range-iterate the engine TArray and mutate the backpack in the same
+    -- call stack. UnLua keeps the ranged-for iterator alive until the function
+    -- returns, which triggers UE's "Array has changed" ensure on PC.
+    local ItemInstanceCount = tonumber(#AllItemData) or 0
+    if ItemInstanceCount <= 0 then
+        return true, 0, 0, "empty"
+    end
+    if VerifyOnly == true then
+        return false, 0, ItemInstanceCount, "final_verify_not_empty"
     end
 
-    local RemovedInstanceCount = 0
-    for _, ItemDefineID in ipairs(ItemDefineIDs) do
-        TryDisuseItem(PlayerPawn, ItemDefineID)
+    local ReadSucceeded, ItemDefineID = pcall(function()
+        return AllItemData[1]
+    end)
+    if not ReadSucceeded or ItemDefineID == nil then
+        return false, 0, ItemInstanceCount, "first_item_unavailable"
+    end
 
-        local Removed = false
-        if UGCBackpackSystemV2.RemoveItemByDefineIDV2 ~= nil then
-            local Success, Result = pcall(UGCBackpackSystemV2.RemoveItemByDefineIDV2, PlayerPawn, ItemDefineID)
-            Removed = Success and Result ~= false and Result ~= 0
+    local ItemIDReadSucceeded, ItemID = pcall(function()
+        return tonumber(ItemDefineID.TypeSpecificID)
+    end)
+    if not ItemIDReadSucceeded or ItemID == nil then
+        return false, 0, ItemInstanceCount, "item_id_unavailable"
+    end
+
+    local ItemCount = 0
+    if UGCBackpackSystemV2.GetItemCountV2 ~= nil then
+        local CountSucceeded, CountValue = pcall(UGCBackpackSystemV2.GetItemCountV2,
+            PlayerPawn, ItemID)
+        if CountSucceeded then
+            ItemCount = math.max(0, tonumber(CountValue) or 0)
         end
-
-        if not Removed and UGCBackpackSystemV2.RemoveItemV2 ~= nil then
-            local ItemID = tonumber(ItemDefineID.TypeSpecificID)
-            local Count = UGCBackpackSystemV2.GetItemCountByDefineIDV2 ~= nil and
-                              tonumber(UGCBackpackSystemV2.GetItemCountByDefineIDV2(PlayerPawn, ItemDefineID)) or 0
-            if ItemID ~= nil and Count > 0 then
-                local Success, Result = pcall(UGCBackpackSystemV2.RemoveItemV2, PlayerPawn, ItemID, Count)
-                Removed = Success and Result ~= false and Result ~= 0
-            end
-        end
-
-        if Removed then
-            RemovedInstanceCount = RemovedInstanceCount + 1
-        end
     end
 
-    local Remaining = UGCBackpackSystemV2.GetAllItemDefineIDsV2(PlayerPawn)
-    if Remaining == nil then
-        return false, RemovedInstanceCount, {}
+    ugcprint("[GMReset][BackpackRemoveBegin] itemID=" .. tostring(ItemID) ..
+                 " itemCount=" .. tostring(ItemCount) .. " instancesBefore=" ..
+                 tostring(ItemInstanceCount))
+
+    -- Drop the TArray wrapper before any call that mutates the backpack.
+    AllItemData = nil
+    local RemoveSucceeded, RemoveResult, RemoveMode
+    if ItemCount > 0 and UGCBackpackSystemV2.RemoveItemV2 ~= nil then
+        RemoveSucceeded, RemoveResult = pcall(UGCBackpackSystemV2.RemoveItemV2,
+            PlayerPawn, ItemID, ItemCount)
+        RemoveMode = "item_id"
+    else
+        RemoveSucceeded, RemoveResult = pcall(UGCBackpackSystemV2.RemoveItemByDefineIDV2,
+            PlayerPawn, ItemDefineID)
+        RemoveMode = "define_id"
     end
-    local RemainingCount = 0
-    local RemainingDefineIDs = {}
-    for _, ItemDefineID in pairs(Remaining or {}) do
-        RemainingCount = RemainingCount + 1
-        table.insert(RemainingDefineIDs, ItemDefineID)
-    end
-    return RemainingCount == 0, RemovedInstanceCount, RemainingDefineIDs
+    ugcprint("[GMReset][BackpackRemoveEnd] itemID=" .. tostring(ItemID) ..
+                 " mode=" .. tostring(RemoveMode) .. " callSucceeded=" ..
+                 tostring(RemoveSucceeded) .. " result=" .. tostring(RemoveResult))
+    local Requested = RemoveSucceeded and RemoveResult ~= false and RemoveResult ~= 0
+    local Detail = "itemID=" .. tostring(ItemID) .. " itemCount=" .. tostring(ItemCount) ..
+                       " mode=" .. tostring(RemoveMode) .. " callSucceeded=" ..
+                       tostring(RemoveSucceeded) .. " result=" .. tostring(RemoveResult)
+    return false, Requested and 1 or 0, ItemInstanceCount, Detail
 end
 
 return PlayerInitialData

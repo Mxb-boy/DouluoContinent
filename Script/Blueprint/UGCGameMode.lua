@@ -1,6 +1,8 @@
 ---@class UGCGameMode_C:BP_UGCGameBase_C
 -- Edit Below--
 local UGCGameMode = {};
+local RuntimeLog = UGCGameSystem.UGCRequire("Script.Common.RuntimeLog")
+RuntimeLog.Install("SERVER")
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
