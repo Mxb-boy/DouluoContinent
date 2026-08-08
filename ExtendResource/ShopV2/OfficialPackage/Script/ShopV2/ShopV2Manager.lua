@@ -454,11 +454,14 @@ function ShopV2Manager:CleanupAccumulatedVirtualItems()
     local PlayerController = STExtraGameplayStatics.GetFirstPlayerController(UGCGameSystem.GameState)
     if PlayerController then
         local vm = self:GetVirtualItemManager()
-        local count = vm:GetItemNum(PlayerController, 1002)
+        local count = vm ~= nil and vm.GetItemNum ~= nil and vm:GetItemNum(1002, PlayerController) or 0
         print("[ShopV2]  ItemID=1002 virtual count BEFORE cleanup: " .. tostring(count))
-        if count > 0 then
-            vm:RemoveVirtualItem(PlayerController, 1002, count)
-            print("[ShopV2]  Removed " .. tostring(count) .. " stale virtual items")
+        if count > 0 and UnrealNetwork ~= nil and UnrealNetwork.CallUnrealRPC ~= nil then
+            -- RemoveVirtualItem is server-only. Ask the owning controller to clean it on the server.
+            local ok, err = pcall(UnrealNetwork.CallUnrealRPC, PlayerController, PlayerController,
+                "Server_CleanupStaleShopVirtualItem", 1002)
+            print("[ShopV2]  -> RPC Server_CleanupStaleShopVirtualItem ok=" .. tostring(ok) ..
+                      " err=" .. tostring(err))
         end
     end
 end

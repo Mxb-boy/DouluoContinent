@@ -241,6 +241,19 @@ end
 -- function BP_BackpackComponentV2_Custom:CanRemoveItemV2(ItemDefineID, Count)
 --     return BP_BackpackComponentV2_Custom.SuperClass.CanRemoveItemV2(self, ItemDefineID, Count);
 -- end
+function BP_BackpackComponentV2_Custom:CanRemoveItemV2(ItemDefineID, Count)
+    local RequestedCount = math.max(0, tonumber(Count) or 0)
+    local Controller = GetOwnerController(self)
+    if Controller ~= nil and Controller.bGMResetInProgress == true then
+        return RequestedCount
+    end
+
+    if BP_BackpackComponentV2_Custom.SuperClass ~= nil and
+        BP_BackpackComponentV2_Custom.SuperClass.CanRemoveItemV2 ~= nil then
+        return BP_BackpackComponentV2_Custom.SuperClass.CanRemoveItemV2(self, ItemDefineID, Count)
+    end
+    return 0
+end
 
 ---func 移除物品后回调(服务端调用)
 ---@param ItemDefineID userdata 物品DefineID，移除后可能不存在于背包

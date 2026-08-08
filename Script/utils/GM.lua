@@ -223,6 +223,9 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
         return
     end
 
+    LogReset(PlayerController, "INFO", "request",
+        "gm reset request received param=" .. tostring(Param))
+
     local PlayerPawn = GetPlayerPawn(PlayerController)
     local PlayerState = PlayerController and PlayerController.PlayerState or nil
     local PlayerKey = PlayerController ~= nil and PlayerController.PlayerKey ~= nil and
@@ -254,7 +257,10 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_PlayerDataResetStarted")
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
         "正在重置玩家数据，请稍候")
-    LogReset(PlayerController, "INFO", "start", "reset transaction accepted")
+    LogReset(PlayerController, "INFO", "start",
+        "reset transaction accepted previousLevel=" .. tostring(PlayerState.PlayerLevel) ..
+            " previousExp=" .. tostring(PlayerState.PlayerExp) ..
+            " archiveLoaded=" .. tostring(PlayerState.bArchiveLoaded))
 
     local ClearBackpackStep
     local ResetArchiveStep
@@ -423,17 +429,21 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
                 return
             end
 
+            LogReset(PlayerController, "INFO", "finalize", "applying server runtime defaults")
             FinalizeServerState(PlayerController, VerifyPawn, VerifyState)
+            LogReset(PlayerController, "INFO", "finalize", "server runtime defaults applied")
             UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
-                "玩家数据已重置，即将返回大厅")
+                "玩家数据已重置，请手动返回大厅")
             UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_PlayerDataReset")
             LogReset(PlayerController, "INFO", "completed",
                 "removeRequests=" .. tostring(ActiveTransaction.RemoveRequests) ..
-                    " grantAttempts=" .. tostring(Attempt) .. " returningToLobby=true")
+                    " grantAttempts=" .. tostring(Attempt) ..
+                    " finalLevel=1 finalExp=0 returningToLobby=false")
             ResetTransactions[PlayerKey] = nil
             UGCTimerUtility.CreateLuaTimer(8, function()
                 if PlayerController ~= nil and (UE.IsValid == nil or UE.IsValid(PlayerController)) then
                     PlayerController.bGMResetInProgress = false
+                    LogReset(PlayerController, "INFO", "cleanup", "resetInProgress=false transactionReleased=true")
                 end
             end, false)
         end)

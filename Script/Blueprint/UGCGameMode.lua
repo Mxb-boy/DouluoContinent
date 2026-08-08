@@ -95,7 +95,19 @@ local function DisuseEquippedWings(PlayerPawn)
         return
     end
 
-    for _, ItemDefineID in pairs(AllItemData) do
+    -- GetAllItemDefineIDsV2 returns an engine TArray. DisuseItemV2 may change
+    -- that array, so snapshot the instances before calling any mutating API.
+    local ItemDefineIDs = {}
+    local ItemInstanceCount = tonumber(#AllItemData) or 0
+    for Index = 1, ItemInstanceCount do
+        local ItemDefineID = AllItemData[Index]
+        if ItemDefineID ~= nil then
+            ItemDefineIDs[#ItemDefineIDs + 1] = ItemDefineID
+        end
+    end
+    AllItemData = nil
+
+    for _, ItemDefineID in ipairs(ItemDefineIDs) do
         local ItemID = tonumber(ItemDefineID.TypeSpecificID)
         if WingItemIDs[ItemID] then
             TryDisuseItem(PlayerPawn, ItemDefineID)

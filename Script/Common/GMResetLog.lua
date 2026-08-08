@@ -42,7 +42,7 @@ function GMResetLog.Emit(PlayerController, Level, Stage, Message)
     local Sequence = (SequenceByPlayer[PlayerKey] or 0) + 1
     SequenceByPlayer[PlayerKey] = Sequence
     local TimeText = FormatServerTime()
-    local Text = "[GM_RESET][SERVER][" .. Level .. "][" .. Stage .. "] player=" .. PlayerKey ..
+    local Text = "[TagLog] [GMReset] [GM_RESET][SERVER][" .. Level .. "][" .. Stage .. "] player=" .. PlayerKey ..
                      " seq=" .. tostring(Sequence) .. " " .. Message
 
     RuntimeLog.Emit(Level, Text, true)

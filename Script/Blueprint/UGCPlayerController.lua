@@ -155,7 +155,8 @@ end
 function UGCPlayerController:GetAvailableServerRPCs()
     return "Server_TeleportToSpawn", "Server_TeleportToLocation", "Server_UpdateRankingListScore",
         "Server_ClearAllRankingListData", "Client_BroadcastPlantMessage", "Client_ForgeWeaponResult",
-        "Server_ForgeWeapon", "Server_AddShopItemToBackpackV2", "Server_EquipTitle", "Server_BeginFlyState",
+        "Server_ForgeWeapon", "Server_AddShopItemToBackpackV2", "Server_CleanupStaleShopVirtualItem",
+        "Server_EquipTitle", "Server_BeginFlyState",
         "Server_EndFlyState", "Server_FlyMove", "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus",
         "Server_AddProbabilityBonus", "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm",
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
@@ -1219,6 +1220,41 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num,
     end
 end
 
+--- 商城打开时清理历史遗留的虚拟物品（必须在服务端执行）
+---@param VirtualItemID number 虚拟物品ID
+function UGCPlayerController:Server_CleanupStaleShopVirtualItem(VirtualItemID)
+    if not UGCGameSystem.IsServer() then
+        return
+    end
+
+    VirtualItemID = tonumber(VirtualItemID)
+    if VirtualItemID == nil or VirtualItemID <= 0 then
+        return
+    end
+
+    local VirtualItemManager = GetVirtualItemManager()
+    if VirtualItemManager == nil or VirtualItemManager.GetItemNum == nil or
+        VirtualItemManager.RemoveVirtualItem == nil then
+        print("[ShopV2:SERVER] stale virtual item cleanup unavailable")
+        return
+    end
+
+    local CountSucceeded, CountResult = pcall(VirtualItemManager.GetItemNum, VirtualItemManager,
+        VirtualItemID, self)
+    local Count = CountSucceeded and math.max(0, tonumber(CountResult) or 0) or 0
+    print("[ShopV2:SERVER] stale virtual item count itemID=" .. tostring(VirtualItemID) ..
+              " count=" .. tostring(Count) .. " querySucceeded=" .. tostring(CountSucceeded))
+    if Count <= 0 then
+        return
+    end
+
+    local RemoveSucceeded, RemoveResult = pcall(VirtualItemManager.RemoveVirtualItem,
+        VirtualItemManager, self, VirtualItemID, Count)
+    print("[ShopV2:SERVER] stale virtual item removed itemID=" .. tostring(VirtualItemID) ..
+              " count=" .. tostring(Count) .. " callSucceeded=" .. tostring(RemoveSucceeded) ..
+              " result=" .. tostring(RemoveResult))
+end
+
 function UGCPlayerController:Server_ForgeWeapon(ItemID, UseProtect)
     ItemID = tonumber(ItemID)
     local bRequestProtect = UseProtect == true or tonumber(UseProtect) == 1
@@ -2212,7 +2248,7 @@ function UGCPlayerController:Client_ShowToast(text)
 end
 
 function UGCPlayerController:Client_GMResetLogEntry(Level, Stage, Message, TimeText, Sequence)
-    local Text = "[GM_RESET][" .. tostring(Stage or "unknown") .. "] seq=" ..
+    local Text = "[TagLog] [GMReset] [GM_RESET][CLIENT_FORWARD][" .. tostring(Stage or "unknown") .. "] seq=" ..
                      tostring(Sequence or 0) .. " " .. tostring(Message or "")
     -- Keep a distinct source so this dedicated RPC does not advance the generic
     -- server-log sequence cursor with a client-local sequence number.
@@ -2239,7 +2275,6 @@ function UGCPlayerController:Server_RuntimeLogProbe()
     end
     RuntimeLog.Info("[LOG_PROBE][SERVER][INFO] server capture path active")
     RuntimeLog.Warn("[LOG_PROBE][SERVER][WARN] sample warning for search validation")
-    RuntimeLog.Error("[LOG_PROBE][SERVER][ERROR] sample error for red level validation")
 end
 
 function UGCPlayerController:Client_RuntimeLogBatch(BatchText, LastSequence, HasMore)
@@ -2296,7 +2331,6 @@ end
 function UGCPlayerController:OpenRuntimeLogConsole(SearchText)
     RuntimeLog.Info("[LOG_PROBE][CLIENT][INFO] client capture path active")
     RuntimeLog.Warn("[LOG_PROBE][CLIENT][WARN] sample warning for search validation")
-    RuntimeLog.Error("[LOG_PROBE][CLIENT][ERROR] sample error for red level validation")
     pcall(UnrealNetwork.CallUnrealRPC, self, self, "Server_RuntimeLogProbe")
     local Existing = self.RuntimeLogUIInstance
     if Existing ~= nil and (UE.IsValid == nil or UE.IsValid(Existing)) then
@@ -2340,6 +2374,8 @@ end
 
 --- GM 重置完成后的客户端收口刷新，不触发“突破成功/失败”等业务提示。
 function UGCPlayerController:Client_PlayerDataResetStarted()
+    RuntimeLog.Info("[TagLog] [GMReset] [CLIENT][started] player=" .. tostring(self.PlayerKey) ..
+        " resetInProgress=true serverSync=false")
     local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
     if StateMgr ~= nil then
         StateMgr.bPlayerDataResetInProgress = true
@@ -2348,6 +2384,8 @@ function UGCPlayerController:Client_PlayerDataResetStarted()
 end
 
 function UGCPlayerController:Client_PlayerDataResetFailed()
+    RuntimeLog.Error("[TagLog] [GMReset] [CLIENT][failed] player=" .. tostring(self.PlayerKey) ..
+        " resetInProgress=false refreshRequested=true")
     local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
     if StateMgr ~= nil then
         StateMgr.bPlayerDataResetInProgress = false
@@ -2357,6 +2395,8 @@ function UGCPlayerController:Client_PlayerDataResetFailed()
 end
 
 function UGCPlayerController:Client_PlayerDataReset()
+    RuntimeLog.Info("[TagLog] [GMReset] [CLIENT][completed_received] player=" .. tostring(self.PlayerKey) ..
+        " applyingLocalDefaults=true")
     self.RealmLevel = 1
     self.UnlockedTitles = {}
     self.EquippedTitleID = 0
@@ -2386,7 +2426,7 @@ function UGCPlayerController:Client_PlayerDataReset()
 
     local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
     if StateMgr ~= nil then
-        StateMgr.bPlayerDataResetInProgress = true
+        StateMgr.bPlayerDataResetInProgress = false
         StateMgr.bServerSynced = false
         StateMgr.BaseAttack = 40
         StateMgr.BaseMaxHp = 100
@@ -2403,12 +2443,11 @@ function UGCPlayerController:Client_PlayerDataReset()
         StateMgr:JingJieTextShow(1, true)
         StateMgr:CountAll(nil, 100, 100, true)
     end
+    RuntimeLog.Info("[TagLog] [GMReset] [CLIENT][refresh_complete] player=" .. tostring(self.PlayerKey) ..
+        " level=1 exp=0 realm=1 attack=40 maxHp=100 titles=0 returnToLobby=false")
 
-    UGCTimerUtility.CreateLuaTimer(1.5, function()
-        if UGCGameSystem.ReturnToLobby ~= nil then
-            UGCGameSystem.ReturnToLobby()
-        end
-    end, false)
+    -- 重置完成后停留在当前对局，避免自动 ReturnToLobby 触发官方大厅 UI 初始化问题。
+    -- 玩家可使用大厅/退出入口手动返回大厅。
 end
 
 --[[-------------------------固定添加属性---------------------]] --
