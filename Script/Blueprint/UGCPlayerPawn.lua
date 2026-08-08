@@ -8,6 +8,7 @@ local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelCon
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+local AK47Orbit = UGCGameSystem.UGCRequire("Script.utils.AK47Orbit")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
 local WEAPON_ATTACK_SOURCE_KEY = "WeaponLevel"
@@ -930,6 +931,12 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     self:RefreshWeaponAttackBonus(true)
     self:NotifyPropertyChangedIfNeeded(true)
 
+    -- Standalone/listen-server Pawn has Authority; a client-owned Pawn is local.
+    -- Cover both cases before the early return below.
+    if self:HasAuthority() or IsLocalPlayerPawn(self) then
+        AK47Orbit.Start(self)
+    end
+
     if not self:HasAuthority() then
         ScheduleQuitLobbyTeam()
         CreateTeamPanelForLocalPlayer()
@@ -955,6 +962,17 @@ function UGCPlayerPawn:ReceiveTick(DeltaTime)
     end
 
     local SafeDeltaTime = tonumber(DeltaTime) or 0.016
+
+    -- 死亡时清理 WQ；复活后血量恢复时自动重新生成。
+    local CurrentHealth = tonumber(UGCPawnAttrSystem.GetHealth(self)) or 0
+    if CurrentHealth <= 0 then
+        if self.AK47OrbitState ~= nil then
+            AK47Orbit.Stop(self)
+        end
+    elseif self:HasAuthority() or IsLocalPlayerPawn(self) then
+        AK47Orbit.Start(self)
+        AK47Orbit.Update(self, SafeDeltaTime)
+    end
 
     self.WeaponAttackElapsed = (self.WeaponAttackElapsed or 0) + SafeDeltaTime
     if self.WeaponAttackElapsed >= WEAPON_ATTACK_CHECK_INTERVAL then
@@ -1213,6 +1231,8 @@ function UGCPlayerPawn:NotifyPropertyChangedIfNeeded(bForce)
 end
 
 function UGCPlayerPawn:UGC_PlayerDeadEvent(Killer, DamageType)
+    -- Pawn 死亡时通常不会立刻触发 EndPlay，因此在死亡回调中主动销毁 WQ。
+    AK47Orbit.Stop(self)
     DestroySoulMesh(self)
     DestroyAttachedActors(self)
     self:NotifyPropertyChangedIfNeeded(true)
@@ -1237,6 +1257,8 @@ end
 
 function UGCPlayerPawn:ReceiveEndPlay()
     UGCGenericMessageSystem.UnListenMessage(self, L_Enum_Event.Enum.ReFreshZhanLi_01)
+
+    AK47Orbit.Stop(self)
 
     -- Pawn 离场前，将当前血量写入跨对局存档（防止玩家未死亡直接退出）
     local playerState = self.PlayerState

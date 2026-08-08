@@ -10,6 +10,7 @@
 ---@field Button_7 UButton
 ---@field Button_8 UButton
 ---@field Button_10 UButton
+---@field Button_54 UButton
 ---@field Button_92 UButton
 ---@field Button_93 UButton
 ---@field Button_94 UButton
@@ -176,7 +177,7 @@ function UI02:RefreshToggleButtonColors()
 end
 
 function UI02:EnableDefaultAutoAttackIfUnlocked()
-    if self:HasAutoAttackButtonHidden() ~= true or self.bAutoMeleeAttackEnabled == true then
+    if self:HasAutoAttackButtonHidden() ~= true then
         return
     end
 
@@ -185,8 +186,10 @@ function UI02:EnableDefaultAutoAttackIfUnlocked()
         return
     end
 
-    self.bAutoMeleeAttackEnabled = true
-    PC:StartAutoMeleeAttack()
+    -- Automatic attack is always off when the UI/game starts.
+    -- The player can enable it manually with Button_93.
+    self.bAutoMeleeAttackEnabled = false
+    PC:StopAutoMeleeAttack()
     self:RefreshToggleButtonColors()
 end
 
@@ -211,6 +214,7 @@ function UI02:LuaInit()
     self.Button_7.OnClicked:Add(self.Button_7_OnClicked, self)
     self.Button_8.OnClicked:Add(self.Button_8_OnClicked, self)
     self.Button_10.OnClicked:Add(self.Button_10_OnClicked, self)
+    self.Button_54.OnClicked:Add(self.Button_54_OnClicked, self)
 
     self.Button_2.OnClicked:Add(self.Button_2_OnClicked, self)
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
@@ -234,6 +238,7 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_7)
     self:ApplyButtonEffect(self.Button_8)
     self:ApplyButtonEffect(self.Button_10)
+    self:ApplyButtonEffect(self.Button_54)
 
     self:ApplyButtonEffect(self.Button_2)
     self:ApplyButtonEffect(self.Button_3)
@@ -948,6 +953,34 @@ function UI02:Button_158_OnClicked()
 end
 
 -- 境界
+function UI02:Button_54_OnClicked()
+    if self.UI15Instance ~= nil then
+        self.UI15Instance:Open()
+        return
+    end
+
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        return
+    end
+
+    local UI15Path = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI15.UI15_C"
+    local UI15Class = UE.LoadClass(UI15Path)
+    if UI15Class == nil then
+        ugcprint("[UI02:Button_54_OnClicked] UI15 class load failed: " .. UI15Path)
+        return
+    end
+
+    self.UI15Instance = UserWidget.NewWidgetObjectBP(PlayerController, UI15Class)
+    if self.UI15Instance == nil then
+        ugcprint("[UI02:Button_54_OnClicked] UI15 create failed")
+        return
+    end
+
+    self.UI15Instance:AddToViewport(11000)
+    self.UI15Instance:Open()
+end
+
 function UI02:Button_151_OnClicked()
     self:HideMainButtonRedDot("Button_151")
     ugcprint("[UI02:Button_151_OnClicked] Open UI08 realm panel")

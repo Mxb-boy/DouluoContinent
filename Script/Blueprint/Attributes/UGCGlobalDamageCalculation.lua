@@ -1,4 +1,5 @@
 UGCGameSystem.UGCRequire('Script.GameAttribute.game_attribute_type')
+local DamageSync = UGCGameSystem.UGCRequire('Script.Common.DamageSync')
 local UGCGlobalDamageCalculation = {}
 
 local function SafeGet(Object, FieldName)
@@ -109,6 +110,13 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     end
 
     local SkillAttack = UGCAttributeSystem.GetSourceMagnitudeFromContext(Context)
+    local DamageCauser = nil
+    if UGCAttributeSystem.GetCauserFromContext ~= nil then
+        local success, result = pcall(UGCAttributeSystem.GetCauserFromContext, Context)
+        if success then
+            DamageCauser = result
+        end
+    end
     local bCauserIsPlayer = CauserActor ~= nil and CauserActor.PlayerState ~= nil
     local bVictimIsPlayer = VictimActor ~= nil and VictimActor.PlayerState ~= nil
     local ServerAttackPower = nil
@@ -117,22 +125,39 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     end
     ServerAttackPower = tonumber(ServerAttackPower)
     SkillAttack = tonumber(SkillAttack) or 0
-    if ServerAttackPower ~= nil and ServerAttackPower > SkillAttack then
+    -- 带攻击力倍率标记的碰撞/技能已经传入 AttackPower × Percent，不能再被抬高为 100% 攻击力。
+    local bUseAttackPercentDamage = DamageCauser ~= nil and DamageCauser.UseAttackPercentDamage == true
+    local bUseAttackPercentDamage = DamageCauser ~= nil and DamageCauser.UseAttackPercentDamage == true
+    if bUseAttackPercentDamage then
+        SkillAttack = DamageSync.GetAttackPercentDamage(InstigatorController, DamageCauser,
+            DamageCauser.AttackDamagePercent) or SkillAttack
+    elseif ServerAttackPower ~= nil and ServerAttackPower > SkillAttack then
         SkillAttack = ServerAttackPower
     end
 
-    local CurrentSignalHP = UGCAttributeSystem.GetGameAttributeValue(VictimActor, "SignalHP")
-    local MaxSignalHP = UGCAttributeSystem.GetGameAttributeValueMax(VictimActor, "SignalHP")
+    local CurrentSignalHP = 0
+    local MaxSignalHP = 0
+    if VictimActor ~= nil then
+        local success, value = pcall(UGCAttributeSystem.GetGameAttributeValue, VictimActor, "SignalHP")
+        if success then
+            CurrentSignalHP = tonumber(value) or 0
+        end
 
-    local SignalHPPercent = (CurrentSignalHP / MaxSignalHP) * 100
-    if SignalHPPercent > 0 and SignalHPPercent <= 25 then
-        SkillAttack = SkillAttack * 1.8
-    elseif SignalHPPercent > 25 and SignalHPPercent <= 50 then
-        SkillAttack = SkillAttack * 1.5
-    elseif SignalHPPercent > 50 and SignalHPPercent <= 75 then
-        SkillAttack = SkillAttack * 1.2
-    else
-        SkillAttack = SkillAttack * 1
+        success, value = pcall(UGCAttributeSystem.GetGameAttributeValueMax, VictimActor, "SignalHP")
+        if success then
+            MaxSignalHP = tonumber(value) or 0
+        end
+    end
+
+    if MaxSignalHP > 0 then
+        local SignalHPPercent = (CurrentSignalHP / MaxSignalHP) * 100
+        if SignalHPPercent > 0 and SignalHPPercent <= 25 then
+            SkillAttack = SkillAttack * 1.8
+        elseif SignalHPPercent > 25 and SignalHPPercent <= 50 then
+            SkillAttack = SkillAttack * 1.5
+        elseif SignalHPPercent > 50 and SignalHPPercent <= 75 then
+            SkillAttack = SkillAttack * 1.2
+        end
     end
 
     local bHasYXWDBuff = HasYXWDInvincibleBuff(VictimActor)

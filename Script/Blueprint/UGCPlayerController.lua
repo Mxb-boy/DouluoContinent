@@ -30,6 +30,7 @@ local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local ShadowDisabler = UGCGameSystem.UGCRequire("Script.Common.ShadowDisabler")
+local WQ_HIT_EFFECT_PATH = "/Game/UGC/UGCGame/Skill/Arts_Effect/CG034/Particle/P_CG034UGC_Skill_SwordFire_03.P_CG034UGC_Skill_SwordFire_03"
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
 local PaTa_Spawn_Point_ID = 201 -- 爬塔出生点
 local PaTa_Ticket_Item_ID = 8310064 -- 爬塔传送券
@@ -162,10 +163,12 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult",
         "Server_RequestLotteryStateSync", "Client_SyncLotteryState", "Client_RefreshProperty",
+        "Server_RequestSoulRingInventory", "Client_SyncSoulRingInventory",
         "Client_RefreshPlayerExp", "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Server_RequestRefreshProperty",
         "Client_StartAutoMeleeAttack", "Server_SetAutoFeatureButtonHidden", "Client_SetAutoFeatureButtonHidden",
         "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI", "Server_ClaimTowerTopReward",
         "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden", "Client_ShowMonsterDamageNumber",
+        "Client_PlayWQHitEffect",
         "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
         "Server_RequestFreePaTa", "Server_RequestTicketPaTa", "Client_ShowToast", "Client_PlayerDataReset",
         "Client_PlayerDataResetStarted", "Client_PlayerDataResetFailed", "Client_GMResetLogEntry",
@@ -929,6 +932,28 @@ local function GetItemCount(PlayerController, ItemID)
     end
 
     return VirtualCount
+end
+
+function UGCPlayerController:Server_RequestSoulRingInventory()
+    local Entries = {}
+    for _, ItemID in ipairs(SoulRingItemIDs) do
+        local Success, Count = pcall(GetItemCount, self, ItemID)
+        Count = Success and (tonumber(Count) or 0) or 0
+        if Count > 0 then
+            table.insert(Entries, tostring(ItemID) .. ":" .. tostring(math.floor(Count)))
+        end
+    end
+    local Snapshot = table.concat(Entries, ",")
+    ugcprint("[SoulRingInventory:SERVER] snapshot=" .. Snapshot)
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncSoulRingInventory", Snapshot)
+end
+
+function UGCPlayerController:Client_SyncSoulRingInventory(Snapshot)
+    ugcprint("[SoulRingInventory:CLIENT] snapshot=" .. tostring(Snapshot))
+    local UI15Instance = self.MainUIInstance and self.MainUIInstance.UI15Instance or self.UI15Instance
+    if UI15Instance ~= nil and UI15Instance.ApplySoulRingInventorySnapshot ~= nil then
+        UI15Instance:ApplySoulRingInventorySnapshot(Snapshot)
+    end
 end
 
 local function AddItem(PlayerController, ItemID, Count)
@@ -2839,6 +2864,17 @@ function UGCPlayerController:Client_ShowMonsterDamageNumber(TargetActor, Damage)
     end
 
     UGCGameSystem.AddUGCCustomDamageNumber(self, TargetActor, Params)
+end
+
+function UGCPlayerController:Client_PlayWQHitEffect(TargetActor)
+    if TargetActor == nil or TargetActor.K2_GetActorLocation == nil then
+        return
+    end
+
+    local success, location = pcall(TargetActor.K2_GetActorLocation, TargetActor)
+    if success and location ~= nil then
+        L_Com.PlayParticleAtLocation(self, WQ_HIT_EFFECT_PATH, location, nil, {X = 2, Y = 2, Z = 2})
+    end
 end
 
 function UGCPlayerController:TryAutoMeleeAttack()

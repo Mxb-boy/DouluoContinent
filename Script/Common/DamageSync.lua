@@ -67,6 +67,42 @@ function DamageSync.GetPanelAttack(eventInstigator, damageCauser)
     return nil
 end
 
+-- 50 and 0.5 both mean 50%.
+function DamageSync.NormalizeDamagePercent(percent)
+    percent = tonumber(percent)
+    if percent == nil then
+        return 100
+    end
+
+    if percent >= 0 and percent <= 1 then
+        percent = percent * 100
+    end
+
+    return math.max(0, percent)
+end
+
+-- Returns nil when the attacker has no valid AttackPower.
+function DamageSync.GetAttackPercentDamage(eventInstigator, damageCauser, percent)
+    local panelAttack = DamageSync.GetPanelAttack(eventInstigator, damageCauser)
+    if panelAttack == nil then
+        return nil
+    end
+
+    return panelAttack * DamageSync.NormalizeDamagePercent(percent) / 100
+end
+
+-- Lets global damage calculation preserve the AttackPower percentage.
+function DamageSync.SetAttackPercentDamageSource(damageCauser, percent)
+    if damageCauser == nil then
+        return nil
+    end
+
+    local normalizedPercent = DamageSync.NormalizeDamagePercent(percent)
+    damageCauser.UseAttackPercentDamage = true
+    damageCauser.AttackDamagePercent = normalizedPercent
+    return normalizedPercent
+end
+
 function DamageSync.OverrideDamageWithPanelAttack(damage, eventInstigator, damageCauser)
     local panelAttack = DamageSync.GetPanelAttack(eventInstigator, damageCauser)
     if panelAttack == nil then
