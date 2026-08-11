@@ -31,6 +31,10 @@ local UGCPlayerState = {
     PlayerExp = 0, -- 当前累计经验
     PlayerMaxExp = 60, -- 下一级经验的阈值
 
+    --[[-------------------天赋树相关---------------------------]] --
+    TalentPoints = 0, -- 当前可用天赋点
+    LearnedTalents = {}, -- 已学习节点，使用字符串节点 ID 作为键
+
     --[[------------------免费爬塔更新的日期----------------------------]] --
     PaTaRefreshDay = 0
 
@@ -131,6 +135,16 @@ table.insert(ARCHIVE_KEYS, {
     key = "PlayerMaxExp",
     field = "PlayerMaxExp",
     default = 60
+})
+table.insert(ARCHIVE_KEYS, {
+    key = "TalentPoints",
+    field = "TalentPoints",
+    default = 0
+})
+table.insert(ARCHIVE_KEYS, {
+    key = "LearnedTalents",
+    field = "LearnedTalents",
+    default = {}
 })
 table.insert(ARCHIVE_KEYS, {
     key = "PaTaRefreshDay",
@@ -391,6 +405,35 @@ end
 
 function UGCPlayerState:SetPlayerMaxExp(value)
     self.PlayerMaxExp = tonumber(value) or 60
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetTalentPoints()
+    return math.max(0, math.floor(tonumber(self.TalentPoints) or 0))
+end
+
+function UGCPlayerState:SetTalentPoints(value)
+    self.TalentPoints = math.max(0, math.floor(tonumber(value) or 0))
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetLearnedTalents()
+    if type(self.LearnedTalents) ~= "table" then
+        self.LearnedTalents = {}
+    end
+    return self.LearnedTalents
+end
+
+function UGCPlayerState:SetLearnedTalents(value)
+    local copy = {}
+    if type(value) == "table" then
+        for nodeID, learned in pairs(value) do
+            if learned == true or tonumber(learned) == 1 then
+                copy[tostring(nodeID)] = true
+            end
+        end
+    end
+    self.LearnedTalents = copy
     self:SaveToArchive()
 end
 

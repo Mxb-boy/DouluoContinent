@@ -28,6 +28,7 @@ local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
+local TalentMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentMgr")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local ShadowDisabler = UGCGameSystem.UGCRequire("Script.Common.ShadowDisabler")
 local WQ_HIT_EFFECT_PATH = "/Game/UGC/UGCGame/Skill/Arts_Effect/CG034/Particle/P_CG034UGC_Skill_SwordFire_03.P_CG034UGC_Skill_SwordFire_03"
@@ -174,7 +175,84 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_PlayerDataResetStarted", "Client_PlayerDataResetFailed", "Client_GMResetLogEntry",
         "Server_RequestRuntimeLogs", "Server_RuntimeLogProbe", "Client_RuntimeLogBatch",
         "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
-        "ServerRequestDisbandTeam", "UseRedemptionCode"
+        "ServerRequestDisbandTeam", "UseRedemptionCode", "Server_LearnTalent", "Client_TalentLearnResult",
+        "Server_RequestTalentState", "Client_SyncTalentState"
+end
+
+local function GetTalentStateSnapshot(PlayerState)
+    local TalentPoints = PlayerState.GetTalentPoints ~= nil and PlayerState:GetTalentPoints() or
+                             math.max(0, math.floor(tonumber(PlayerState.TalentPoints) or 0))
+    local LearnedTalents = PlayerState.GetLearnedTalents ~= nil and PlayerState:GetLearnedTalents() or
+                               PlayerState.LearnedTalents or {}
+    return TalentPoints, LearnedTalents
+end
+
+local function ApplyTalentStateSnapshot(PlayerController, TalentPoints, LearnedTalents)
+    local PlayerState = PlayerController.PlayerState
+    if PlayerState == nil then
+        return
+    end
+
+    local LearnedCopy = {}
+    if type(LearnedTalents) == "table" then
+        for LearnedID, Learned in pairs(LearnedTalents) do
+            if Learned == true or tonumber(Learned) == 1 then
+                LearnedCopy[tostring(LearnedID)] = true
+            end
+        end
+    end
+    PlayerState.TalentPoints = math.max(0, math.floor(tonumber(TalentPoints) or 0))
+    PlayerState.LearnedTalents = LearnedCopy
+end
+
+function UGCPlayerController:Server_LearnTalent(NodeID)
+    local PlayerState = self.PlayerState
+    if PlayerState == nil then
+        return false
+    end
+
+    EnsurePlayerStateArchiveUID(self)
+    if PlayerState.bArchiveLoaded ~= true then
+        ugcprint("[Talent] Learn rejected: archive is not loaded")
+        return false
+    end
+
+    local TalentNodeID = tonumber(NodeID)
+    if TalentNodeID == nil then
+        return false
+    end
+
+    local Success = TalentMgr:LearnTalent(PlayerState, TalentNodeID)
+    local TalentPoints, LearnedTalents = GetTalentStateSnapshot(PlayerState)
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_TalentLearnResult", Success, TalentNodeID, TalentPoints,
+        LearnedTalents)
+    ugcprint("[Talent] Learn node=" .. tostring(TalentNodeID) .. " success=" .. tostring(Success))
+    return Success
+end
+
+function UGCPlayerController:Client_TalentLearnResult(Success, NodeID, TalentPoints, LearnedTalents)
+    ApplyTalentStateSnapshot(self, TalentPoints, LearnedTalents)
+    ugcprint("[Talent] Client result node=" .. tostring(NodeID) .. " success=" .. tostring(Success))
+end
+
+function UGCPlayerController:Server_RequestTalentState()
+    local PlayerState = self.PlayerState
+    if PlayerState == nil or PlayerState.bArchiveLoaded ~= true then
+        return false
+    end
+
+    if TalentMgr:GrantTestPointsIfEmpty(PlayerState) then
+        ugcprint("[Talent] Granted initial test points")
+    end
+
+    local TalentPoints, LearnedTalents = GetTalentStateSnapshot(PlayerState)
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncTalentState", TalentPoints, LearnedTalents)
+    return true
+end
+
+function UGCPlayerController:Client_SyncTalentState(TalentPoints, LearnedTalents)
+    ApplyTalentStateSnapshot(self, TalentPoints, LearnedTalents)
+    ugcprint("[Talent] Client state synced points=" .. tostring(TalentPoints))
 end
 
 function UGCPlayerController:ServerRequestInvitePlayer(TargetKey)

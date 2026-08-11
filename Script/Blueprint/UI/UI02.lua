@@ -1,5 +1,7 @@
 ---@class UI02_C:UUserWidget
 ---@field Avarar_frame varar_frame_C
+---@field btn_study UButton
+---@field btn_tongbu UButton
 ---@field Button_0 UButton
 ---@field Button_1 UButton
 ---@field Button_2 UButton
@@ -230,7 +232,14 @@ function UI02:LuaInit()
     self.Button_4.OnClicked:Add(self.Button_4_OnClicked, self)
     self.Button_158.OnClicked:Add(self.Button_158_OnClicked, self)
     self.Button_154.OnClicked:Add(self.Button_154_OnClicked, self)
-
+    if self.btn_tongbu ~= nil and self.btn_tongbu.OnClicked ~= nil then
+        self.btn_tongbu.OnClicked:Add(self.btn_tongbu_OnClicked, self)
+        self:ApplyButtonEffect(self.btn_tongbu)
+    end
+    if self.btn_study ~= nil and self.btn_study.OnClicked ~= nil then
+        self.btn_study.OnClicked:Add(self.btn_study_OnClicked, self)
+        self:ApplyButtonEffect(self.btn_study)
+    end
     self:ApplyButtonEffect(self.Button_0)
     self:ApplyButtonEffect(self.Button_1)
     self:ApplyButtonEffect(self.Button_5)
@@ -1149,5 +1158,22 @@ function UI02:Button_154_OnClicked()
     local pc = GameplayStatics.GetPlayerController(self, 0)
     UnrealNetwork.CallUnrealRPC(pc, pc, "Server_TeleportToLocation", 30328, -15585, 25231)
 end
-
+function UI02:btn_tongbu_OnClicked()
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        return
+    end
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestTalentState")
+end
+function UI02:btn_study_OnClicked()
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        return
+    end
+    local TestNodeIDs = {4, 1, 2, 4, 4}
+    self.TalentTestStep = math.min((self.TalentTestStep or 0) + 1, #TestNodeIDs)
+    local NodeID = TestNodeIDs[self.TalentTestStep]
+    ugcprint("[TalentTest] step=" .. tostring(self.TalentTestStep) .. " request node=" .. tostring(NodeID))
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_LearnTalent", NodeID)
+end
 return UI02
