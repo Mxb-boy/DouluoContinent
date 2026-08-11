@@ -35,6 +35,7 @@
 ---@field Button_226 UButton
 ---@field Button_227 UButton
 ---@field Button_228 UButton
+---@field Button_Talent UButton
 ---@field gjl UTextBlock
 ---@field hp UTextBlock
 ---@field Image_0 UImage
@@ -230,14 +231,7 @@ function UI02:LuaInit()
     self.Button_4.OnClicked:Add(self.Button_4_OnClicked, self)
     self.Button_158.OnClicked:Add(self.Button_158_OnClicked, self)
     self.Button_154.OnClicked:Add(self.Button_154_OnClicked, self)
-    if self.btn_tongbu ~= nil and self.btn_tongbu.OnClicked ~= nil then
-        self.btn_tongbu.OnClicked:Add(self.btn_tongbu_OnClicked, self)
-        self:ApplyButtonEffect(self.btn_tongbu)
-    end
-    if self.btn_study ~= nil and self.btn_study.OnClicked ~= nil then
-        self.btn_study.OnClicked:Add(self.btn_study_OnClicked, self)
-        self:ApplyButtonEffect(self.btn_study)
-    end
+    self.Button_Talent.OnClicked:Add(self.Button_Talent_OnClicked, self)
     self:ApplyButtonEffect(self.Button_0)
     self:ApplyButtonEffect(self.Button_1)
     self:ApplyButtonEffect(self.Button_5)
@@ -269,6 +263,7 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_158)
     self:ApplyButtonEffect(self.Button_227)
     self:ApplyButtonEffect(self.Button_228)
+    self:ApplyButtonEffect(self.Button_Talent)
 
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
     if self.Button_228 ~= nil then
@@ -293,6 +288,34 @@ function UI02:LuaInit()
     self:RefreshMainButtonRedDots()
     self:HideHiddenMainWidgets()
 
+end
+
+function UI02:Button_Talent_OnClicked()
+    if self.UI018Instance ~= nil then
+        self.UI018Instance:Open()
+        return
+    end
+
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        return
+    end
+
+    local UI018Path = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI018.UI018_C"
+    local UI018Class = UE.LoadClass(UI018Path)
+    if UI018Class == nil then
+        ugcprint("[UI02:Button_Talent_OnClicked] UI018 class load failed: " .. UI018Path)
+        return
+    end
+
+    self.UI018Instance = UserWidget.NewWidgetObjectBP(PlayerController, UI018Class)
+    if self.UI018Instance == nil then
+        ugcprint("[UI02:Button_Talent_OnClicked] UI018 create failed")
+        return
+    end
+
+    self.UI018Instance:AddToViewport(11000)
+    self.UI018Instance:Open()
 end
 
 function UI02:HideHiddenMainWidgets()
@@ -1156,22 +1179,4 @@ function UI02:Button_154_OnClicked()
     local pc = GameplayStatics.GetPlayerController(self, 0)
     UnrealNetwork.CallUnrealRPC(pc, pc, "Server_TeleportToLocation", 30328, -15585, 25231)
 end
-function UI02:btn_tongbu_OnClicked()
-    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
-    if PlayerController == nil then
-        return
-    end
-    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestTalentState")
-end
-function UI02:btn_study_OnClicked()
-    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
-    if PlayerController == nil then
-        return
-    end
-    local TestNodeIDs = {4, 1, 2, 4, 4}
-    self.TalentTestStep = math.min((self.TalentTestStep or 0) + 1, #TestNodeIDs)
-    local NodeID = TestNodeIDs[self.TalentTestStep]
-    ugcprint("[TalentTest] step=" .. tostring(self.TalentTestStep) .. " request node=" .. tostring(NodeID))
-    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_LearnTalent", NodeID)
-end
-return UI02
+return UI02

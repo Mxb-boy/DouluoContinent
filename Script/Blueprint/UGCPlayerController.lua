@@ -176,7 +176,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_RequestRuntimeLogs", "Server_RuntimeLogProbe", "Client_RuntimeLogBatch",
         "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
         "ServerRequestDisbandTeam", "UseRedemptionCode", "Server_LearnTalent", "Client_TalentLearnResult",
-        "Server_RequestTalentState", "Client_SyncTalentState"
+        "Server_EquipTalentUltimate", "Client_TalentUltimateEquipResult", "Server_RequestTalentState",
+        "Client_SyncTalentState"
 end
 
 local function GetTalentStateSnapshot(PlayerState)
@@ -184,10 +185,12 @@ local function GetTalentStateSnapshot(PlayerState)
                              math.max(0, math.floor(tonumber(PlayerState.TalentPoints) or 0))
     local LearnedTalents = PlayerState.GetLearnedTalents ~= nil and PlayerState:GetLearnedTalents() or
                                PlayerState.LearnedTalents or {}
-    return TalentPoints, LearnedTalents
+    local EquippedUltimateID = PlayerState.GetEquippedUltimateID ~= nil and PlayerState:GetEquippedUltimateID() or
+                                   math.max(0, math.floor(tonumber(PlayerState.EquippedUltimateID) or 0))
+    return TalentPoints, LearnedTalents, EquippedUltimateID
 end
 
-local function ApplyTalentStateSnapshot(PlayerController, TalentPoints, LearnedTalents)
+local function ApplyTalentStateSnapshot(PlayerController, TalentPoints, LearnedTalents, EquippedUltimateID)
     local PlayerState = PlayerController.PlayerState
     if PlayerState == nil then
         return
@@ -203,6 +206,17 @@ local function ApplyTalentStateSnapshot(PlayerController, TalentPoints, LearnedT
     end
     PlayerState.TalentPoints = math.max(0, math.floor(tonumber(TalentPoints) or 0))
     PlayerState.LearnedTalents = LearnedCopy
+    PlayerState.EquippedUltimateID = math.max(0, math.floor(tonumber(EquippedUltimateID) or 0))
+end
+
+local function RefreshTalentUI(PlayerController)
+    local TalentUI = PlayerController.TalentUIInstance
+    if TalentUI == nil and PlayerController.MainUIInstance ~= nil then
+        TalentUI = PlayerController.MainUIInstance.UI018Instance
+    end
+    if TalentUI ~= nil and TalentUI.RefreshTalentState ~= nil then
+        TalentUI:RefreshTalentState()
+    end
 end
 
 function UGCPlayerController:Server_LearnTalent(NodeID)
@@ -223,16 +237,52 @@ function UGCPlayerController:Server_LearnTalent(NodeID)
     end
 
     local Success = TalentMgr:LearnTalent(PlayerState, TalentNodeID)
-    local TalentPoints, LearnedTalents = GetTalentStateSnapshot(PlayerState)
+    local TalentPoints, LearnedTalents, EquippedUltimateID = GetTalentStateSnapshot(PlayerState)
     UnrealNetwork.CallUnrealRPC(self, self, "Client_TalentLearnResult", Success, TalentNodeID, TalentPoints,
-        LearnedTalents)
+        LearnedTalents, EquippedUltimateID)
     ugcprint("[Talent] Learn node=" .. tostring(TalentNodeID) .. " success=" .. tostring(Success))
     return Success
 end
 
-function UGCPlayerController:Client_TalentLearnResult(Success, NodeID, TalentPoints, LearnedTalents)
-    ApplyTalentStateSnapshot(self, TalentPoints, LearnedTalents)
+function UGCPlayerController:Client_TalentLearnResult(Success, NodeID, TalentPoints, LearnedTalents,
+    EquippedUltimateID)
+    ApplyTalentStateSnapshot(self, TalentPoints, LearnedTalents, EquippedUltimateID)
+    RefreshTalentUI(self)
     ugcprint("[Talent] Client result node=" .. tostring(NodeID) .. " success=" .. tostring(Success))
+end
+
+function UGCPlayerController:Server_EquipTalentUltimate(NodeID)
+    local PlayerState = self.PlayerState
+    if PlayerState == nil then
+        return false
+    end
+
+    EnsurePlayerStateArchiveUID(self)
+    if PlayerState.bArchiveLoaded ~= true then
+        ugcprint("[Talent] Equip ultimate rejected: archive is not loaded")
+        return false
+    end
+
+    local TalentNodeID = tonumber(NodeID)
+    if TalentNodeID == nil then
+        return false
+    end
+
+    local Success = TalentMgr:EquipUltimate(PlayerState, TalentNodeID)
+    local TalentPoints, LearnedTalents, EquippedUltimateID = GetTalentStateSnapshot(PlayerState)
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_TalentUltimateEquipResult", Success, TalentNodeID,
+        TalentPoints, LearnedTalents, EquippedUltimateID)
+    ugcprint("[Talent] Equip ultimate node=" .. tostring(TalentNodeID) .. " success=" .. tostring(Success) ..
+                 " equipped=" .. tostring(EquippedUltimateID))
+    return Success
+end
+
+function UGCPlayerController:Client_TalentUltimateEquipResult(Success, NodeID, TalentPoints, LearnedTalents,
+    EquippedUltimateID)
+    ApplyTalentStateSnapshot(self, TalentPoints, LearnedTalents, EquippedUltimateID)
+    RefreshTalentUI(self)
+    ugcprint("[Talent] Client equip ultimate node=" .. tostring(NodeID) .. " success=" .. tostring(Success) ..
+                 " equipped=" .. tostring(EquippedUltimateID))
 end
 
 function UGCPlayerController:Server_RequestTalentState()
@@ -245,14 +295,17 @@ function UGCPlayerController:Server_RequestTalentState()
         ugcprint("[Talent] Granted initial test points")
     end
 
-    local TalentPoints, LearnedTalents = GetTalentStateSnapshot(PlayerState)
-    UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncTalentState", TalentPoints, LearnedTalents)
+    local TalentPoints, LearnedTalents, EquippedUltimateID = GetTalentStateSnapshot(PlayerState)
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncTalentState", TalentPoints, LearnedTalents,
+        EquippedUltimateID)
     return true
 end
 
-function UGCPlayerController:Client_SyncTalentState(TalentPoints, LearnedTalents)
-    ApplyTalentStateSnapshot(self, TalentPoints, LearnedTalents)
-    ugcprint("[Talent] Client state synced points=" .. tostring(TalentPoints))
+function UGCPlayerController:Client_SyncTalentState(TalentPoints, LearnedTalents, EquippedUltimateID)
+    ApplyTalentStateSnapshot(self, TalentPoints, LearnedTalents, EquippedUltimateID)
+    RefreshTalentUI(self)
+    ugcprint("[Talent] Client state synced points=" .. tostring(TalentPoints) .. " equipped=" ..
+                 tostring(EquippedUltimateID))
 end
 
 function UGCPlayerController:ServerRequestInvitePlayer(TargetKey)

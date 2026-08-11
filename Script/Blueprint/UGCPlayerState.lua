@@ -34,6 +34,7 @@ local UGCPlayerState = {
     --[[-------------------天赋树相关---------------------------]] --
     TalentPoints = 0, -- 当前可用天赋点
     LearnedTalents = {}, -- 已学习节点，使用字符串节点 ID 作为键
+    EquippedUltimateID = 0, -- 当前装备的大招节点，0 表示未装备
 
     --[[------------------免费爬塔更新的日期----------------------------]] --
     PaTaRefreshDay = 0
@@ -145,6 +146,11 @@ table.insert(ARCHIVE_KEYS, {
     key = "LearnedTalents",
     field = "LearnedTalents",
     default = {}
+})
+table.insert(ARCHIVE_KEYS, {
+    key = "EquippedUltimateID",
+    field = "EquippedUltimateID",
+    default = 0
 })
 table.insert(ARCHIVE_KEYS, {
     key = "PaTaRefreshDay",
@@ -434,6 +440,15 @@ function UGCPlayerState:SetLearnedTalents(value)
         end
     end
     self.LearnedTalents = copy
+    self:SaveToArchive()
+end
+
+function UGCPlayerState:GetEquippedUltimateID()
+    return math.max(0, math.floor(tonumber(self.EquippedUltimateID) or 0))
+end
+
+function UGCPlayerState:SetEquippedUltimateID(value)
+    self.EquippedUltimateID = math.max(0, math.floor(tonumber(value) or 0))
     self:SaveToArchive()
 end
 

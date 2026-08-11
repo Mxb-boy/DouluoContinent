@@ -1,7 +1,16 @@
 local TalentConfig = {}
 
-TalentConfig.TestGrantEnabled = true
+TalentConfig.TestGrantEnabled = false
 TalentConfig.TestGrantPoints = 19
+TalentConfig.SkillBookItemID = 8310132
+TalentConfig.SkillBookPointsPerUse = 1
+TalentConfig.MaxTotalPoints = nil -- Set after the total talent-point cap is confirmed.
+TalentConfig.UltimateNodeIDs = {
+    [16] = true,
+    [17] = true,
+    [18] = true,
+    [19] = true
+}
 
 -- [TalentNodeID] = {
 --     ID = TalentNodeID,

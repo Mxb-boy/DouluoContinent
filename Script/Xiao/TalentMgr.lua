@@ -10,6 +10,11 @@ function TalentMgr:GetNode(nodeID)
     return TalentConfig.Nodes[id]
 end
 
+function TalentMgr:IsUltimateNode(nodeID)
+    local id = tonumber(nodeID)
+    return id ~= nil and TalentConfig.UltimateNodeIDs[id] == true
+end
+
 function TalentMgr:HasLearnedTalent(playerState, nodeID)
     local node = self:GetNode(nodeID)
     if playerState == nil or node == nil then
@@ -68,13 +73,57 @@ function TalentMgr:CanLearnTalent(playerState, nodeID)
     return talentPoints >= cost
 end
 
-function TalentMgr:GrantTalentPoints(playerState, amount)
+function TalentMgr:GetSpentTalentPoints(playerState)
     if playerState == nil then
+        return 0
+    end
+
+    local learnedTalents = playerState.GetLearnedTalents ~= nil and playerState:GetLearnedTalents() or
+                               playerState.LearnedTalents
+    if type(learnedTalents) ~= "table" then
+        return 0
+    end
+
+    local spentPoints = 0
+    for learnedID, learned in pairs(learnedTalents) do
+        if learned == true or tonumber(learned) == 1 then
+            local node = self:GetNode(learnedID)
+            if node ~= nil then
+                spentPoints = spentPoints + math.max(0, math.floor(tonumber(node.Cost) or 0))
+            end
+        end
+    end
+    return spentPoints
+end
+
+function TalentMgr:GetTotalTalentPoints(playerState)
+    if playerState == nil then
+        return 0
+    end
+
+    local availablePoints = playerState.GetTalentPoints ~= nil and playerState:GetTalentPoints() or
+                                math.max(0, math.floor(tonumber(playerState.TalentPoints) or 0))
+    return availablePoints + self:GetSpentTalentPoints(playerState)
+end
+
+function TalentMgr:CanGrantTalentPoints(playerState, amount)
+    local grantAmount = math.floor(tonumber(amount) or 0)
+    if playerState == nil or grantAmount <= 0 then
         return false
     end
 
+    local maxTotalPoints = tonumber(TalentConfig.MaxTotalPoints)
+    if maxTotalPoints == nil then
+        return true
+    end
+
+    maxTotalPoints = math.max(0, math.floor(maxTotalPoints))
+    return self:GetTotalTalentPoints(playerState) + grantAmount <= maxTotalPoints
+end
+
+function TalentMgr:GrantTalentPoints(playerState, amount)
     local grantAmount = math.floor(tonumber(amount) or 0)
-    if grantAmount <= 0 then
+    if not self:CanGrantTalentPoints(playerState, grantAmount) then
         return false
     end
 
@@ -104,6 +153,44 @@ function TalentMgr:GrantTestPointsIfEmpty(playerState)
     end
 
     return self:GrantTalentPoints(playerState, TalentConfig.TestGrantPoints)
+end
+
+function TalentMgr:CanEquipUltimate(playerState, nodeID)
+    if playerState == nil then
+        return false
+    end
+
+    local id = tonumber(nodeID)
+    if id == nil then
+        return false
+    end
+    id = math.floor(id)
+    if id == 0 then
+        return true
+    end
+
+    return self:IsUltimateNode(id) and self:HasLearnedTalent(playerState, id)
+end
+
+function TalentMgr:EquipUltimate(playerState, nodeID)
+    if not self:CanEquipUltimate(playerState, nodeID) then
+        return false
+    end
+
+    local id = math.floor(tonumber(nodeID) or 0)
+    local oldEquippedID = playerState.GetEquippedUltimateID ~= nil and playerState:GetEquippedUltimateID() or
+                              math.max(0, math.floor(tonumber(playerState.EquippedUltimateID) or 0))
+    if oldEquippedID == id then
+        return false
+    end
+
+    playerState.EquippedUltimateID = id
+    if playerState.SaveToArchive == nil or playerState:SaveToArchive() ~= true then
+        playerState.EquippedUltimateID = oldEquippedID
+        return false
+    end
+
+    return true
 end
 
 function TalentMgr:LearnTalent(playerState, nodeID)
