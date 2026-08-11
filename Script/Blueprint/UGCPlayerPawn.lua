@@ -916,6 +916,8 @@ end
 
 function UGCPlayerPawn:ReceiveBeginPlay()
     UGCPlayerPawn.SuperClass.ReceiveBeginPlay(self)
+    -- 默认关闭身上旋转武器；需要时由代码调用 SetOrbitWeaponEnabled(true) 开启。
+    self.bOrbitWeaponEnabled = false
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.Test_01)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi_01)
@@ -934,7 +936,7 @@ function UGCPlayerPawn:ReceiveBeginPlay()
 
     -- Standalone/listen-server Pawn has Authority; a client-owned Pawn is local.
     -- Cover both cases before the early return below.
-    if self:HasAuthority() or IsLocalPlayerPawn(self) then
+    if self:IsOrbitWeaponEnabled() and (self:HasAuthority() or IsLocalPlayerPawn(self)) then
         AK47Orbit.Start(self)
     end
 
@@ -959,6 +961,24 @@ function UGCPlayerPawn:OnPawnInit()
     end
 end
 
+-- 身上旋转武器开关：可由任意持有 Pawn 引用的 Lua 代码直接控制。
+-- false：立即销毁旋转武器；true：立即重新生成并恢复旋转。
+function UGCPlayerPawn:SetOrbitWeaponEnabled(bEnabled)
+    self.bOrbitWeaponEnabled = bEnabled == true
+
+    if not self.bOrbitWeaponEnabled then
+        AK47Orbit.Stop(self)
+    elseif self:HasAuthority() or IsLocalPlayerPawn(self) then
+        AK47Orbit.Start(self)
+    end
+
+    return self.bOrbitWeaponEnabled
+end
+
+function UGCPlayerPawn:IsOrbitWeaponEnabled()
+    return self.bOrbitWeaponEnabled ~= false
+end
+
 function UGCPlayerPawn:ReceiveTick(DeltaTime)
     if UGCPlayerPawn.SuperClass ~= nil and UGCPlayerPawn.SuperClass.ReceiveTick ~= nil then
         UGCPlayerPawn.SuperClass.ReceiveTick(self, DeltaTime)
@@ -972,9 +992,11 @@ function UGCPlayerPawn:ReceiveTick(DeltaTime)
         if self.AK47OrbitState ~= nil then
             AK47Orbit.Stop(self)
         end
-    elseif self:HasAuthority() or IsLocalPlayerPawn(self) then
+    elseif self:IsOrbitWeaponEnabled() and (self:HasAuthority() or IsLocalPlayerPawn(self)) then
         AK47Orbit.Start(self)
         AK47Orbit.Update(self, SafeDeltaTime)
+    elseif self.AK47OrbitState ~= nil then
+        AK47Orbit.Stop(self)
     end
 
     self.WeaponAttackElapsed = (self.WeaponAttackElapsed or 0) + SafeDeltaTime

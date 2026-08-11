@@ -1,7 +1,5 @@
 ---@class UI02_C:UUserWidget
 ---@field Avarar_frame varar_frame_C
----@field btn_study UButton
----@field btn_tongbu UButton
 ---@field Button_0 UButton
 ---@field Button_1 UButton
 ---@field Button_2 UButton
