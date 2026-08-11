@@ -31,7 +31,7 @@ local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
 local TalentMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentMgr")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local ShadowDisabler = UGCGameSystem.UGCRequire("Script.Common.ShadowDisabler")
-local WQ_HIT_EFFECT_PATH = "/Game/UGC/UGCGame/Skill/Arts_Effect/CG034/Particle/P_CG034UGC_Skill_SwordFire_03.P_CG034UGC_Skill_SwordFire_03"
+local DEFAULT_WQ_HIT_EFFECT_PATH = "/Game/UGC/UGCGame/Skill/Arts_Effect/CG034/Particle/P_CG034UGC_Skill_SwordFire_03.P_CG034UGC_Skill_SwordFire_03"
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
 local PaTa_Spawn_Point_ID = 201 -- 爬塔出生点
 local PaTa_Ticket_Item_ID = 8310064 -- 爬塔传送券
@@ -2944,14 +2944,33 @@ function UGCPlayerController:Client_ShowMonsterDamageNumber(TargetActor, Damage)
     UGCGameSystem.AddUGCCustomDamageNumber(self, TargetActor, Params)
 end
 
-function UGCPlayerController:Client_PlayWQHitEffect(TargetActor)
+local function ResolveWQHitEffectPath(EffectPath)
+    if type(EffectPath) ~= "string" or EffectPath == "" then
+        return DEFAULT_WQ_HIT_EFFECT_PATH
+    end
+
+    if string.sub(EffectPath, 1, 6) == "/Game/" then
+        return EffectPath
+    end
+
+    if UGCGameSystem ~= nil and UGCGameSystem.GetUGCResourcesFullPath ~= nil then
+        local Success, FullPath = pcall(UGCGameSystem.GetUGCResourcesFullPath, EffectPath)
+        if Success and type(FullPath) == "string" and FullPath ~= "" then
+            return FullPath
+        end
+    end
+
+    return EffectPath
+end
+
+function UGCPlayerController:Client_PlayWQHitEffect(TargetActor, EffectPath)
     if TargetActor == nil or TargetActor.K2_GetActorLocation == nil then
         return
     end
 
     local success, location = pcall(TargetActor.K2_GetActorLocation, TargetActor)
     if success and location ~= nil then
-        L_Com.PlayParticleAtLocation(self, WQ_HIT_EFFECT_PATH, location, nil, {X = 2, Y = 2, Z = 2})
+        L_Com.PlayParticleAtLocation(self, ResolveWQHitEffectPath(EffectPath), location, nil, {X = 2, Y = 2, Z = 2})
     end
 end
 

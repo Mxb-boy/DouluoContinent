@@ -4,7 +4,7 @@
 local AK47Orbit = {}
 
 -- 蓝图资源路径。
-local WQ_CLASS_PATH = "Asset/Blueprint/Ma/QIANG/WQ.WQ_C"
+local WQ_CLASS_PATH = "Asset/Blueprint/Ma/QIANG/QBZ/QBZ.QBZ_C"
 
 -- 每秒旋转角度，数值越大转得越快。
 local ROTATION_SPEED = 50

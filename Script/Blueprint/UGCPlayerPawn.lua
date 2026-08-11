@@ -9,6 +9,7 @@ local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 local AK47Orbit = UGCGameSystem.UGCRequire("Script.utils.AK47Orbit")
+local MA_CS = UGCGameSystem.UGCRequire("Script.Ma.MA_CS")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
 local WEAPON_ATTACK_SOURCE_KEY = "WeaponLevel"
@@ -950,6 +951,8 @@ local PLAYER_SKILL_1_REQUIRED_LEVEL = 50 -- 第一个技能解锁需要的等级
 local PLAYER_SKILL_1_PATH = 'Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/PlayerSkill_1.PlayerSkill_1_C'
 
 function UGCPlayerPawn:OnPawnInit()
+    MA_CS.EquipBDZ(self)
+
     local playerState = self.PlayerState
     if playerState ~= nil and playerState:GetPlayerLevel() >= PLAYER_SKILL_1_REQUIRED_LEVEL then
         UGCPersistEffectSystem.AddSkillByClass(self, UGCGameSystem.GetUGCResourcesFullPath(PLAYER_SKILL_1_PATH))

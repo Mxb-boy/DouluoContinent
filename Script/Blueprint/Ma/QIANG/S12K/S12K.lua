@@ -1,4 +1,12 @@
----@class WQ_C:AActor
+---@class S12K_C:AActor
+---@field ParticleSystem14 UParticleSystemComponent
+---@field ParticleSystem13 UParticleSystemComponent
+---@field ParticleSystem12 UParticleSystemComponent
+---@field ParticleSystem11 UParticleSystemComponent
+---@field ParticleSystem10 UParticleSystemComponent
+---@field ParticleSystem9 UParticleSystemComponent
+---@field ParticleSystem8 UParticleSystemComponent
+---@field SKS_LZ UParticleSystemComponent
 ---@field Box7 UBoxComponent
 ---@field Box6 UBoxComponent
 ---@field Box5 UBoxComponent
@@ -33,9 +41,10 @@
 ---@field StaticMesh_1 UStaticMeshComponent
 ---@field DefaultSceneRoot USceneComponent
 --Edit Below--
-local WQ = {}
+local S12K = {}
 local DamageSync = UGCGameSystem.UGCRequire('Script.Common.DamageSync')
 local DamageOnlyCollision = UGCGameSystem.UGCRequire('Script.Common.DamageOnlyCollision')
+local HIT_EFFECT_PATH = "Asset/Blueprint/Ma/QIANG/S12K/C98K_LZ.C98K_LZ"
 local DAMAGE_BOX_NAMES = { "Box", "Box1", "Box2", "Box3", "Box4", "Box5", "Box6", "Box7" }
 local GUN_MESH_NAMES = {
     "StaticMesh_1",
@@ -86,7 +95,7 @@ local function SetComponentTreeActive(RootComponent, bActive)
     end
 end
 
-function WQ:ReceiveBeginPlay()
+function S12K:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self)
     DamageOnlyCollision.Apply(self, GUN_MESH_NAMES, DAMAGE_BOX_NAMES, GetComponentByName)
 
@@ -126,7 +135,7 @@ local function ParseActiveGuns(GunCode)
 end
 
 -- 对外接口：123激活1、2、3；126激活1、2、6；0全部隐藏。
-function WQ:SetActiveGuns(GunCode)
+function S12K:SetActiveGuns(GunCode)
     self.ActiveGuns = ParseActiveGuns(GunCode)
     self.ActiveGunCode = GunCode
 
@@ -142,19 +151,19 @@ end
 
 
 -- 保留原调用名，旧代码调用ActivateGun(126)也支持组合激活。
-function WQ:SetActiveGun(GunCode)
+function S12K:SetActiveGun(GunCode)
     return self:SetActiveGuns(GunCode)
 end
 
-function WQ:ActivateGun(GunCode)
+function S12K:ActivateGun(GunCode)
     return self:SetActiveGuns(GunCode)
 end
 
-function WQ:ActivateGuns(GunCode)
+function S12K:ActivateGuns(GunCode)
     return self:SetActiveGuns(GunCode)
 end
 
-function WQ:GetActiveGuns()
+function S12K:GetActiveGuns()
     return self.ActiveGuns or {}
 end
 
@@ -170,13 +179,17 @@ local function IsDamageBoxActive(self, DamageBox)
 end
 
 -- Public API: 50 and 0.5 both mean 50% of AttackPower.
-function WQ:SetDamagePercent(percent)
+function S12K:SetDamagePercent(percent)
     self.DamagePercent = DamageSync.SetAttackPercentDamageSource(self, percent)
     return self.DamagePercent
 end
 
-function WQ:GetDamagePercent()
+function S12K:GetDamagePercent()
     return DamageSync.NormalizeDamagePercent(self.DamagePercent)
+end
+
+function S12K:GetHitEffectPath()
+    return self.HitEffectPath or HIT_EFFECT_PATH
 end
 
 local function GetDamageInstigator(self)
@@ -236,7 +249,7 @@ local function GetDamageInstigator(self)
 end
 
 -- [Editor Generated Lua] function define Begin:
-function WQ:LuaInit()
+function S12K:LuaInit()
     if self.bInitDoOnce then
         return;
     end
@@ -250,7 +263,7 @@ function WQ:LuaInit()
     -- [Editor Generated Lua] BindingEvent End;
 end
 
-function WQ:TryDamageMonster(DamageBox, OtherActor)
+function S12K:TryDamageMonster(DamageBox, OtherActor)
     if not self:HasAuthority() then
         return nil;
     end
@@ -292,15 +305,16 @@ function WQ:TryDamageMonster(DamageBox, OtherActor)
     -- ApplyDamage is a native server API and must be called directly.
     -- Wrapping it in pcall causes a server-side native crash.
     UGCGameSystem.ApplyDamage(OtherActor, damage, instigatorController, self, {})
-    UnrealNetwork.CallUnrealRPC(instigatorController, instigatorController, "Client_PlayWQHitEffect", OtherActor)
+    UnrealNetwork.CallUnrealRPC(instigatorController, instigatorController, "Client_PlayWQHitEffect", OtherActor,
+        self:GetHitEffectPath())
 
     return nil;
 end
 
-function WQ:Box_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
+function S12K:Box_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
     return self:TryDamageMonster(OverlappedComponent, OtherActor)
 end
 
 -- [Editor Generated Lua] function define End;
 
-return WQ
+return S12K
