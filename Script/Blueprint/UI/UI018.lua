@@ -1,11 +1,14 @@
 ---@class UI018_C:UUserWidget
 ---@field Btn_AddPoint UButton
+---@field Btn_Cancel UButton
 ---@field Btn_Close UButton
+---@field Btn_Confirm UButton
 ---@field Btn_Detail UButton
 ---@field Btn_lock_1 UButton
 ---@field Btn_lock_2 UButton
 ---@field Btn_lock_3 UButton
 ---@field Btn_lock_4 UButton
+---@field Btn_Quit UButton
 ---@field Btn_Talent_10 UButton
 ---@field Btn_Talent_11 UButton
 ---@field Btn_Talent_12 UButton
@@ -27,6 +30,9 @@
 ---@field CheckBox_3 UCheckBox
 ---@field CheckBox_4 UCheckBox
 ---@field Image_0 UImage
+---@field Image_1 UImage
+---@field Image_2 UImage
+---@field Image_3 UImage
 ---@field Image_19 UImage
 ---@field Image_22 UImage
 ---@field Image_23 UImage
@@ -90,10 +96,13 @@
 ---@field Image_192 UImage
 ---@field Image_358 UImage
 ---@field Image_375 UImage
+---@field Panel_Confirm UCanvasPanel
 ---@field Panel_Detail UCanvasPanel
+---@field Txt_ConfirmContent UTextBlock
 ---@field Txt_TalentPoints UTextBlock
 --Edit Below--
 local TalentMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentMgr")
+local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 
 local UI018 = { bInitDoOnce = false }
 
@@ -135,6 +144,15 @@ function UI018:LuaInit()
     self:BindButton("BtnIn_Quit", function()
         self:SetDetailVisible(false)
     end)
+    self:BindButton("Btn_Confirm", function()
+        self:ConfirmPendingTalent()
+    end)
+    self:BindButton("Btn_Cancel", function()
+        self:SetConfirmVisible(false)
+    end)
+    self:BindButton("Btn_Quit", function()
+        self:SetConfirmVisible(false)
+    end)
     self:BindButton("Btn_AddPoint", function()
         ugcprint("[TalentUI] Talent point source is not configured")
     end)
@@ -142,7 +160,7 @@ function UI018:LuaInit()
     for NodeID = 1, 15 do
         local CurrentNodeID = NodeID
         self:BindButton(string.format("Btn_Talent_%02d", CurrentNodeID), function()
-            self:RequestLearnTalent(CurrentNodeID)
+            self:TryOpenLearnConfirm(CurrentNodeID)
         end)
     end
 
@@ -150,7 +168,7 @@ function UI018:LuaInit()
         local CurrentNodeID = NodeID
         local WidgetNames = ULTIMATE_WIDGETS[CurrentNodeID]
         self:BindButton(WidgetNames.LockButton, function()
-            self:RequestLearnTalent(CurrentNodeID)
+            self:TryOpenLearnConfirm(CurrentNodeID)
         end)
         self:BindCheckBox(WidgetNames.CheckBox, function(bIsChecked)
             self:OnUltimateCheckStateChanged(CurrentNodeID, bIsChecked)
@@ -188,10 +206,20 @@ function UI018:SetDetailVisible(bVisible)
         DetailPanel:SetVisibility(bVisible and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
     end
 end
+function UI018:SetConfirmVisible(bVisible)
+    local ConfirmPanel = self:GetWidget("Panel_Confirm")
+    if ConfirmPanel ~= nil then
+        ConfirmPanel:SetVisibility(bVisible and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
+    end
+    if not bVisible then
+        self.PendingTalentNodeID = nil
+    end
+end
 
 function UI018:Open()
     self:SetVisibility(ESlateVisibility.Visible)
     self:SetDetailVisible(false)
+    self:SetConfirmVisible(false)
     self:RefreshTalentState()
 
     local PlayerController = GetLocalPlayerController(self)
@@ -203,14 +231,43 @@ end
 
 function UI018:Close()
     self:SetDetailVisible(false)
+    self:SetConfirmVisible(false)
     self:SetVisibility(ESlateVisibility.Collapsed)
 end
-
-function UI018:RequestLearnTalent(NodeID)
+function UI018:TryOpenLearnConfirm(NodeID)
+    local PlayerState = self:GetPlayerState()
+    local Node = TalentMgr:GetNode(NodeID)
+    if PlayerState == nil or Node == nil or TalentMgr:HasLearnedTalent(PlayerState, NodeID) then
+        return
+    end
+    if not TalentMgr:ArePrerequisitesMet(PlayerState, NodeID) then
+        return
+    end
+    local TalentPoints = PlayerState.GetTalentPoints ~= nil and PlayerState:GetTalentPoints() or
+                             math.max(0, math.floor(tonumber(PlayerState.TalentPoints) or 0))
+    local Cost = math.max(0, math.floor(tonumber(Node.Cost) or 0))
+    if TalentPoints < Cost then
+        L_Com.ShowToast("天赋点不足")
+        return
+    end
+    self.PendingTalentNodeID = Node.ID
+    local ConfirmText = self:GetWidget("Txt_ConfirmContent")
+    if ConfirmText ~= nil then
+        ConfirmText:SetText("是否消耗" .. tostring(Cost) .. "点天赋点解锁“" .. tostring(Node.Name or "天赋") .. "”？")
+    end
+    self:SetConfirmVisible(true)
+end
+function UI018:ConfirmPendingTalent()
+    local NodeID = self.PendingTalentNodeID
+    if NodeID == nil then
+        self:SetConfirmVisible(false)
+        return
+    end
     local PlayerController = GetLocalPlayerController(self)
     if PlayerController == nil then
         return
     end
+    self:SetConfirmVisible(false)
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_LearnTalent", NodeID)
 end
 
@@ -253,9 +310,9 @@ function UI018:RefreshTalentState()
         local Button = self:GetWidget(string.format("Btn_Talent_%02d", NodeID))
         if Button ~= nil then
             local bLearned = TalentMgr:HasLearnedTalent(PlayerState, NodeID)
-            local bCanLearn = TalentMgr:CanLearnTalent(PlayerState, NodeID)
+            local bPrerequisitesMet = TalentMgr:ArePrerequisitesMet(PlayerState, NodeID)
             Button:SetVisibility(bLearned and ESlateVisibility.HitTestInvisible or ESlateVisibility.Visible)
-            Button:SetIsEnabled(bLearned or bCanLearn)
+            Button:SetIsEnabled(bLearned or bPrerequisitesMet)
             if Button.SetRenderOpacity ~= nil then
                 Button:SetRenderOpacity(bLearned and 1.0 or 0.55)
             end
@@ -273,7 +330,7 @@ function UI018:RefreshTalentState()
 
         if LockButton ~= nil then
             LockButton:SetVisibility(bLearned and ESlateVisibility.Collapsed or ESlateVisibility.Visible)
-            LockButton:SetIsEnabled(not bLearned and TalentMgr:CanLearnTalent(PlayerState, NodeID))
+            LockButton:SetIsEnabled(not bLearned and TalentMgr:ArePrerequisitesMet(PlayerState, NodeID))
         end
         if CheckBox ~= nil then
             CheckBox:SetVisibility(bLearned and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
@@ -284,4 +341,4 @@ function UI018:RefreshTalentState()
     self.bRefreshingUltimateCheckBoxes = false
 end
 
-return UI018
+return UI018

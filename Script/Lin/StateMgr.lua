@@ -27,6 +27,7 @@ local DefaultBaseMaxHp = 100
 local L_Com = UGCGameSystem.UGCRequire('Script.Lin.L_Com')
 local Ma_NumShow = UGCGameSystem.UGCRequire("Script.Ma.Ma_NumShow")
 local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
+local TalentEffectMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentEffectMgr")
 
 function StateMgr:SetUI(ui)
     self.UI = ui
@@ -147,10 +148,11 @@ function StateMgr:CountAll(pawn, hp, maxHp, bFillHealth)
 end
 
 function StateMgr:CountFinalAttack(pawn)
-    local baseAttack = self.BaseAttack
+    pawn = pawn or UGCGameSystem.GetLocalPlayerPawn()
+    local playerState = pawn ~= nil and pawn.PlayerState or UGCGameSystem.GetLocalPlayerState()
+    local baseAttack = TalentEffectMgr:GetEffectiveBaseAttack(playerState, self.BaseAttack)
     local AttackAddForce = self.PaiHangAdd + self.ChiBang + self.WuQi + self.ChengHao + self.JingJieAddAtk
     FinalAttack = baseAttack * (1 + AttackAddForce / 100)
-    pawn = pawn or UGCGameSystem.GetLocalPlayerPawn()
     if pawn == nil then
         return
     end
@@ -182,10 +184,11 @@ function StateMgr:RefreshHpText(pawn, showMaxHp, showHp)
 end
 
 function StateMgr:CountFinalMaxHp(pawn, showHp, showMaxHp, bFillHealth)
-    local baseMaxHp = self.BaseMaxHp
+    pawn = pawn or UGCGameSystem.GetLocalPlayerPawn()
+    local playerState = pawn ~= nil and pawn.PlayerState or UGCGameSystem.GetLocalPlayerState()
+    local baseMaxHp = TalentEffectMgr:GetEffectiveBaseMaxHp(playerState, self.BaseMaxHp)
     local MaxHpAddForce =  self.ChiBang + self.ChengHao + self.JingJieAddMaxHp
     FinalMaxHp = baseMaxHp * (1 + MaxHpAddForce / 100)
-    pawn = pawn or UGCGameSystem.GetLocalPlayerPawn()
     if pawn == nil then
         return
     end

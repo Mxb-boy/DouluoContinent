@@ -29,6 +29,7 @@ local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
 local TalentMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentMgr")
+local TalentEffectMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentEffectMgr")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local ShadowDisabler = UGCGameSystem.UGCRequire("Script.Common.ShadowDisabler")
 local DEFAULT_WQ_HIT_EFFECT_PATH = "/Game/UGC/UGCGame/Skill/Arts_Effect/CG034/Particle/P_CG034UGC_Skill_SwordFire_03.P_CG034UGC_Skill_SwordFire_03"
@@ -219,6 +220,10 @@ local function RefreshTalentUI(PlayerController)
     end
 end
 
+local function RequestTalentPropertyRefresh(PlayerController)
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestRefreshProperty")
+end
+
 function UGCPlayerController:Server_LearnTalent(NodeID)
     local PlayerState = self.PlayerState
     if PlayerState == nil then
@@ -248,6 +253,10 @@ function UGCPlayerController:Client_TalentLearnResult(Success, NodeID, TalentPoi
     EquippedUltimateID)
     ApplyTalentStateSnapshot(self, TalentPoints, LearnedTalents, EquippedUltimateID)
     RefreshTalentUI(self)
+    L_Com.ShowToast(Success and "天赋解锁成功" or "解锁失败，请重试")
+    if Success then
+        RequestTalentPropertyRefresh(self)
+    end
     ugcprint("[Talent] Client result node=" .. tostring(NodeID) .. " success=" .. tostring(Success))
 end
 
@@ -304,6 +313,7 @@ end
 function UGCPlayerController:Client_SyncTalentState(TalentPoints, LearnedTalents, EquippedUltimateID)
     ApplyTalentStateSnapshot(self, TalentPoints, LearnedTalents, EquippedUltimateID)
     RefreshTalentUI(self)
+    RequestTalentPropertyRefresh(self)
     ugcprint("[Talent] Client state synced points=" .. tostring(TalentPoints) .. " equipped=" ..
                  tostring(EquippedUltimateID))
 end
@@ -2806,7 +2816,7 @@ function UGCPlayerController:Server_SetFinalAttack(finalAttack)
         return
     end
     if playerState ~= nil then
-        local baseAttack = playerState.GetBaseAttack ~= nil and tonumber(playerState:GetBaseAttack()) or 40
+        local baseAttack = TalentEffectMgr:GetEffectiveBaseAttack(playerState)
         local rankBonus = playerState.GetRankAttackBonus ~= nil and tonumber(playerState:GetRankAttackBonus()) or
                               (tonumber(playerState.RankAttackBonus) or 0)
         finalAttack = finalAttack + (baseAttack or 40) * math.max(0, rankBonus or 0) / 100

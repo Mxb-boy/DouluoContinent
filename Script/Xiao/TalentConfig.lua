@@ -27,7 +27,12 @@ TalentConfig.Nodes = {
         Row = 1,
         Column = 8,
         Cost = 1,
-        RequireID = nil
+        RequireID = nil,
+        Effects = {
+            Stats = {
+                MaxHealthFlat = 100
+            }
+        }
     },
     [2] = {
         ID = 2,
@@ -35,7 +40,12 @@ TalentConfig.Nodes = {
         Row = 2,
         Column = 4,
         Cost = 1,
-        RequireID = 1
+        RequireID = 1,
+        Effects = {
+            Stats = {
+                AttackFlat = 10
+            }
+        }
     },
     [3] = {
         ID = 3,

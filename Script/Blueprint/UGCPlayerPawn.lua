@@ -8,6 +8,7 @@ local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelCon
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
+local TalentEffectMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentEffectMgr")
 local AK47Orbit = UGCGameSystem.UGCRequire("Script.utils.AK47Orbit")
 local MA_CS = UGCGameSystem.UGCRequire("Script.Ma.MA_CS")
 
@@ -65,7 +66,7 @@ local function GetWeaponBaseAttack(player)
     end
 
     if player.PlayerState ~= nil and player.PlayerState.GetBaseAttack ~= nil then
-        local StateBaseAttack = tonumber(player.PlayerState:GetBaseAttack())
+        local StateBaseAttack = TalentEffectMgr:GetEffectiveBaseAttack(player.PlayerState)
         if StateBaseAttack ~= nil and StateBaseAttack > 0 then
             player.WeaponBaseAttackPower = StateBaseAttack
             return StateBaseAttack
