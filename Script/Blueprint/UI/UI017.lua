@@ -49,6 +49,7 @@
 ---@field Button_425 UButton
 ---@field Button_427 UButton
 ---@field Button_428 UButton
+---@field CanvasPanel_107 UCanvasPanel
 ---@field CheckBox_100 UCheckBox
 ---@field CheckBox_101 UCheckBox
 ---@field Image_0 UImage
@@ -113,13 +114,38 @@
 ---@field Image_458 UImage
 ---@field Image_459 UImage
 ---@field Image_460 UImage
+---@field QQ1 UCanvasPanel
+---@field QQ10 UCanvasPanel
+---@field QQ11 UCanvasPanel
+---@field QQ12 UCanvasPanel
+---@field QQ2 UCanvasPanel
+---@field QQ3 UCanvasPanel
+---@field QQ4 UCanvasPanel
+---@field QQ5 UCanvasPanel
+---@field QQ6 UCanvasPanel
+---@field QQ7 UCanvasPanel
+---@field QQ8 UCanvasPanel
+---@field QQ9 UCanvasPanel
 ---@field ScrollBox_254 UScrollBox
+---@field TextBlock_423 UTextBlock
+---@field TextBlock_424 UTextBlock
+---@field TextBlock_427 UTextBlock
+---@field TextBlock_430 UTextBlock
+---@field TextBlock_433 UTextBlock
+---@field TextBlock_439 UTextBlock
+---@field TextBlock_442 UTextBlock
+---@field TextBlock_445 UTextBlock
+---@field TextBlock_448 UTextBlock
+---@field TextBlock_451 UTextBlock
+---@field TextBlock_454 UTextBlock
+---@field TextBlock_457 UTextBlock
+---@field TextBlock_521 UTextBlock
 ---@field WrapBox_0 UWrapBox
 --Edit Below--
 ---@class UI15_C:UUserWidget
 ---@field Btn_Close UButton
 ---@field WrapBox_0 UWrapBox
-
+UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.ShopV2.ShopV2Manager")
 local UI017 = { bInitDoOnce = false }
 
 local SOUL_RING_ITEM_IDS = {
@@ -133,6 +159,55 @@ for _, ItemID in ipairs(SOUL_RING_ITEM_IDS) do
 end
 
 local PROJECT_ROOT_PATH = UGCMapInfoLib.GetRootLongPackagePath()
+local XZWQ_CONFIG_PATH = 'Asset/Data/Table/Customized/XzwqConfig.XzwqConfig'
+local XZWQ_ROW_NAMES = {
+    'NewRow', 'NewRow_0', 'NewRow_1', 'NewRow_2', 'NewRow_3', 'NewRow_4',
+    'NewRow_5', 'NewRow_6', 'NewRow_7', 'NewRow_8', 'NewRow_9', 'NewRow_10'
+}
+local XZWQ_PANEL_NAMES = {
+    'QQ1', 'QQ2', 'QQ3', 'QQ4', 'QQ5', 'QQ6',
+    'QQ7', 'QQ8', 'QQ9', 'QQ10', 'QQ11', 'QQ12'
+}
+local XZWQ_NAME_WIDGET_NAMES = {
+    'TextBlock_423', 'TextBlock_424', 'TextBlock_427', 'TextBlock_430',
+    'TextBlock_433', 'TextBlock_439', 'TextBlock_442', 'TextBlock_445',
+    'TextBlock_448', 'TextBlock_451', 'TextBlock_454', 'TextBlock_457'
+}
+local XZWQ_ACTION_BUTTON_NAMES = {
+    'Button_93', 'Button_95', 'Button_99', 'Button_101', 'Button_103', 'Button_107',
+    'Button_109', 'Button_111', 'Button_113', 'Button_115', 'Button_117', 'Button_119'
+}
+local XZWQ_LOCK_WIDGET_NAMES = {
+    'Button_94', 'Button_98', 'Button_100', 'Button_102', 'Button_104', 'Button_108',
+    'Button_110', 'Button_112', 'Button_114', 'Button_116', 'Button_118', 'Button_120'
+}
+local XZWQ_SLOT_ICON_NAMES = {
+    'Image_239', 'Image_2', 'Image_5', 'Image_8',
+    'Image_11', 'Image_14', 'Image_17', 'Image_21'
+}
+local XZWQ_SLOT_NAME_NAMES = {
+    'TextBlock_668', 'TextBlock_0', 'TextBlock_2', 'TextBlock_4',
+    'TextBlock_159', 'TextBlock_161', 'TextBlock_163', 'TextBlock_165'
+}
+local XZWQ_SLOT_ATTRIBUTE_NAMES = {
+    'TextBlock_669', 'TextBlock_1', 'TextBlock_3', 'TextBlock_5',
+    'TextBlock_160', 'TextBlock_162', 'TextBlock_164', 'TextBlock_166'
+}
+local XZWQ_SLOT_SELECT_BUTTON_NAMES = {
+    'Button_359', 'Button_1', 'Button_3', 'Button_5',
+    'Button_82', 'Button_85', 'Button_87', 'Button_89'
+}
+local XZWQ_SLOT_LOCK_BUTTON_NAMES = {
+    'Button_0', 'Button_2', 'Button_4', 'Button_6',
+    'Button_83', 'Button_86', 'Button_88', 'Button_90'
+}
+local XZWQ_FIELD_NAMES = {
+    Name = {'Name', 'Name_4_E925F48B4B1EE84561F1309EEE8B57EC'},
+    JS = {'JS', 'JS_53_BAB762974723F31B3CB3FA869B95EF4D'},
+    iteam = {'iteam', 'iteam_55_08B960B140185EEC7032098180BE0698'},
+    LT = {'LT', 'LT_57_C4A07EC8493C3BBE5B13DE8A07B71B64'},
+    SJ = {'SJ', 'SJ_60_BC78DCF84A74D006EC12A5A4235142BB'}
+}
 
 local function SafeGetField(Data, FieldName)
     if Data == nil then
@@ -146,6 +221,15 @@ local function SafeGetField(Data, FieldName)
     end
     return nil
 end
+local function GetXzwqField(RowData, FieldName)
+    for _, CandidateName in ipairs(XZWQ_FIELD_NAMES[FieldName] or {FieldName}) do
+        local Value = SafeGetField(RowData, CandidateName)
+        if Value ~= nil then
+            return Value
+        end
+    end
+    return nil
+end
 
 function UI017:GetWidget(Name)
     local Widget = self[Name]
@@ -154,28 +238,481 @@ function UI017:GetWidget(Name)
     end
     return Widget
 end
+function UI017:SetXzwqButtonTexture(Button, Texture)
+    if Button == nil or Texture == nil or Button.WidgetStyle == nil then
+        return false
+    end
+    local Style = Button.WidgetStyle
+    local Brushes = {Style.Normal, Style.Hovered, Style.Pressed}
+    for _, Brush in ipairs(Brushes) do
+        if Brush ~= nil then
+            Brush.ResourceObject = Texture
+            if Brush.TintColor ~= nil and Brush.TintColor.SpecifiedColor ~= nil then
+                Brush.TintColor.SpecifiedColor.A = 1.0
+            end
+        end
+    end
+    if Button.SetStyle ~= nil then
+        Button:SetStyle(Style)
+    end
+    return true
+end
+
+function UI017:RefreshXzwqSlotSelection()
+    if self.SelectedXzwqSlotIndex == nil then
+        for Index = 1, #XZWQ_SLOT_SELECT_BUTTON_NAMES do
+            if self.XzwqUnlockedByIndex ~= nil and self.XzwqUnlockedByIndex[Index] == true then
+                self.SelectedXzwqSlotIndex = Index
+                break
+            end
+        end
+    end
+    for Index, ButtonName in ipairs(XZWQ_SLOT_SELECT_BUTTON_NAMES) do
+        local SelectButton = self:GetWidget(ButtonName)
+        local bUnlocked = self.XzwqUnlockedByIndex ~= nil and
+            self.XzwqUnlockedByIndex[Index] == true
+        if SelectButton ~= nil then
+            if SelectButton.SetIsEnabled ~= nil then
+                SelectButton:SetIsEnabled(bUnlocked)
+            end
+            -- 透明时仍可接收点击；选中后显示第6个控件的选中框。
+            if SelectButton.SetRenderOpacity ~= nil then
+                SelectButton:SetRenderOpacity(
+                    bUnlocked and self.SelectedXzwqSlotIndex == Index and 1.0 or 0.01)
+            end
+        end
+    end
+end
+
+function UI017:SelectXzwqSlot(Index)
+    if self.XzwqUnlockedByIndex == nil or self.XzwqUnlockedByIndex[Index] ~= true then
+        return false
+    end
+    self.SelectedXzwqSlotIndex = Index
+    self:RefreshXzwqSlotSelection()
+    return true
+end
 
 function UI017:Construct()
     self:LuaInit()
 end
+local function GetConfigText(Value)
+    local Text = tostring(Value or "")
+    return string.match(Text, '^INVTEXT%(%"(.*)%"%)$') or Text
+end
+local function GetConfigNumber(Value, DefaultValue)
+    local NumberValue = tonumber(Value)
+    if NumberValue == nil then
+        NumberValue = tonumber(string.match(tostring(Value or ""), '%-?%d+'))
+    end
+    return NumberValue or DefaultValue
+end
+local function GetConfigAssetPath(Value)
+    local Text = tostring(Value or "")
+    local AssetPath = string.match(Text, '(/Game/[%w_/%._%-]+)')
+        or string.match(Text, '(Asset/[%w_/%._%-]+)')
+    if AssetPath ~= nil and string.sub(AssetPath, 1, 6) == 'Asset/' then
+        return UGCGameSystem.GetUGCResourcesFullPath(AssetPath)
+    end
+    return AssetPath
+end
+local function GetBlueprintClassPath(Value)
+    local AssetPath = GetConfigAssetPath(Value)
+    if AssetPath == nil or string.sub(AssetPath, -2) == "_C" then
+        return AssetPath
+    end
+    local PackagePath, ObjectName = string.match(AssetPath, "^(.*)%.([^%.]+)$")
+    if PackagePath ~= nil and ObjectName ~= nil then
+        return PackagePath .. "." .. ObjectName .. "_C"
+    end
+    return AssetPath
+end
 
+function UI017:ApplyXzwqWeaponToSelectedSlot(WeaponIndex)
+    local SlotIndex = self.SelectedXzwqSlotIndex
+    local RowData = self.XzwqConfigRows ~= nil and self.XzwqConfigRows[WeaponIndex] or nil
+    if SlotIndex == nil or RowData == nil then
+        return false
+    end
+
+    local IconPath = GetConfigAssetPath(GetXzwqField(RowData, 'iteam'))
+    local IconTexture = IconPath ~= nil and UE.LoadObject(IconPath) or nil
+    local SlotIcon = self:GetWidget(XZWQ_SLOT_ICON_NAMES[SlotIndex])
+    local SlotName = self:GetWidget(XZWQ_SLOT_NAME_NAMES[SlotIndex])
+    if SlotIcon ~= nil and IconTexture ~= nil then
+        SlotIcon:SetBrushFromTexture(IconTexture, true)
+    end
+    if SlotName ~= nil then
+        SlotName:SetText(GetConfigText(GetXzwqField(RowData, 'Name')))
+    end
+    self.XzwqSlotWeaponIndices = self.XzwqSlotWeaponIndices or {}
+    self.XzwqSlotWeaponIndices[SlotIndex] = WeaponIndex
+    return true
+end
+function UI017:GetLocalPlayerController()
+    return UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+end
+function UI017:GetLocalPlayerPawn()
+    local PlayerController = self:GetLocalPlayerController()
+    return UGCGameSystem.GetLocalPlayerPawn()
+        or (PlayerController ~= nil and (PlayerController.Pawn or
+            (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)) or nil)
+end
+function UI017:GetVirtualItemManager()
+    if UGCBlueprintFunctionLibrary == nil or UGCGameSystem.GameState == nil then
+        return nil
+    end
+    return UGCBlueprintFunctionLibrary.GetGamePartGlobalActor(UGCGameSystem.GameState, "VirtualItemManager")
+end
+function UI017:BuildShopWeaponItemMap()
+    if self.XzwqShopItemIDsByIcon ~= nil then
+        return self.XzwqShopItemIDsByIcon
+    end
+    local ItemIDsByIcon = {}
+    local Success, ObjectTable = pcall(UGCGameSystem.GetTableData, "Data/Table/UGCObject")
+    if not Success or ObjectTable == nil then
+        return ItemIDsByIcon
+    end
+    for _, ObjectRow in pairs(ObjectTable) do
+        local ItemID = tonumber(SafeGetField(ObjectRow, "ItemID"))
+        if ItemID ~= nil then
+            local IconReference = SafeGetField(ObjectRow, "ItemSmallIcon")
+                or SafeGetField(ObjectRow, "ItemIcon")
+                or SafeGetField(ObjectRow, "IconPath")
+            if IconReference == nil and UGCItemSystemV2 ~= nil and UGCItemSystemV2.GetItemIconTextureV2 ~= nil then
+                local IconSuccess, ItemIcon = pcall(UGCItemSystemV2.GetItemIconTextureV2, ItemID)
+                if IconSuccess then
+                    IconReference = ItemIcon
+                end
+            end
+            local IconPath = GetConfigAssetPath(IconReference)
+            if IconPath ~= nil then
+                ItemIDsByIcon[IconPath] = ItemIDsByIcon[IconPath] or {}
+                table.insert(ItemIDsByIcon[IconPath], ItemID)
+            end
+        end
+    end
+    self.XzwqShopItemIDsByIcon = ItemIDsByIcon
+    return ItemIDsByIcon
+end
+function UI017:GetOwnedItemCount(ItemID)
+    local PlayerPawn = self:GetLocalPlayerPawn()
+    local BackpackCount = 0
+    if PlayerPawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.GetItemCountV2 ~= nil then
+        local Success, Count = pcall(UGCBackpackSystemV2.GetItemCountV2, PlayerPawn, ItemID)
+        if Success then
+            BackpackCount = tonumber(Count) or 0
+        end
+    end
+    local VirtualCount = 0
+    local VirtualItemManager = self:GetVirtualItemManager()
+    local PlayerController = self:GetLocalPlayerController()
+    if VirtualItemManager ~= nil and VirtualItemManager.GetItemNum ~= nil and PlayerController ~= nil then
+        local Success, Count = pcall(VirtualItemManager.GetItemNum, VirtualItemManager, ItemID, PlayerController)
+        if Success then
+            VirtualCount = tonumber(Count) or 0
+        end
+    end
+    return math.max(BackpackCount, VirtualCount)
+end
+function UI017:HasPurchasedShopItem(ItemID)
+    if ShopV2Manager == nil or ShopV2Manager.GetAllProductConfigData == nil or
+        ShopV2Manager.GetLimitPurchasedTimes == nil then
+        return false
+    end
+    local Success, ProductDatas = pcall(ShopV2Manager.GetAllProductConfigData, ShopV2Manager)
+    if not Success or ProductDatas == nil then
+        return false
+    end
+    for ProductID, ProductData in pairs(ProductDatas) do
+        if tonumber(SafeGetField(ProductData, "ItemID")) == tonumber(ItemID) then
+            local ActualProductID = tonumber(SafeGetField(ProductData, "ProductID")) or tonumber(ProductID)
+            if ActualProductID ~= nil then
+                local PurchasedOK, PurchasedTimes = pcall(
+                    ShopV2Manager.GetLimitPurchasedTimes, ShopV2Manager, ActualProductID)
+                if PurchasedOK and (tonumber(PurchasedTimes) or 0) > 0 then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+function UI017:IsShopWeaponPurchased(RowData)
+    local IconPath = GetConfigAssetPath(GetXzwqField(RowData, 'iteam'))
+    local ItemIDs = IconPath ~= nil and self:BuildShopWeaponItemMap()[IconPath] or nil
+    if ItemIDs == nil then
+        return false
+    end
+    for _, ItemID in ipairs(ItemIDs) do
+        if self:GetOwnedItemCount(ItemID) > 0 or self:HasPurchasedShopItem(ItemID) then
+            return true
+        end
+    end
+    return false
+end
+function UI017:RefreshXzwqConfig(PlayerLevel)
+    local FullTablePath = UGCGameSystem.GetUGCResourcesFullPath(XZWQ_CONFIG_PATH)
+    local Success, ConfigTable = pcall(UGCGameSystem.GetTableData, FullTablePath)
+    if not Success or ConfigTable == nil then
+        ugcprint('[UI017] XzwqConfig load failed: ' .. tostring(FullTablePath))
+        return
+    end
+    PlayerLevel = math.max(1, tonumber(PlayerLevel) or 1)
+    self.XzwqConfigRows = {}
+    self.XzwqUnlockedByIndex = {}
+    for _, AttributeName in ipairs(XZWQ_SLOT_ATTRIBUTE_NAMES) do
+        local AttributeWidget = self:GetWidget(AttributeName)
+        if AttributeWidget ~= nil then
+            AttributeWidget:SetText("")
+        end
+    end
+    for Index, RowName in ipairs(XZWQ_ROW_NAMES) do
+        local RowData = ConfigTable[RowName]
+        self.XzwqConfigRows[Index] = RowData
+        local Panel = self:GetWidget(XZWQ_PANEL_NAMES[Index])
+        if RowData == nil then
+            if Panel ~= nil then
+                Panel:SetVisibility(ESlateVisibility.Collapsed)
+            end
+        else
+            if Panel ~= nil then
+                Panel:SetVisibility(ESlateVisibility.Visible)
+            end
+            local NameWidget = self:GetWidget(XZWQ_NAME_WIDGET_NAMES[Index])
+            if NameWidget ~= nil then
+                NameWidget:SetText(GetConfigText(GetXzwqField(RowData, 'Name')))
+            end
+            local IconPath = GetConfigAssetPath(GetXzwqField(RowData, 'iteam'))
+            local IconTexture = IconPath ~= nil and UE.LoadObject(IconPath) or nil
+            local QQIconButton = self:GetWidget(XZWQ_ACTION_BUTTON_NAMES[Index])
+            if QQIconButton ~= nil and IconTexture ~= nil then
+                self:SetXzwqButtonTexture(QQIconButton, IconTexture)
+            elseif IconPath ~= nil and IconTexture == nil then
+                ugcprint('[UI017] XzwqConfig icon load failed: ' .. tostring(IconPath))
+            end
+            local RequiredLevel = GetConfigNumber(GetXzwqField(RowData, 'JS'), 0)
+            local bUnlocked = RequiredLevel > 0 and PlayerLevel >= RequiredLevel
+                or RequiredLevel == 0 and self:IsShopWeaponPurchased(RowData)
+            self.XzwqUnlockedByIndex[Index] = bUnlocked
+            local LockWidget = self:GetWidget(XZWQ_LOCK_WIDGET_NAMES[Index])
+            if LockWidget ~= nil then
+                LockWidget:SetVisibility(bUnlocked and
+                    ESlateVisibility.Collapsed or ESlateVisibility.Visible)
+            end
+
+            -- 第7个控件只负责显示该槽位是否解锁；图标和名称由当前选中的 QQ 武器填入。
+            if Index <= #XZWQ_SLOT_ICON_NAMES then
+                local SlotLock = self:GetWidget(XZWQ_SLOT_LOCK_BUTTON_NAMES[Index])
+                if SlotLock ~= nil then
+                    SlotLock:SetVisibility(bUnlocked and
+                        ESlateVisibility.Collapsed or ESlateVisibility.Visible)
+                end
+            end
+        end
+    end
+    self:RefreshXzwqSlotSelection()
+end
+function UI017:SelectXzwqWeapon(Index)
+    self:RefreshCurrentPlayerLevel()
+    local RowData = self.XzwqConfigRows ~= nil and self.XzwqConfigRows[Index] or nil
+    if RowData == nil or self.XzwqUnlockedByIndex == nil or self.XzwqUnlockedByIndex[Index] ~= true then
+        ugcprint('[UI017] orbit weapon is locked, index=' .. tostring(Index))
+        return false
+    end
+    local WeaponClassPath = GetBlueprintClassPath(GetXzwqField(RowData, 'LT'))
+    local HitEffectPath = GetConfigAssetPath(GetXzwqField(RowData, 'SJ'))
+    local PlayerPawn = self:GetLocalPlayerPawn()
+    if PlayerPawn == nil or PlayerPawn.SetOrbitWeaponConfig == nil or WeaponClassPath == nil then
+        ugcprint('[UI017] orbit weapon switch failed, index=' .. tostring(Index))
+        return false
+    end
+    -- 本地和服务端都保存 LT/SJ；旋转武器开启时会立即销毁旧武器并生成新武器。
+    local bSwitched = PlayerPawn:SetOrbitWeaponConfig(WeaponClassPath, HitEffectPath)
+    if bSwitched ~= true then
+        ugcprint('[UI017] orbit weapon class load failed: ' .. tostring(WeaponClassPath))
+        return false
+    end
+    local PlayerController = self:GetLocalPlayerController()
+    local bAuthority = PlayerPawn.HasAuthority ~= nil and PlayerPawn:HasAuthority()
+    if not bAuthority and PlayerController ~= nil then
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SelectOrbitWeapon",
+            WeaponClassPath, HitEffectPath)
+    end
+    self.SelectedXzwqIndex = Index
+    self:ApplyXzwqWeaponToSelectedSlot(Index)
+    self:RefreshXzwqSlotSelection()
+    return true
+end
+function UI017:Button_81_OnClicked()
+    local PlayerPawn = self:GetLocalPlayerPawn()
+    if PlayerPawn == nil or PlayerPawn.SetOrbitWeaponEnabled == nil then
+        return
+    end
+    local bCurrentlyEnabled = PlayerPawn.IsOrbitWeaponEnabled ~= nil and
+        PlayerPawn:IsOrbitWeaponEnabled() or false
+    local bEnabled = not bCurrentlyEnabled
+    -- 本地也生成了旋转武器，点击后必须先同步本地显示状态。
+    PlayerPawn:SetOrbitWeaponEnabled(bEnabled)
+    local PlayerController = self:GetLocalPlayerController()
+    local bAuthority = PlayerPawn.HasAuthority ~= nil and PlayerPawn:HasAuthority()
+    if not bAuthority and PlayerController ~= nil then
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SetOrbitWeaponEnabled",
+            bEnabled)
+    end
+end
+function UI017:Button_93_OnClicked() self:SelectXzwqWeapon(1) end
+function UI017:Button_95_OnClicked() self:SelectXzwqWeapon(2) end
+function UI017:Button_99_OnClicked() self:SelectXzwqWeapon(3) end
+function UI017:Button_101_OnClicked() self:SelectXzwqWeapon(4) end
+function UI017:Button_103_OnClicked() self:SelectXzwqWeapon(5) end
+function UI017:Button_107_OnClicked() self:SelectXzwqWeapon(6) end
+function UI017:Button_109_OnClicked() self:SelectXzwqWeapon(7) end
+function UI017:Button_111_OnClicked() self:SelectXzwqWeapon(8) end
+function UI017:Button_113_OnClicked() self:SelectXzwqWeapon(9) end
+function UI017:Button_115_OnClicked() self:SelectXzwqWeapon(10) end
+function UI017:Button_117_OnClicked() self:SelectXzwqWeapon(11) end
+function UI017:Button_119_OnClicked() self:SelectXzwqWeapon(12) end
+
+function UI017:Button_359_OnClicked() self:SelectXzwqSlot(1) end
+function UI017:Button_1_OnClicked() self:SelectXzwqSlot(2) end
+function UI017:Button_3_OnClicked() self:SelectXzwqSlot(3) end
+function UI017:Button_5_OnClicked() self:SelectXzwqSlot(4) end
+function UI017:Button_82_OnClicked() self:SelectXzwqSlot(5) end
+function UI017:Button_85_OnClicked() self:SelectXzwqSlot(6) end
+function UI017:Button_87_OnClicked() self:SelectXzwqSlot(7) end
+function UI017:Button_89_OnClicked() self:SelectXzwqSlot(8) end
+function UI017:SetCurrentPlayerLevel(PlayerLevel)
+    PlayerLevel = math.max(1, tonumber(PlayerLevel) or 1)
+    local TextBlock521 = self:GetWidget("TextBlock_521")
+    if TextBlock521 ~= nil then
+        TextBlock521:SetText(tostring(PlayerLevel))
+    end
+    self:RefreshXzwqConfig(PlayerLevel)
+end
+function UI017:RefreshCurrentPlayerLevel()
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+    local PlayerState = PlayerController ~= nil and PlayerController.PlayerState or nil
+    local PlayerLevel = PlayerController ~= nil and tonumber(PlayerController.ClientPlayerLevel) or nil
+    if PlayerLevel == nil and PlayerState ~= nil then
+        if PlayerState.GetPlayerLevel ~= nil then
+            PlayerLevel = tonumber(PlayerState:GetPlayerLevel()) or 1
+        else
+            PlayerLevel = tonumber(PlayerState.PlayerLevel) or 1
+        end
+    end
+    self:SetCurrentPlayerLevel(PlayerLevel or 1)
+end
+function UI017:RequestCurrentPlayerLevel()
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController ~= nil then
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestRefreshProperty")
+    end
+end
 function UI017:LuaInit()
     if self.bInitDoOnce then
         return
     end
     self.bInitDoOnce = true
-
+    self:RefreshCurrentPlayerLevel()
     local CloseButton = self:GetWidget("Btn_Close")
     if CloseButton ~= nil then
         CloseButton.OnClicked:Add(self.Btn_Close_OnClicked, self)
     end
+    local Button96 = self:GetWidget("Button_96")
+    if Button96 ~= nil then
+        Button96.OnClicked:Add(self.Button_96_OnClicked, self)
+    end
+    local Button97 = self:GetWidget("Button_97")
+    if Button97 ~= nil then
+        Button97.OnClicked:Add(self.Button_97_OnClicked, self)
+    end
+    local Button84 = self:GetWidget("Button_84")
+    if Button84 ~= nil then
+        Button84.OnClicked:Add(self.Button_84_OnClicked, self)
+    end
+    local Button428 = self:GetWidget("Button_428")
+    if Button428 ~= nil then
+        Button428.OnClicked:Add(self.Button_428_OnClicked, self)
+    end
+    local Button81 = self:GetWidget("Button_81")
+    if Button81 ~= nil then
+        Button81.OnClicked:Add(self.Button_81_OnClicked, self)
+    end
+    for _, ButtonName in ipairs(XZWQ_ACTION_BUTTON_NAMES) do
+        local ActionButton = self:GetWidget(ButtonName)
+        local Handler = UI017[ButtonName .. "_OnClicked"]
+        if ActionButton ~= nil and Handler ~= nil then
+            ActionButton.OnClicked:Add(Handler, self)
+        end
+    end
+    for _, ButtonName in ipairs(XZWQ_SLOT_SELECT_BUTTON_NAMES) do
+        local SelectButton = self:GetWidget(ButtonName)
+        local Handler = UI017[ButtonName .. "_OnClicked"]
+        if SelectButton ~= nil and Handler ~= nil then
+            SelectButton.OnClicked:Add(Handler, self)
+        end
+    end
+    -- 默认显示 CanvasPanel_381，隐藏 CanvasPanel_4。
+    self:ShowCanvasPanel381()
+    self:HideCanvasPanel107()
 end
-
+function UI017:ShowCanvasPanel381()
+    local CanvasPanel381 = self:GetWidget("CanvasPanel_381")
+    if CanvasPanel381 ~= nil then
+        CanvasPanel381:SetVisibility(ESlateVisibility.Visible)
+    end
+    local CanvasPanel4 = self:GetWidget("CanvasPanel_4")
+    if CanvasPanel4 ~= nil then
+        CanvasPanel4:SetVisibility(ESlateVisibility.Collapsed)
+    end
+end
+function UI017:ShowCanvasPanel4()
+    local CanvasPanel381 = self:GetWidget("CanvasPanel_381")
+    if CanvasPanel381 ~= nil then
+        CanvasPanel381:SetVisibility(ESlateVisibility.Collapsed)
+    end
+    local CanvasPanel4 = self:GetWidget("CanvasPanel_4")
+    if CanvasPanel4 ~= nil then
+        CanvasPanel4:SetVisibility(ESlateVisibility.Visible)
+    end
+end
+function UI017:Button_96_OnClicked()
+    self:ShowCanvasPanel381()
+end
+function UI017:Button_97_OnClicked()
+    self:ShowCanvasPanel4()
+end
+function UI017:ShowCanvasPanel107()
+    local CanvasPanel107 = self:GetWidget("CanvasPanel_107")
+    if CanvasPanel107 ~= nil then
+        CanvasPanel107:SetVisibility(ESlateVisibility.Visible)
+    end
+end
+function UI017:HideCanvasPanel107()
+    local CanvasPanel107 = self:GetWidget("CanvasPanel_107")
+    if CanvasPanel107 ~= nil then
+        CanvasPanel107:SetVisibility(ESlateVisibility.Collapsed)
+    end
+end
+function UI017:Button_84_OnClicked()
+    self:RefreshCurrentPlayerLevel()
+    self:RequestCurrentPlayerLevel()
+    self:ShowCanvasPanel107()
+end
+function UI017:Button_428_OnClicked()
+    self:HideCanvasPanel107()
+end
 function UI017:Open()
     self:SetVisibility(ESlateVisibility.Visible)
+    self:RefreshCurrentPlayerLevel()
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
         or GameplayStatics.GetPlayerController(self, 0)
     if PlayerController ~= nil then
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestRefreshProperty")
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestSoulRingInventory")
     end
 end
@@ -386,7 +923,7 @@ function UI017:RefreshSoulRingList(SoulRingSnapshot)
             if Cell ~= nil then
                 local Slot = Grid:AddChild(Cell)
                 if Slot ~= nil and Slot.SetPadding ~= nil then
-                    Slot:SetPadding({ Left = 15.0, Top = 0.0, Right = 15.0, Bottom = 10.0 })
+                    Slot:SetPadding({ Left = 10.0, Top = 0.0, Right = 5.0, Bottom = 15.0 })
                 end
                 Cell:SetVisibility(ESlateVisibility.Visible)
                 Cell:SetSoulRingData({
@@ -422,4 +959,4 @@ function UI017:SelectSoulRing(SelectedCell)
     self.SelectedSoulRingCell = SelectedCell
 end
 
-return UI017
+return UI017

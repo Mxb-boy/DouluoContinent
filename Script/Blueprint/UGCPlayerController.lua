@@ -177,8 +177,24 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_RequestRuntimeLogs", "Server_RuntimeLogProbe", "Client_RuntimeLogBatch",
         "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
         "ServerRequestDisbandTeam", "UseRedemptionCode", "Server_LearnTalent", "Client_TalentLearnResult",
-        "Server_EquipTalentUltimate", "Client_TalentUltimateEquipResult", "Server_RequestTalentState",
-        "Client_SyncTalentState"
+        "Server_RequestTalentState", "Client_SyncTalentState"
+end
+
+function UGCPlayerController:Server_SetOrbitWeaponEnabled(bEnabled)
+    local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
+    if Pawn ~= nil and Pawn.SetOrbitWeaponEnabled ~= nil then
+        Pawn:SetOrbitWeaponEnabled(bEnabled == true)
+    end
+end
+
+function UGCPlayerController:Server_SelectOrbitWeapon(WeaponClassPath, HitEffectPath)
+    if type(WeaponClassPath) ~= "string" or WeaponClassPath == "" then
+        return
+    end
+    local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
+    if Pawn ~= nil and Pawn.SetOrbitWeaponConfig ~= nil then
+        Pawn:SetOrbitWeaponConfig(WeaponClassPath, HitEffectPath)
+    end
 end
 
 local function GetTalentStateSnapshot(PlayerState)
@@ -1091,9 +1107,11 @@ end
 
 function UGCPlayerController:Client_SyncSoulRingInventory(Snapshot)
     ugcprint("[SoulRingInventory:CLIENT] snapshot=" .. tostring(Snapshot))
-    local UI15Instance = self.MainUIInstance and self.MainUIInstance.UI15Instance or self.UI15Instance
-    if UI15Instance ~= nil and UI15Instance.ApplySoulRingInventorySnapshot ~= nil then
-        UI15Instance:ApplySoulRingInventorySnapshot(Snapshot)
+    local MainUI = self.MainUIInstance
+    local SoulRingUI = MainUI and (MainUI.UI017Instance or MainUI.UI15Instance)
+        or self.UI017Instance or self.UI15Instance
+    if SoulRingUI ~= nil and SoulRingUI.ApplySoulRingInventorySnapshot ~= nil then
+        SoulRingUI:ApplySoulRingInventorySnapshot(Snapshot)
     end
 end
 
@@ -2407,6 +2425,13 @@ function UGCPlayerController:Client_RefreshPlayerExp(playerExp, playerMaxExp, pl
             self.MainUIInstance.Avarar_frame:ShowUI()
         end
     end
+
+    local MainUI = self.MainUIInstance
+    local SoulRingUI = MainUI and (MainUI.UI017Instance or MainUI.UI15Instance)
+        or self.UI017Instance or self.UI15Instance
+    if SoulRingUI ~= nil and SoulRingUI.SetCurrentPlayerLevel ~= nil then
+        SoulRingUI:SetCurrentPlayerLevel(playerLevel)
+    end
 end
 
 function UGCPlayerController:Client_ShowToast(text)
@@ -3012,7 +3037,7 @@ local function ResolveWQHitEffectPath(EffectPath)
         return DEFAULT_WQ_HIT_EFFECT_PATH
     end
 
-    if string.sub(EffectPath, 1, 6) == "/Game/" then
+    if string.sub(EffectPath, 1, 1) == "/" then
         return EffectPath
     end
 

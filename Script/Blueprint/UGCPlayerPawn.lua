@@ -917,8 +917,8 @@ end
 
 function UGCPlayerPawn:ReceiveBeginPlay()
     UGCPlayerPawn.SuperClass.ReceiveBeginPlay(self)
-    -- 默认关闭身上旋转武器；需要时由代码调用 SetOrbitWeaponEnabled(true) 开启。
-    self.bOrbitWeaponEnabled = false
+    -- 默认开启身上旋转武器；Button_81 可在运行时切换开关。
+    self.bOrbitWeaponEnabled = true
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.Test_01)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi_01)
@@ -978,6 +978,10 @@ end
 
 function UGCPlayerPawn:IsOrbitWeaponEnabled()
     return self.bOrbitWeaponEnabled ~= false
+end
+
+function UGCPlayerPawn:SetOrbitWeaponConfig(WeaponClassPath, HitEffectPath)
+    return AK47Orbit.SetWeapon(self, WeaponClassPath, HitEffectPath)
 end
 
 function UGCPlayerPawn:ReceiveTick(DeltaTime)

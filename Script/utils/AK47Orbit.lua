@@ -37,15 +37,22 @@ local function GetRetryTimerName(Pawn)
     return "WQOrbitRetry_" .. tostring(Pawn)
 end
 
--- 加载工程内的 WQ 蓝图类。
-local function LoadWQClass()
-    if UGCGameSystem == nil or UGCGameSystem.GetUGCResourcesFullPath == nil then
-        return nil
+-- 加载指定的旋转武器蓝图类。
+local function LoadWQClassByPath(ClassPath)
+    local FullPath = ClassPath
+    if type(ClassPath) ~= "string" or ClassPath == "" then
+        ClassPath = WQ_CLASS_PATH
+        FullPath = ClassPath
     end
-
-    local OkPath, FullPath = pcall(UGCGameSystem.GetUGCResourcesFullPath, WQ_CLASS_PATH)
-    if not OkPath or FullPath == nil then
-        return nil
+    if string.sub(ClassPath, 1, 1) ~= "/" then
+        if UGCGameSystem == nil or UGCGameSystem.GetUGCResourcesFullPath == nil then
+            return nil
+        end
+        local OkPath, ResolvedPath = pcall(UGCGameSystem.GetUGCResourcesFullPath, ClassPath)
+        if not OkPath or ResolvedPath == nil then
+            return nil
+        end
+        FullPath = ResolvedPath
     end
 
     if UGCObjectUtility ~= nil and UGCObjectUtility.LoadClass ~= nil then
@@ -63,6 +70,10 @@ local function LoadWQClass()
         end
     end
     return nil
+end
+
+local function LoadWQClass(Pawn)
+    return LoadWQClassByPath(Pawn ~= nil and Pawn.OrbitWeaponClassPath or WQ_CLASS_PATH)
 end
 
 -- 读取人物当前位置。
@@ -113,7 +124,7 @@ end
 
 
 -- 在人物腰部生成一个 WQ 蓝图 Actor。
-function AK47Orbit.Start(Pawn)
+function AK47Orbit.Start(Pawn, PreloadedClass)
     if not IsValid(Pawn) then
         return
     end
@@ -123,7 +134,7 @@ function AK47Orbit.Start(Pawn)
         return
     end
 
-    local WQClass = LoadWQClass()
+    local WQClass = PreloadedClass or LoadWQClass(Pawn)
     local PawnLocation = GetPawnLocation(Pawn)
     if WQClass == nil or PawnLocation == nil then
         ScheduleRetry(Pawn)
@@ -154,7 +165,7 @@ function AK47Orbit.Start(Pawn)
 
     -- 环绕枪只做展示，关闭碰撞并取消自动销毁。
     Actor.DamageOwnerPawn = Pawn
-    Actor.DamageOwnerPawn = Pawn
+    Actor.HitEffectPath = Pawn.OrbitWeaponHitEffectPath
     if Actor.SetActorEnableCollision ~= nil then
         pcall(Actor.SetActorEnableCollision, Actor, true)
     end
@@ -168,6 +179,37 @@ function AK47Orbit.Start(Pawn)
         Angle = 0,
     }
     Log("蓝图生成成功")
+end
+
+-- 切换旋转武器蓝图和命中特效；已开启时立即重建，关闭时仅记录配置。
+function AK47Orbit.SetWeapon(Pawn, WeaponClassPath, HitEffectPath)
+    if not IsValid(Pawn) then
+        return false
+    end
+
+    local NewWeaponClass = LoadWQClassByPath(WeaponClassPath)
+    if NewWeaponClass == nil then
+        Log("切换失败，LT 不是可加载的蓝图类: " .. tostring(WeaponClassPath))
+        return false
+    end
+
+    local OldWeaponClassPath = Pawn.OrbitWeaponClassPath
+    local OldHitEffectPath = Pawn.OrbitWeaponHitEffectPath
+    Pawn.OrbitWeaponClassPath = WeaponClassPath
+    Pawn.OrbitWeaponHitEffectPath = HitEffectPath
+    if Pawn.bOrbitWeaponEnabled == true then
+        AK47Orbit.Stop(Pawn)
+        AK47Orbit.Start(Pawn, NewWeaponClass)
+        if Pawn.AK47OrbitState == nil then
+            Pawn.OrbitWeaponClassPath = OldWeaponClassPath
+            Pawn.OrbitWeaponHitEffectPath = OldHitEffectPath
+            AK47Orbit.Stop(Pawn)
+            AK47Orbit.Start(Pawn)
+            Log("新武器生成失败，已恢复原旋转武器")
+            return false
+        end
+    end
+    return true
 end
 
 
