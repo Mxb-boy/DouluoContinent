@@ -159,7 +159,7 @@ local function GetActiveResetContext(PlayerController, PlayerKey)
 end
 
 FailReset = function(PlayerController, PlayerKey, Reason)
-    local Transaction, PlayerPawn = GetActiveResetContext(PlayerController, PlayerKey)
+    local Transaction, PlayerPawn, PlayerState = GetActiveResetContext(PlayerController, PlayerKey)
     local BackpackWasModified = Transaction ~= nil and
                                     (Transaction.BackpackCleared == true or
                                         (tonumber(Transaction.RemoveRequests) or 0) > 0)
@@ -169,6 +169,9 @@ FailReset = function(PlayerController, PlayerKey, Reason)
         if GrantCallSucceeded and Granted then
             local VerifyCallSucceeded, VerifyResult = pcall(PlayerInitialData.VerifyGrant, PlayerPawn)
             Verified = VerifyCallSucceeded and VerifyResult == true
+        end
+        if Verified and PlayerState ~= nil and PlayerState.SetInitialItem8310006Granted ~= nil then
+            PlayerState:SetInitialItem8310006Granted(true)
         end
         LogReset(PlayerController, Verified and "WARN" or "ERROR", "compensation",
             "grant=" .. tostring(GrantCallSucceeded and Granted) .. " verified=" .. tostring(Verified))
@@ -426,6 +429,12 @@ function GM:S_ResetCurrentPlayerData(Param, PlayerController)
                 else
                     GrantItemsStep(Attempt + 1)
                 end
+                return
+            end
+
+            if VerifyState.SetInitialItem8310006Granted == nil or
+                VerifyState:SetInitialItem8310006Granted(true) ~= true then
+                FailReset(PlayerController, PlayerKey, "initial_item_claim_save_failed")
                 return
             end
 

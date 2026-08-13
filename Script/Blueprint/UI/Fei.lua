@@ -4,6 +4,8 @@
 --Edit Below--
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
+local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
+local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 
 local FLY_SPEED = 3600
 local FLY_START_ANIM_PATH = "/Game/UGC/Repository/Arts_Player/Anim/Dash/AS_DashStart_F.AS_DashStart_F"
@@ -123,6 +125,12 @@ function Fei:SetupKeyboardInputMode()
 end
 
 function Fei:Button_84_OnPressed()
+    if not self:IsWingEquipped() then
+        self.bFlyButtonHeld = false
+        self.FlyButtonReleaseGraceRemaining = nil
+        L_Com.ShowToast("请装备翅膀")
+        return
+    end
     self.bFlyButtonHeld = true
     self.FlyButtonReleaseGraceRemaining = nil
     self:RefreshFlyHoldState()
@@ -209,31 +217,19 @@ function Fei:SetTowerButtonsHidden(value)
         self.TowerButtonsHiddenCount = math.max(0, (self.TowerButtonsHiddenCount or 0) - 1)
     end
 
-    local Visibility = (self.TowerButtonsHiddenCount or 0) > 0 and ESlateVisibility.Collapsed or ESlateVisibility.Visible
-    if self.Button_0 ~= nil then
-        if Visibility == ESlateVisibility.Visible then
-            self:RefreshButton0Visibility()
-        else
-            self.Button_0:SetVisibility(Visibility)
-        end
-    end
-    if self.Button_84 ~= nil then
-        self.Button_84:SetVisibility(Visibility)
-    end
+    self:RefreshButton0Visibility()
 end
 
 function Fei:RefreshButton0Visibility()
-    if self.Button_0 == nil then
-        return
+    local bHasWing = self:HasAnyWing()
+    local bTowerHidden = (self.TowerButtonsHiddenCount or 0) > 0
+    if self.Button_0 ~= nil then
+        self.Button_0:SetVisibility((bHasWing or bTowerHidden) and ESlateVisibility.Collapsed or
+                                        ESlateVisibility.Visible)
     end
-
-    if self:HasFeiButton0Hidden() or self:HasAnyWing() then
-        self.Button_0:SetVisibility(ESlateVisibility.Collapsed)
-        if not self:HasFeiButton0Hidden() then
-            self:SetButton0Hidden(true)
-        end
-    else
-        self.Button_0:SetVisibility(ESlateVisibility.Visible)
+    if self.Button_84 ~= nil then
+        self.Button_84:SetVisibility((bHasWing and not bTowerHidden) and ESlateVisibility.Visible or
+                                         ESlateVisibility.Collapsed)
     end
 end
 
@@ -266,6 +262,20 @@ function Fei:HasAnyWing()
     end
 
     return false
+end
+
+function Fei:IsWingEquipped()
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+    local PlayerPawn = PlayerController and (PlayerController.Pawn or
+        (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)) or nil
+    if PlayerPawn ~= nil and tonumber(PlayerPawn.CurrentEquippedWingItemID) ~= nil and
+        tonumber(PlayerPawn.CurrentEquippedWingItemID) > 0 then
+        return true
+    end
+    -- Wing actor updates this value on the owning client, so it also covers an
+    -- already-equipped wing restored before the backpack callback is received.
+    return StateMgr ~= nil and (tonumber(StateMgr.ChiBang) or 0) > 0
 end
 
 function Fei:GetShopProductID(ItemID)
@@ -325,6 +335,10 @@ function Fei:StartFly()
     if self.bFlying then
         return
     end
+    if not self:IsWingEquipped() then
+        L_Com.ShowToast("请装备翅膀")
+        return
+    end
 
     self.bFlying = true
     self.FlyMoveRpcElapsed = FLY_MOVE_RPC_INTERVAL
@@ -351,6 +365,17 @@ function Fei:StopFly()
 end
 
 function Fei:Tick(MyGeometry, InDeltaTime)
+    self.WingRefreshElapsed = (self.WingRefreshElapsed or 0) + (tonumber(InDeltaTime) or 0)
+    if self.WingRefreshElapsed >= 0.5 then
+        self.WingRefreshElapsed = 0
+        self:RefreshButton0Visibility()
+        if self.bFlying and not self:IsWingEquipped() then
+            self.bFlyButtonHeld = false
+            self.bFlyKeyboardHeld = false
+            self.FlyButtonReleaseGraceRemaining = nil
+            self:StopFly()
+        end
+    end
     self:UpdateKeyboardHold()
     self:UpdateButtonReleaseGrace(InDeltaTime)
     self:RefreshFlyHoldState()

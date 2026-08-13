@@ -20,6 +20,7 @@ local UGCPlayerState = {
     AutoAttackButtonHidden = 0,
     FeiButton0Hidden = 0,
     KJ04GiftPackPurchased = 0,
+    InitialItem8310006Granted = 0,
     RankAttackBonus = 0, -- 本局由服务端根据上期排名计算，不写入跨局存档
     ArchiveUID = nil,
     bArchiveLoaded = false, -- 服务器侧标志：LoadFromArchive 成功后置 true
@@ -77,6 +78,10 @@ local ARCHIVE_KEYS = {{
 }, {
     key = "KJ04GiftPackPurchased",
     field = "KJ04GiftPackPurchased",
+    default = 0
+}, {
+    key = "InitialItem8310006Granted",
+    field = "InitialItem8310006Granted",
     default = 0
 }, {
     key = "LotteryState",
@@ -211,7 +216,7 @@ function UGCPlayerState:GetReplicatedProperties()
     return
         {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "WeaponLevels",
          "BaseAttack", "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "UnlockedTitles",
-         "KillMonsterCount", "EquippedTitleID", "FeiButton0Hidden", "KJ04GiftPackPurchased", "PlayerLevel", "PlayerExp",
+         "KillMonsterCount", "EquippedTitleID", "FeiButton0Hidden", "KJ04GiftPackPurchased", "InitialItem8310006Granted", "PlayerLevel", "PlayerExp",
          "PlayerMaxExp", "PaTaRefreshDay"}, {"RankAttackBonus", "Lazy"}
 end
 
@@ -504,6 +509,15 @@ end
 function UGCPlayerState:SetKJ04GiftPackPurchased(value)
     self.KJ04GiftPackPurchased = (value == true or tonumber(value) == 1) and 1 or 0
     self:SaveToArchive()
+end
+
+function UGCPlayerState:GetInitialItem8310006Granted()
+    return tonumber(self.InitialItem8310006Granted) == 1
+end
+
+function UGCPlayerState:SetInitialItem8310006Granted(value)
+    self.InitialItem8310006Granted = (value == true or tonumber(value) == 1) and 1 or 0
+    return self:SaveToArchive()
 end
 
 function UGCPlayerState:GetYXWD_InvincibleBuff()

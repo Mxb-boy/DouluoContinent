@@ -2,6 +2,14 @@
 --Edit Below--
 local BP_BackpackComponentV2_Custom = {} 
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
+local WingItemIDs = {
+    [8310012] = true,
+    [8310013] = true,
+    [8310014] = true,
+    [8310058] = true,
+    [8310059] = true,
+    [8310010] = true
+}
 
 local function GetOwnerController(self)
     local Owner = nil
@@ -82,6 +90,47 @@ local function GetItemIDFromDefineID(ItemDefineID)
     end
 
     return nil
+end
+
+local function SetEquippedWingFromDefineID(self, ItemDefineID)
+    local ItemID = GetItemIDFromDefineID(ItemDefineID)
+    if not WingItemIDs[ItemID] then
+        return
+    end
+
+    local Pawn = GetOwnerPawn(self)
+    local Controller = GetOwnerController(self)
+    if Pawn ~= nil then
+        Pawn.CurrentEquippedWingItemID = ItemID
+    end
+    if Controller ~= nil then
+        Controller.EquippedWingItemID = ItemID
+        if UnrealNetwork ~= nil and UnrealNetwork.CallUnrealRPC ~= nil then
+            UnrealNetwork.CallUnrealRPC(Controller, Controller, "Client_SetEquippedWingItemID", ItemID)
+        end
+    end
+end
+
+local function ClearEquippedWingFromDefineID(self, ItemDefineID)
+    local ItemID = GetItemIDFromDefineID(ItemDefineID)
+    if not WingItemIDs[ItemID] then
+        return
+    end
+
+    local Pawn = GetOwnerPawn(self)
+    local Controller = GetOwnerController(self)
+    if Pawn ~= nil and tonumber(Pawn.CurrentEquippedWingItemID) == ItemID then
+        Pawn.CurrentEquippedWingItemID = nil
+    end
+    if Controller ~= nil and tonumber(Controller.EquippedWingItemID) == ItemID then
+        Controller.EquippedWingItemID = nil
+        if Controller.Server_StopFlyMove ~= nil then
+            Controller:Server_StopFlyMove()
+        end
+        if UnrealNetwork ~= nil and UnrealNetwork.CallUnrealRPC ~= nil then
+            UnrealNetwork.CallUnrealRPC(Controller, Controller, "Client_SetEquippedWingItemID", 0)
+        end
+    end
 end
 
 local function GetWeaponLevelFromDefineID(ItemDefineID, WeaponInfo)
@@ -330,6 +379,7 @@ function BP_BackpackComponentV2_Custom:OnUseItemV2(ItemDefineID)
         BP_BackpackComponentV2_Custom.SuperClass.OnUseItemV2(self, ItemDefineID)
     end
     SetEquippedWeaponFromDefineID(self, ItemDefineID)
+    SetEquippedWingFromDefineID(self, ItemDefineID)
 end
 
 function BP_BackpackComponentV2_Custom:OnDisuseItemV2(ItemDefineID)
@@ -337,6 +387,7 @@ function BP_BackpackComponentV2_Custom:OnDisuseItemV2(ItemDefineID)
         BP_BackpackComponentV2_Custom.SuperClass.OnDisuseItemV2(self, ItemDefineID)
     end
     ClearEquippedWeaponFromDefineID(self, ItemDefineID)
+    ClearEquippedWingFromDefineID(self, ItemDefineID)
 end
 
 function BP_BackpackComponentV2_Custom:OnAttachToSlot(SlotName, ItemDefineID)
@@ -344,6 +395,7 @@ function BP_BackpackComponentV2_Custom:OnAttachToSlot(SlotName, ItemDefineID)
         BP_BackpackComponentV2_Custom.SuperClass.OnAttachToSlot(self, SlotName, ItemDefineID)
     end
     SetEquippedWeaponFromDefineID(self, ItemDefineID)
+    SetEquippedWingFromDefineID(self, ItemDefineID)
 end
 
 function BP_BackpackComponentV2_Custom:OnDetachBySlot(SlotName, ItemDefineID)
@@ -351,6 +403,7 @@ function BP_BackpackComponentV2_Custom:OnDetachBySlot(SlotName, ItemDefineID)
         BP_BackpackComponentV2_Custom.SuperClass.OnDetachBySlot(self, SlotName, ItemDefineID)
     end
     ClearEquippedWeaponFromDefineID(self, ItemDefineID)
+    ClearEquippedWingFromDefineID(self, ItemDefineID)
 end
 
 return BP_BackpackComponentV2_Custom

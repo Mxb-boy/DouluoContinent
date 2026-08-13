@@ -48,6 +48,14 @@ local SoulRingItemIDs = {
     8310048, 8310049, 8310051, 8310053, 8310054, 8310055, 8310056, 8310057, 8310052, 8310050,
     8310122, 8310123, 8310124, 8310125, 8310126, 8310127, 8310128, 8310129, 8310130, 8310131
 }
+local WingItemIDs = {
+    [8310012] = true,
+    [8310013] = true,
+    [8310014] = true,
+    [8310058] = true,
+    [8310059] = true,
+    [8310010] = true
+}
 
 local function EnsurePlayerStateArchiveUID(PlayerController)
     if PlayerController == nil or PlayerController.PlayerState == nil then
@@ -159,7 +167,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
     return "Server_TeleportToSpawn", "Server_TeleportToLocation", "Server_UpdateRankingListScore",
         "Server_ClearAllRankingListData", "Client_BroadcastPlantMessage", "Client_ForgeWeaponResult",
         "Server_ForgeWeapon", "Server_AddShopItemToBackpackV2", "Server_CleanupStaleShopVirtualItem",
-        "Server_EquipTitle", "Server_BeginFlyState",
+        "Server_EquipTitle", "Server_BeginFlyState", "Client_SetEquippedWingItemID", "Client_RejectFlyStart",
         "Server_EndFlyState", "Server_FlyMove", "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus",
         "Server_AddProbabilityBonus", "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm",
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
@@ -559,10 +567,36 @@ function UGCPlayerController:Server_BeginFlyState()
         return
     end
 
+    local EquippedWingItemID = tonumber(pawn.CurrentEquippedWingItemID)
+    if not WingItemIDs[EquippedWingItemID] then
+        self.bServerFlying = false
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_RejectFlyStart")
+        return
+    end
+
     self.bServerFlying = true
     self.bServerFlyMovementModeReady = false
     self.ServerFlyCachedMaxWalkSpeed = nil
     pawn:BeginFly()
+end
+
+function UGCPlayerController:Client_SetEquippedWingItemID(ItemID)
+    ItemID = tonumber(ItemID) or 0
+    self.EquippedWingItemID = ItemID > 0 and ItemID or nil
+    local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
+    if Pawn ~= nil then
+        Pawn.CurrentEquippedWingItemID = self.EquippedWingItemID
+    end
+    if ItemID <= 0 and self.FeiUIInstance ~= nil and self.FeiUIInstance.StopFly ~= nil then
+        self.FeiUIInstance:StopFly()
+    end
+end
+
+function UGCPlayerController:Client_RejectFlyStart()
+    if self.FeiUIInstance ~= nil and self.FeiUIInstance.StopFly ~= nil then
+        self.FeiUIInstance:StopFly()
+    end
+    self:Client_ShowToast("请装备翅膀")
 end
 
 function UGCPlayerController:Server_EndFlyState()
@@ -586,6 +620,11 @@ function UGCPlayerController:Server_FlyMove(DirX, DirY, DirZ, DeltaTime)
 
     local pawn = self:K2_GetPawn()
     if pawn == nil then
+        return
+    end
+    if not WingItemIDs[tonumber(pawn.CurrentEquippedWingItemID)] then
+        self:Server_StopFlyMove()
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_RejectFlyStart")
         return
     end
 

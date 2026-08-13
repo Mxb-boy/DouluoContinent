@@ -1,29 +1,11 @@
 local PlayerInitialData = {}
-local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
 
 local INITIAL_STACK_ITEMS = {
-    {ItemID = 8310064, Count = 10},
-    {ItemID = 8310047, Count = 1},
-    {ItemID = 8310035, Count = 80000},
-    {ItemID = 8310036, Count = 1000},
-    {ItemID = 8310037, Count = 10},
-    {ItemID = 8310038, Count = 10},
-    {ItemID = 8310039, Count = 10},
-    {ItemID = 8310008, Count = 1000},
-    {ItemID = 8310007, Count = 1},
-    {ItemID = 8310009, Count = 1}
+    {ItemID = 8310006, Count = 1}
 }
 
 local function BuildTargetItemCounts(ExtraBaseItemID)
     local Targets = {}
-    for _, ItemID in ipairs(WeaponLevelConfig.GetAllBaseItemIDs()) do
-        ItemID = tonumber(ItemID)
-        if ItemID ~= nil then
-            Targets[ItemID] = math.max(Targets[ItemID] or 0, 1)
-        end
-    end
-    ExtraBaseItemID = tonumber(ExtraBaseItemID) or WeaponLevelConfig.GetItemID("HTC", 2) or 8310015
-    Targets[ExtraBaseItemID] = math.max(Targets[ExtraBaseItemID] or 0, 1)
     for _, Item in ipairs(INITIAL_STACK_ITEMS) do
         local ItemID = tonumber(Item.ItemID)
         local Count = math.max(0, tonumber(Item.Count) or 0)
