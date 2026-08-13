@@ -984,8 +984,8 @@ end
 
 -- 境界
 function UI02:Button_54_OnClicked()
-    if self.UI15Instance ~= nil then
-        self.UI15Instance:Open()
+    if self.UI017Instance ~= nil then
+        self.UI017Instance:Open()
         return
     end
 
@@ -994,21 +994,22 @@ function UI02:Button_54_OnClicked()
         return
     end
 
-    local UI15Path = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI15.UI15_C"
-    local UI15Class = UE.LoadClass(UI15Path)
-    if UI15Class == nil then
-        ugcprint("[UI02:Button_54_OnClicked] UI15 class load failed: " .. UI15Path)
+    local UI017Path = UGCGameSystem.GetUGCResourcesFullPath("Asset/Blueprint/UI/UI017.UI017_C")
+    local UI017Class = UE.LoadClass(UI017Path)
+    if UI017Class == nil then
+        ugcprint("[UI02:Button_54_OnClicked] UI017 class load failed: " .. UI017Path)
         return
     end
 
-    self.UI15Instance = UserWidget.NewWidgetObjectBP(PlayerController, UI15Class)
-    if self.UI15Instance == nil then
-        ugcprint("[UI02:Button_54_OnClicked] UI15 create failed")
+    self.UI017Instance = UserWidget.NewWidgetObjectBP(PlayerController, UI017Class)
+    if self.UI017Instance == nil then
+        ugcprint("[UI02:Button_54_OnClicked] UI017 create failed")
         return
     end
 
-    self.UI15Instance:AddToViewport(11000)
-    self.UI15Instance:Open()
+    PlayerController.UI017Instance = self.UI017Instance
+    self.UI017Instance:AddToViewport(11000)
+    self.UI017Instance:Open()
 end
 
 function UI02:Button_151_OnClicked()
@@ -1179,4 +1180,4 @@ function UI02:Button_154_OnClicked()
     local pc = GameplayStatics.GetPlayerController(self, 0)
     UnrealNetwork.CallUnrealRPC(pc, pc, "Server_TeleportToLocation", 30328, -15585, 25231)
 end
-return UI02
+return UI02

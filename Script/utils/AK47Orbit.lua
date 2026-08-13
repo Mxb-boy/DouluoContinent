@@ -25,6 +25,16 @@ local function IsValid(Object)
     return Object ~= nil and (UE == nil or UE.IsValid == nil or UE.IsValid(Object))
 end
 
+-- 解锁到第N档时累计显示第1到第N把武器：3档对应组合编码123。
+local function BuildActiveGunCode(UnlockedTier)
+    UnlockedTier = math.max(0, math.min(8, math.floor(tonumber(UnlockedTier) or 0)))
+    local CodeText = ""
+    for Index = 1, UnlockedTier do
+        CodeText = CodeText .. tostring(Index)
+    end
+    return tonumber(CodeText) or 0
+end
+
 -- 输出本脚本专用日志，方便定位资源加载或生成问题。
 local function Log(Message)
     if ugcprint ~= nil then
@@ -166,6 +176,19 @@ function AK47Orbit.Start(Pawn, PreloadedClass)
     -- 环绕枪只做展示，关闭碰撞并取消自动销毁。
     Actor.DamageOwnerPawn = Pawn
     Actor.HitEffectPath = Pawn.OrbitWeaponHitEffectPath
+    if Actor.SetActiveGuns ~= nil then
+        local ActiveGunCode = tonumber(Pawn.OrbitWeaponActiveGunIndex)
+        if ActiveGunCode == nil then
+            local PlayerLevel = Pawn.PlayerState ~= nil and Pawn.PlayerState.GetPlayerLevel ~= nil and
+                tonumber(Pawn.PlayerState:GetPlayerLevel()) or 1
+            ActiveGunCode = BuildActiveGunCode(PlayerLevel)
+            Pawn.OrbitWeaponActiveGunIndex = ActiveGunCode
+        end
+        Actor:SetActiveGuns(ActiveGunCode)
+    end
+    if Actor.SetDamagePercent ~= nil and Pawn.OrbitWeaponDamagePercent ~= nil then
+        Actor:SetDamagePercent(Pawn.OrbitWeaponDamagePercent)
+    end
     if Actor.SetActorEnableCollision ~= nil then
         pcall(Actor.SetActorEnableCollision, Actor, true)
     end
@@ -177,6 +200,7 @@ function AK47Orbit.Start(Pawn, PreloadedClass)
     Pawn.AK47OrbitState = {
         Actor = Actor,
         Angle = 0,
+        WeaponClassPath = Pawn.OrbitWeaponClassPath or WQ_CLASS_PATH,
     }
     Log("蓝图生成成功")
 end
@@ -197,7 +221,13 @@ function AK47Orbit.SetWeapon(Pawn, WeaponClassPath, HitEffectPath)
     local OldHitEffectPath = Pawn.OrbitWeaponHitEffectPath
     Pawn.OrbitWeaponClassPath = WeaponClassPath
     Pawn.OrbitWeaponHitEffectPath = HitEffectPath
-    if Pawn.bOrbitWeaponEnabled == true then
+    -- 重生同步期间开关字段可能短暂为nil/false，但已有Actor仍在显示。
+    -- 只要旋转武器未被明确关闭，或当前Actor仍存在，换枪就必须立即重建。
+    local bHasVisibleOrbitActor = Pawn.AK47OrbitState ~= nil and
+        IsValid(Pawn.AK47OrbitState.Actor)
+    local bShouldRebuild = Pawn.bOrbitWeaponEnabled ~= false or bHasVisibleOrbitActor
+    if bShouldRebuild then
+        Pawn.bOrbitWeaponEnabled = true
         AK47Orbit.Stop(Pawn)
         AK47Orbit.Start(Pawn, NewWeaponClass)
         if Pawn.AK47OrbitState == nil then
@@ -207,6 +237,27 @@ function AK47Orbit.SetWeapon(Pawn, WeaponClassPath, HitEffectPath)
             AK47Orbit.Start(Pawn)
             Log("新武器生成失败，已恢复原旋转武器")
             return false
+        end
+    end
+    return true
+end
+
+function AK47Orbit.SetActiveGun(Pawn, GunIndex, DamagePercent)
+    GunIndex = math.floor(tonumber(GunIndex) or 0)
+    if not IsValid(Pawn) or GunIndex < 1 or GunIndex > 8 then
+        return false
+    end
+    local ActiveGunCode = BuildActiveGunCode(GunIndex)
+    Pawn.OrbitWeaponActiveGunIndex = ActiveGunCode
+    DamagePercent = tonumber(DamagePercent)
+    if DamagePercent ~= nil and DamagePercent > 0 then
+        Pawn.OrbitWeaponDamagePercent = DamagePercent
+    end
+    local State = Pawn.AK47OrbitState
+    if State ~= nil and IsValid(State.Actor) and State.Actor.SetActiveGuns ~= nil then
+        State.Actor:SetActiveGuns(ActiveGunCode)
+        if State.Actor.SetDamagePercent ~= nil and Pawn.OrbitWeaponDamagePercent ~= nil then
+            State.Actor:SetDamagePercent(Pawn.OrbitWeaponDamagePercent)
         end
     end
     return true

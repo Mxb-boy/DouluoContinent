@@ -128,6 +128,14 @@ function PlayerLevelMgr:AddExpToPlayer(PlayerController, amount)
         _G.DOREPONCE(playerState, "PlayerMaxExp")
     end
 
+    -- 升级后服务端立即累计激活已解锁的旋转武器，不依赖UI是否打开。
+    local PlayerPawn = PlayerController.Pawn or
+        (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)
+    if PlayerPawn ~= nil and PlayerPawn.SetOrbitWeaponActiveGun ~= nil then
+        PlayerPawn:SetOrbitWeaponActiveGun(math.max(1, math.min(8, newLevel)),
+            PlayerPawn.OrbitWeaponDamagePercent)
+    end
+
     --[[-----------------------客户端提示----------------------]] --
     -- UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
     --     "添加的经验是" .. tostring(amount))

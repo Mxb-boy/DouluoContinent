@@ -15,7 +15,6 @@ local function SetNoCollision(Component)
     if ECollisionEnabled ~= nil and ECollisionEnabled.NoCollision ~= nil then
         CallIfExists(Component, "SetCollisionEnabled", ECollisionEnabled.NoCollision)
     end
-    CallIfExists(Component, "SetGenerateOverlapEvents", false)
 end
 
 local function SetOverlapOnly(Component)
@@ -30,7 +29,6 @@ local function SetOverlapOnly(Component)
     if ECollisionResponse ~= nil and ECollisionResponse.ECR_Overlap ~= nil then
         CallIfExists(Component, "SetCollisionResponseToAllChannels", ECollisionResponse.ECR_Overlap)
     end
-    CallIfExists(Component, "SetGenerateOverlapEvents", true)
 end
 
 local function ForEachChildComponent(RootComponent, Callback)
@@ -56,6 +54,21 @@ local function ForEachChildComponent(RootComponent, Callback)
     end
 end
 
+-- 显式处理根组件及其全部后代，避免粒子、附属网格等子组件继续显示。
+function DamageOnlyCollision.SetComponentTreeActive(RootComponent, bActive)
+    ForEachChildComponent(RootComponent, function(Component)
+        if Component == nil then
+            return
+        end
+        if Component.SetVisibility ~= nil then
+            pcall(Component.SetVisibility, Component, bActive, true)
+        end
+        if Component.SetActive ~= nil then
+            pcall(Component.SetActive, Component, bActive, true)
+        end
+    end)
+end
+
 function DamageOnlyCollision.Apply(Actor, MeshNames, BoxNames, GetComponentByName)
     if Actor == nil or GetComponentByName == nil then
         return
@@ -73,6 +86,24 @@ function DamageOnlyCollision.Apply(Actor, MeshNames, BoxNames, GetComponentByNam
 
     for _, BoxName in ipairs(BoxNames or {}) do
         SetOverlapOnly(GetComponentByName(Actor, BoxName))
+    end
+end
+
+-- 武器显示切换时同步开关一一对应的伤害盒，防止隐藏武器的碰撞仍留在场景中。
+function DamageOnlyCollision.RefreshActiveBoxes(Actor, ActiveGuns, BoxNames, GetComponentByName)
+    if Actor == nil or GetComponentByName == nil then
+        return
+    end
+
+    for Index, BoxName in ipairs(BoxNames or {}) do
+        local BoxComponent = GetComponentByName(Actor, BoxName)
+        local bActive = ActiveGuns ~= nil and ActiveGuns[Index] == true
+        if bActive then
+            SetOverlapOnly(BoxComponent)
+        else
+            SetNoCollision(BoxComponent)
+        end
+        CallIfExists(BoxComponent, "SetActive", bActive, true)
     end
 end
 

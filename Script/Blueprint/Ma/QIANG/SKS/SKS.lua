@@ -115,6 +115,9 @@ function SKS:ReceiveBeginPlay()
         if box ~= nil and box.OnComponentBeginOverlap ~= nil then
             box.OnComponentBeginOverlap:Add(self.Box_OnComponentBeginOverlap, self)
         end
+        if box ~= nil and box.OnComponentEndOverlap ~= nil then
+            box.OnComponentEndOverlap:Add(self.Box_OnComponentEndOverlap, self)
+        end
     end
 end
 
@@ -142,9 +145,11 @@ function SKS:SetActiveGuns(GunCode)
     for Index, MeshName in ipairs(GUN_MESH_NAMES) do
         local Mesh = GetComponentByName(self, MeshName)
         if Mesh ~= nil then
-            SetComponentTreeActive(Mesh, self.ActiveGuns[Index] == true)
+            DamageOnlyCollision.SetComponentTreeActive(Mesh, self.ActiveGuns[Index] == true)
         end
     end
+
+    DamageOnlyCollision.RefreshActiveBoxes(self, self.ActiveGuns, DAMAGE_BOX_NAMES, GetComponentByName)
 
     return self.ActiveGuns
 end
@@ -313,6 +318,13 @@ end
 
 function SKS:Box_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult)
     return self:TryDamageMonster(OverlappedComponent, OtherActor)
+end
+
+function SKS:Box_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
+    if OtherActor ~= nil and self.HitActors ~= nil and self.HitActors[OverlappedComponent] ~= nil then
+        self.HitActors[OverlappedComponent][OtherActor] = nil
+    end
+    return nil
 end
 
 -- [Editor Generated Lua] function define End;

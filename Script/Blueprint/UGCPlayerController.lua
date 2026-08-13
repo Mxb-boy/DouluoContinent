@@ -177,10 +177,12 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_RequestRuntimeLogs", "Server_RuntimeLogProbe", "Client_RuntimeLogBatch",
         "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
         "ServerRequestDisbandTeam", "UseRedemptionCode", "Server_LearnTalent", "Client_TalentLearnResult",
-        "Server_RequestTalentState", "Client_SyncTalentState"
+        "Server_RequestTalentState", "Client_SyncTalentState", "Server_SetOrbitWeaponEnabled",
+        "Server_SelectOrbitWeapon", "Server_SetOrbitWeaponActiveGun"
 end
 
 function UGCPlayerController:Server_SetOrbitWeaponEnabled(bEnabled)
+    self.OrbitWeaponEnabled = bEnabled == true
     local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
     if Pawn ~= nil and Pawn.SetOrbitWeaponEnabled ~= nil then
         Pawn:SetOrbitWeaponEnabled(bEnabled == true)
@@ -193,7 +195,33 @@ function UGCPlayerController:Server_SelectOrbitWeapon(WeaponClassPath, HitEffect
     end
     local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
     if Pawn ~= nil and Pawn.SetOrbitWeaponConfig ~= nil then
-        Pawn:SetOrbitWeaponConfig(WeaponClassPath, HitEffectPath)
+        if Pawn:SetOrbitWeaponConfig(WeaponClassPath, HitEffectPath) == true then
+            self.OrbitWeaponClassPath = WeaponClassPath
+            self.OrbitWeaponHitEffectPath = HitEffectPath
+        end
+    end
+end
+
+function UGCPlayerController:Server_SetOrbitWeaponActiveGun(GunIndex, DamagePercent)
+    GunIndex = math.floor(tonumber(GunIndex) or 0)
+    local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
+    if Pawn == nil or Pawn.SetOrbitWeaponActiveGun == nil then
+        return
+    end
+    local PlayerLevel = Pawn.PlayerState ~= nil and Pawn.PlayerState.GetPlayerLevel ~= nil and
+        tonumber(Pawn.PlayerState:GetPlayerLevel()) or 0
+    if GunIndex >= 1 and GunIndex <= 8 and PlayerLevel >= GunIndex then
+        DamagePercent = tonumber(DamagePercent)
+        if DamagePercent ~= nil then
+            DamagePercent = math.max(0.01, math.min(10000, DamagePercent))
+        end
+        local SavedTier = tonumber(self.OrbitWeaponActiveGunTier) or 0
+        local EffectiveTier = math.max(SavedTier, GunIndex)
+        self.OrbitWeaponActiveGunTier = EffectiveTier
+        if GunIndex >= SavedTier and DamagePercent ~= nil then
+            self.OrbitWeaponDamagePercent = DamagePercent
+        end
+        Pawn:SetOrbitWeaponActiveGun(EffectiveTier, self.OrbitWeaponDamagePercent)
     end
 end
 
@@ -2417,6 +2445,11 @@ function UGCPlayerController:Client_RefreshPlayerExp(playerExp, playerMaxExp, pl
     self.ClientPlayerExp = playerExp
     self.ClientPlayerMaxExp = playerMaxExp
     self.ClientPlayerLevel = playerLevel
+    local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
+    if Pawn ~= nil and Pawn.SetOrbitWeaponActiveGun ~= nil then
+        Pawn:SetOrbitWeaponActiveGun(math.max(1, math.min(8, math.floor(tonumber(playerLevel) or 1))),
+            Pawn.OrbitWeaponDamagePercent)
+    end
     if self.MainUIInstance ~= nil and self.MainUIInstance.RefreshPlayerExpUI ~= nil then
         self.MainUIInstance:RefreshPlayerExpUI(playerExp, playerMaxExp)
         --[[-----------------------刷新等级显示-----------------------]] --

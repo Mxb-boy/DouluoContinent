@@ -127,6 +127,8 @@
 ---@field QQ8 UCanvasPanel
 ---@field QQ9 UCanvasPanel
 ---@field ScrollBox_254 UScrollBox
+---@field TextBlock_330 UTextBlock
+---@field TextBlock_332 UTextBlock
 ---@field TextBlock_423 UTextBlock
 ---@field TextBlock_424 UTextBlock
 ---@field TextBlock_427 UTextBlock
@@ -160,6 +162,7 @@ end
 
 local PROJECT_ROOT_PATH = UGCMapInfoLib.GetRootLongPackagePath()
 local XZWQ_CONFIG_PATH = 'Asset/Data/Table/Customized/XzwqConfig.XzwqConfig'
+local XZWQ_LOCK_TEXTURE_PATH = 'Asset/ui/UIxin/lock1.lock1'
 local XZWQ_ROW_NAMES = {
     'NewRow', 'NewRow_0', 'NewRow_1', 'NewRow_2', 'NewRow_3', 'NewRow_4',
     'NewRow_5', 'NewRow_6', 'NewRow_7', 'NewRow_8', 'NewRow_9', 'NewRow_10'
@@ -259,9 +262,14 @@ function UI017:SetXzwqButtonTexture(Button, Texture)
 end
 
 function UI017:RefreshXzwqSlotSelection()
+    if self.SelectedXzwqSlotIndex ~= nil and
+        (self.XzwqSlotUnlockedByIndex == nil or
+            self.XzwqSlotUnlockedByIndex[self.SelectedXzwqSlotIndex] ~= true) then
+        self.SelectedXzwqSlotIndex = nil
+    end
     if self.SelectedXzwqSlotIndex == nil then
         for Index = 1, #XZWQ_SLOT_SELECT_BUTTON_NAMES do
-            if self.XzwqUnlockedByIndex ~= nil and self.XzwqUnlockedByIndex[Index] == true then
+            if self.XzwqSlotUnlockedByIndex ~= nil and self.XzwqSlotUnlockedByIndex[Index] == true then
                 self.SelectedXzwqSlotIndex = Index
                 break
             end
@@ -269,8 +277,8 @@ function UI017:RefreshXzwqSlotSelection()
     end
     for Index, ButtonName in ipairs(XZWQ_SLOT_SELECT_BUTTON_NAMES) do
         local SelectButton = self:GetWidget(ButtonName)
-        local bUnlocked = self.XzwqUnlockedByIndex ~= nil and
-            self.XzwqUnlockedByIndex[Index] == true
+        local bUnlocked = self.XzwqSlotUnlockedByIndex ~= nil and
+            self.XzwqSlotUnlockedByIndex[Index] == true
         if SelectButton ~= nil then
             if SelectButton.SetIsEnabled ~= nil then
                 SelectButton:SetIsEnabled(bUnlocked)
@@ -285,10 +293,21 @@ function UI017:RefreshXzwqSlotSelection()
 end
 
 function UI017:SelectXzwqSlot(Index)
-    if self.XzwqUnlockedByIndex == nil or self.XzwqUnlockedByIndex[Index] ~= true then
+    if self.XzwqSlotUnlockedByIndex == nil or self.XzwqSlotUnlockedByIndex[Index] ~= true then
         return false
     end
     self.SelectedXzwqSlotIndex = Index
+    self:RefreshSelectedXzwqStats(Index)
+    local PlayerPawn = self:GetLocalPlayerPawn()
+    if PlayerPawn ~= nil and PlayerPawn.SetOrbitWeaponActiveGun ~= nil then
+        PlayerPawn:SetOrbitWeaponActiveGun(Index)
+    end
+    local PlayerController = self:GetLocalPlayerController()
+    local bAuthority = PlayerPawn ~= nil and PlayerPawn.HasAuthority ~= nil and PlayerPawn:HasAuthority()
+    if not bAuthority and PlayerController ~= nil then
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SetOrbitWeaponActiveGun",
+            Index)
+    end
     self:RefreshXzwqSlotSelection()
     return true
 end
@@ -328,25 +347,58 @@ local function GetBlueprintClassPath(Value)
     return AssetPath
 end
 
-function UI017:ApplyXzwqWeaponToSelectedSlot(WeaponIndex)
-    local SlotIndex = self.SelectedXzwqSlotIndex
+function UI017:RefreshSelectedXzwqStats(SlotIndex)
+    local AttackTextWidget = self:GetWidget("TextBlock_330")
+    if AttackTextWidget ~= nil then
+        AttackTextWidget:SetText("")
+    end
+    local AttackSpeedTextWidget = self:GetWidget("TextBlock_332")
+    if AttackSpeedTextWidget ~= nil then
+        AttackSpeedTextWidget:SetText("")
+    end
+    return true
+end
+
+function UI017:RefreshSelectedXzwqWeaponSlots(WeaponIndex)
     local RowData = self.XzwqConfigRows ~= nil and self.XzwqConfigRows[WeaponIndex] or nil
-    if SlotIndex == nil or RowData == nil then
+    if RowData == nil then
         return false
     end
 
     local IconPath = GetConfigAssetPath(GetXzwqField(RowData, 'iteam'))
     local IconTexture = IconPath ~= nil and UE.LoadObject(IconPath) or nil
-    local SlotIcon = self:GetWidget(XZWQ_SLOT_ICON_NAMES[SlotIndex])
-    local SlotName = self:GetWidget(XZWQ_SLOT_NAME_NAMES[SlotIndex])
-    if SlotIcon ~= nil and IconTexture ~= nil then
-        SlotIcon:SetBrushFromTexture(IconTexture, true)
+    local LockTexture = UE.LoadObject(UGCGameSystem.GetUGCResourcesFullPath(XZWQ_LOCK_TEXTURE_PATH))
+    local WeaponName = GetConfigText(GetXzwqField(RowData, 'Name'))
+    for SlotIndex = 1, #XZWQ_SLOT_ICON_NAMES do
+        local SlotIcon = self:GetWidget(XZWQ_SLOT_ICON_NAMES[SlotIndex])
+        local SlotName = self:GetWidget(XZWQ_SLOT_NAME_NAMES[SlotIndex])
+        local AttributeWidget = self:GetWidget(XZWQ_SLOT_ATTRIBUTE_NAMES[SlotIndex])
+        local LockButton = self:GetWidget(XZWQ_SLOT_LOCK_BUTTON_NAMES[SlotIndex])
+        local bUnlocked = self.XzwqSlotUnlockedByIndex ~= nil and
+            self.XzwqSlotUnlockedByIndex[SlotIndex] == true
+        local DisplayTexture = LockTexture
+        if bUnlocked then
+            DisplayTexture = IconTexture
+        end
+        if SlotIcon ~= nil and DisplayTexture ~= nil then
+            SlotIcon:SetBrushFromTexture(DisplayTexture, true)
+        end
+        if LockButton ~= nil then
+            LockButton:SetVisibility(bUnlocked and
+                ESlateVisibility.Collapsed or ESlateVisibility.Visible)
+        end
+        if SlotName ~= nil then
+            SlotName:SetText(WeaponName)
+        end
+        if AttributeWidget ~= nil then
+            local RequiredLevel = SlotIndex
+            if bUnlocked then
+                AttributeWidget:SetText("")
+            else
+                AttributeWidget:SetText(tostring(RequiredLevel) .. "级解锁")
+            end
+        end
     end
-    if SlotName ~= nil then
-        SlotName:SetText(GetConfigText(GetXzwqField(RowData, 'Name')))
-    end
-    self.XzwqSlotWeaponIndices = self.XzwqSlotWeaponIndices or {}
-    self.XzwqSlotWeaponIndices[SlotIndex] = WeaponIndex
     return true
 end
 function UI017:GetLocalPlayerController()
@@ -462,10 +514,19 @@ function UI017:RefreshXzwqConfig(PlayerLevel)
     PlayerLevel = math.max(1, tonumber(PlayerLevel) or 1)
     self.XzwqConfigRows = {}
     self.XzwqUnlockedByIndex = {}
-    for _, AttributeName in ipairs(XZWQ_SLOT_ATTRIBUTE_NAMES) do
-        local AttributeWidget = self:GetWidget(AttributeName)
-        if AttributeWidget ~= nil then
-            AttributeWidget:SetText("")
+    self.XzwqSlotUnlockedByIndex = {}
+    for SlotIndex = 1, #XZWQ_SLOT_LOCK_BUTTON_NAMES do
+        local RequiredLevel = SlotIndex
+        local bSlotUnlocked = PlayerLevel >= RequiredLevel
+        self.XzwqSlotUnlockedByIndex[SlotIndex] = bSlotUnlocked
+        local SlotLock = self:GetWidget(XZWQ_SLOT_LOCK_BUTTON_NAMES[SlotIndex])
+        local AttributeWidget = self:GetWidget(XZWQ_SLOT_ATTRIBUTE_NAMES[SlotIndex])
+        if SlotLock ~= nil then
+            SlotLock:SetVisibility(bSlotUnlocked and
+                ESlateVisibility.Collapsed or ESlateVisibility.Visible)
+        end
+        if AttributeWidget ~= nil and not bSlotUnlocked then
+            AttributeWidget:SetText(tostring(RequiredLevel) .. "级解锁")
         end
     end
     for Index, RowName in ipairs(XZWQ_ROW_NAMES) do
@@ -502,17 +563,24 @@ function UI017:RefreshXzwqConfig(PlayerLevel)
                     ESlateVisibility.Collapsed or ESlateVisibility.Visible)
             end
 
-            -- 第7个控件只负责显示该槽位是否解锁；图标和名称由当前选中的 QQ 武器填入。
-            if Index <= #XZWQ_SLOT_ICON_NAMES then
-                local SlotLock = self:GetWidget(XZWQ_SLOT_LOCK_BUTTON_NAMES[Index])
-                if SlotLock ~= nil then
-                    SlotLock:SetVisibility(bUnlocked and
-                        ESlateVisibility.Collapsed or ESlateVisibility.Visible)
-                end
+        end
+    end
+    if self.SelectedXzwqIndex == nil then
+        for Index, RowData in ipairs(self.XzwqConfigRows) do
+            if GetConfigText(GetXzwqField(RowData, 'Name')) == "QBZ" then
+                self.SelectedXzwqIndex = Index
+                break
             end
         end
     end
+    if self.SelectedXzwqIndex ~= nil then
+        self:RefreshSelectedXzwqWeaponSlots(self.SelectedXzwqIndex)
+    end
     self:RefreshXzwqSlotSelection()
+    if not self.bXzwqSlotInitialized and self.SelectedXzwqSlotIndex ~= nil then
+        self.bXzwqSlotInitialized = true
+        self:SelectXzwqSlot(self.SelectedXzwqSlotIndex)
+    end
 end
 function UI017:SelectXzwqWeapon(Index)
     self:RefreshCurrentPlayerLevel()
@@ -535,14 +603,23 @@ function UI017:SelectXzwqWeapon(Index)
         return false
     end
     local PlayerController = self:GetLocalPlayerController()
+    if PlayerController ~= nil then
+        PlayerController.OrbitWeaponClassPath = WeaponClassPath
+        PlayerController.OrbitWeaponHitEffectPath = HitEffectPath
+        PlayerController.OrbitWeaponEnabled = true
+    end
     local bAuthority = PlayerPawn.HasAuthority ~= nil and PlayerPawn:HasAuthority()
     if not bAuthority and PlayerController ~= nil then
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SelectOrbitWeapon",
             WeaponClassPath, HitEffectPath)
     end
     self.SelectedXzwqIndex = Index
-    self:ApplyXzwqWeaponToSelectedSlot(Index)
-    self:RefreshXzwqSlotSelection()
+    self:RefreshSelectedXzwqWeaponSlots(Index)
+    if self.SelectedXzwqSlotIndex ~= nil then
+        self:SelectXzwqSlot(self.SelectedXzwqSlotIndex)
+    else
+        self:RefreshXzwqSlotSelection()
+    end
     return true
 end
 function UI017:Button_81_OnClicked()
@@ -584,12 +661,18 @@ function UI017:Button_85_OnClicked() self:SelectXzwqSlot(6) end
 function UI017:Button_87_OnClicked() self:SelectXzwqSlot(7) end
 function UI017:Button_89_OnClicked() self:SelectXzwqSlot(8) end
 function UI017:SetCurrentPlayerLevel(PlayerLevel)
-    PlayerLevel = math.max(1, tonumber(PlayerLevel) or 1)
+    PlayerLevel = math.max(1, tonumber(PlayerLevel) or 1,
+        tonumber(self.CurrentPlayerLevel) or 1)
+    self.CurrentPlayerLevel = PlayerLevel
     local TextBlock521 = self:GetWidget("TextBlock_521")
     if TextBlock521 ~= nil then
         TextBlock521:SetText(tostring(PlayerLevel))
     end
     self:RefreshXzwqConfig(PlayerLevel)
+    local HighestUnlockedSlot = math.max(1, math.min(8, math.floor(PlayerLevel)))
+    self.SelectedXzwqSlotIndex = HighestUnlockedSlot
+    self.bXzwqSlotInitialized = true
+    self:SelectXzwqSlot(HighestUnlockedSlot)
 end
 function UI017:RefreshCurrentPlayerLevel()
     local PlayerController = UGCGameSystem.GetLocalPlayerController()

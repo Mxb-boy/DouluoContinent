@@ -40,6 +40,25 @@ local WingItemIDs = {
 }
 local DisuseItemFunctionNames = {"DisuseItemV2", "UnUseItemV2", "CancelUseItemV2", "StopUseItemV2"}
 
+local function RestoreOrbitWeaponState(PlayerController, PlayerPawn, PlayerLevel)
+    if PlayerController == nil or PlayerPawn == nil then
+        return
+    end
+    if PlayerController.OrbitWeaponClassPath ~= nil and PlayerPawn.SetOrbitWeaponConfig ~= nil then
+        PlayerPawn:SetOrbitWeaponConfig(PlayerController.OrbitWeaponClassPath,
+            PlayerController.OrbitWeaponHitEffectPath)
+    end
+    if PlayerPawn.SetOrbitWeaponActiveGun ~= nil then
+        local SavedTier = tonumber(PlayerController.OrbitWeaponActiveGunTier)
+        local ActiveTier = math.max(1, math.min(8,
+            math.floor(math.max(SavedTier or 1, tonumber(PlayerLevel) or 1))))
+        PlayerPawn:SetOrbitWeaponActiveGun(ActiveTier, PlayerController.OrbitWeaponDamagePercent)
+    end
+    if PlayerPawn.SetOrbitWeaponEnabled ~= nil then
+        PlayerPawn:SetOrbitWeaponEnabled(PlayerController.OrbitWeaponEnabled ~= false)
+    end
+end
+
 local function SyncPlayerExpToClient(PlayerController)
     local PlayerState = PlayerController and PlayerController.PlayerState
     if PlayerState == nil or PlayerLevelMgr == nil then
@@ -50,6 +69,9 @@ local function SyncPlayerExpToClient(PlayerController)
     local playerLevel = PlayerLevelMgr:GetLevelByExp(playerExp)
     local currentExp = PlayerLevelMgr:GetCurrentLevelExp(playerExp, playerLevel)
     local currentMaxExp = PlayerLevelMgr:GetCurrentLevelMaxExp(playerLevel, PlayerState:GetPlayerMaxExp())
+    local PlayerPawn = PlayerController.Pawn or
+        (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)
+    RestoreOrbitWeaponState(PlayerController, PlayerPawn, playerLevel)
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_RefreshPlayerExp", currentExp, currentMaxExp,
         playerLevel)
 end
@@ -1017,6 +1039,9 @@ function UGCGameMode:UGC_PlayerRespawnEvent(RespawnedController)
         if PC and PC.Pawn then
             RestoreBackpackSnapshot(PlayerKey, PC.Pawn)
             DisuseEquippedWings(PC.Pawn)
+            local PlayerLevel = PC.PlayerState ~= nil and PC.PlayerState.GetPlayerLevel ~= nil and
+                PC.PlayerState:GetPlayerLevel() or 1
+            RestoreOrbitWeaponState(PC, PC.Pawn, PlayerLevel)
             if PC.Pawn.RefreshStateMgrProperty ~= nil then
                 PC.Pawn:RefreshStateMgrProperty(true)
             end
@@ -1047,6 +1072,10 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
         if RespawnedController and RespawnedController.Pawn then
             RestoreBackpackSnapshot(VictimPlayerKey, RespawnedController.Pawn)
             DisuseEquippedWings(RespawnedController.Pawn)
+            local PlayerLevel = RespawnedController.PlayerState ~= nil and
+                RespawnedController.PlayerState.GetPlayerLevel ~= nil and
+                RespawnedController.PlayerState:GetPlayerLevel() or 1
+            RestoreOrbitWeaponState(RespawnedController, RespawnedController.Pawn, PlayerLevel)
             if RespawnedController.Pawn.RefreshStateMgrProperty ~= nil then
                 RespawnedController.Pawn:RefreshStateMgrProperty(true)
             end
