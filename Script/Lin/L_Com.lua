@@ -75,6 +75,10 @@ end
 
 --[[----------------------购买商城商品------------------------]]
 function L_Com.BuyShopProduct(Product_ID, Buy_Count)
+    if ShopV2Manager == nil or ShopV2Manager.CheckBackpackBeforePurchase == nil or
+        ShopV2Manager:CheckBackpackBeforePurchase() == false then
+        return nil
+    end
     Buy_Count = Buy_Count or 1 -- 购买数量
     local Product_Data = ShopV2Manager:GetProductConfigData(Product_ID) -- 商品信息
     local Object_Data = ShopV2Manager:GetItemConfigData(Product_Data.ItemID) -- 物品信息

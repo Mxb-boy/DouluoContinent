@@ -696,6 +696,9 @@ function UI02:Button_2_OnClicked()
 end
 
 function UI02:PurchaseShopItem(ItemID, Price)
+    if ShopV2Manager == nil or ShopV2Manager:CheckBackpackBeforePurchase() == false then
+        return false
+    end
     local ProductID = self:GetShopProductID(ItemID, Price)
     if ProductID == nil then
         return false

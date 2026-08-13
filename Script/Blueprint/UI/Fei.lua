@@ -141,6 +141,9 @@ function Fei:Button_84_OnReleased()
 end
 
 function Fei:Button_0_OnClicked()
+    if ShopV2Manager == nil or ShopV2Manager:CheckBackpackBeforePurchase() == false then
+        return
+    end
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
     local ProductID = self:GetShopProductID(WingItemID)
     if PlayerController == nil or ProductID == nil then

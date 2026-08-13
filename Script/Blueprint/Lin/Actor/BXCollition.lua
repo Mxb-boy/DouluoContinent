@@ -4,6 +4,17 @@
 ---@field TowerID int32
 -- Edit Below--
 local BXCollition = {}
+
+-- 公用气泡提示入口，其他系统统一调用这里。
+function BXCollition.ShowBubble(Text)
+    local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
+    if L_Com ~= nil and L_Com.ShowToast ~= nil then
+        L_Com.ShowToast(tostring(Text or ""))
+        return true
+    end
+    return false
+end
+
 function BXCollition:ReceiveBeginPlay()
     self.SuperClass.ReceiveBeginPlay(self);
     self:LuaInit();
