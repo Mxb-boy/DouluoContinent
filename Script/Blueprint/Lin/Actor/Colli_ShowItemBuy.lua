@@ -2,6 +2,7 @@
 ---@field Box UBoxComponent
 ---@field DefaultSceneRoot USceneComponent
 ---@field ID_Shop int32
+---@field IS_ShowCJ bool
 --Edit Below--
 local Colli_ShowItemBuy = {}
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
@@ -52,11 +53,37 @@ function Colli_ShowItemBuy:LuaInit()
     -- [Editor Generated Lua] BindingEvent End;
 end
 
---[[----------------------玩家进入区域时显示商品购买界面------------------------]]
+--[[----------------------玩家进入区域时显示对应界面------------------------]]
 function Colli_ShowItemBuy:Box_OnComponentBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex,
     bFromSweep, SweepResult)
     local Player_Controller = UGCGameSystem.GetPlayerControllerByPlayerPawn(OtherActor)
     if Player_Controller == nil or not Player_Controller:IsLocalPlayerController() then
+        return nil;
+    end
+
+    if self.IS_ShowCJ then
+        local Main_UI = Player_Controller.MainUIInstance -- 主界面实例
+        self.CJ_UI = Main_UI and Main_UI.UI14Instance or Player_Controller.UI14Instance -- 召唤界面实例
+        if self.CJ_UI == nil then
+            local UI14_Path = UGCGameSystem.GetUGCResourcesFullPath('Asset/Blueprint/UI/UI14.UI14_C') -- 召唤界面路径
+            local UI14_Class = UE.LoadClass(UI14_Path) -- 召唤界面类
+            if UI14_Class == nil then
+                return nil;
+            end
+
+            self.CJ_UI = UserWidget.NewWidgetObjectBP(Player_Controller, UI14_Class)
+            if self.CJ_UI == nil then
+                return nil;
+            end
+
+            self.CJ_UI:AddToViewport(11000)
+            if Main_UI ~= nil then
+                Main_UI.UI14Instance = self.CJ_UI
+            else
+                Player_Controller.UI14Instance = self.CJ_UI
+            end
+        end
+        self.CJ_UI:Open()
         return nil;
     end
 
@@ -75,10 +102,17 @@ function Colli_ShowItemBuy:Box_OnComponentBeginOverlap(OverlappedComponent, Othe
     end
 end
 
---[[----------------------玩家离开区域时关闭商品购买界面------------------------]]
+--[[----------------------玩家离开区域时关闭对应界面------------------------]]
 function Colli_ShowItemBuy:Box_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex)
     local Player_Controller = UGCGameSystem.GetPlayerControllerByPlayerPawn(OtherActor)
     if Player_Controller == nil or not Player_Controller:IsLocalPlayerController() then
+        return nil;
+    end
+
+    if self.IS_ShowCJ then
+        if self.CJ_UI ~= nil then
+            self.CJ_UI:Close()
+        end
         return nil;
     end
 
