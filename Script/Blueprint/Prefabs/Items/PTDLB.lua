@@ -6,6 +6,7 @@
 -- Edit Below--
 local PTDLB = {}
 
+--[[----------------------使用礼包并分批生成掉落物------------------------]]
 function PTDLB:OnUseV2()
     PTDLB.SuperClass.OnUseV2(self);
 
@@ -13,13 +14,9 @@ function PTDLB:OnUseV2()
     local ownBackpackComponent = UGCItemSystemV2.GetOwnBackpackComponent(self)
     local player = ownBackpackComponent:GetOwner()
     local pawn = UGCGameSystem.GetPlayerPawnByPlayerController(player) or player
-    local PlayerLoc = pawn:K2_GetActorLocation()
-
-    SpawnNearPlayer(PlayerLoc, 8310035, 100)
-    SpawnNearPlayer(PlayerLoc, 8310065, 1)
-    SpawnNearPlayer(PlayerLoc, 8310042, math.random(1, 2))
+    local Drop_List = {{ItemID = 8310035, Count = 100}, {ItemID = 8310065, Count = 1}, {ItemID = 8310042, Count = math.random(1, 2)}} -- 本次掉落列表
     if math.random(1, 100) <= 5 then
-        SpawnNearPlayer(PlayerLoc, 8310045, 1)
+        table.insert(Drop_List, {ItemID = 8310045, Count = 1})
     end
 
     local ExtraDrops = {{
@@ -36,18 +33,24 @@ function PTDLB:OnUseV2()
         Count = 6
     }}
     local ExtraDrop = ExtraDrops[math.random(1, #ExtraDrops)]
-    SpawnNearPlayer(PlayerLoc, ExtraDrop.ItemID, ExtraDrop.Count)
+    table.insert(Drop_List, ExtraDrop)
+    for Drop_Index, Drop_Data in ipairs(Drop_List) do -- 按批次遍历掉落列表
+        local Current_Drop = Drop_Data -- 当前批次掉落数据
+        UGCTimerUtility.CreateLuaTimer((Drop_Index - 1) * 0.15, function()
+            SpawnNearPlayer(pawn, Current_Drop.ItemID, Current_Drop.Count)
+        end, false)
+    end
     UGCBackpackSystemV2.RemoveItemV2(player, tonumber(self.ItemID), 1)
 end
--- 辅助函数：在玩家周围随机位置掉落
-function SpawnNearPlayer(PlayerLoc, ItemID, Count)
-    local angle = math.random() * 2 * math.pi
-    local dist = math.random(500, 1000) -- 这个是随机的范围
-    local x = PlayerLoc.X + math.cos(angle) * dist
-    local y = PlayerLoc.Y + math.sin(angle) * dist
-    local z = PlayerLoc.Z
-    local pos = Vector.New(x, y, z)
-    return UGCItemSystemV2.SpawnPickupWrapper(pos, ItemID, Count)
+--[[----------------------在玩家正面随机区域且低70单位处掉落物品------------------------]]
+function SpawnNearPlayer(Pawn, ItemID, Count)
+    local Player_Loc = Pawn:K2_GetActorLocation() -- 玩家位置
+    local Forward_Vector = Pawn:GetActorForwardVector() -- 玩家前向向量
+    local Right_Vector = Pawn:GetActorRightVector() -- 玩家右向向量
+    local Drop_Distance = math.random(100, 300) -- 随机掉落距离
+    local Side_Offset = math.random(-150, 150) -- 随机横向偏移
+    local Drop_Pos = Vector.New(Player_Loc.X + Forward_Vector.X * Drop_Distance + Right_Vector.X * Side_Offset, Player_Loc.Y + Forward_Vector.Y * Drop_Distance + Right_Vector.Y * Side_Offset, Player_Loc.Z - 70) -- 掉落位置
+    return UGCItemSystemV2.SpawnPickupWrapper(Drop_Pos, ItemID, Count)
 end
 --[[经典背包事件]] --
 --[[
