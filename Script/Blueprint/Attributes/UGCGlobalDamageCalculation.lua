@@ -1,5 +1,7 @@
 UGCGameSystem.UGCRequire('Script.GameAttribute.game_attribute_type')
 local DamageSync = UGCGameSystem.UGCRequire('Script.Common.DamageSync')
+local TalentConfig = UGCGameSystem.UGCRequire('Script.Xiao.TalentConfig')
+local TalentEffectMgr = UGCGameSystem.UGCRequire('Script.Xiao.TalentEffectMgr')
 local UGCGlobalDamageCalculation = {}
 
 local function SafeGet(Object, FieldName)
@@ -99,6 +101,18 @@ local function ShouldBlockSquadDamage(VictimActor, InstigatorController, CauserA
                GameMode:ArePlayersInSameSquad(VictimKey, AttackerKey)
 end
 
+local function AddCriticalResultTag(ExtraResult)
+    if ExtraResult == nil or ExtraResult.ResultTags == nil or UGCGameplayTagSystem == nil or
+        UGCGameplayTagSystem.RequestGameplayTag == nil then
+        return
+    end
+
+    local Success, CritTag = pcall(UGCGameplayTagSystem.RequestGameplayTag, "UGC.Damage.Result.Critical")
+    if Success and CritTag ~= nil then
+        pcall(ExtraResult.ResultTags.Add, ExtraResult.ResultTags, CritTag)
+    end
+end
+
 function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     local VictimActor = UGCAttributeSystem.GetVictimFromContext(Context)
     local InstigatorController = UGCAttributeSystem.GetInstigatorFromContext(Context)
@@ -109,7 +123,7 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
         return 0, ExtraResult
     end
 
-    local SkillAttack = UGCAttributeSystem.GetSourceMagnitudeFromContext(Context)
+    local FinalDamage = UGCAttributeSystem.GetSourceMagnitudeFromContext(Context)
     local DamageCauser = nil
     if UGCAttributeSystem.GetCauserFromContext ~= nil then
         local success, result = pcall(UGCAttributeSystem.GetCauserFromContext, Context)
@@ -124,15 +138,14 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
         ServerAttackPower = UGCAttributeSystem.GetGameAttributeValue(CauserActor, "AttackPower")
     end
     ServerAttackPower = tonumber(ServerAttackPower)
-    SkillAttack = tonumber(SkillAttack) or 0
+    FinalDamage = tonumber(FinalDamage) or 0
     -- 带攻击力倍率标记的碰撞/技能已经传入 AttackPower × Percent，不能再被抬高为 100% 攻击力。
     local bUseAttackPercentDamage = DamageCauser ~= nil and DamageCauser.UseAttackPercentDamage == true
-    local bUseAttackPercentDamage = DamageCauser ~= nil and DamageCauser.UseAttackPercentDamage == true
     if bUseAttackPercentDamage then
-        SkillAttack = DamageSync.GetAttackPercentDamage(InstigatorController, DamageCauser,
-            DamageCauser.AttackDamagePercent) or SkillAttack
-    elseif ServerAttackPower ~= nil and ServerAttackPower > SkillAttack then
-        SkillAttack = ServerAttackPower
+        FinalDamage = DamageSync.GetAttackPercentDamage(InstigatorController, DamageCauser,
+            DamageCauser.AttackDamagePercent) or FinalDamage
+    elseif ServerAttackPower ~= nil and ServerAttackPower > FinalDamage then
+        FinalDamage = ServerAttackPower
     end
 
     local CurrentSignalHP = 0
@@ -152,11 +165,11 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     if MaxSignalHP > 0 then
         local SignalHPPercent = (CurrentSignalHP / MaxSignalHP) * 100
         if SignalHPPercent > 0 and SignalHPPercent <= 25 then
-            SkillAttack = SkillAttack * 1.8
+            FinalDamage = FinalDamage * 1.8
         elseif SignalHPPercent > 25 and SignalHPPercent <= 50 then
-            SkillAttack = SkillAttack * 1.5
+            FinalDamage = FinalDamage * 1.5
         elseif SignalHPPercent > 50 and SignalHPPercent <= 75 then
-            SkillAttack = SkillAttack * 1.2
+            FinalDamage = FinalDamage * 1.2
         end
     end
 
@@ -166,12 +179,30 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
         return 1, ExtraResult
     end
 
-    if bCauserIsPlayer and not bVictimIsPlayer and HasAuthority(InstigatorController) then
-        UnrealNetwork.CallUnrealRPC(InstigatorController, InstigatorController, "Client_ShowMonsterDamageNumber",
-            VictimActor, SkillAttack)
+    local CriticalConfig = TalentConfig.Critical or {}
+    local bIsCritical = false
+    if CriticalConfig.Enabled == true and bCauserIsPlayer and not bVictimIsPlayer and
+        HasAuthority(InstigatorController) then
+        local PlayerState = CauserActor.PlayerState
+        local CritRate = TalentEffectMgr:GetEffectiveCritRate(PlayerState)
+        if CritRate > 0 and math.random() < CritRate then
+            local CritMultiplier = TalentEffectMgr:GetEffectiveCritMultiplier(PlayerState)
+            FinalDamage = FinalDamage * CritMultiplier
+            bIsCritical = true
+            AddCriticalResultTag(ExtraResult)
+        end
     end
 
-    return SkillAttack, ExtraResult
+    if bIsCritical then
+        ugcprint("[Critical] Server damage=" .. tostring(FinalDamage))
+    end
+
+    if bCauserIsPlayer and not bVictimIsPlayer and HasAuthority(InstigatorController) then
+        UnrealNetwork.CallUnrealRPC(InstigatorController, InstigatorController, "Client_ShowMonsterDamageNumber",
+            VictimActor, FinalDamage)
+    end
+
+    return FinalDamage, ExtraResult
 end
 
 return UGCGlobalDamageCalculation

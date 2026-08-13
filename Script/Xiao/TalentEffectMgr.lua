@@ -101,7 +101,30 @@ function TalentEffectMgr:GetEffectiveBaseAttack(playerState, baseAttack)
         baseValue = playerState.GetBaseAttack ~= nil and tonumber(playerState:GetBaseAttack()) or
                         tonumber(playerState.BaseAttack)
     end
-    return math.max(0, (baseValue or 40) + self:GetStatBonus(playerState, "AttackFlat"))
+
+    local attackWithFlatBonus = (baseValue or 40) + self:GetStatBonus(playerState, "AttackFlat")
+    local attackPercent = math.max(0, self:GetStatBonus(playerState, "AttackPercent"))
+    return math.max(0, attackWithFlatBonus * (1 + attackPercent))
+end
+
+function TalentEffectMgr:GetEffectiveCritRate(playerState, baseRate)
+    local criticalConfig = TalentConfig.Critical or {}
+    local rate = tonumber(baseRate)
+    if rate == nil then
+        rate = tonumber(criticalConfig.BaseRate) or 0
+    end
+
+    return math.max(0, math.min(1, rate + self:GetStatBonus(playerState, "CritRate")))
+end
+
+function TalentEffectMgr:GetEffectiveCritMultiplier(playerState, baseMultiplier)
+    local criticalConfig = TalentConfig.Critical or {}
+    local multiplier = tonumber(baseMultiplier)
+    if multiplier == nil then
+        multiplier = tonumber(criticalConfig.BaseMultiplier) or 1
+    end
+
+    return math.max(1, multiplier + self:GetStatBonus(playerState, "CritMultiplierFlat"))
 end
 
 function TalentEffectMgr:GetLearnedPassiveSkillPaths(playerState)

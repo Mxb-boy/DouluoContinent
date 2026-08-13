@@ -5,6 +5,11 @@ TalentConfig.TestGrantPoints = 19
 TalentConfig.SkillBookItemID = 8310132
 TalentConfig.SkillBookPointsPerUse = 1
 TalentConfig.MaxTotalPoints = nil -- Set after the total talent-point cap is confirmed.
+TalentConfig.Critical = {
+    Enabled = true,
+    BaseRate = 0.0,
+    BaseMultiplier = 2.0
+}
 TalentConfig.UltimateNodeIDs = {
     [16] = true,
     [17] = true,
@@ -53,7 +58,12 @@ TalentConfig.Nodes = {
         Row = 2,
         Column = 12,
         Cost = 1,
-        RequireID = 1
+        RequireID = 1,
+        Effects = {
+            Stats = {
+                CritRate = 0.1
+            }
+        }
     },
     [4] = {
         ID = 4,
@@ -61,7 +71,12 @@ TalentConfig.Nodes = {
         Row = 3,
         Column = 2,
         Cost = 1,
-        RequireID = 2
+        RequireID = 2,
+        Effects = {
+            Stats = {
+                AttackPercent = 0.1
+            }
+        }
     },
     [5] = {
         ID = 5,
@@ -77,7 +92,12 @@ TalentConfig.Nodes = {
         Row = 3,
         Column = 10,
         Cost = 1,
-        RequireID = 3
+        RequireID = 3,
+        Effects = {
+            Stats = {
+                CritRate = 0.1
+            }
+        }
     },
     [7] = {
         ID = 7,
@@ -85,7 +105,12 @@ TalentConfig.Nodes = {
         Row = 3,
         Column = 14,
         Cost = 1,
-        RequireID = 3
+        RequireID = 3,
+        Effects = {
+            Stats = {
+                CritMultiplierFlat = 0.5
+            }
+        }
     },
     [8] = {
         ID = 8,
