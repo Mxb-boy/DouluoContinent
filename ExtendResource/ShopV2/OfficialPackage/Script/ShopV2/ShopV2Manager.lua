@@ -517,6 +517,9 @@ function ShopV2Manager:OnAddVirtualItem(Result)
         [1054] = 8310050,  -- 魂环10 (HunHuan_10)
         [1057] = 8310121,  -- 强化保护卷
         [1058] = 8310132,  -- 技能书
+        [1036] = 8310002,  -- 商城武器锤子1级
+        [1034] = 8310003,  -- 商城武器圣剑1级
+        [1035] = 8310004,  -- 商城武器镰刀1级
     }
 
     for ItemID, Num in pairs(Result.ItemList) do
