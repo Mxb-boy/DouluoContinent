@@ -115,15 +115,16 @@ function ShopV2_PurchasePopups_UIBP:OnBuyClick()
 
     local bRequested = false
 
-    if ShopV2Manager:CanAfford(self.ProductData.ProductID, self.Count) == false then
+    if ShopV2Manager:CheckBackpackBeforePurchase() == false then
+        bRequested = false
+    elseif ShopV2Manager:CanAfford(self.ProductData.ProductID, self.Count) == false then
         ShopV2Manager:ShowPurchaseTip("资金不足");
     elseif self.CurrentPrice ~= ShopV2Manager:GetDiscountPrice(self.ProductData.ProductID) then
         ShopV2Manager:ShowPurchaseTip("购买失败，价格已更新");
     elseif ShopV2Manager:IsProductValid(self.ProductData.ProductID) == false then
         ShopV2Manager:ShowPurchaseTip("购买失败，商品未上架");
     else
-        ShopV2Manager:BuyProduct(self.ProductData.ProductID, self.Count, self.CurrentPrice);
-        bRequested = true
+        bRequested = ShopV2Manager:BuyProduct(self.ProductData.ProductID, self.Count, self.CurrentPrice) ~= false
     end
 
     self:SetVisibility(ESlateVisibility.Collapsed);

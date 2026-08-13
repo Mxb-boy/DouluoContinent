@@ -32,6 +32,7 @@ local TalentMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentMgr")
 local TalentEffectMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentEffectMgr")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local ShadowDisabler = UGCGameSystem.UGCRequire("Script.Common.ShadowDisabler")
+local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil")
 local DEFAULT_WQ_HIT_EFFECT_PATH = "/Game/UGC/UGCGame/Skill/Arts_Effect/CG034/Particle/P_CG034UGC_Skill_SwordFire_03.P_CG034UGC_Skill_SwordFire_03"
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
 local PaTa_Spawn_Point_ID = 201 -- 爬塔出生点
@@ -1488,6 +1489,12 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num,
         print("[ShopV2:SERVER] PlayerPawn nil")
         return
     end
+    if BackpackCapacityUtil ~= nil and BackpackCapacityUtil.IsFullIncludingEquipped ~= nil and
+        BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn) == true then
+        print("[ShopV2:SERVER] Backpack full including equipped items, keeping virtual item as fallback")
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_ShowToast", "请预留10个以上空间")
+        return
+    end
     local before = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, BackpackItemID)
     print("[ShopV2:SERVER] BEFORE AddItemV2: ItemID=" .. tostring(BackpackItemID) .. " count=" .. tostring(before))
     local ret = UGCBackpackSystemV2.AddItemV2(PlayerPawn, BackpackItemID, Num)
@@ -1497,6 +1504,7 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num,
     -- BugFix: 返回值为 0 表示添加失败（如背包满）
     if ret == 0 then
         print("[ShopV2:SERVER] AddItemV2 FAILED (ret=0), keeping virtual item as fallback")
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_ShowToast", "请预留10个以上空间")
         return
     end
 

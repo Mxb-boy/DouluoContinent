@@ -1,4 +1,5 @@
 UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.Common.Common");
+local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil")
 
 ---@type UKismetMathLibrary
 KismetMathLibrary = KismetMathLibrary == nil and nil or KismetMathLibrary
@@ -291,6 +292,36 @@ function ShopV2Manager:ShowPurchaseTip(Message)
     self.MainUI:ShowPurchaseTip(Message);
 end
 
+--- 购买前统一检查背包容量，包含装备在身上的物品。
+function ShopV2Manager:IsBackpackFull()
+    if BackpackCapacityUtil == nil or BackpackCapacityUtil.IsFullIncludingEquipped == nil then
+        return false
+    end
+
+    local PlayerController = (UGCGameSystem.GetLocalPlayerController ~= nil and
+        UGCGameSystem.GetLocalPlayerController()) or GameplayStatics.GetPlayerController(UGCGameSystem.GameState, 0)
+    local PlayerPawn = PlayerController and (PlayerController.Pawn or
+        (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)) or nil
+    if PlayerPawn == nil then
+        return false
+    end
+
+    return BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn)
+end
+
+function ShopV2Manager:CheckBackpackBeforePurchase()
+    if not self:IsBackpackFull() then
+        return true
+    end
+
+    local Bubble = UGCGameSystem.UGCRequire("Script.Blueprint.Lin.Actor.BXCollition")
+    if Bubble == nil or Bubble.ShowBubble == nil or Bubble.ShowBubble("请预留10个以上空间") ~= true then
+        self:ShowPurchaseTip("请预留10个以上空间")
+    end
+    self.bBlockRepeatPurchase = false
+    return false
+end
+
 function ShopV2Manager:ShowItemGetPopup(ItemID, Num)
     
     if self.MainUI == nil then
@@ -387,8 +418,12 @@ end
 ---@param Num int 购买商品数量
 ---@param CurrentPrice int 商品价格
 function ShopV2Manager:BuyProduct(ProductID, Num, CurrentPrice)
+    if not self:CheckBackpackBeforePurchase() then
+        return false
+    end
     print("[ShopV2] BuyProduct: ProductID=" .. tostring(ProductID) .. " Num=" .. tostring(Num) .. " Price=" .. tostring(CurrentPrice))
     self:GetCommodityOperationManager():BuyProduct(ProductID, CurrentPrice, Num);
+    return true
 end
 
 ---获取对应页签的所有商品ID

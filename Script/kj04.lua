@@ -84,6 +84,10 @@ function kj04:PurchaseGiftPack()
         return false
     end
 
+    if ShopV2Manager == nil or ShopV2Manager:CheckBackpackBeforePurchase() == false then
+        return false
+    end
+
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
     local ProductID = tonumber(KJ04_GIFT_PRODUCT.ProductID)
     local ItemID = tonumber(KJ04_GIFT_PRODUCT.ItemID)

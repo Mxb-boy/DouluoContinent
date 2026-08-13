@@ -83,6 +83,10 @@ function ShopV2_CommonButton_UIBP:OnClick()
         return;
     end
 
+    if ShopV2Manager:CheckBackpackBeforePurchase() == false then
+        return;
+    end
+
     if self.BuyButtonSwitcher:GetActiveWidgetIndex() == 2 then
         ShopV2Manager:ShowPurchaseTip("商品已售罄");
         return;
