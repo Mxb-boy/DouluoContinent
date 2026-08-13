@@ -606,7 +606,8 @@ function UI017:SelectXzwqWeapon(Index)
     if PlayerController ~= nil then
         PlayerController.OrbitWeaponClassPath = WeaponClassPath
         PlayerController.OrbitWeaponHitEffectPath = HitEffectPath
-        PlayerController.OrbitWeaponEnabled = true
+        PlayerController.OrbitWeaponEnabled = PlayerPawn.IsOrbitWeaponEnabled ~= nil and
+            PlayerPawn:IsOrbitWeaponEnabled() or false
     end
     local bAuthority = PlayerPawn.HasAuthority ~= nil and PlayerPawn:HasAuthority()
     if not bAuthority and PlayerController ~= nil then

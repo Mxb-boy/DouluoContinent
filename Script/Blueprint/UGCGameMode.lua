@@ -55,7 +55,7 @@ local function RestoreOrbitWeaponState(PlayerController, PlayerPawn, PlayerLevel
         PlayerPawn:SetOrbitWeaponActiveGun(ActiveTier, PlayerController.OrbitWeaponDamagePercent)
     end
     if PlayerPawn.SetOrbitWeaponEnabled ~= nil then
-        PlayerPawn:SetOrbitWeaponEnabled(PlayerController.OrbitWeaponEnabled ~= false)
+        PlayerPawn:SetOrbitWeaponEnabled(PlayerController.OrbitWeaponEnabled == true)
     end
 end
 

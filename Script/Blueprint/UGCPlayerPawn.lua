@@ -942,9 +942,10 @@ end
 
 function UGCPlayerPawn:ReceiveBeginPlay()
     UGCPlayerPawn.SuperClass.ReceiveBeginPlay(self)
-    -- 默认开启身上旋转武器；Button_81 可在运行时切换开关。
+    -- 默认关闭身上旋转武器；Button_81 可在运行时切换开关。
     local OrbitController = GetOrbitWeaponController(self)
-    self.bOrbitWeaponEnabled = OrbitController == nil or OrbitController.OrbitWeaponEnabled ~= false
+    -- Default off. Button_81 can explicitly enable it at runtime.
+    self.bOrbitWeaponEnabled = OrbitController ~= nil and OrbitController.OrbitWeaponEnabled == true
     if OrbitController ~= nil then
         self.OrbitWeaponClassPath = OrbitController.OrbitWeaponClassPath
         self.OrbitWeaponHitEffectPath = OrbitController.OrbitWeaponHitEffectPath
