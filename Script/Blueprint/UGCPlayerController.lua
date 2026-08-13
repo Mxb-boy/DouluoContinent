@@ -180,7 +180,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden", "Client_ShowMonsterDamageNumber",
         "Client_PlayWQHitEffect",
         "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
-        "Server_RequestFreePaTa", "Server_RequestTicketPaTa", "Client_ShowToast", "Client_PlayerDataReset",
+        "Server_RequestPaTaState", "Server_RequestFreePaTa", "Server_RequestTicketPaTa", "Client_SyncPaTaState",
+        "Client_ShowToast", "Client_PlayerDataReset",
         "Client_PlayerDataResetStarted", "Client_PlayerDataResetFailed", "Client_GMResetLogEntry",
         "Server_RequestRuntimeLogs", "Server_RuntimeLogProbe", "Client_RuntimeLogBatch",
         "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
@@ -469,30 +470,69 @@ local function GetPaTaToday()
     return tonumber(os.date("%Y%m%d", os.time())) or 0
 end
 
+--[[----------------------请求同步爬塔次数状态------------------------]]
+function UGCPlayerController:Server_RequestPaTaState()
+    local Player_State = self.PlayerState -- 玩家状态
+    if Player_State == nil or Player_State.bArchiveLoaded ~= true then
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncPaTaState", false, false, "玩家数据加载中，请稍后再试")
+        return
+    end
+
+    local Today_Date = GetPaTaToday() -- 服务端当天日期
+    local Refresh_Day = Player_State.GetPaTaRefreshDay ~= nil and Player_State:GetPaTaRefreshDay() or
+                            (tonumber(Player_State.PaTaRefreshDay) or 0) -- 上次使用免费次数的日期
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncPaTaState", true, Refresh_Day ~= Today_Date, "")
+end
+
 --[[----------------------免费爬塔传送------------------------]]
 function UGCPlayerController:Server_RequestFreePaTa()
-    if self.PlayerState == nil then
+    local Player_State = self.PlayerState -- 玩家状态
+    if Player_State == nil or Player_State.bArchiveLoaded ~= true then
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncPaTaState", false, false, "玩家数据加载中，请稍后再试")
         return
     end
 
     EnsurePlayerStateArchiveUID(self)
-    local Today = GetPaTaToday()
-    local RefreshDay = self.PlayerState.GetPaTaRefreshDay ~= nil and self.PlayerState:GetPaTaRefreshDay() or
-                           (tonumber(self.PlayerState.PaTaRefreshDay) or 0)
-    if RefreshDay == Today then
+    local Today_Date = GetPaTaToday() -- 服务端当天日期
+    local Refresh_Day = Player_State.GetPaTaRefreshDay ~= nil and Player_State:GetPaTaRefreshDay() or
+                            (tonumber(Player_State.PaTaRefreshDay) or 0) -- 上次使用免费次数的日期
+    if Refresh_Day == Today_Date then
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncPaTaState", true, false, "今日免费次数已使用")
         return
     end
 
-    if self.PlayerState.SetPaTaRefreshDay ~= nil then
-        self.PlayerState:SetPaTaRefreshDay(Today)
+    local Save_Succeeded = false -- 免费次数保存结果
+    if Player_State.SetPaTaRefreshDay ~= nil then
+        Save_Succeeded = Player_State:SetPaTaRefreshDay(Today_Date) == true
     else
-        self.PlayerState.PaTaRefreshDay = Today
-        if self.PlayerState.SaveToArchive ~= nil then
-            self.PlayerState:SaveToArchive()
+        Player_State.PaTaRefreshDay = Today_Date
+        if Player_State.SaveToArchive ~= nil then
+            Save_Succeeded = Player_State:SaveToArchive() == true
         end
+    end
+    if not Save_Succeeded then
+        Player_State.PaTaRefreshDay = Refresh_Day
+        if _G.DOREPONCE ~= nil then
+            _G.DOREPONCE(Player_State, "PaTaRefreshDay")
+        end
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncPaTaState", true, true, "爬塔次数保存失败，请重试")
+        return
     end
 
     TeleportToSpawn(self, PaTa_Spawn_Point_ID)
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncPaTaState", true, false, "")
+end
+
+--[[----------------------同步爬塔次数状态到界面------------------------]]
+function UGCPlayerController:Client_SyncPaTaState(Is_Ready, Can_Use_Free, Message)
+    self.Client_PaTa_State_Ready = Is_Ready == true
+    self.Client_Can_Use_Free_PaTa = Can_Use_Free == true
+    if self.PaTa_UI_Instance ~= nil and self.PaTa_UI_Instance.RefreshPaTaButtons ~= nil then
+        self.PaTa_UI_Instance:RefreshPaTaButtons(self.Client_PaTa_State_Ready, self.Client_Can_Use_Free_PaTa)
+    end
+    if Message ~= nil and Message ~= "" then
+        L_Com.ShowToast(Message)
+    end
 end
 
 --[[----------------------用券爬塔传送------------------------]]
@@ -2459,6 +2499,9 @@ function UGCPlayerController:Server_RequestRefreshProperty()
     if pawn.RefreshStateMgrProperty ~= nil then
         pawn:RefreshStateMgrProperty(false)
     end
+
+    -- 存档加载完成后主动同步真实倍率，避免客户端仍显示默认的100%
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_ProbabilityBonusChanged", playerState:GetProbability_Bonus())
 
     if PlayerLevelMgr ~= nil and playerState.GetPlayerExp ~= nil and playerState.GetPlayerLevel ~= nil then
         local playerExp = playerState:GetPlayerExp()

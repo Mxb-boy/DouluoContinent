@@ -73,4 +73,12 @@ function L_Com.PlaySound2D()
     return UGCSoundManagerSystem.PlaySound2D(Sound_Asset)
 end
 
+--[[----------------------购买商城商品------------------------]]
+function L_Com.BuyShopProduct(Product_ID, Buy_Count)
+    Buy_Count = Buy_Count or 1 -- 购买数量
+    local Product_Data = ShopV2Manager:GetProductConfigData(Product_ID) -- 商品信息
+    local Object_Data = ShopV2Manager:GetItemConfigData(Product_Data.ItemID) -- 物品信息
+
+    return UGCCommoditySystem.BuyUGCCommodity2(Product_ID, Object_Data.ItemIcon, Object_Data.ItemDesc, Buy_Count)
+end
 return L_Com

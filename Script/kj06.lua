@@ -64,7 +64,12 @@ local PaTa_Ticket_Item_ID = 8310064 -- 爬塔传送券
 --[[----------------------初始化界面------------------------]]
 function kj06:Construct()
     self:LuaInit()
-    self:RefreshPaTaButtons()
+    self:RefreshPaTaButtons(false, false)
+    local Player_Controller = UGCGameSystem.GetLocalPlayerController() -- 本地玩家控制器
+    if Player_Controller ~= nil then
+        Player_Controller.PaTa_UI_Instance = self -- 当前爬塔界面实例
+        UnrealNetwork.CallUnrealRPC(Player_Controller, Player_Controller, "Server_RequestPaTaState")
+    end
 end
 
 --[[----------------------绑定关闭按钮事件------------------------]]
@@ -89,6 +94,10 @@ end
 
 --[[----------------------关闭当前界面------------------------]]
 function kj06:Btn_Close_OnClicked()
+    local Player_Controller = UGCGameSystem.GetLocalPlayerController() -- 本地玩家控制器
+    if Player_Controller ~= nil and Player_Controller.PaTa_UI_Instance == self then
+        Player_Controller.PaTa_UI_Instance = nil
+    end
     if self.RemoveFromParent ~= nil then
         self:RemoveFromParent()
     elseif self.SetVisibility ~= nil then
@@ -118,28 +127,16 @@ end
 
 --[[----------------------免费爬塔------------------------]]
 function kj06:Button_56_OnClicked()
-    local PlayerController = UGCGameSystem.GetLocalPlayerController()
-    if PlayerController then
-        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestFreePaTa")
-        if PlayerController.PlayerState ~= nil then
-            PlayerController.PlayerState.PaTaRefreshDay = tonumber(os.date("%Y%m%d", os.time())) or 0
-        end
+    local Player_Controller = UGCGameSystem.GetLocalPlayerController() -- 本地玩家控制器
+    if Player_Controller == nil or Player_Controller.Client_PaTa_State_Ready ~= true then
+        L_Com.ShowToast("玩家数据加载中，请稍后再试")
+        return
     end
-    self:RefreshPaTaButtons()
-
+    UnrealNetwork.CallUnrealRPC(Player_Controller, Player_Controller, "Server_RequestFreePaTa")
 end
 
 --[[----------------------刷新爬塔按钮状态------------------------]]
-function kj06:RefreshPaTaButtons()
-    local PlayerController = UGCGameSystem.GetLocalPlayerController()
-    local PlayerState = PlayerController and PlayerController.PlayerState
-    local Today = tonumber(os.date("%Y%m%d", os.time())) or 0
-    local RefreshDay = 0
-    if PlayerState ~= nil then
-        RefreshDay = PlayerState.GetPaTaRefreshDay ~= nil and PlayerState:GetPaTaRefreshDay() or
-                         (tonumber(PlayerState.PaTaRefreshDay) or 0)
-    end
-
+function kj06:RefreshPaTaButtons(Is_Ready, Can_Use_Free)
     if self.Button_55 ~= nil then
         self.Button_55:SetVisibility(ESlateVisibility.Collapsed)
     end
@@ -148,7 +145,11 @@ function kj06:RefreshPaTaButtons()
         self.Button_56:SetVisibility(ESlateVisibility.Collapsed)
     end
 
-    if RefreshDay ~= Today then
+    if Is_Ready ~= true then
+        return
+    end
+
+    if Can_Use_Free == true then
         if self.Button_56 ~= nil then
             self.Button_56:SetVisibility(ESlateVisibility.Visible)
         end

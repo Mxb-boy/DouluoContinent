@@ -465,10 +465,11 @@ end
 --[[----------------------设置免费爬塔刷新日期------------------------]]
 function UGCPlayerState:SetPaTaRefreshDay(value)
     self.PaTaRefreshDay = tonumber(value) or 0
-    self:SaveToArchive()
+    local Save_Succeeded = self:SaveToArchive() -- 存档保存结果
     if _G.DOREPONCE ~= nil then
         _G.DOREPONCE(self, "PaTaRefreshDay")
     end
+    return Save_Succeeded
 end
 
 function UGCPlayerState:GetAutoPickButtonHidden()
