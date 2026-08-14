@@ -247,8 +247,9 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_ShowToast", "Client_PlayerDataReset",
         "Client_PlayerDataResetStarted", "Client_PlayerDataResetFailed", "Client_GMResetLogEntry",
         "Server_RequestRuntimeLogs", "Server_RuntimeLogProbe", "Client_RuntimeLogBatch",
-        "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestLeaveTeam", "ServerRequestKickPlayer",
-        "ServerRequestDisbandTeam", "UseRedemptionCode", "Server_LearnTalent", "Client_TalentLearnResult",
+        "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestJoinTeam", "ServerRespondJoinRequest",
+        "ServerRequestLeaveTeam", "ServerRequestKickPlayer", "ServerRequestDisbandTeam", "UseRedemptionCode",
+        "Server_LearnTalent", "Client_TalentLearnResult",
         "Server_RequestTalentState", "Client_SyncTalentState", "Server_SetOrbitWeaponEnabled",
         "Server_SelectOrbitWeapon", "Server_SetOrbitWeaponActiveGun"
 end
@@ -453,6 +454,29 @@ function UGCPlayerController:ServerRespondInvite(InviterKey, bAccept)
         GameMode:HandleInviteResponse(self, InviterKey, bAccept == true or tonumber(bAccept) == 1)
     else
         ugcprint("[Team] Server RPC invite response rejected: GameMode is nil")
+    end
+end
+
+function UGCPlayerController:ServerRequestJoinTeam(LeaderKey)
+    ugcprint("[TeamJoinRequest] Server RPC request build=" .. tostring(TeamConfig.BUILD_ID) .. " applicant=" ..
+                 tostring(self.PlayerKey) .. " leader=" .. tostring(LeaderKey))
+    local GameMode = UGCGameSystem.GetGameMode()
+    if GameMode ~= nil and GameMode.HandleJoinRequest ~= nil then
+        GameMode:HandleJoinRequest(self, LeaderKey)
+    else
+        ugcprint("[TeamJoinRequest] Server RPC request rejected: GameMode is nil")
+    end
+end
+
+function UGCPlayerController:ServerRespondJoinRequest(ApplicantKey, bAccept)
+    ugcprint("[TeamJoinRequest] Server RPC response build=" .. tostring(TeamConfig.BUILD_ID) .. " leader=" ..
+                 tostring(self.PlayerKey) .. " applicant=" .. tostring(ApplicantKey) .. " accept=" ..
+                 tostring(bAccept))
+    local GameMode = UGCGameSystem.GetGameMode()
+    if GameMode ~= nil and GameMode.HandleJoinRequestResponse ~= nil then
+        GameMode:HandleJoinRequestResponse(self, ApplicantKey, bAccept == true or tonumber(bAccept) == 1)
+    else
+        ugcprint("[TeamJoinRequest] Server RPC response rejected: GameMode is nil")
     end
 end
 

@@ -77,21 +77,21 @@ function UGCGameState:UpdateTeamRoster(Roster)
     UnrealNetwork.RepLazyProperty(self, "TeamRoster")
 end
 
-function UGCGameState:UpdateNotifications(PendingInvites)
+function UGCGameState:UpdateNotifications(PendingTeamNotifications)
     if not UGCGameSystem.IsServer() then
         return
     end
 
     self.PendingNotifications = {}
-    for _, Invite in pairs(PendingInvites or {}) do
+    for _, Notification in ipairs(PendingTeamNotifications or {}) do
         table.insert(self.PendingNotifications, {
-            Type = Invite.Type or TeamConfig.INVITE_TYPE,
-            TargetKey = Invite.TargetKey,
-            FromKey = Invite.FromKey,
-            TeamID = Invite.TeamID
+            Type = Notification.Type or TeamConfig.INVITE_TYPE,
+            TargetKey = Notification.TargetKey,
+            FromKey = Notification.FromKey,
+            TeamID = Notification.TeamID
         })
     end
-    ugcprint("[Team] Server replicate invite count=" .. tostring(#self.PendingNotifications))
+    ugcprint("[Team] Server replicate notification count=" .. tostring(#self.PendingNotifications))
     UnrealNetwork.RepLazyProperty(self, "PendingNotifications")
 end
 
@@ -100,7 +100,7 @@ function UGCGameState:OnRep_TeamRoster()
 end
 
 function UGCGameState:OnRep_PendingNotifications()
-    ugcprint("[Team] Client OnRep pending invite count=" .. tostring(#(self.PendingNotifications or {})))
+    ugcprint("[Team] Client OnRep pending notification count=" .. tostring(#(self.PendingNotifications or {})))
 end
 
 function UGCGameState:GetReplicatedProperties()

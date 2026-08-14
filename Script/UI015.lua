@@ -19,6 +19,11 @@ local function IsSamePlayerKey(KeyA, KeyB)
     return KeyA ~= nil and KeyB ~= nil and tostring(KeyA) == tostring(KeyB)
 end
 
+local function GetNotificationKey(NotificationType, FromKey, TeamID)
+    return tostring(NotificationType or TeamConfig.INVITE_TYPE) .. ":" .. tostring(FromKey) .. ":" ..
+               tostring(tonumber(TeamID) or 0)
+end
+
 local function RPCArgsToString(...)
     local Values = {...}
     local Parts = {}
@@ -86,43 +91,47 @@ function UI015:GetLocalInfo()
     return self:FindRosterInfo(self.LocalPlayerKey)
 end
 
-function UI015:GetPendingInvite()
+function UI015:GetPendingNotification()
     local GameState = UGCGameSystem.GetGameState()
     local Notifications = GameState and GameState.PendingNotifications or {}
-    local ActiveInviteKeys = {}
-    self.RespondedInviteKeys = self.RespondedInviteKeys or {}
+    local ActiveNotificationKeys = {}
+    self.RespondedNotificationKeys = self.RespondedNotificationKeys or {}
 
     for _, Notification in ipairs(Notifications) do
         if IsSamePlayerKey(Notification.TargetKey, self.LocalPlayerKey) then
-            ActiveInviteKeys[tostring(Notification.FromKey)] = true
+            ActiveNotificationKeys[GetNotificationKey(Notification.Type, Notification.FromKey, Notification.TeamID)] =
+                true
         end
     end
-    for InviterKey, _ in pairs(self.RespondedInviteKeys) do
-        if ActiveInviteKeys[InviterKey] ~= true then
-            self.RespondedInviteKeys[InviterKey] = nil
+    for NotificationKey, _ in pairs(self.RespondedNotificationKeys) do
+        if ActiveNotificationKeys[NotificationKey] ~= true then
+            self.RespondedNotificationKeys[NotificationKey] = nil
         end
     end
     for _, Notification in ipairs(Notifications) do
+        local NotificationKey = GetNotificationKey(Notification.Type, Notification.FromKey, Notification.TeamID)
         if IsSamePlayerKey(Notification.TargetKey, self.LocalPlayerKey) and
-            self.RespondedInviteKeys[tostring(Notification.FromKey)] ~= true then
+            self.RespondedNotificationKeys[NotificationKey] ~= true then
             return Notification
         end
     end
     return nil
 end
 
-function UI015:MarkInviteResponded(InviterKey, bAccepted)
-    self.RespondedInviteKeys = self.RespondedInviteKeys or {}
-    if bAccepted then
+function UI015:MarkNotificationResponded(NotificationType, FromKey, TeamID, bAccepted)
+    self.RespondedNotificationKeys = self.RespondedNotificationKeys or {}
+    if NotificationType == TeamConfig.INVITE_TYPE and bAccepted == true then
         local GameState = UGCGameSystem.GetGameState()
         local Notifications = GameState and GameState.PendingNotifications or {}
         for _, Notification in ipairs(Notifications) do
-            if IsSamePlayerKey(Notification.TargetKey, self.LocalPlayerKey) then
-                self.RespondedInviteKeys[tostring(Notification.FromKey)] = true
+            if Notification.Type == TeamConfig.INVITE_TYPE and
+                IsSamePlayerKey(Notification.TargetKey, self.LocalPlayerKey) then
+                self.RespondedNotificationKeys[GetNotificationKey(Notification.Type, Notification.FromKey,
+                    Notification.TeamID)] = true
             end
         end
-    elseif InviterKey ~= nil then
-        self.RespondedInviteKeys[tostring(InviterKey)] = true
+    elseif FromKey ~= nil then
+        self.RespondedNotificationKeys[GetNotificationKey(NotificationType, FromKey, TeamID)] = true
     end
     self:RefreshEntry()
 end
@@ -185,10 +194,9 @@ function UI015:CreatePlayerCells()
         self.PlayerCells[Index] = Cell
         Cell:SetVisibility(Collapsed)
 
-        for _, ButtonName in ipairs({"Button_3", "Button_0", "Button_108", "Button_2"}) do
+        for _, ButtonName in ipairs({"Button_3", "Button_0", "Button_108", "Button_2", "Button_1"}) do
             self:SetCellWidgetVisibility(Cell, ButtonName, Collapsed)
         end
-        self:SetCellWidgetVisibility(Cell, "Button_1", Collapsed)
         self:SetCellWidgetVisibility(Cell, "TextBlock_160", Collapsed)
         self:SetCellWidgetVisibility(Cell, "Image_113", Collapsed)
         self:SetCellWidgetVisibility(Cell, "TextBlock_156", Collapsed)
@@ -196,6 +204,7 @@ function UI015:CreatePlayerCells()
         self:BindCellButton(Cell, "Button_0", Index, "Kick")
         self:BindCellButton(Cell, "Button_108", Index, "Disband")
         self:BindCellButton(Cell, "Button_2", Index, "Leave")
+        self:BindCellButton(Cell, "Button_1", Index, "JoinRequest")
     end
 end
 
@@ -207,9 +216,9 @@ function UI015:Construct()
     self.bOpen = false
     self.BlinkPhase = false
     self.LastRosterCount = -1
-    self.LastPendingFrom = nil
+    self.LastPendingNotification = nil
     self.bLoggedRosterOverflow = false
-    self.RespondedInviteKeys = {}
+    self.RespondedNotificationKeys = {}
 
     self.LocalPlayerKey = UGCGameSystem.GetLocalPlayerKey()
     if self.LocalPlayerKey == nil then
@@ -248,11 +257,11 @@ function UI015:GetTeamEntryButton()
 end
 
 function UI015:RefreshEntry()
-    local Pending = self:GetPendingInvite()
-    local PendingFrom = Pending and Pending.FromKey or nil
-    if tostring(self.LastPendingFrom) ~= tostring(PendingFrom) then
-        self.LastPendingFrom = PendingFrom
-        ugcprint("[Team] Client pending invite from=" .. tostring(PendingFrom))
+    local Pending = self:GetPendingNotification()
+    local PendingKey = Pending and GetNotificationKey(Pending.Type, Pending.FromKey, Pending.TeamID) or nil
+    if tostring(self.LastPendingNotification) ~= tostring(PendingKey) then
+        self.LastPendingNotification = PendingKey
+        ugcprint("[Team] Client pending notification=" .. tostring(PendingKey))
     end
 
     local EntryButton = self:GetTeamEntryButton()
@@ -281,7 +290,7 @@ function UI015:GetTeamSize(Info)
 end
 
 function UI015:RefreshCellActions(Index, Cell, Info, LocalInfo, LocalTeamSize)
-    for _, ButtonName in ipairs({"Button_3", "Button_0", "Button_108", "Button_2"}) do
+    for _, ButtonName in ipairs({"Button_3", "Button_0", "Button_108", "Button_2", "Button_1"}) do
         self:SetCellWidgetVisibility(Cell, ButtonName, Collapsed)
     end
 
@@ -306,6 +315,9 @@ function UI015:RefreshCellActions(Index, Cell, Info, LocalInfo, LocalTeamSize)
 
     if bLeader and Info.IsGrouped == true and tonumber(Info.SquadID) == tonumber(LocalInfo.SquadID) then
         self:SetCellWidgetVisibility(Cell, "Button_0", Visible)
+    elseif not bLocalGrouped and Info.IsGrouped == true and Info.IsLeader == true and
+        self:GetTeamSize(Info) < TeamConfig.MAX_PLAYERS_PER_TEAM then
+        self:SetCellWidgetVisibility(Cell, "Button_1", Visible)
     elseif Info.IsGrouped ~= true and (not bLocalGrouped or bLeader) and
         (not bLeader or LocalTeamSize < TeamConfig.MAX_PLAYERS_PER_TEAM) then
         self:SetCellWidgetVisibility(Cell, "Button_3", Visible)
@@ -370,7 +382,7 @@ function UI015:RefreshUI()
     self:RefreshRows()
 end
 
-function UI015:OpenInvitePopup(Pending)
+function UI015:OpenNotificationPopup(Pending)
     local PlayerController = self:GetLocalController()
     if PlayerController == nil or Pending == nil then
         return
@@ -394,19 +406,21 @@ function UI015:OpenInvitePopup(Pending)
         Popup:AddToViewport(TeamConfig.UI_Z_ORDER + 6000)
     end
 
-    local InviterInfo = self:FindRosterInfo(Pending.FromKey)
-    local InviterName = InviterInfo and tostring(InviterInfo.PlayerName) or tostring(Pending.FromKey)
-    if Popup.ShowInvite ~= nil then
-        Popup:ShowInvite(Pending.FromKey, InviterName)
+    local SourceInfo = self:FindRosterInfo(Pending.FromKey)
+    local SourceName = SourceInfo and tostring(SourceInfo.PlayerName) or tostring(Pending.FromKey)
+    if Popup.ShowNotification ~= nil then
+        Popup:ShowNotification(Pending.Type, Pending.FromKey, SourceName, Pending.TeamID)
+    elseif Popup.ShowInvite ~= nil then
+        Popup:ShowInvite(Pending.FromKey, SourceName)
     end
 end
 
 function UI015:OnEntryClicked()
     ugcprint("[Team] Client entry click build=" .. tostring(TeamConfig.BUILD_ID) .. " local=" ..
                  tostring(self.LocalPlayerKey))
-    local Pending = self:GetPendingInvite()
+    local Pending = self:GetPendingNotification()
     if Pending ~= nil then
-        self:OpenInvitePopup(Pending)
+        self:OpenNotificationPopup(Pending)
         return
     end
     self:SetPanelOpen(true)
@@ -423,6 +437,8 @@ function UI015:OnRowActionClicked(Index, Action)
                  tostring(self.SelectedPlayerKey))
     if Action == "Invite" then
         self:CallServerRPC("ServerRequestInvitePlayer", self.SelectedPlayerKey)
+    elseif Action == "JoinRequest" then
+        self:CallServerRPC("ServerRequestJoinTeam", self.SelectedPlayerKey)
     elseif Action == "Kick" then
         self:CallServerRPC("ServerRequestKickPlayer", self.SelectedPlayerKey)
     elseif Action == "Disband" then

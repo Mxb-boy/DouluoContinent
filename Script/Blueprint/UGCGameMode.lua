@@ -25,6 +25,7 @@ UGCGameMode.OriginalTeamByPlayer = {}
 UGCGameMode.Squads = {}
 UGCGameMode.MemberSquad = {}
 UGCGameMode.PendingInvites = {}
+UGCGameMode.PendingJoinRequests = {}
 UGCGameMode.CampByTeam = {}
 UGCGameMode.BackfillRequestPending = false
 UGCGameMode.BackfillRequestedTeamID = nil
@@ -159,6 +160,7 @@ function UGCGameMode:ReceiveBeginPlay()
         self.Squads = {}
         self.MemberSquad = {}
         self.PendingInvites = {}
+        self.PendingJoinRequests = {}
         self.CampByTeam = {}
         self.BackfillRequestPending = false
         self.BackfillRequestedTeamID = nil
@@ -563,7 +565,14 @@ function UGCGameMode:SyncTeamUI()
         GameState:UpdateTeamRoster(Roster)
     end
     if GameState.UpdateNotifications ~= nil then
-        GameState:UpdateNotifications(self.PendingInvites)
+        local Notifications = {}
+        for _, Invite in ipairs(self.PendingInvites or {}) do
+            table.insert(Notifications, Invite)
+        end
+        for _, JoinRequest in ipairs(self.PendingJoinRequests or {}) do
+            table.insert(Notifications, JoinRequest)
+        end
+        GameState:UpdateNotifications(Notifications)
     end
 end
 
@@ -787,6 +796,28 @@ function UGCGameMode:ClearInvitesFor(PlayerKey)
     end
 end
 
+function UGCGameMode:ClearJoinRequestsFor(PlayerKey)
+    for Index = #(self.PendingJoinRequests or {}), 1, -1 do
+        local Request = self.PendingJoinRequests[Index]
+        if IsSamePlayerKey(Request.FromKey, PlayerKey) or IsSamePlayerKey(Request.TargetKey, PlayerKey) then
+            table.remove(self.PendingJoinRequests, Index)
+        end
+    end
+end
+
+function UGCGameMode:ClearJoinRequestsForSquad(Squad)
+    if Squad == nil then
+        return
+    end
+    for Index = #(self.PendingJoinRequests or {}), 1, -1 do
+        local Request = self.PendingJoinRequests[Index]
+        if IsSamePlayerKey(Request.TargetKey, Squad.LeaderKey) or
+            tonumber(Request.TeamID) == tonumber(Squad.TeamID) then
+            table.remove(self.PendingJoinRequests, Index)
+        end
+    end
+end
+
 function UGCGameMode:RemoveInvite(FromKey, TargetKey)
     for Index = #(self.PendingInvites or {}), 1, -1 do
         local Invite = self.PendingInvites[Index]
@@ -796,6 +827,17 @@ function UGCGameMode:RemoveInvite(FromKey, TargetKey)
         end
     end
     return false
+end
+
+function UGCGameMode:RemoveJoinRequest(ApplicantKey, LeaderKey)
+    for Index = #(self.PendingJoinRequests or {}), 1, -1 do
+        local Request = self.PendingJoinRequests[Index]
+        if IsSamePlayerKey(Request.FromKey, ApplicantKey) and IsSamePlayerKey(Request.TargetKey, LeaderKey) then
+            table.remove(self.PendingJoinRequests, Index)
+            return Request
+        end
+    end
+    return nil
 end
 
 function UGCGameMode:DisbandSquad(Squad, DisconnectedPlayerKey)
@@ -818,7 +860,9 @@ function UGCGameMode:DisbandSquad(Squad, DisconnectedPlayerKey)
     for _, MemberKey in ipairs(Squad.Members or {}) do
         self.MemberSquad[MemberKey] = nil
         self:ClearInvitesFor(MemberKey)
+        self:ClearJoinRequestsFor(MemberKey)
     end
+    self:ClearJoinRequestsForSquad(Squad)
     self.Squads[Squad.TeamID] = nil
     ugcprint("[Team] Server disband success team=" .. tostring(Squad.TeamID) .. " leader=" ..
                  tostring(Squad.LeaderKey))
@@ -901,7 +945,103 @@ function UGCGameMode:HandleInviteResponse(ResponderObject, InviterKey, bAccept)
         return false
     end
     self:ClearInvitesFor(TargetKey)
+    self:ClearJoinRequestsFor(TargetKey)
+    if #Squad.Members >= TeamConfig.MAX_PLAYERS_PER_TEAM then
+        self:ClearJoinRequestsForSquad(Squad)
+    end
     ugcprint("[Team] Server joined key=" .. tostring(TargetKey) .. " team=" .. tostring(Squad.TeamID))
+    self:SyncTeamUI()
+    return true
+end
+
+function UGCGameMode:HandleJoinRequest(ApplicantObject, LeaderKey)
+    local ApplicantKey = self:GetCanonicalPlayerKey(self:GetPlayerKey(ApplicantObject))
+    LeaderKey = self:GetCanonicalPlayerKey(LeaderKey)
+    ugcprint("[TeamJoinRequest] Server request applicant=" .. tostring(ApplicantKey) .. " leader=" ..
+                 tostring(LeaderKey))
+
+    if ApplicantKey == nil or LeaderKey == nil or IsSamePlayerKey(ApplicantKey, LeaderKey) or
+        self.MemberSquad[ApplicantKey] ~= nil then
+        ugcprint("[TeamJoinRequest] Server request rejected: invalid applicant or applicant already grouped")
+        return false
+    end
+
+    local Squad = self:GetSquadForMember(LeaderKey)
+    if Squad == nil or not IsSamePlayerKey(Squad.LeaderKey, LeaderKey) or
+        #Squad.Members >= TeamConfig.MAX_PLAYERS_PER_TEAM then
+        ugcprint("[TeamJoinRequest] Server request rejected: target is not an available leader")
+        return false
+    end
+
+    for _, Request in ipairs(self.PendingJoinRequests or {}) do
+        if IsSamePlayerKey(Request.FromKey, ApplicantKey) and IsSamePlayerKey(Request.TargetKey, LeaderKey) and
+            tonumber(Request.TeamID) == tonumber(Squad.TeamID) then
+            return true
+        end
+    end
+
+    -- A player may keep only one outgoing join request. Applying to another squad replaces the old request.
+    for Index = #(self.PendingJoinRequests or {}), 1, -1 do
+        if IsSamePlayerKey(self.PendingJoinRequests[Index].FromKey, ApplicantKey) then
+            table.remove(self.PendingJoinRequests, Index)
+        end
+    end
+    table.insert(self.PendingJoinRequests, {
+        Type = TeamConfig.JOIN_REQUEST_TYPE,
+        FromKey = ApplicantKey,
+        TargetKey = LeaderKey,
+        TeamID = Squad.TeamID
+    })
+    ugcprint("[TeamJoinRequest] Server stored applicant=" .. tostring(ApplicantKey) .. " leader=" ..
+                 tostring(LeaderKey) .. " team=" .. tostring(Squad.TeamID))
+    self:SyncTeamUI()
+    return true
+end
+
+function UGCGameMode:HandleJoinRequestResponse(LeaderObject, ApplicantKey, bAccept)
+    local LeaderKey = self:GetCanonicalPlayerKey(self:GetPlayerKey(LeaderObject))
+    ApplicantKey = self:GetCanonicalPlayerKey(ApplicantKey)
+    local Request = nil
+    if LeaderKey ~= nil and ApplicantKey ~= nil then
+        Request = self:RemoveJoinRequest(ApplicantKey, LeaderKey)
+    end
+    if Request == nil then
+        ugcprint("[TeamJoinRequest] Server response rejected leader=" .. tostring(LeaderKey) .. " applicant=" ..
+                     tostring(ApplicantKey) .. " reason=request_not_found")
+        return false
+    end
+
+    if bAccept ~= true then
+        ugcprint("[TeamJoinRequest] Server rejected applicant=" .. tostring(ApplicantKey) .. " leader=" ..
+                     tostring(LeaderKey))
+        self:SyncTeamUI()
+        return true
+    end
+
+    local Squad = self:GetSquadForMember(LeaderKey)
+    if self.MemberSquad[ApplicantKey] ~= nil or Squad == nil or
+        not IsSamePlayerKey(Squad.LeaderKey, LeaderKey) or tonumber(Squad.TeamID) ~= tonumber(Request.TeamID) or
+        #Squad.Members >= TeamConfig.MAX_PLAYERS_PER_TEAM then
+        ugcprint("[TeamJoinRequest] Server accept rejected leader=" .. tostring(LeaderKey) .. " applicant=" ..
+                     tostring(ApplicantKey) .. " reason=state_changed")
+        self:SyncTeamUI()
+        return false
+    end
+
+    if not self:AddMemberToSquad(Squad, ApplicantKey) then
+        ugcprint("[TeamJoinRequest] Server accept failed leader=" .. tostring(LeaderKey) .. " applicant=" ..
+                     tostring(ApplicantKey) .. " reason=team_change_failed")
+        self:SyncTeamUI()
+        return false
+    end
+
+    self:ClearInvitesFor(ApplicantKey)
+    self:ClearJoinRequestsFor(ApplicantKey)
+    if #Squad.Members >= TeamConfig.MAX_PLAYERS_PER_TEAM then
+        self:ClearJoinRequestsForSquad(Squad)
+    end
+    ugcprint("[TeamJoinRequest] Server accepted applicant=" .. tostring(ApplicantKey) .. " leader=" ..
+                 tostring(LeaderKey) .. " team=" .. tostring(Squad.TeamID))
     self:SyncTeamUI()
     return true
 end
@@ -920,6 +1060,7 @@ function UGCGameMode:HandleLeaveTeamRequest(PlayerObject)
         return false
     end
     self:ClearInvitesFor(PlayerKey)
+    self:ClearJoinRequestsFor(PlayerKey)
     ugcprint("[Team] Server leave result player=" .. tostring(PlayerKey) .. " success=true")
     self:SyncTeamUI()
     return true
@@ -941,6 +1082,7 @@ function UGCGameMode:HandleKickRequest(LeaderObject, TargetKey)
         return false
     end
     self:ClearInvitesFor(TargetKey)
+    self:ClearJoinRequestsFor(TargetKey)
     ugcprint("[Team] Server kick result leader=" .. tostring(LeaderKey) .. " target=" .. tostring(TargetKey) ..
                  " success=true")
     self:SyncTeamUI()
@@ -978,6 +1120,7 @@ function UGCGameMode:UGC_PlayerExitEvent(PlayerController)
         end
     end
     self:ClearInvitesFor(PlayerKey)
+    self:ClearJoinRequestsFor(PlayerKey)
     RemovePlayerKey(self.PlayerKeyList, PlayerKey)
     self.OriginalTeamByPlayer[PlayerKey] = nil
     ugcprint("[Backfill] Server player exit key=" .. tostring(PlayerKey) .. " online=" ..

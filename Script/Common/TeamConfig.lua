@@ -1,7 +1,7 @@
 local TeamConfig = {}
 
 -- 每次生成新的真机包时更新，用日志确认客户端与服务器运行的是同一版本。
-TeamConfig.BUILD_ID = "TEAM_DOULUO_LOBBY_SPLIT_FIX_20260721_04"
+TeamConfig.BUILD_ID = "TEAM_DOULUO_JOIN_REQUEST_20260814_01"
 
 TeamConfig.MAX_SERVER_PLAYERS = 16
 TeamConfig.MAX_PLAYERS_PER_TEAM = 4
@@ -21,5 +21,6 @@ TeamConfig.CAMP_RELATION = {
     Enemy = 2
 }
 TeamConfig.INVITE_TYPE = "Invite"
+TeamConfig.JOIN_REQUEST_TYPE = "JoinRequest"
 
 return TeamConfig

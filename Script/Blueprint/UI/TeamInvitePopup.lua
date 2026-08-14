@@ -1,5 +1,6 @@
 ---@class TeamInvitePopup_C:UUserWidget
 ---@field AcceptBtn UButton
+---@field InviteText UTextBlock
 ---@field RejectBtn UButton
 --Edit Below--
 ---@class TeamInvitePopup_C:UUserWidget
@@ -15,6 +16,8 @@ function TeamInvitePopup:Construct()
     self.AcceptBtn = self:GetWidgetFromName("AcceptBtn")
     self.RejectBtn = self:GetWidgetFromName("RejectBtn")
     self.InviterKey = nil
+    self.NotificationType = nil
+    self.NotificationTeamID = nil
     self.bResponded = false
     self.bClosing = false
 
@@ -26,14 +29,24 @@ function TeamInvitePopup:Construct()
     end
 end
 
-function TeamInvitePopup:ShowInvite(InviterKey, InviterName)
-    self.InviterKey = InviterKey
+function TeamInvitePopup:ShowNotification(NotificationType, FromKey, FromName, TeamID)
+    self.NotificationType = NotificationType or TeamConfig.INVITE_TYPE
+    self.NotificationTeamID = TeamID
+    self.InviterKey = FromKey
     self.bResponded = false
     self.bClosing = false
     if self.InviteText ~= nil then
-        self.InviteText:SetText(tostring(InviterName or InviterKey) .. " 邀请你加入队伍")
+        if self.NotificationType == TeamConfig.JOIN_REQUEST_TYPE then
+            self.InviteText:SetText(tostring(FromName or FromKey) .. " 申请加入你的队伍")
+        else
+            self.InviteText:SetText(tostring(FromName or FromKey) .. " 邀请你加入队伍")
+        end
     end
     self:SetVisibility(0)
+end
+
+function TeamInvitePopup:ShowInvite(InviterKey, InviterName)
+    self:ShowNotification(TeamConfig.INVITE_TYPE, InviterKey, InviterName, nil)
 end
 
 function TeamInvitePopup:RespondToInvite(bAccepted)
@@ -49,17 +62,18 @@ function TeamInvitePopup:RespondToInvite(bAccepted)
 
     self.bResponded = true
     local TeamPanel = PlayerController.TeamPanelInstance
-    if TeamPanel ~= nil and TeamPanel.MarkInviteResponded ~= nil then
-        TeamPanel:MarkInviteResponded(self.InviterKey, bAccepted)
+    if TeamPanel ~= nil and TeamPanel.MarkNotificationResponded ~= nil then
+        TeamPanel:MarkNotificationResponded(self.NotificationType, self.InviterKey, self.NotificationTeamID, bAccepted)
     end
-    ugcprint("[Team] Client invite response click build=" .. tostring(TeamConfig.BUILD_ID) .. " local=" ..
-                 tostring(PlayerController.PlayerKey) .. " inviter=" .. tostring(self.InviterKey) .. " accept=" ..
-                 tostring(bAccepted))
+    ugcprint("[Team] Client notification response click build=" .. tostring(TeamConfig.BUILD_ID) .. " type=" ..
+                 tostring(self.NotificationType) .. " local=" .. tostring(PlayerController.PlayerKey) .. " from=" ..
+                 tostring(self.InviterKey) .. " accept=" .. tostring(bAccepted))
+    local RPCName = self.NotificationType == TeamConfig.JOIN_REQUEST_TYPE and "ServerRespondJoinRequest" or
+                        "ServerRespondInvite"
     if TeamPanel ~= nil and TeamPanel.CallServerRPC ~= nil then
-        TeamPanel:CallServerRPC("ServerRespondInvite", self.InviterKey, bAccepted)
+        TeamPanel:CallServerRPC(RPCName, self.InviterKey, bAccepted)
     else
-        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "ServerRespondInvite", self.InviterKey,
-            bAccepted)
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, RPCName, self.InviterKey, bAccepted)
     end
     self:ClosePopup()
 end
