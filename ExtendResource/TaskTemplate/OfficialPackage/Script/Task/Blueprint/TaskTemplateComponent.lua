@@ -397,10 +397,11 @@ function TaskTemplateComponent:AddAwardListToBackpack(AwardList)
             table.insert(ShowAwardList, {ItemID = ItemID, ItemNum = ItemNum});
         end
     end
-
-    if #ShowAwardList > 0 then
-        self:ShowItemGet(ShowAwardList);
-    end
+    
+    --不显示任务奖励的“获得物品”弹窗，这里使用默认“获得物品”弹窗
+    -- if #ShowAwardList > 0 then
+    --     self:ShowItemGet(ShowAwardList);
+    -- end
 end
 
 function TaskTemplateComponent:AddTaskAwardToBackpack(TaskID)
