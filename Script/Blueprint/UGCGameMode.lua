@@ -8,6 +8,16 @@ local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local PlayerInitialData = UGCGameSystem.UGCRequire("Script.Common.PlayerInitialData")
 
+local WING_EQUIPMENT_SLOT = "CB_CW"
+local WING_ITEM_IDS = {
+    [8310012] = true,
+    [8310013] = true,
+    [8310014] = true,
+    [8310058] = true,
+    [8310059] = true,
+    [8310010] = true
+}
+
 -- Keep safe defaults on the Lua class as some mobile/server lifecycle callbacks may arrive
 -- before ReceiveBeginPlay has finished initializing the per-match state.
 UGCGameMode.PlayerKeyList = {}
@@ -88,6 +98,36 @@ local function SaveBackpackSnapshot(PlayerKey, PlayerPawn)
 
     PlayerBackpackSnapshots[PlayerKey] = Snapshot
     ugcprint("[UGCGameMode] Backpack saved, PlayerKey=" .. tostring(PlayerKey))
+end
+
+-- 死亡时只卸下翅膀，不移除物品；卸下成功后物品会回到普通背包格。
+local function UnequipWingOnDeath(PlayerPawn)
+    if PlayerPawn == nil or UGCBackpackSystemV2 == nil then
+        return false
+    end
+
+    local SuccessGet, EquippedItem = pcall(UGCBackpackSystemV2.GetEquippedItemBySlotName, PlayerPawn,
+        WING_EQUIPMENT_SLOT)
+    if not SuccessGet or EquippedItem == nil then
+        return false
+    end
+
+    local SuccessID, ItemID = pcall(function()
+        return tonumber(EquippedItem.TypeSpecificID)
+    end)
+    if not SuccessID or not WING_ITEM_IDS[ItemID] then
+        return false
+    end
+
+    local SuccessCall, Result = pcall(UGCBackpackSystemV2.UnEquipItemV2, PlayerPawn, WING_EQUIPMENT_SLOT)
+    local bUnequipped = SuccessCall and Result == true
+    if bUnequipped then
+        ugcprint("[UGCGameMode] Wing unequipped on death, ItemID=" .. tostring(ItemID))
+    else
+        ugcprint("[UGCGameMode] WARNING wing unequip failed on death, ItemID=" .. tostring(ItemID) ..
+                     ", error=" .. tostring(Result))
+    end
+    return bUnequipped
 end
 
 local function RestoreBackpackSnapshot(PlayerKey, PlayerPawn)
@@ -953,6 +993,7 @@ end
 function UGCGameMode:UGC_PlayerKilledEvent(Killer, VictimPlayer, VictimPawn, DamageType)
     if VictimPlayer and VictimPawn then
         SaveBackpackSnapshot(VictimPlayer.PlayerKey, VictimPawn)
+        UnequipWingOnDeath(VictimPawn)
         -- 保存死亡前的血量到跨对局存档
         local PS = VictimPlayer.PlayerState
         if PS and PS.SaveCurrentHP then
@@ -985,9 +1026,10 @@ function UGCGameMode:UGC_PlayerRespawnEvent(RespawnedController)
 end
 
 function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageType)
+    local VictimController = UGCGameSystem.GetPlayerControllerByPlayerKey(VictimPlayerKey)
+
     -- 某些死亡方式不会触发 UGC_PlayerKilledEvent，尝试从 Controller 再保存一次。
     if not PlayerBackpackSnapshots[VictimPlayerKey] then
-        local VictimController = UGCGameSystem.GetPlayerControllerByPlayerKey(VictimPlayerKey)
         if VictimController and VictimController.Pawn then
             SaveBackpackSnapshot(VictimPlayerKey, VictimController.Pawn)
             -- 保存死亡前的血量
@@ -996,6 +1038,16 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
                 PS:SaveCurrentHP(VictimController.Pawn)
             end
         end
+    end
+
+    -- 两种死亡事件可能只触发其中一个；重复调用是安全的，已卸下时会直接返回。
+    if VictimController and VictimController.Pawn then
+        UnequipWingOnDeath(VictimController.Pawn)
+    end
+
+    -- 死亡销毁 Pawn 时塔区域可能收不到 EndOverlap，客户端隐藏计数需要在复活前归零。
+    if VictimController ~= nil and UnrealNetwork ~= nil and UnrealNetwork.CallUnrealRPC ~= nil then
+        UnrealNetwork.CallUnrealRPC(VictimController, VictimController, "Client_ResetFeiTowerButtonsHidden")
     end
 
     UGCPlayerPawnSystem.RespawnPlayer(VictimPlayerKey, 2, true)

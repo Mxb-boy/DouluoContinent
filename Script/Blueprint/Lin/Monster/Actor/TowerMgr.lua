@@ -22,6 +22,7 @@ function TowerMgr:ReceiveBeginPlay()
     self.AliveMonsters = {}
     self.InsidePlayerOverlapCounts = {}
     self.ActorToPlayerUIDs = {}
+    self.ActorToPlayerKeys = {}
     self.InsidePlayerCount = 0
     self.RespawnTimerToken = 0
     self.SpawnPointRespawnTokens = {}
@@ -31,9 +32,21 @@ function TowerMgr:ReceiveBeginPlay()
         self.Capsule.OnComponentBeginOverlap:Add(self.Capsule_OnComponentBeginOverlap, self);
         self.Capsule.OnComponentEndOverlap:Add(self.Capsule_OnComponentEndOverlap, self);
     end
+
+    if self:HasAuthority() then
+        UGCGenericMessageSystem.ListenGlobalMessage(self,
+            UGCGenericMessageSystem.Messages.UGC.PlayerPawn.PawnDefeat, self, self.OnPawnDefeat)
+    end
 end
 
 function TowerMgr:ReceiveEndPlay()
+    if self:HasAuthority() then
+        for PlayerActor, _ in pairs(self.ActorToPlayerUIDs or {}) do
+            self:SetPlayerFeiTowerButtonsHidden(PlayerActor, false)
+        end
+        UGCGenericMessageSystem.UnListenMessage(self,
+            UGCGenericMessageSystem.Messages.UGC.PlayerPawn.PawnDefeat)
+    end
     TowerMgr.SuperClass.ReceiveEndPlay(self)
 end
 
@@ -350,6 +363,14 @@ function TowerMgr:Capsule_OnComponentBeginOverlap(OverlappedComponent, OtherActo
     end
 
     self.ActorToPlayerUIDs[OtherActor] = uid
+    local PlayerController = OtherActor and OtherActor.Controller
+    if PlayerController == nil then
+        local Success, Result = pcall(UGCGameSystem.GetPlayerControllerByPlayerPawn, OtherActor)
+        if Success then
+            PlayerController = Result
+        end
+    end
+    self.ActorToPlayerKeys[OtherActor] = PlayerController and PlayerController.PlayerKey or nil
 
     local overlapCount = self.InsidePlayerOverlapCounts[uid] or 0
     self.InsidePlayerOverlapCounts[uid] = overlapCount + 1
@@ -401,9 +422,17 @@ function TowerMgr:Capsule_OnComponentEndOverlap(OverlappedComponent, OtherActor,
 
     local overlapCount = self.InsidePlayerOverlapCounts[uid] or 0
 
+    -- 玩家死亡时已经主动清理过，迟到的 EndOverlap 不应再次减少其他塔的 UI 隐藏计数。
+    if overlapCount <= 0 then
+        self.ActorToPlayerUIDs[OtherActor] = nil
+        self.ActorToPlayerKeys[OtherActor] = nil
+        return
+    end
+
     if overlapCount <= 1 then
         self.InsidePlayerOverlapCounts[uid] = nil
         self.ActorToPlayerUIDs[OtherActor] = nil
+        self.ActorToPlayerKeys[OtherActor] = nil
         self.InsidePlayerCount = math.max(0, self.InsidePlayerCount - 1)
         self:SetPlayerFeiTowerButtonsHidden(OtherActor, false)
 
@@ -412,6 +441,34 @@ function TowerMgr:Capsule_OnComponentEndOverlap(OverlappedComponent, OtherActor,
         end
     else
         self.InsidePlayerOverlapCounts[uid] = overlapCount - 1
+    end
+end
+
+function TowerMgr:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageType)
+    if not self:HasAuthority() then
+        return
+    end
+
+    local ActorsToCleanup = {}
+    for PlayerActor, PlayerKey in pairs(self.ActorToPlayerKeys or {}) do
+        if PlayerKey ~= nil and tostring(PlayerKey) == tostring(VictimPlayerKey) then
+            table.insert(ActorsToCleanup, PlayerActor)
+        end
+    end
+
+    for _, PlayerActor in ipairs(ActorsToCleanup) do
+        local uid = self.ActorToPlayerUIDs[PlayerActor]
+        if uid ~= nil and (self.InsidePlayerOverlapCounts[uid] or 0) > 0 then
+            self.InsidePlayerOverlapCounts[uid] = nil
+            self.ActorToPlayerUIDs[PlayerActor] = nil
+            self.ActorToPlayerKeys[PlayerActor] = nil
+            self.InsidePlayerCount = math.max(0, (self.InsidePlayerCount or 0) - 1)
+            self:SetPlayerFeiTowerButtonsHidden(PlayerActor, false)
+        end
+    end
+
+    if self.InsidePlayerCount <= 0 then
+        self:DestroyAliveMonsters()
     end
 end
 

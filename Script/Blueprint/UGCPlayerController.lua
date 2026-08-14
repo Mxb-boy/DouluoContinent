@@ -57,6 +57,31 @@ local WingItemIDs = {
     [8310059] = true,
     [8310010] = true
 }
+local WING_EQUIPMENT_SLOT = "CB_CW"
+
+local function GetWingItemIDFromEquipmentSlot(PlayerPawn)
+    if PlayerPawn == nil or UGCBackpackSystemV2 == nil or
+        UGCBackpackSystemV2.GetEquippedItemBySlotName == nil then
+        return nil
+    end
+
+    local Success, EquippedItem = pcall(UGCBackpackSystemV2.GetEquippedItemBySlotName, PlayerPawn,
+        WING_EQUIPMENT_SLOT)
+    if not Success or EquippedItem == nil then
+        return nil
+    end
+
+    local SuccessID, ItemID = pcall(function()
+        if type(EquippedItem) == "number" or type(EquippedItem) == "string" then
+            return tonumber(EquippedItem)
+        end
+        return tonumber(EquippedItem.TypeSpecificID or EquippedItem.ItemID or EquippedItem.ItemId)
+    end)
+    if SuccessID and WingItemIDs[ItemID] then
+        return ItemID
+    end
+    return nil
+end
 
 local function EnsurePlayerStateArchiveUID(PlayerController)
     if PlayerController == nil or PlayerController.PlayerState == nil then
@@ -108,6 +133,10 @@ function UGCPlayerController:ReceiveBeginPlay()
 
     ShadowDisabler.Start(self)
 
+    -- Fei 是独立控件，多客户端 PIE 下资源加载完成时间可能不同；提前启动独立重试，
+    -- 不能因为 MainUI 已创建或某次 Fei 加载失败就永远跳过飞行按钮。
+    self:RetryEnsureFeiUI(10)
+
     -- Prevent duplicate MainUI instances.
     if self.MainUIInstance ~= nil then
         return
@@ -146,6 +175,14 @@ function UGCPlayerController:ReceiveBeginPlay()
     ugcprint("[UGCPlayerController] MainUI created")
     self:Client_RefreshTitleBonus()
 
+    self:EnsureFeiUI()
+end
+
+function UGCPlayerController:EnsureFeiUI()
+    if self:HasAuthority() or self.FeiUIInstance ~= nil then
+        return
+    end
+
     local FeiUIPath = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/Fei.Fei_C"
     local FeiUIClass = UE.LoadClass(FeiUIPath)
 
@@ -161,14 +198,39 @@ function UGCPlayerController:ReceiveBeginPlay()
     end
 
     self.FeiUIInstance:AddToViewport()
+    if self.PendingFeiTowerButtonsHiddenCount ~= nil then
+        self.FeiUIInstance.TowerButtonsHiddenCount = math.max(0,
+            tonumber(self.PendingFeiTowerButtonsHiddenCount) or 0)
+        if self.FeiUIInstance.RefreshButton0Visibility ~= nil then
+            self.FeiUIInstance:RefreshButton0Visibility()
+        end
+    end
     ugcprint("[UGCPlayerController] Fei UI created")
+end
+
+function UGCPlayerController:RetryEnsureFeiUI(RetriesRemaining)
+    if self:HasAuthority() or self.FeiUIInstance ~= nil or UGCTimerUtility == nil or
+        UGCTimerUtility.CreateLuaTimer == nil then
+        return
+    end
+
+    UGCTimerUtility.CreateLuaTimer(0.5, function()
+        if self == nil or self.FeiUIInstance ~= nil then
+            return
+        end
+        self:EnsureFeiUI()
+        if self.FeiUIInstance == nil and (tonumber(RetriesRemaining) or 0) > 0 then
+            self:RetryEnsureFeiUI(RetriesRemaining - 1)
+        end
+    end, false)
 end
 
 function UGCPlayerController:GetAvailableServerRPCs()
     return "Server_TeleportToSpawn", "Server_TeleportToLocation", "Server_UpdateRankingListScore",
         "Server_ClearAllRankingListData", "Client_BroadcastPlantMessage", "Client_ForgeWeaponResult",
         "Server_ForgeWeapon", "Server_AddShopItemToBackpackV2", "Server_CleanupStaleShopVirtualItem",
-        "Server_EquipTitle", "Server_BeginFlyState", "Client_SetEquippedWingItemID", "Client_RejectFlyStart",
+        "Server_EquipTitle", "Server_BeginFlyState", "Server_RequestEquippedWingState",
+        "Client_SetEquippedWingItemID", "Client_RejectFlyStart",
         "Server_EndFlyState", "Server_FlyMove", "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus",
         "Server_AddProbabilityBonus", "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm",
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
@@ -180,7 +242,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI", "Server_ClaimTowerTopReward",
         "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden", "Client_ShowMonsterDamageNumber",
         "Client_PlayWQHitEffect",
-        "Client_SetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
+        "Client_SetFeiTowerButtonsHidden", "Client_ResetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
         "Server_RequestPaTaState", "Server_RequestFreePaTa", "Server_RequestTicketPaTa", "Client_SyncPaTaState",
         "Client_ShowToast", "Client_PlayerDataReset",
         "Client_PlayerDataResetStarted", "Client_PlayerDataResetFailed", "Client_GMResetLogEntry",
@@ -608,17 +670,32 @@ function UGCPlayerController:Server_BeginFlyState()
         return
     end
 
-    local EquippedWingItemID = tonumber(pawn.CurrentEquippedWingItemID)
+    local EquippedWingItemID = GetWingItemIDFromEquipmentSlot(pawn) or tonumber(pawn.CurrentEquippedWingItemID)
     if not WingItemIDs[EquippedWingItemID] then
         self.bServerFlying = false
         UnrealNetwork.CallUnrealRPC(self, self, "Client_RejectFlyStart")
         return
     end
 
+    -- 存档恢复装备时可能不会触发自定义装备回调；在首次起飞时修复服务端和拥有者客户端缓存。
+    pawn.CurrentEquippedWingItemID = EquippedWingItemID
+    self.EquippedWingItemID = EquippedWingItemID
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SetEquippedWingItemID", EquippedWingItemID)
+
     self.bServerFlying = true
     self.bServerFlyMovementModeReady = false
     self.ServerFlyCachedMaxWalkSpeed = nil
     pawn:BeginFly()
+end
+
+function UGCPlayerController:Server_RequestEquippedWingState()
+    local pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
+    local EquippedWingItemID = GetWingItemIDFromEquipmentSlot(pawn) or 0
+    if pawn ~= nil then
+        pawn.CurrentEquippedWingItemID = EquippedWingItemID > 0 and EquippedWingItemID or nil
+    end
+    self.EquippedWingItemID = EquippedWingItemID > 0 and EquippedWingItemID or nil
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_SetEquippedWingItemID", EquippedWingItemID)
 end
 
 function UGCPlayerController:Client_SetEquippedWingItemID(ItemID)
@@ -3130,8 +3207,21 @@ function UGCPlayerController:Client_SetFeiButton0Hidden(value)
 end
 
 function UGCPlayerController:Client_SetFeiTowerButtonsHidden(value)
+    if value == true or tonumber(value) == 1 then
+        self.PendingFeiTowerButtonsHiddenCount = (self.PendingFeiTowerButtonsHiddenCount or 0) + 1
+    else
+        self.PendingFeiTowerButtonsHiddenCount = math.max(0,
+            (self.PendingFeiTowerButtonsHiddenCount or 0) - 1)
+    end
     if self.FeiUIInstance ~= nil and self.FeiUIInstance.SetTowerButtonsHidden ~= nil then
         self.FeiUIInstance:SetTowerButtonsHidden(value)
+    end
+end
+
+function UGCPlayerController:Client_ResetFeiTowerButtonsHidden()
+    self.PendingFeiTowerButtonsHiddenCount = 0
+    if self.FeiUIInstance ~= nil and self.FeiUIInstance.ResetTowerButtonsHidden ~= nil then
+        self.FeiUIInstance:ResetTowerButtonsHidden()
     end
 end
 

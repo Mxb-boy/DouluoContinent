@@ -22,6 +22,11 @@ local FLY_RELEASE_GRACE_TIME = 0.35
 local FLY_MOVE_RPC_INTERVAL = 0.05
 local WingItemID = 1028
 local WingBackpackItemIDs = {8310012, 8310013, 8310014, 8310058, 8310059, 8310010}
+local WingEquipmentSlot = "CB_CW"
+local WingBackpackItemIDSet = {}
+for _, ItemID in ipairs(WingBackpackItemIDs) do
+    WingBackpackItemIDSet[ItemID] = true
+end
 
 local BlockedControlWidgetNames = {
     "MainUI_Jump_C_0",
@@ -66,15 +71,10 @@ function Fei:LuaInit()
     self:SetupRootHitTest()
     self:SetupKeyboardInputMode()
 
-    if self.Button_0 ~= nil then
-        UIEffectUtil.SetButtonStateBrushSameAsNormal(self.Button_0)
-        UIEffectUtil.BindPressScale(self, self.Button_0, self.Button_0, 1.06, 1.0)
-        self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
-        self:RefreshButton0Visibility()
-        self:RefreshButton0VisibilityLater(3)
-    end
-
+    -- 飞行按钮必须先初始化。背包和网络状态在多客户端开局时可能尚未就绪，
+    -- 不能让这些初始化失败阻断按钮显示和事件绑定。
     if self.Button_84 ~= nil then
+        self.Button_84:SetVisibility(ESlateVisibility.Visible)
         UIEffectUtil.SetButtonStateBrushSameAsNormal(self.Button_84)
         UIEffectUtil.BindPressScale(self, self.Button_84, self.Button_84, 1.06, 1.0)
         self:SetupFlyButtonInputMode()
@@ -85,6 +85,14 @@ function Fei:LuaInit()
         if self.Button_84.OnReleased ~= nil then
             self.Button_84.OnReleased:Add(self.Button_84_OnReleased, self)
         end
+    end
+
+    if self.Button_0 ~= nil then
+        UIEffectUtil.SetButtonStateBrushSameAsNormal(self.Button_0)
+        UIEffectUtil.BindPressScale(self, self.Button_0, self.Button_0, 1.06, 1.0)
+        self.Button_0.OnClicked:Add(self.Button_0_OnClicked, self)
+        self:RefreshButton0Visibility()
+        self:RefreshButton0VisibilityLater(10)
     end
 end
 
@@ -223,16 +231,34 @@ function Fei:SetTowerButtonsHidden(value)
     self:RefreshButton0Visibility()
 end
 
+-- Pawn 死亡/替换时可能不会触发塔区域 EndOverlap，必须主动清空残留隐藏计数。
+function Fei:ResetTowerButtonsHidden()
+    self.TowerButtonsHiddenCount = 0
+    self:RefreshButton0Visibility()
+end
+
 function Fei:RefreshButton0Visibility()
-    local bHasWing = self:HasAnyWing()
     local bTowerHidden = (self.TowerButtonsHiddenCount or 0) > 0
+    if self.Button_84 ~= nil then
+        -- 飞行按钮只允许爬塔区域隐藏，而且必须先于任何背包查询执行。
+        self.Button_84:SetVisibility(not bTowerHidden and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
+    end
+
+    local EquippedWingItemID = self:GetEquippedWingItemID()
+    local bHasWing = EquippedWingItemID > 0 or self:HasAnyWing()
+    local bWingEquipped = EquippedWingItemID > 0
     if self.Button_0 ~= nil then
         self.Button_0:SetVisibility((bHasWing or bTowerHidden) and ESlateVisibility.Collapsed or
                                         ESlateVisibility.Visible)
     end
-    if self.Button_84 ~= nil then
-        self.Button_84:SetVisibility((bHasWing and not bTowerHidden) and ESlateVisibility.Visible or
-                                         ESlateVisibility.Collapsed)
+
+    -- 只在状态变化时打印，既能定位开局时序，又不会每 0.5 秒刷屏。
+    local DebugState = string.format("wing=%d,tower=%d,has=%s,equipped=%s,visible=%s", EquippedWingItemID,
+        tonumber(self.TowerButtonsHiddenCount) or 0, tostring(bHasWing), tostring(bWingEquipped),
+        tostring(not bTowerHidden))
+    if self.LastVisibilityDebugState ~= DebugState then
+        self.LastVisibilityDebugState = DebugState
+        ugcprint("[Fei] visibility " .. DebugState)
     end
 end
 
@@ -259,7 +285,8 @@ function Fei:HasAnyWing()
     end
 
     for _, ItemID in ipairs(WingBackpackItemIDs) do
-        if (tonumber(UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID)) or 0) > 0 then
+        local Success, Count = pcall(UGCBackpackSystemV2.GetItemCountV2, PlayerPawn, ItemID)
+        if Success and (tonumber(Count) or 0) > 0 then
             return true
         end
     end
@@ -267,18 +294,66 @@ function Fei:HasAnyWing()
     return false
 end
 
-function Fei:IsWingEquipped()
+function Fei:GetEquippedWingItemID()
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
         or GameplayStatics.GetPlayerController(self, 0)
     local PlayerPawn = PlayerController and (PlayerController.Pawn or
         (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)) or nil
-    if PlayerPawn ~= nil and tonumber(PlayerPawn.CurrentEquippedWingItemID) ~= nil and
-        tonumber(PlayerPawn.CurrentEquippedWingItemID) > 0 then
-        return true
+
+    -- 背包装备槽是真实状态。开局时翅膀可能已由存档恢复，但自定义 RPC、Pawn 字段和 UI
+    -- 的初始化顺序不固定；直接查 CB_CW 可让按钮在背包数据到达后自动恢复。
+    if PlayerPawn ~= nil and UGCBackpackSystemV2 ~= nil and
+        UGCBackpackSystemV2.GetEquippedItemBySlotName ~= nil then
+        local Success, EquippedItem = pcall(UGCBackpackSystemV2.GetEquippedItemBySlotName, PlayerPawn,
+            WingEquipmentSlot)
+        if Success and EquippedItem ~= nil then
+            local SuccessID, ItemID = pcall(function()
+                if type(EquippedItem) == "number" or type(EquippedItem) == "string" then
+                    return tonumber(EquippedItem)
+                end
+                return tonumber(EquippedItem.TypeSpecificID or EquippedItem.ItemID or EquippedItem.ItemId)
+            end)
+            if SuccessID and ItemID ~= nil and WingBackpackItemIDSet[ItemID] == true then
+                return ItemID
+            end
+        end
+    end
+
+    -- 装备 RPC 可能早于新 Pawn 就绪；Controller 上的缓存不依赖 Pawn 初始化时序。
+    local ControllerWingItemID = PlayerController ~= nil and tonumber(PlayerController.EquippedWingItemID) or nil
+    if ControllerWingItemID ~= nil and WingBackpackItemIDSet[ControllerWingItemID] == true then
+        return ControllerWingItemID
+    end
+    local PawnWingItemID = PlayerPawn ~= nil and tonumber(PlayerPawn.CurrentEquippedWingItemID) or nil
+    if PawnWingItemID ~= nil and WingBackpackItemIDSet[PawnWingItemID] == true then
+        return PawnWingItemID
     end
     -- Wing actor updates this value on the owning client, so it also covers an
     -- already-equipped wing restored before the backpack callback is received.
-    return StateMgr ~= nil and (tonumber(StateMgr.ChiBang) or 0) > 0
+    local StateWingItemID = StateMgr ~= nil and tonumber(StateMgr.ChiBang) or nil
+    if StateWingItemID ~= nil and StateWingItemID > 0 then
+        return StateWingItemID
+    end
+    return 0
+end
+
+function Fei:IsWingEquipped()
+    return self:GetEquippedWingItemID() > 0
+end
+
+function Fei:IsLocalPlayerAlive()
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+    local PlayerPawn = PlayerController and (PlayerController.Pawn or
+        (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)) or nil
+    if PlayerPawn == nil then
+        return false
+    end
+
+    if UGCPawnAttrSystem ~= nil and UGCPawnAttrSystem.GetHealth ~= nil then
+        return (tonumber(UGCPawnAttrSystem.GetHealth(PlayerPawn)) or 0) > 0
+    end
+    return true
 end
 
 function Fei:GetShopProductID(ItemID)
