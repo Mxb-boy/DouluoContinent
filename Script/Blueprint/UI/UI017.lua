@@ -7,6 +7,7 @@
 ---@field Button_4 UButton
 ---@field Button_5 UButton
 ---@field Button_6 UButton
+---@field Button_73 UButton
 ---@field Button_81 UButton
 ---@field Button_82 UButton
 ---@field Button_83 UButton
@@ -43,6 +44,8 @@
 ---@field Button_118 UButton
 ---@field Button_119 UButton
 ---@field Button_120 UButton
+---@field Button_126 UButton
+---@field Button_127 UButton
 ---@field Button_154 UButton
 ---@field Button_263 UButton
 ---@field Button_359 UButton
@@ -81,6 +84,7 @@
 ---@field Image_40 UImage
 ---@field Image_41 UImage
 ---@field Image_42 UImage
+---@field Image_56 UImage
 ---@field Image_59 UImage
 ---@field Image_60 UImage
 ---@field Image_65 UImage
@@ -103,6 +107,7 @@
 ---@field Image_181 UImage
 ---@field Image_182 UImage
 ---@field Image_192 UImage
+---@field Image_195 UImage
 ---@field Image_210 UImage
 ---@field Image_238 UImage
 ---@field Image_239 UImage
