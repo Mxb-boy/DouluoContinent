@@ -138,6 +138,9 @@ function SignInEventComponent:RefreshSignInData()
     print("[SignInEventComponent:RefreshSignInData]: Start Refresh");
 
     local EventData = self:ReadData();
+    if EventData == nil then
+        return
+    end
     local CurrentTime = Common.GetCurrentTime();
     local bRefreshed = false;
     local bValueChanged = false;
@@ -145,24 +148,31 @@ function SignInEventComponent:RefreshSignInData()
     -- 月、周、日刷新
     for EventID, Data in pairs(EventData) do  
         local ConfigData = SignInEventManager:GetEventConfigData(EventID);
-        if ConfigData.Type ~= ESignInEventType.OneOff and CurrentTime >= Data.NextRefreshTime then
-            bValueChanged = bValueChanged or Data.DayNum ~= 0;
-            EventData[EventID].DayNum = 0;
-            bRefreshed = true;
-        end
+        if ConfigData == nil then
+            print("[SignInEventComponent:RefreshSignInData] Config nil event=" .. tostring(EventID))
+        else
+            if ConfigData.Type ~= ESignInEventType.OneOff and CurrentTime >= Data.NextRefreshTime then
+                bValueChanged = bValueChanged or Data.DayNum ~= 0;
+                EventData[EventID].DayNum = 0;
+                bRefreshed = true;
+            end
     
-        if CurrentTime >= Data.NextDayTime then
-            bValueChanged = bValueChanged or Data.SupplementDayNum ~= 0;
-            EventData[EventID].SupplementDayNum = 0;
-            bRefreshed = true;
+            if CurrentTime >= Data.NextDayTime then
+                bValueChanged = bValueChanged or Data.SupplementDayNum ~= 0;
+                EventData[EventID].SupplementDayNum = 0;
+                bRefreshed = true;
+            end
         end
     end
 
     if bRefreshed == true then
         print("[SignInEventComponent:RefreshSignInData]: Data Refreshed");
         -- 重置逻辑优化，避免后台过载
-        -- self:WriteData(EventData);
-        self.CachedEventData = EventData        
+        if bValueChanged == true then
+            self:WriteData(EventData);
+        else
+            self.CachedEventData = EventData
+        end
         self:SetSignInEventData(EventData);
         
         if bValueChanged == false then
@@ -306,6 +316,20 @@ function SignInEventComponent:ReadData()
     end
 
     local PlayerState = self:GetOwner().PlayerState
+    if PlayerState == nil then
+        print("[SignInEventComponent:ReadData] PlayerState nil")
+        return nil
+    end
+    if PlayerState.bArchiveLoaded ~= true then
+        print("[SignInEventComponent:ReadData] wait archive: bArchiveLoaded=" .. tostring(PlayerState.bArchiveLoaded) ..
+            " archiveUID=" .. tostring(PlayerState.ArchiveUID))
+        return nil
+    end
+    if PlayerState.GetSignInEvent == nil then
+        print("[SignInEventComponent:ReadData] GetSignInEvent nil")
+        return nil
+    end
+
     local SignInEventData = PlayerState:GetSignInEvent()
 
     NormalizeEventDataKeys(SignInEventData)
@@ -318,9 +342,18 @@ end
 function SignInEventComponent:WriteData(Data)
     
     local PlayerState = self:GetOwner().PlayerState
+    if PlayerState == nil then
+        print("[SignInEventComponent:WriteData] PlayerState nil")
+        return false
+    end
+    if PlayerState.SetSignInEvent == nil then
+        print("[SignInEventComponent:WriteData] SetSignInEvent nil")
+        return false
+    end
 
     PlayerState:SetSignInEvent(Data)
     self.CachedEventData = Data
+    return true
 end
 
 function SignInEventComponent:SetSignInEventData(EventData)
@@ -433,6 +466,10 @@ function SignInEventComponent:GetSignInAward(EventID, LocalEventDatas)
     end
 
     local Data = self:ReadData();
+    if Data == nil then
+        print("[SignInEventComponent:GetSignInAward] Data not ready event=" .. tostring(EventID))
+        return
+    end
 
     if Data[EventID] ~= nil then
         --校验客户端ds数据一致性
@@ -481,7 +518,6 @@ function SignInEventComponent:GetSignInAward(EventID, LocalEventDatas)
     end
 
     self:WriteData(Data);
-
     -- 同步到客户端
     self:SetSignInEventData(Data);
 
@@ -498,6 +534,10 @@ end
 
 function SignInEventComponent:Server_GetDailySignInAward(EventID, LocalEventDatas)
     local Data = self:ReadData();
+    if Data == nil then
+        print("[SignInEventComponent:Server_GetDailySignInAward] Data not ready event=" .. tostring(EventID))
+        return
+    end
     if Data[EventID] == nil then
         Data[EventID] = { DayNum=0, NextDayTime=0, SupplementDayNum = 0, NextRefreshTime = 0};
     end
@@ -515,6 +555,10 @@ function SignInEventComponent:Server_UseSupplement(EventID, LocalEventDatas)
     local ConfigData = SignInEventManager:GetEventConfigData(EventID)
 
     local Data = self:ReadData();
+    if Data == nil then
+        print("[SignInEventComponent:Server_UseSupplement] Data not ready event=" .. tostring(EventID))
+        return
+    end
     if Data[EventID] ~= nil then
         --校验客户端ds数据一致性
         if Data[EventID].DayNum ~= LocalEventDatas.DayNum

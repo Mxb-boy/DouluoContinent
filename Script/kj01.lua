@@ -24,6 +24,14 @@
 ---@field Img_OK_5 UImage
 ---@field Img_OK_6 UImage
 ---@field Img_OK_Best UImage
+---@field Num_1 UTextBlock
+---@field Num_2 UTextBlock
+---@field Num_3 UTextBlock
+---@field Num_4 UTextBlock
+---@field Num_5 UTextBlock
+---@field Num_6 UTextBlock
+---@field Red_Line UImage
+---@field Text_zhekou UTextBlock
 ---@field TextNum UTextBlock
 --Edit Below--
 local kj01 = { bInitDoOnce = false } 

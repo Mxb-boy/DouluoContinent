@@ -27,7 +27,21 @@ local function GetTableIconPath(IconPath)
     if IconPath == nil or IconPath == "" then
         return ""
     end
-    local Path = NormalizeIconPath(IconPath)
+    local Path = ""
+    if KismetSystemLibrary ~= nil and KismetSystemLibrary.BreakSoftObjectPath ~= nil then
+        local Success, Result = pcall(KismetSystemLibrary.BreakSoftObjectPath, IconPath)
+        if Success and IsValidIconPath(Result) then
+            Path = Result
+        end
+    end
+    if not IsValidIconPath(Path) and type(IconPath) == "table" and IconPath.AssetPathName ~= nil then
+        Path = IconPath.AssetPathName
+    end
+    if not IsValidIconPath(Path) then
+        Path = NormalizeIconPath(IconPath)
+    else
+        Path = NormalizeIconPath(Path)
+    end
     if IsValidIconPath(Path) then
         return Path
     end
@@ -44,47 +58,6 @@ function IsValidIconPath(IconPath)
         and IconPath ~= "None"
         and string.find(IconPath, "ByteProperty_") ~= 1
         and (string.find(IconPath, "/") ~= nil or string.find(IconPath, "Asset/") == 1)
-end
-
-local function ToHardcodedPath(FullPath)
-    local AssetPart = string.match(FullPath, "/Asset/(.+)$")
-    if AssetPart then
-        return ProjectRootPath .. "Asset/" .. AssetPart
-    end
-    return FullPath
-end
-
--- Hardcoded fallback from LotteryAwardConfig CSV
-local HardcodedIcons = {
-    -- Weapon pool
-    [8310000] = ToHardcodedPath("/Douluo/Asset/cs/image/HWSCJ_T3.HWSCJ_T3"),                              -- 海王三叉戟
-    [8310064] = ToHardcodedPath("/Douluo/Asset/ui/Icon/w_20260630125242_14.w_20260630125242_14"),          -- 爬塔传送券
-    [8310065] = ToHardcodedPath("/Douluo/Asset/ui/Icon/lvx2.lvx2"),                                       -- 十分钟双倍药水
-    [8310035] = ToHardcodedPath("/Douluo/Asset/ui/Icon/rghj.rghj"),                                      -- 融骨融晶
-    [8310059] = ToHardcodedPath("/Douluo/Asset/ChiBang/Icon/TP1.TP1"),                                    -- 骸骨亡灵骨翼
-    [8310053] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_4.Pic_4"),            -- 万年星环
-    [8310049] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_2.Pic_2"),            -- 百年星环
-    -- Wing pool
-    [8310010] = ToHardcodedPath("/Douluo/Asset/ChiBang/Icon/CB_2T.CB_2T"),                                -- 星澜幻彩羽翼
-    [8310036] = ToHardcodedPath("/Douluo/Asset/ui/Icon/qnhh.qnhh"),                                      -- 千年星核
-    [8310004] = ToHardcodedPath("/Douluo/Asset/cs/LCSL/LCSL_T.LCSL_T"),                                   -- 影罗夺命镰
-    [8310066] = ToHardcodedPath("/Douluo/Asset/ui/Icon/fx2.fx2"),                                         -- 30分钟双倍药水
-    [8310037] = ToHardcodedPath("/Douluo/Asset/ui/Icon/hszz.hszz"),                                       -- 星导师之证
-    -- Title pool
-    [8310061] = ToHardcodedPath("/Douluo/Asset/ui/huaban_6553688580.huaban_6553688580"),                  -- 不周霸主
-    [8310051] = ToHardcodedPath("/Douluo/Asset/Blueprint/Lin/Monster/Model/Icon/Pic_3.Pic_3"),            -- 千年星环
-    [8310068] = ToHardcodedPath("/Douluo/Asset/ui/Icon/lvx10.lvx10"),                                     -- 10分钟10倍药水
-    [8310039] = ToHardcodedPath("/Douluo/Asset/ui/Icon/lyzh.lyzh"),                                       -- 领域之核
-    [8310060] = ToHardcodedPath("/Douluo/Asset/ui/huaban_6553688608.huaban_6553688608"),                  -- 丹青妙手
-    -- FHSY pool
-    [8310044] = ToHardcodedPath("/Douluo/Asset/ui/Icon/w_20260630125242_2.w_20260630125242_2"),           -- 封号神印
-    [8310042] = ToHardcodedPath("/Douluo/Asset/ui/Icon/shy.shy"),                                         -- 圣星玉
-    [8310045] = ToHardcodedPath("/Douluo/Asset/ui/Icon/fhsy.fhsy"),                                       -- 九色神光
-    [8310043] = ToHardcodedPath("/Douluo/Asset/ui/Icon/sszx.sszx"),                                       -- 神兽之血
-}
-
-local function GetHardcodedIconPath(ItemID)
-    return HardcodedIcons[ItemID]
 end
 
 local function LoadUGCObjectIcons()
@@ -114,6 +87,7 @@ LotteryConfig.Types = {
 }
 
 LotteryConfig.CostItemID = 8310008
+LotteryConfig.CostShopItemID = 1025
 
 LotteryConfig.RoundCosts = { 8, 38, 88, 128, 188, 268, 368 }
 LotteryConfig.DiscountCosts = { 4, 19, 44, 64 }
@@ -163,11 +137,8 @@ function LotteryConfig.LoadFromTables()
         local Pool = Pools[PoolID]
         if Pool ~= nil and AwardIndex ~= nil then
             local ItemID = tonumber(Row.ItemID) or 0
-            local RawIconPath = Row.IconPathText or Row.IconPathStr or Row.IconPath
-            local IconPath = GetHardcodedIconPath(ItemID) or ""
-            if not IsValidIconPath(IconPath) then
-                IconPath = GetTableIconPath(RawIconPath)
-            end
+            local RawIconPath = Row.IconPath or Row.IconPathText or Row.IconPathStr
+            local IconPath = GetTableIconPath(RawIconPath)
             if not IsValidIconPath(IconPath) then
                 IconPath = UGCObjectIcons[ItemID] or ""
             end
@@ -215,6 +186,20 @@ function LotteryConfig.GetRoundCost(RoundIndex)
     end
 
     return LotteryConfig.RoundCosts[RoundIndex] or LotteryConfig.RoundCosts[LotteryConfig.MaxRound]
+end
+
+function LotteryConfig.GetOriginalRoundCost(RoundIndex)
+    RoundIndex = tonumber(RoundIndex) or 1
+    return LotteryConfig.RoundCosts[RoundIndex] or LotteryConfig.RoundCosts[LotteryConfig.MaxRound]
+end
+
+function LotteryConfig.IsDiscountRound(RoundIndex)
+    RoundIndex = tonumber(RoundIndex) or 1
+    local DiscountCost = LotteryConfig.DiscountCosts[RoundIndex]
+    local OriginalCost = LotteryConfig.GetOriginalRoundCost(RoundIndex)
+    return RoundIndex <= LotteryConfig.DiscountRoundCount
+        and DiscountCost ~= nil
+        and tonumber(DiscountCost) < tonumber(OriginalCost)
 end
 
 function LotteryConfig.IsGrandPrizeRound(LotteryType, RoundIndex)

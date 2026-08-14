@@ -1,6 +1,9 @@
 ---@class UI14_C:UUserWidget
+---@field Btn_Buy UButton
 ---@field Btn_Close UButton
+---@field Btn_Detail UButton
 ---@field Btn_FHSY UButton
+---@field Btn_Quit UButton
 ---@field Btn_Title UButton
 ---@field Btn_Weapon UButton
 ---@field Btn_Wing UButton
@@ -10,7 +13,6 @@
 ---@field Image_45 UImage
 ---@field Image_126 UImage
 ---@field Image_144 UImage
----@field Image_145 UImage
 ---@field Image_358 UImage
 ---@field Image_544 UImage
 ---@field Img_Award UImage
@@ -19,11 +21,13 @@
 ---@field kj01_C_1 kj01_C
 ---@field kj01_C_2 kj01_C
 ---@field kj01_C_3 kj01_C
+---@field Panel_Detail UCanvasPanel
 ---@field Text_AwardName UTextBlock
 ---@field TextTicket_Now UTextBlock
 --Edit Below--
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
+UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.ShopV2.ShopV2Manager")
 
 local UI14 = { bInitDoOnce = false }
 
@@ -50,7 +54,11 @@ function UI14:LuaInit()
     self:BindButton(self.Btn_Title, self.Btn_Title_OnClicked)
     self:BindButton(self.Btn_Weapon, self.Btn_Weapon_OnClicked)
     self:BindButton(self.Btn_Wing, self.Btn_Wing_OnClicked)
+    self:BindButton(self.Btn_Detail, self.Btn_Detail_OnClicked)
+    self:BindButton(self.Btn_Quit, self.Btn_Quit_OnClicked)
+    self:BindButton(self.Btn_Buy, self.Btn_Buy_OnClicked)
     self:BindAwardSlots()
+    self:SetDetailVisible(false)
     self:Refresh()
 end
 
@@ -65,6 +73,8 @@ function UI14:BindButton(Button, Callback)
 end
 
 function UI14:Open()
+    self:ResetLotteryTicketRefreshState()
+    self:EnsureShopPurchaseCallbacks()
     self:SetBattleUIVisible(false)
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
         or GameplayStatics.GetPlayerController(self, 0)
@@ -72,6 +82,7 @@ function UI14:Open()
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestLotteryStateSync")
     end
     self:Refresh()
+    self:ScheduleLotteryTicketRefresh()
     self:SetVisibility(ESlateVisibility.Visible)
 end
 
@@ -95,9 +106,216 @@ function UI14:Btn_Wing_OnClicked()
     self:SelectLotteryType(LotteryType.Wing)
 end
 
+function UI14:Btn_Detail_OnClicked()
+    self:SetDetailVisible(true)
+end
+
+function UI14:Btn_Quit_OnClicked()
+    self:SetDetailVisible(false)
+end
+
+function UI14:Btn_Buy_OnClicked()
+    self:OpenLotteryTicketPurchaseUI()
+end
+
 function UI14:Close()
+    self:SetDetailVisible(false)
+    self:ResetLotteryTicketRefreshState()
     self:SetBattleUIVisible(true)
     self:SetVisibility(ESlateVisibility.Collapsed)
+end
+
+function UI14:SetDetailVisible(bVisible)
+    self:SetWidgetVisible(self.Panel_Detail, bVisible)
+end
+
+function UI14:OpenLotteryTicketPurchaseUI()
+    if ShopV2Manager == nil or ShopV2Manager.CheckBackpackBeforePurchase == nil
+        or ShopV2Manager:CheckBackpackBeforePurchase() == false then
+        ugcprint("[UI14:OpenLotteryTicketPurchaseUI] ShopV2Manager unavailable or backpack check failed")
+        return false
+    end
+
+    local ProductID = self:GetLotteryTicketProductID()
+    if ProductID == nil then
+        ugcprint("[UI14:OpenLotteryTicketPurchaseUI] lottery ticket product not found")
+        return false
+    end
+
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+        or GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        ugcprint("[UI14:OpenLotteryTicketPurchaseUI] PlayerController is nil")
+        return false
+    end
+    if ShopV2Manager.bBlockRepeatPurchase == true then
+        return false
+    end
+
+    self:EnsureShopPurchaseCallbacks()
+    return self:OpenLotteryTicketPurchasePopup(PlayerController, ProductID)
+end
+
+function UI14:OpenLotteryTicketPurchasePopup(PlayerController, ProductID)
+    local PurchaseUIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath(
+        "ExtendResource/ShopV2/OfficialPackage/Asset/ShopV2/Arts_UI/UIBP/ShopV2_PurchasePopups_UIBP.ShopV2_PurchasePopups_UIBP_C"))
+    if PurchaseUIClass == nil then
+        ugcprint("[UI14:OpenLotteryTicketPurchasePopup] PurchaseUIClass is nil")
+        return false
+    end
+
+    local PurchaseUI = UserWidget.NewWidgetObjectBP(PlayerController, PurchaseUIClass)
+    if PurchaseUI == nil then
+        ugcprint("[UI14:OpenLotteryTicketPurchasePopup] PurchaseUI is nil")
+        return false
+    end
+
+    ShopV2Manager.bBlockRepeatPurchase = true
+    PurchaseUI:AddToViewport(15000)
+    local Success, Err = pcall(PurchaseUI.Refresh, PurchaseUI, ProductID)
+    if not Success then
+        ShopV2Manager.bBlockRepeatPurchase = false
+        PurchaseUI:SetVisibility(ESlateVisibility.Collapsed)
+        ugcprint("[UI14:OpenLotteryTicketPurchasePopup] refresh failed: " .. tostring(Err))
+        return false
+    end
+
+    return true
+end
+
+function UI14:GetLotteryTicketProductID()
+    return self:GetShopProductID(LotteryConfig.CostShopItemID)
+end
+
+function UI14:GetShopProductID(ItemID)
+    if ItemID == nil or ShopV2Manager == nil or ShopV2Manager.GetAllProductConfigData == nil then
+        return nil
+    end
+
+    local ProductDatas = ShopV2Manager:GetAllProductConfigData()
+    if ProductDatas == nil then
+        return nil
+    end
+
+    for ProductID, ProductData in pairs(ProductDatas) do
+        if tonumber(ProductData.ItemID) == tonumber(ItemID) then
+            return tonumber(ProductData.ProductID) or tonumber(ProductData.ProductId) or tonumber(ProductID)
+        end
+    end
+    return nil
+end
+
+function UI14:EnsureShopPurchaseCallbacks()
+    if ShopV2Manager == nil then
+        return
+    end
+
+    if ShopV2Manager.bBuyProductResultBinded ~= true then
+        ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Add(ShopV2Manager.OnBuyProductResult,
+            ShopV2Manager)
+        ShopV2Manager.bBuyProductResultBinded = true
+    end
+
+    if ShopV2Manager.bAddItemResultDelegateBinded ~= true then
+        ShopV2Manager:GetVirtualItemManager().AddItemResultDelegate:Add(ShopV2Manager.OnAddVirtualItem, ShopV2Manager)
+        ShopV2Manager.bAddItemResultDelegateBinded = true
+    end
+
+    if self.bLotteryTicketAddItemResultBinded ~= true then
+        ShopV2Manager:GetVirtualItemManager().AddItemResultDelegate:Add(self.OnLotteryTicketAddVirtualItem, self)
+        self.bLotteryTicketAddItemResultBinded = true
+    end
+
+    if self.bLotteryTicketBuyProductResultBinded ~= true then
+        ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Add(self.OnLotteryTicketBuyProductResult,
+            self)
+        self.bLotteryTicketBuyProductResultBinded = true
+    end
+end
+
+function UI14:RemoveShopPurchaseCallbacks()
+    if ShopV2Manager == nil then
+        return
+    end
+
+    if self.bLotteryTicketAddItemResultBinded == true then
+        local VirtualItemManager = ShopV2Manager:GetVirtualItemManager()
+        if VirtualItemManager ~= nil and VirtualItemManager.AddItemResultDelegate ~= nil then
+            VirtualItemManager.AddItemResultDelegate:Remove(self.OnLotteryTicketAddVirtualItem, self)
+        end
+        self.bLotteryTicketAddItemResultBinded = false
+    end
+
+    if self.bLotteryTicketBuyProductResultBinded == true then
+        local CommodityOperationManager = ShopV2Manager:GetCommodityOperationManager()
+        if CommodityOperationManager ~= nil and CommodityOperationManager.BuyProductResultDelegate ~= nil then
+            CommodityOperationManager.BuyProductResultDelegate:Remove(self.OnLotteryTicketBuyProductResult, self)
+        end
+        self.bLotteryTicketBuyProductResultBinded = false
+    end
+end
+
+function UI14:OnLotteryTicketBuyProductResult(Result)
+    if Result == nil or Result.bSucceeded ~= true then
+        return
+    end
+
+    local ProductID = self:GetLotteryTicketProductID()
+    if ProductID ~= nil and tonumber(Result.ProductID) ~= tonumber(ProductID) then
+        return
+    end
+
+    self:ScheduleLotteryTicketRefresh()
+end
+
+function UI14:OnLotteryTicketAddVirtualItem(Result)
+    if Result == nil or Result.bSucceeded ~= true or Result.ItemList == nil then
+        return
+    end
+
+    local ShopItemID = tonumber(LotteryConfig.CostShopItemID)
+    if ShopItemID == nil then
+        return
+    end
+
+    local bGotTicket = Result.ItemList[ShopItemID] ~= nil or Result.ItemList[tostring(ShopItemID)] ~= nil
+    if not bGotTicket then
+        return
+    end
+
+    self:ScheduleLotteryTicketRefresh()
+end
+
+function UI14:ScheduleLotteryTicketRefresh()
+    self.LocalLotteryTicketOffset = 0
+    self.LastLotteryTicketCount = nil
+    self:RefreshLotteryTicketDisplay()
+    self:RefreshLotteryTicketDisplayLater(0.2)
+    self:RefreshLotteryTicketDisplayLater(0.8)
+    self:RefreshLotteryTicketDisplayLater(2.0)
+end
+
+function UI14:RefreshLotteryTicketDisplayLater(Delay)
+    if UGCTimerUtility == nil or UGCTimerUtility.CreateLuaTimer == nil then
+        return
+    end
+
+    UGCTimerUtility.CreateLuaTimer(Delay, function()
+        if self ~= nil then
+            self:RefreshLotteryTicketDisplay()
+        end
+    end, false)
+end
+
+function UI14:ResetLotteryTicketRefreshState()
+    self.LastLotteryTicketCount = nil
+    self.LocalLotteryTicketOffset = 0
+end
+
+function UI14:RefreshLotteryTicketDisplay()
+    self:RefreshLotteryTicketText()
+    local Panel = self:GetAwardPanels()[self.SelectedLotteryType]
+    self:RefreshSummonButtonState(Panel, self.SelectedLotteryType)
 end
 
 function UI14:SelectLotteryType(Type)
@@ -201,15 +419,33 @@ function UI14:RefreshAwardPanel(Config)
 
     self:SetAwardImage(ActivePanel.Img_Best, Config.GrandPrize and Config.GrandPrize.IconPath or "")
     local Images = { ActivePanel.Img1, ActivePanel.Img2, ActivePanel.Img3, ActivePanel.Img4, ActivePanel.Img5, ActivePanel.Img6 }
+    local CountTexts = { ActivePanel.Num_1, ActivePanel.Num_2, ActivePanel.Num_3, ActivePanel.Num_4, ActivePanel.Num_5, ActivePanel.Num_6 }
     for Index, Image in ipairs(Images) do
         local Award = Config.Awards and Config.Awards[Index] or nil
         if Award ~= nil then
             self:SetAwardImage(Image, Award.IconPath)
+            self:SetAwardCountText(CountTexts[Index], Award.Count)
+        else
+            self:SetAwardCountText(CountTexts[Index], nil)
         end
     end
     self:RefreshSummonCostText(ActivePanel, self.SelectedLotteryType)
     self:RefreshSummonButtonState(ActivePanel, self.SelectedLotteryType)
     self:ApplyLotteryOKState(ActivePanel, self.SelectedLotteryType)
+end
+
+function UI14:SetAwardCountText(TextWidget, Count)
+    if TextWidget == nil then
+        return
+    end
+
+    local CountValue = tonumber(Count)
+    if CountValue == nil then
+        TextWidget:SetText("")
+        return
+    end
+
+    TextWidget:SetText("x" .. tostring(CountValue))
 end
 
 function UI14:RefreshSummonCostText(Panel, LotteryTypeValue)
@@ -219,7 +455,25 @@ function UI14:RefreshSummonCostText(Panel, LotteryTypeValue)
 
     local Round = self:GetLotteryRound(LotteryTypeValue)
     local NextRound = self:IsLotteryCompleted(LotteryTypeValue) and Round or Round + 1
-    Panel.TextNum:SetText("x" .. tostring(LotteryConfig.GetRoundCost(NextRound)) .. "召唤")
+    local Cost = LotteryConfig.GetRoundCost(NextRound)
+    Panel.TextNum:SetText("x" .. tostring(Cost) .. "召唤")
+    self:RefreshDiscountCostText(Panel, NextRound)
+end
+
+function UI14:RefreshDiscountCostText(Panel, RoundIndex)
+    if Panel == nil then
+        return
+    end
+
+    local bDiscount = LotteryConfig.IsDiscountRound(RoundIndex)
+    if Panel.Text_zhekou ~= nil then
+        if bDiscount then
+            Panel.Text_zhekou:SetText("原价x" .. tostring(LotteryConfig.GetOriginalRoundCost(RoundIndex)))
+        else
+            Panel.Text_zhekou:SetText("本次消耗")
+        end
+    end
+    self:SetWidgetVisible(Panel.Red_Line, bDiscount)
 end
 
 function UI14:HideAwardOKImages(Panel)
@@ -441,6 +695,10 @@ function UI14:GetLotteryRound(LotteryTypeValue)
 end
 
 function UI14:GetLotteryTicketCount()
+    return self:GetBackpackLotteryTicketCount()
+end
+
+function UI14:GetBackpackLotteryTicketCount()
     local ItemID = tonumber(LotteryConfig.CostItemID) or 0
     if ItemID <= 0 then
         return 0
@@ -665,6 +923,7 @@ function UI14:SetBattleUIVisible(isVisible)
 end
 
 function UI14:Destruct()
+    self:RemoveShopPurchaseCallbacks()
     self:SetBattleUIVisible(true)
 end
 
