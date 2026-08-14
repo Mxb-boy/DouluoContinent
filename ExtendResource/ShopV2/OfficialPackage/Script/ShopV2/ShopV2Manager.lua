@@ -29,6 +29,112 @@ ShopV2Manager = ShopV2Manager or
     bItemNumUpdateDelegateBinded = false,
 }
 
+local GET_ITEM_ENTRY_CLASS_PATH = "/Game/UGC/UITemplate/Get/Item/UGC_Get_FX_UIBP.UGC_Get_FX_UIBP_C"
+local GET_ITEM_POPUP_CLASS_PATH = "/Game/UGC/UITemplate/Get/UGC_Get_UIBP.UGC_Get_UIBP_C"
+local GET_ITEM_COUNT_WHITE = {
+    SpecifiedColor = {
+        R = 1.0,
+        G = 1.0,
+        B = 1.0,
+        A = 1.0,
+    },
+}
+
+local function ApplyEntryCountWhite(Entry)
+    if Entry == nil then
+        return false
+    end
+
+    local CountText = Entry.TextBlock_IconNumber
+    if CountText == nil then
+        CountText = UGCWidgetManagerSystem.GetSubWidget(Entry, "TextBlock_IconNumber")
+    end
+
+    if CountText ~= nil and CountText.SetColorAndOpacity ~= nil then
+        return pcall(CountText.SetColorAndOpacity, CountText, GET_ITEM_COUNT_WHITE)
+    end
+
+    return false
+end
+
+-- The official get-item popup owns the row widgets. Change only the live row
+-- instances so the official VirtualItemManager and popup creation flow remain intact.
+local function ApplyGetItemCountWhite()
+    local EntryClass = UE.LoadClass(GET_ITEM_ENTRY_CLASS_PATH)
+    if EntryClass == nil then
+        print("[ShopV2][GetItemWhiteCount] entry class load failed")
+        return
+    end
+
+    local Entries = UGCWidgetManagerSystem.GetAllWidgetsOfClass(EntryClass, false) or {}
+    local ChangedCount = 0
+    for _, Entry in pairs(Entries) do
+        if ApplyEntryCountWhite(Entry) then
+            ChangedCount = ChangedCount + 1
+        end
+    end
+
+    print("[ShopV2][GetItemWhiteCount] changed=" .. tostring(ChangedCount))
+end
+
+function ShopV2Manager:OnGetItemEntryUpdated(Item, Idx)
+    ApplyEntryCountWhite(Item)
+    print("[ShopV2][GetItemWhiteCount] updated idx=" .. tostring(Idx))
+end
+
+function ShopV2Manager:BindGetItemPopupLists()
+    local PopupClass = UE.LoadClass(GET_ITEM_POPUP_CLASS_PATH)
+    if PopupClass == nil then
+        return false
+    end
+
+    if self.GetItemWhiteBoundPopups == nil then
+        self.GetItemWhiteBoundPopups = setmetatable({}, { __mode = "k" })
+    end
+
+    local Popups = UGCWidgetManagerSystem.GetAllWidgetsOfClass(PopupClass, false) or {}
+    local FoundPopup = false
+    for _, Popup in pairs(Popups) do
+        FoundPopup = true
+        if not self.GetItemWhiteBoundPopups[Popup] then
+            if Popup.ItemList ~= nil and Popup.ItemList.OnUpdateItem ~= nil then
+                Popup.ItemList.OnUpdateItem:Add(self.OnGetItemEntryUpdated, self)
+            end
+            if Popup.ReuseList2_02 ~= nil and Popup.ReuseList2_02.OnUpdateItem ~= nil then
+                Popup.ReuseList2_02.OnUpdateItem:Add(self.OnGetItemEntryUpdated, self)
+            end
+            self.GetItemWhiteBoundPopups[Popup] = true
+            print("[ShopV2][GetItemWhiteCount] popup lists bound")
+        end
+    end
+
+    return FoundPopup
+end
+
+local function ScheduleGetItemCountWhite()
+    -- Bind once after the asynchronous popup creation. If it is not ready yet,
+    -- perform one short retry. After binding, OnUpdateItem handles every row.
+    Timer.InsertTimer(0.05,
+        function()
+            if ShopV2Manager:BindGetItemPopupLists() then
+                -- One-time compensation for rows created before the delegate bind.
+                ApplyGetItemCountWhite()
+                return
+            end
+
+            Timer.InsertTimer(0.30,
+                function()
+                    if ShopV2Manager:BindGetItemPopupLists() then
+                        ApplyGetItemCountWhite()
+                    else
+                        print("[ShopV2][GetItemWhiteCount] popup bind missed")
+                    end
+                end,
+            false)
+        end,
+    false)
+end
+
 function ShopV2Manager:RegisterComponentClass(CompClass)
 
     if CompClass ~= nil then
@@ -577,6 +683,8 @@ function ShopV2Manager:OnAddVirtualItem(Result)
             print("[ShopV2]  -> No mapping for ItemID=" .. tostring(ItemID) .. " (not a shop reward)")
         end
     end
+
+    ScheduleGetItemCountWhite()
 end
 
 function ShopV2Manager:OnBuyProductResult(Result)
