@@ -2,8 +2,6 @@ local ShadowDisabler = {}
 
 local ACTOR_CLASS_PATH = "/Script/Engine.Actor"
 local PRIMITIVE_COMPONENT_CLASS_PATH = "/Script/Engine.PrimitiveComponent"
-local TIMER_NAME = "Douluo.DisableDynamicShadows"
-local SCAN_INTERVAL_SECONDS = 5
 
 local function DisableComponentShadow(Component)
     if Component == nil then
@@ -42,7 +40,6 @@ function ShadowDisabler.Apply(WorldContext)
     local ActorClass = UE.LoadClass(ACTOR_CLASS_PATH)
     local PrimitiveComponentClass = UE.LoadClass(PRIMITIVE_COMPONENT_CLASS_PATH)
     if ActorClass == nil or PrimitiveComponentClass == nil then
-        ugcprint("[ShadowDisabler] failed to load Actor or PrimitiveComponent class")
         return 0
     end
 
@@ -71,14 +68,6 @@ function ShadowDisabler.Start(WorldContext)
     ShadowDisabler.Started = true
 
     ShadowDisabler.Apply(WorldContext)
-    if UGCTimerUtility == nil or UGCTimerUtility.CreateLuaTimer == nil then
-        return
-    end
-
-    UGCTimerUtility.RemoveLuaTimerByName(TIMER_NAME)
-    UGCTimerUtility.CreateLuaTimer(SCAN_INTERVAL_SECONDS, function()
-        ShadowDisabler.Apply(WorldContext)
-    end, true, TIMER_NAME)
 end
 
 return ShadowDisabler
