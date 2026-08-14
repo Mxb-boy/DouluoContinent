@@ -625,19 +625,14 @@ function UI017:SelectXzwqWeapon(Index)
 end
 function UI017:Button_81_OnClicked()
     local PlayerPawn = self:GetLocalPlayerPawn()
-    if PlayerPawn == nil or PlayerPawn.SetOrbitWeaponEnabled == nil then
-        return
-    end
-    local bCurrentlyEnabled = PlayerPawn.IsOrbitWeaponEnabled ~= nil and
-        PlayerPawn:IsOrbitWeaponEnabled() or false
-    local bEnabled = not bCurrentlyEnabled
-    -- 本地也生成了旋转武器，点击后必须先同步本地显示状态。
-    PlayerPawn:SetOrbitWeaponEnabled(bEnabled)
     local PlayerController = self:GetLocalPlayerController()
-    local bAuthority = PlayerPawn.HasAuthority ~= nil and PlayerPawn:HasAuthority()
-    if not bAuthority and PlayerController ~= nil then
+    if PlayerPawn ~= nil and PlayerPawn.SetOrbitWeaponEnabled ~= nil then
+        PlayerPawn:SetOrbitWeaponEnabled(false)
+    end
+    if PlayerController ~= nil then
+        PlayerController.OrbitWeaponEnabled = false
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SetOrbitWeaponEnabled",
-            bEnabled)
+            false)
     end
 end
 function UI017:Button_93_OnClicked() self:SelectXzwqWeapon(1) end
@@ -724,7 +719,7 @@ function UI017:LuaInit()
     end
     local Button81 = self:GetWidget("Button_81")
     if Button81 ~= nil then
-        Button81.OnClicked:Add(self.Button_81_OnClicked, self)
+        Button81:SetVisibility(ESlateVisibility.Collapsed)
     end
     for _, ButtonName in ipairs(XZWQ_ACTION_BUTTON_NAMES) do
         local ActionButton = self:GetWidget(ButtonName)

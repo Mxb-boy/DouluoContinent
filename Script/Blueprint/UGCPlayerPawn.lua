@@ -942,11 +942,11 @@ end
 
 function UGCPlayerPawn:ReceiveBeginPlay()
     UGCPlayerPawn.SuperClass.ReceiveBeginPlay(self)
-    -- 默认关闭身上旋转武器；Button_81 可在运行时切换开关。
+    -- 当前发布版本硬关闭身上旋转武器。
     local OrbitController = GetOrbitWeaponController(self)
-    -- Default off. Button_81 can explicitly enable it at runtime.
-    self.bOrbitWeaponEnabled = OrbitController ~= nil and OrbitController.OrbitWeaponEnabled == true
+    self.bOrbitWeaponEnabled = false
     if OrbitController ~= nil then
+        OrbitController.OrbitWeaponEnabled = false
         self.OrbitWeaponClassPath = OrbitController.OrbitWeaponClassPath
         self.OrbitWeaponHitEffectPath = OrbitController.OrbitWeaponHitEffectPath
         self.OrbitWeaponDamagePercent = OrbitController.OrbitWeaponDamagePercent
@@ -957,6 +957,7 @@ function UGCPlayerPawn:ReceiveBeginPlay()
         tonumber(OrbitController.OrbitWeaponActiveGunTier) or nil
     local ActiveTier = math.max(RestoredTier or 1, CurrentLevel)
     self:SetOrbitWeaponActiveGun(math.max(1, math.min(8, ActiveTier)), self.OrbitWeaponDamagePercent)
+    AK47Orbit.Stop(self)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.Test_01)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi_01)
@@ -1000,26 +1001,19 @@ function UGCPlayerPawn:OnPawnInit()
     end
 end
 
--- 身上旋转武器开关：可由任意持有 Pawn 引用的 Lua 代码直接控制。
--- false：立即销毁旋转武器；true：立即重新生成并恢复旋转。
+-- 当前发布版本禁用身上旋转武器；任何传入值都按 false 处理并立即销毁残留。
 function UGCPlayerPawn:SetOrbitWeaponEnabled(bEnabled)
-    self.bOrbitWeaponEnabled = bEnabled == true
+    self.bOrbitWeaponEnabled = false
     local OrbitController = GetOrbitWeaponController(self)
     if OrbitController ~= nil then
-        OrbitController.OrbitWeaponEnabled = self.bOrbitWeaponEnabled
+        OrbitController.OrbitWeaponEnabled = false
     end
-
-    if not self.bOrbitWeaponEnabled then
-        AK47Orbit.Stop(self)
-    elseif self:HasAuthority() or IsLocalPlayerPawn(self) then
-        AK47Orbit.Start(self)
-    end
-
-    return self.bOrbitWeaponEnabled
+    AK47Orbit.Stop(self)
+    return false
 end
 
 function UGCPlayerPawn:IsOrbitWeaponEnabled()
-    return self.bOrbitWeaponEnabled ~= false
+    return false
 end
 
 function UGCPlayerPawn:SetOrbitWeaponConfig(WeaponClassPath, HitEffectPath)
@@ -1031,7 +1025,7 @@ function UGCPlayerPawn:SetOrbitWeaponConfig(WeaponClassPath, HitEffectPath)
     if OrbitController ~= nil then
         OrbitController.OrbitWeaponClassPath = WeaponClassPath
         OrbitController.OrbitWeaponHitEffectPath = HitEffectPath
-        OrbitController.OrbitWeaponEnabled = self.bOrbitWeaponEnabled ~= false
+        OrbitController.OrbitWeaponEnabled = false
     end
     return true
 end

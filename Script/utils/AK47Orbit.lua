@@ -3,6 +3,13 @@
 
 local AK47Orbit = {}
 
+-- 当前发布版本禁用武器环绕。恢复功能时只需改为 true，并恢复 UI 开关显示。
+AK47Orbit.FEATURE_ENABLED = false
+
+function AK47Orbit.IsFeatureEnabled()
+    return AK47Orbit.FEATURE_ENABLED == true
+end
+
 -- 蓝图资源路径。
 local WQ_CLASS_PATH = "Asset/Blueprint/Ma/QIANG/QBZ/QBZ.QBZ_C"
 
@@ -110,6 +117,9 @@ end
 
 -- 蓝图类暂时加载不到时，延迟后重新尝试生成。
 local function ScheduleRetry(Pawn)
+    if not AK47Orbit.IsFeatureEnabled() then
+        return
+    end
     if not IsValid(Pawn) then
         return
     end
@@ -135,8 +145,14 @@ end
 
 -- 在人物腰部生成一个 WQ 蓝图 Actor。
 function AK47Orbit.Start(Pawn, PreloadedClass)
+    if not AK47Orbit.IsFeatureEnabled() then
+        if Pawn ~= nil then
+            AK47Orbit.Stop(Pawn)
+        end
+        return false
+    end
     if not IsValid(Pawn) then
-        return
+        return false
     end
 
     -- 已经生成过时不再重复生成。
@@ -203,6 +219,7 @@ function AK47Orbit.Start(Pawn, PreloadedClass)
         WeaponClassPath = Pawn.OrbitWeaponClassPath or WQ_CLASS_PATH,
     }
     Log("蓝图生成成功")
+    return true
 end
 
 -- 切换旋转武器蓝图和命中特效；已开启时立即重建，关闭时仅记录配置。
@@ -221,6 +238,11 @@ function AK47Orbit.SetWeapon(Pawn, WeaponClassPath, HitEffectPath)
     local OldHitEffectPath = Pawn.OrbitWeaponHitEffectPath
     Pawn.OrbitWeaponClassPath = WeaponClassPath
     Pawn.OrbitWeaponHitEffectPath = HitEffectPath
+    if not AK47Orbit.IsFeatureEnabled() then
+        Pawn.bOrbitWeaponEnabled = false
+        AK47Orbit.Stop(Pawn)
+        return true
+    end
     -- 重生同步期间开关字段可能短暂为nil/false，但已有Actor仍在显示。
     -- 只要旋转武器未被明确关闭，或当前Actor仍存在，换枪就必须立即重建。
     local bHasVisibleOrbitActor = Pawn.AK47OrbitState ~= nil and
@@ -267,6 +289,10 @@ end
 -- 由人物 ReceiveTick 每帧调用，使蓝图平滑跟随并水平旋转。
 function AK47Orbit.Update(Pawn, DeltaTime)
     if not IsValid(Pawn) then
+        return
+    end
+    if not AK47Orbit.IsFeatureEnabled() then
+        AK47Orbit.Stop(Pawn)
         return
     end
 

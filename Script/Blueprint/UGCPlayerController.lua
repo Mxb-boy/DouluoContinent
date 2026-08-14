@@ -192,10 +192,10 @@ function UGCPlayerController:GetAvailableServerRPCs()
 end
 
 function UGCPlayerController:Server_SetOrbitWeaponEnabled(bEnabled)
-    self.OrbitWeaponEnabled = bEnabled == true
+    self.OrbitWeaponEnabled = false
     local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
     if Pawn ~= nil and Pawn.SetOrbitWeaponEnabled ~= nil then
-        Pawn:SetOrbitWeaponEnabled(bEnabled == true)
+        Pawn:SetOrbitWeaponEnabled(false)
     end
 end
 
