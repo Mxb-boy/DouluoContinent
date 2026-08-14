@@ -1492,19 +1492,25 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num,
     if BackpackCapacityUtil ~= nil and BackpackCapacityUtil.IsFullIncludingEquipped ~= nil and
         BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn) == true then
         print("[ShopV2:SERVER] Backpack full including equipped items, keeping virtual item as fallback")
-        UnrealNetwork.CallUnrealRPC(self, self, "Client_ShowToast", "请预留10个以上空间")
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_ShowToast", "背包已满")
         return
     end
     local before = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, BackpackItemID)
     print("[ShopV2:SERVER] BEFORE AddItemV2: ItemID=" .. tostring(BackpackItemID) .. " count=" .. tostring(before))
-    local ret = UGCBackpackSystemV2.AddItemV2(PlayerPawn, BackpackItemID, Num)
+    local AddSucceeded, ret = pcall(UGCBackpackSystemV2.AddItemV2, PlayerPawn, BackpackItemID, Num)
+    local AddedCount = AddSucceeded and (tonumber(ret) or 0) or 0
     local after = UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, BackpackItemID)
-    print("[ShopV2:SERVER] AFTER AddItemV2: ret=" .. tostring(ret) .. " count=" .. tostring(after))
+    print("[ShopV2:SERVER] AFTER AddItemV2: callOK=" .. tostring(AddSucceeded) ..
+              " added=" .. tostring(AddedCount) .. " count=" .. tostring(after))
 
-    -- BugFix: 返回值为 0 表示添加失败（如背包满）
-    if ret == 0 then
-        print("[ShopV2:SERVER] AddItemV2 FAILED (ret=0), keeping virtual item as fallback")
-        UnrealNetwork.CallUnrealRPC(self, self, "Client_ShowToast", "请预留10个以上空间")
+    -- AddItemV2 返回成功添加的数量。返回 0 可能是物品配置、重复限制等原因，
+    -- 不能一律提示背包已满；只有容量复查确实已满时才弹容量提示。
+    if AddedCount <= 0 then
+        print("[ShopV2:SERVER] AddItemV2 FAILED, keeping virtual item as fallback")
+        if BackpackCapacityUtil ~= nil and BackpackCapacityUtil.IsFullIncludingEquipped ~= nil and
+            BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn) == true then
+            UnrealNetwork.CallUnrealRPC(self, self, "Client_ShowToast", "背包已满")
+        end
         return
     end
 
@@ -1512,10 +1518,16 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num,
         local VirtualItemManager = UGCGamePartSystem.GetGamePartGlobalActor("VirtualItemManager")
         if VirtualItemManager then
             local rmOK, rmErr =
-                pcall(VirtualItemManager.RemoveVirtualItem, VirtualItemManager, self, VirtualItemID, Num)
-            print("[ShopV2:SERVER] RemoveVirtualItem(VItemID=" .. tostring(VirtualItemID) .. " x " .. tostring(Num) ..
+                pcall(VirtualItemManager.RemoveVirtualItem, VirtualItemManager, self, VirtualItemID, AddedCount)
+            print("[ShopV2:SERVER] RemoveVirtualItem(VItemID=" .. tostring(VirtualItemID) .. " x " .. tostring(AddedCount) ..
                       ") ok=" .. tostring(rmOK) .. " err=" .. tostring(rmErr))
         end
+    end
+
+    if AddedCount < Num and BackpackCapacityUtil ~= nil and
+        BackpackCapacityUtil.IsFullIncludingEquipped ~= nil and
+        BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn) == true then
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_ShowToast", "背包已满")
     end
 end
 

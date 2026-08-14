@@ -30,7 +30,9 @@ function BackpackCapacityUtil.GetEquippedItemCount(Player)
         if SlotName ~= nil then
             local ReadSucceeded, ItemDefineID = pcall(
                 UGCBackpackSystemV2.GetEquippedItemBySlotName, Player, SlotName)
-            if ReadSucceeded and ItemDefineID ~= nil then
+            -- 空装备槽在部分运行环境返回 0 而不是 nil，不能把它计入已占用空间。
+            local NumericItemDefineID = ReadSucceeded and tonumber(ItemDefineID) or nil
+            if NumericItemDefineID ~= nil and NumericItemDefineID > 0 then
                 EquippedCount = EquippedCount + 1
             end
         end

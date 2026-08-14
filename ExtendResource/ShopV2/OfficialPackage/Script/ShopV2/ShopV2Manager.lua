@@ -315,8 +315,8 @@ function ShopV2Manager:CheckBackpackBeforePurchase()
     end
 
     local Bubble = UGCGameSystem.UGCRequire("Script.Blueprint.Lin.Actor.BXCollition")
-    if Bubble == nil or Bubble.ShowBubble == nil or Bubble.ShowBubble("请预留10个以上空间") ~= true then
-        self:ShowPurchaseTip("请预留10个以上空间")
+    if Bubble == nil or Bubble.ShowBubble == nil or Bubble.ShowBubble("背包已满") ~= true then
+        self:ShowPurchaseTip("背包已满")
     end
     self.bBlockRepeatPurchase = false
     return false
