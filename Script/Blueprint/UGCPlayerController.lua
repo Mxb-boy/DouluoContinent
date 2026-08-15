@@ -236,7 +236,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_ClearAllRankingListData", "Client_BroadcastPlantMessage", "Client_ForgeWeaponResult",
         "Server_ForgeWeapon", "Server_AddShopItemToBackpackV2", "Server_CleanupStaleShopVirtualItem",
         "Server_EquipTitle", "Server_BeginFlyState", "Server_RequestEquippedWingState",
-        "Client_SetEquippedWingItemID", "Client_RejectFlyStart",
+        "Client_SetEquippedWingItemID", "Client_ConfirmFlyStart", "Client_RejectFlyStart",
         "Server_EndFlyState", "Server_FlyMove", "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus",
         "Server_AddProbabilityBonus", "Client_ProbabilityBonusChanged", "Client_BreakRealmResult", "Server_BreakRealm",
         "Server_SetAutoPickEnabled", "Client_YXWDInvincibleBuffChanged", "Server_SetYXWDInvincibleBuffActive",
@@ -705,7 +705,9 @@ function UGCPlayerController:Server_BeginFlyState()
         return
     end
 
-    local EquippedWingItemID = GetWingItemIDFromEquipmentSlot(pawn) or tonumber(pawn.CurrentEquippedWingItemID)
+    -- Only the authoritative equipment slot can grant flight. Cached fields are
+    -- synchronization aids and may still contain an unequipped wing.
+    local EquippedWingItemID = GetWingItemIDFromEquipmentSlot(pawn)
     if not WingItemIDs[EquippedWingItemID] then
         self.bServerFlying = false
         UnrealNetwork.CallUnrealRPC(self, self, "Client_RejectFlyStart")
@@ -721,6 +723,7 @@ function UGCPlayerController:Server_BeginFlyState()
     self.bServerFlyMovementModeReady = false
     self.ServerFlyCachedMaxWalkSpeed = nil
     pawn:BeginFly()
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_ConfirmFlyStart")
 end
 
 function UGCPlayerController:Server_RequestEquippedWingState()
@@ -739,15 +742,33 @@ function UGCPlayerController:Client_SetEquippedWingItemID(ItemID)
     local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
     if Pawn ~= nil then
         Pawn.CurrentEquippedWingItemID = self.EquippedWingItemID
+        if ItemID > 0 and Pawn.RequestWingAttachmentFix ~= nil then
+            pcall(Pawn.RequestWingAttachmentFix, Pawn)
+        end
     end
     if ItemID <= 0 and self.FeiUIInstance ~= nil and self.FeiUIInstance.StopFly ~= nil then
         self.FeiUIInstance:StopFly()
     end
 end
 
+function UGCPlayerController:Client_ConfirmFlyStart()
+    if self.FeiUIInstance ~= nil and self.FeiUIInstance.ConfirmFlyStart ~= nil then
+        self.FeiUIInstance:ConfirmFlyStart()
+        return
+    end
+
+    -- The UI can still be loading on packaged clients. Do not leave the server
+    -- in flight mode when there is no local widget to consume the confirmation.
+    UnrealNetwork.CallUnrealRPC(self, self, "Server_StopFlyMove")
+end
+
 function UGCPlayerController:Client_RejectFlyStart()
-    if self.FeiUIInstance ~= nil and self.FeiUIInstance.StopFly ~= nil then
-        self.FeiUIInstance:StopFly()
+    if self.FeiUIInstance ~= nil then
+        self.FeiUIInstance.bFlyStartPending = false
+        self.FeiUIInstance.bFlyStartDeniedWhileHeld = true
+        if self.FeiUIInstance.StopFly ~= nil then
+            self.FeiUIInstance:StopFly()
+        end
     end
     self:Client_ShowToast("请装备翅膀")
 end
@@ -764,7 +785,7 @@ function UGCPlayerController:Server_EndFlyState()
     pawn:EndFly()
 end
 
-local FLY_SPEED = 3600
+local FLY_SPEED = 2600
 
 function UGCPlayerController:Server_FlyMove(DirX, DirY, DirZ, DeltaTime)
     if self.bServerFlying ~= true then

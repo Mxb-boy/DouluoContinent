@@ -17,6 +17,21 @@ local WING_ITEM_IDS = {
     [8310059] = true,
     [8310010] = true
 }
+local LOGIN_WING_UNEQUIP_INTERVAL = 0.5
+local LOGIN_WING_UNEQUIP_MAX_RETRIES = 120
+
+local function GetItemIDFromDefineID(ItemDefineID)
+    if ItemDefineID == nil then
+        return nil
+    end
+    if type(ItemDefineID) == "number" or type(ItemDefineID) == "string" then
+        return tonumber(ItemDefineID)
+    end
+    local Success, ItemID = pcall(function()
+        return tonumber(ItemDefineID.TypeSpecificID or ItemDefineID.ItemID or ItemDefineID.ItemId)
+    end)
+    return Success and ItemID or nil
+end
 
 -- Keep safe defaults on the Lua class as some mobile/server lifecycle callbacks may arrive
 -- before ReceiveBeginPlay has finished initializing the per-match state.
@@ -100,8 +115,8 @@ local function SaveBackpackSnapshot(PlayerKey, PlayerPawn)
     ugcprint("[UGCGameMode] Backpack saved, PlayerKey=" .. tostring(PlayerKey))
 end
 
--- 死亡时只卸下翅膀，不移除物品；卸下成功后物品会回到普通背包格。
-local function UnequipWingOnDeath(PlayerPawn)
+-- 只卸下翅膀，不移除物品；卸下成功后物品会回到普通背包格。
+local function UnequipWing(PlayerPawn, Reason, bSuppressFailureLog)
     if PlayerPawn == nil or UGCBackpackSystemV2 == nil then
         return false
     end
@@ -112,22 +127,104 @@ local function UnequipWingOnDeath(PlayerPawn)
         return false
     end
 
-    local SuccessID, ItemID = pcall(function()
-        return tonumber(EquippedItem.TypeSpecificID)
-    end)
-    if not SuccessID or not WING_ITEM_IDS[ItemID] then
+    local ItemID = GetItemIDFromDefineID(EquippedItem)
+    if not WING_ITEM_IDS[ItemID] then
         return false
     end
 
     local SuccessCall, Result = pcall(UGCBackpackSystemV2.UnEquipItemV2, PlayerPawn, WING_EQUIPMENT_SLOT)
     local bUnequipped = SuccessCall and Result == true
     if bUnequipped then
-        ugcprint("[UGCGameMode] Wing unequipped on death, ItemID=" .. tostring(ItemID))
-    else
-        ugcprint("[UGCGameMode] WARNING wing unequip failed on death, ItemID=" .. tostring(ItemID) ..
-                     ", error=" .. tostring(Result))
+        ugcprint("[UGCGameMode] Wing unequipped, reason=" .. tostring(Reason) ..
+                     ", ItemID=" .. tostring(ItemID))
+    elseif bSuppressFailureLog ~= true then
+        ugcprint("[UGCGameMode] WARNING wing unequip failed, reason=" .. tostring(Reason) ..
+                     ", ItemID=" .. tostring(ItemID) .. ", error=" .. tostring(Result))
     end
     return bUnequipped
+end
+
+local function IsObjectAlive(Object)
+    if Object == nil then
+        return false
+    end
+    if UE ~= nil and UE.IsValid ~= nil then
+        local Success, bValid = pcall(UE.IsValid, Object)
+        return Success and bValid == true
+    end
+    return true
+end
+
+local function ClearEquippedWingCache(PlayerController, PlayerPawn)
+    if PlayerPawn ~= nil then
+        PlayerPawn.CurrentEquippedWingItemID = nil
+    end
+    if PlayerController ~= nil then
+        PlayerController.EquippedWingItemID = nil
+        if UnrealNetwork ~= nil and UnrealNetwork.CallUnrealRPC ~= nil then
+            pcall(UnrealNetwork.CallUnrealRPC, PlayerController, PlayerController,
+                "Client_SetEquippedWingItemID", 0)
+        end
+    end
+end
+
+local function ScheduleUnequipWingOnLogin(PlayerController)
+    if not IsObjectAlive(PlayerController) or PlayerController.bLoginWingUnequipScheduled == true then
+        return
+    end
+    PlayerController.bLoginWingUnequipScheduled = true
+
+    local RetryCount = 0
+    local function TryUnequip()
+        if not IsObjectAlive(PlayerController) then
+            return
+        end
+
+        local PlayerPawn = PlayerController.Pawn or
+            (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)
+        local bPersistReady = false
+        if IsObjectAlive(PlayerPawn) and UGCBackpackSystemV2 ~= nil and
+            UGCBackpackSystemV2.CheckInitPersistCompleted ~= nil then
+            local SuccessReady, Ready = pcall(UGCBackpackSystemV2.CheckInitPersistCompleted, PlayerPawn)
+            bPersistReady = SuccessReady and Ready == true
+        end
+
+        if bPersistReady then
+            local SuccessGet, EquippedItem = pcall(UGCBackpackSystemV2.GetEquippedItemBySlotName,
+                PlayerPawn, WING_EQUIPMENT_SLOT)
+            if SuccessGet and EquippedItem == nil then
+                ClearEquippedWingCache(PlayerController, PlayerPawn)
+                PlayerController.bLoginWingUnequipCompleted = true
+                ugcprint("[UGCGameMode] Login wing check complete: slot already empty, player=" ..
+                             tostring(PlayerController.PlayerKey))
+                return
+            end
+
+            local ItemID = GetItemIDFromDefineID(EquippedItem)
+            if SuccessGet and not WING_ITEM_IDS[ItemID] then
+                -- 槽位出现非翅膀物品时不做破坏性处理。
+                PlayerController.bLoginWingUnequipCompleted = true
+                ugcprint("[UGCGameMode] Login wing check skipped unexpected item, ItemID=" .. tostring(ItemID))
+                return
+            end
+            if SuccessGet and WING_ITEM_IDS[ItemID] and
+                UnequipWing(PlayerPawn, "login", true) then
+                ClearEquippedWingCache(PlayerController, PlayerPawn)
+                PlayerController.bLoginWingUnequipCompleted = true
+                return
+            end
+        end
+
+        RetryCount = RetryCount + 1
+        if RetryCount < LOGIN_WING_UNEQUIP_MAX_RETRIES then
+            UGCTimerUtility.CreateLuaTimer(LOGIN_WING_UNEQUIP_INTERVAL, TryUnequip, false)
+        else
+            ugcprint("[UGCGameMode] WARNING login wing unequip timed out, player=" ..
+                         tostring(PlayerController.PlayerKey))
+        end
+    end
+
+    UGCTimerUtility.CreateLuaTimer(LOGIN_WING_UNEQUIP_INTERVAL, TryUnequip, false)
 end
 
 local function RestoreBackpackSnapshot(PlayerKey, PlayerPawn)
@@ -634,6 +731,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
         return
     end
     local PC = PlayerController
+    ScheduleUnequipWingOnLogin(PC)
     local RetryCount = 0
     local MaxRetries = 10
     local function OnLoginDeferred()
@@ -1135,7 +1233,7 @@ end
 function UGCGameMode:UGC_PlayerKilledEvent(Killer, VictimPlayer, VictimPawn, DamageType)
     if VictimPlayer and VictimPawn then
         SaveBackpackSnapshot(VictimPlayer.PlayerKey, VictimPawn)
-        UnequipWingOnDeath(VictimPawn)
+        UnequipWing(VictimPawn, "death")
         -- 保存死亡前的血量到跨对局存档
         local PS = VictimPlayer.PlayerState
         if PS and PS.SaveCurrentHP then
@@ -1184,7 +1282,7 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
 
     -- 两种死亡事件可能只触发其中一个；重复调用是安全的，已卸下时会直接返回。
     if VictimController and VictimController.Pawn then
-        UnequipWingOnDeath(VictimController.Pawn)
+        UnequipWing(VictimController.Pawn, "death-fallback")
     end
 
     -- 死亡销毁 Pawn 时塔区域可能收不到 EndOverlap，客户端隐藏计数需要在复活前归零。

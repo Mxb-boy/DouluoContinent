@@ -29,6 +29,18 @@ local SOUL_SCALE = Vector.New(300, 300, 300)
 local SOUL_OFFSET = Vector.New(0, 0, 0)
 local SOUL_ROTATION = Rotator.New(90, 0, 0)
 local DEFAULT_BASE_ATTACK = 40
+local WING_ATTACH_PART_TYPE = 61
+local WING_ATTACH_FIX_INTERVAL = 0.25
+local WING_ATTACH_FIX_ATTEMPTS = 120
+local WING_ITEM_IDS = {
+    [8310012] = true,
+    [8310013] = true,
+    [8310014] = true,
+    [8310058] = true,
+    [8310059] = true,
+    [8310010] = true
+}
+local WING_EQUIPMENT_SLOT = "CB_CW"
 local bTeamPanelCreated = false
 local bLobbyQuitScheduled = false
 
@@ -51,6 +63,187 @@ local function IsLocalPlayerPawn(player)
     end
 
     return UGCGameSystem.GetLocalPlayerPawn() == player
+end
+
+local function IsValidObject(Object)
+    if Object == nil then
+        return false
+    end
+    if UE ~= nil and UE.IsValid ~= nil then
+        local Success, bValid = pcall(UE.IsValid, Object)
+        return Success and bValid == true
+    end
+    if Object.IsValid ~= nil then
+        local Success, bValid = pcall(Object.IsValid, Object)
+        return Success and bValid == true
+    end
+    return true
+end
+
+local function IsSafeWingActorOwner(WingActor, player)
+    if UGCActorComponentUtility == nil or UGCActorComponentUtility.GetOwner == nil then
+        return true
+    end
+    local Success, Owner = pcall(UGCActorComponentUtility.GetOwner, WingActor)
+    -- Owner 复制可能比 Actor 晚；空 Owner 可以继续等后续校准，但绝不修改属于其他 Pawn 的 Actor。
+    return not Success or Owner == nil or Owner == player
+end
+
+local function IsWingAttachConfig(Config)
+    local Success, ActorClass = pcall(function()
+        return Config ~= nil and Config.ActorClass or nil
+    end)
+    if not Success or ActorClass == nil then
+        return false
+    end
+
+    local ActorPath = tostring(ActorClass)
+    if ActorClass.GetPathName ~= nil then
+        local SuccessPath, Path = pcall(ActorClass.GetPathName, ActorClass)
+        if SuccessPath and Path ~= nil then
+            ActorPath = tostring(Path)
+        end
+    end
+    -- PartType=61 可能也被其他背部装饰使用，只允许本项目 ChiBang 模型目录下的 Actor。
+    return string.find(ActorPath, "/Douluo/Asset/ChiBang/Models/", 1, true) ~= nil
+end
+
+local function IsAlreadyAttachedToSocket(WingActor, ParentMesh, SocketName)
+    local Success, bMatches = pcall(function()
+        local Root = WingActor.RootComponent
+        if Root == nil or Root.GetAttachSocketName == nil then
+            return false
+        end
+        return Root.AttachParent == ParentMesh and tostring(Root:GetAttachSocketName()) == tostring(SocketName)
+    end)
+    return Success and bMatches == true
+end
+
+-- 装备存档在进场时会很早恢复。远端客户端收到 AttachActorConfigs 时，角色部位 Socket
+-- 可能还没有初始化完成，导致翅膀暂时按错误挂点生成；重新穿戴正常也是这个时序差异。
+-- 在短时间内用原始配置重新解析 Socket 并应用 Offset，不硬编码任何一款翅膀的变换。
+local function RefreshWingActorList(player, Configs, Actors)
+    if not IsValidObject(player) or not IsValidObject(player.Mesh) or Configs == nil or Actors == nil or
+        UGCBlueprintFunctionLibrary == nil or UGCBlueprintFunctionLibrary.GetMeshSocketBySelector == nil or
+        EAttachmentRule == nil then
+        return false
+    end
+
+    local SuccessLoop, bFixedAny = pcall(function()
+        local bFixed = false
+        for Index, Config in pairs(Configs) do
+            local SuccessConfig, AttachPos, PartType, bUsePartType, Offset = pcall(function()
+                local Pos = Config ~= nil and Config.AttachPos or nil
+                return Pos, Pos ~= nil and tonumber(Pos.PartType) or nil,
+                    Pos ~= nil and Pos.bUsePartType or nil, Pos ~= nil and Pos.Offset or nil
+            end)
+            if SuccessConfig and IsWingAttachConfig(Config) and AttachPos ~= nil and
+                PartType == WING_ATTACH_PART_TYPE and
+                bUsePartType ~= false and Offset ~= nil then
+                local SuccessActor, WingActor = pcall(function()
+                    return Actors[Index]
+                end)
+                if SuccessActor and IsValidObject(WingActor) and WingActor.K2_AttachToComponent ~= nil and
+                    WingActor.K2_SetActorRelativeTransform ~= nil and IsSafeWingActorOwner(WingActor, player) then
+                    local SuccessSocket, SocketName = pcall(UGCBlueprintFunctionLibrary.GetMeshSocketBySelector,
+                        AttachPos, player)
+                    SocketName = SuccessSocket and SocketName or nil
+                    local bSocketReady = SocketName ~= nil and tostring(SocketName) ~= "" and
+                        tostring(SocketName) ~= "None"
+                    if bSocketReady and player.Mesh.DoesSocketExist ~= nil then
+                        local SuccessExists, bExists = pcall(player.Mesh.DoesSocketExist, player.Mesh, SocketName)
+                        bSocketReady = SuccessExists and bExists == true
+                    end
+                    if bSocketReady then
+                        local SuccessAttach, AttachResult = true, true
+                        if not IsAlreadyAttachedToSocket(WingActor, player.Mesh, SocketName) then
+                            SuccessAttach, AttachResult = pcall(WingActor.K2_AttachToComponent, WingActor,
+                                player.Mesh, SocketName, EAttachmentRule.SnapToTarget,
+                                EAttachmentRule.SnapToTarget, EAttachmentRule.SnapToTarget, false)
+                        end
+                        if SuccessAttach and AttachResult ~= false then
+                            local SuccessOffset, OffsetResult = pcall(WingActor.K2_SetActorRelativeTransform,
+                                WingActor, Offset, false, {}, false)
+                            if SuccessOffset and OffsetResult ~= false then
+                                bFixed = true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return bFixed
+    end)
+    return SuccessLoop and bFixedAny == true
+end
+
+local function GetLocalWingHandle(player)
+    if not IsLocalPlayerPawn(player) or UGCBackpackSystemV2 == nil or
+        UGCBackpackSystemV2.GetEquippedItemBySlotName == nil or
+        UGCBackpackSystemV2.GetBackpackComponentV2 == nil then
+        return nil
+    end
+
+    local SuccessEquip, DefineID = pcall(UGCBackpackSystemV2.GetEquippedItemBySlotName, player,
+        WING_EQUIPMENT_SLOT)
+    if not SuccessEquip or DefineID == nil then
+        return nil
+    end
+
+    local SuccessID, ItemID = pcall(function()
+        if type(DefineID) == "number" or type(DefineID) == "string" then
+            return tonumber(DefineID)
+        end
+        return tonumber(DefineID.TypeSpecificID or DefineID.ItemID or DefineID.ItemId)
+    end)
+    if not SuccessID or WING_ITEM_IDS[ItemID] ~= true then
+        return nil
+    end
+
+    local SuccessBackpack, Backpack = pcall(UGCBackpackSystemV2.GetBackpackComponentV2, player)
+    if not SuccessBackpack or not IsValidObject(Backpack) then
+        return nil
+    end
+    local SuccessMethod, GetItemV2 = pcall(function()
+        return Backpack.GetItemV2
+    end)
+    if not SuccessMethod or GetItemV2 == nil then
+        return nil
+    end
+    local SuccessHandle, Handle = pcall(GetItemV2, Backpack, DefineID)
+    return SuccessHandle and Handle or nil
+end
+
+local function RefreshWingAttachments(player)
+    if not IsValidObject(player) then
+        return false
+    end
+    -- 纯视觉校准不在专用服务器执行；监听服本机 Pawn 与普通客户端仍会执行。
+    if player ~= nil and player.HasAuthority ~= nil and not IsLocalPlayerPawn(player) then
+        local SuccessAuthority, bAuthority = pcall(player.HasAuthority, player)
+        if SuccessAuthority and bAuthority == true then
+            return false
+        end
+    end
+
+    local bFixedAny = RefreshWingActorList(player, player.AttachActorConfigs, player.AttachActors)
+
+    -- 拥有者客户端的翅膀由物品 Handle 本地生成，不一定出现在 Pawn.AttachActors 中。
+    local WingHandle = GetLocalWingHandle(player)
+    if IsValidObject(WingHandle) then
+        bFixedAny = RefreshWingActorList(player, WingHandle.AttachActorConfigs,
+            WingHandle.SpawnedAttachActors) or bFixedAny
+    end
+    return bFixedAny
+end
+
+local function StartWingAttachmentFix(player)
+    if not IsValidObject(player) then
+        return
+    end
+    player.WingAttachFixElapsed = 0
+    player.WingAttachFixAttemptsLeft = WING_ATTACH_FIX_ATTEMPTS
+    player.WingAttachFixSuccesses = 0
 end
 
 local function GetOrbitWeaponController(Pawn)
@@ -940,8 +1133,21 @@ local function CreateTeamPanelForLocalPlayer()
                  " zOrder=" .. tostring(TeamConfig.UI_Z_ORDER))
 end
 
+function UGCPlayerPawn:OnRep_AttachActorConfigs()
+    if UGCPlayerPawn.SuperClass ~= nil and UGCPlayerPawn.SuperClass.OnRep_AttachActorConfigs ~= nil then
+        UGCPlayerPawn.SuperClass.OnRep_AttachActorConfigs(self)
+    end
+    StartWingAttachmentFix(self)
+end
+
+function UGCPlayerPawn:RequestWingAttachmentFix()
+    StartWingAttachmentFix(self)
+end
+
 function UGCPlayerPawn:ReceiveBeginPlay()
     UGCPlayerPawn.SuperClass.ReceiveBeginPlay(self)
+    -- 兼容 AttachActorConfigs 在 Lua BeginPlay 之前已经完成首次复制的情况。
+    StartWingAttachmentFix(self)
     -- 默认开启身上旋转武器；Button_81 可在运行时切换开关。
     local OrbitController = GetOrbitWeaponController(self)
     self.bOrbitWeaponEnabled = OrbitController == nil or OrbitController.OrbitWeaponEnabled ~= false
@@ -1059,6 +1265,22 @@ function UGCPlayerPawn:ReceiveTick(DeltaTime)
     end
 
     local SafeDeltaTime = tonumber(DeltaTime) or 0.016
+
+    if (tonumber(self.WingAttachFixAttemptsLeft) or 0) > 0 then
+        self.WingAttachFixElapsed = (tonumber(self.WingAttachFixElapsed) or 0) + SafeDeltaTime
+        if self.WingAttachFixElapsed >= WING_ATTACH_FIX_INTERVAL then
+            self.WingAttachFixElapsed = 0
+            self.WingAttachFixAttemptsLeft = self.WingAttachFixAttemptsLeft - 1
+            if RefreshWingAttachments(self) then
+                self.WingAttachFixSuccesses = (tonumber(self.WingAttachFixSuccesses) or 0) + 1
+                if self.WingAttachFixSuccesses >= 4 then
+                    self.WingAttachFixAttemptsLeft = 0
+                end
+            else
+                self.WingAttachFixSuccesses = 0
+            end
+        end
+    end
 
     -- 死亡时清理 WQ；复活后血量恢复时自动重新生成。
     local CurrentHealth = tonumber(UGCPawnAttrSystem.GetHealth(self)) or 0

@@ -5,9 +5,8 @@
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
-local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 
-local FLY_SPEED = 3600
+local FLY_SPEED = 2600
 local FLY_START_ANIM_PATH = "/Game/UGC/Repository/Arts_Player/Anim/Dash/AS_DashStart_F.AS_DashStart_F"
 local FLY_LOOP_ANIM_PATH = "/Game/UGC/Repository/Arts_Player/Anim/Dash/AS_Dash_F.AS_Dash_F"
 local FLY_END_ANIM_PATH = "/Game/UGC/Repository/Arts_Player/Anim/Dash/AS_DashEnd_F.AS_DashEnd_F"
@@ -328,12 +327,6 @@ function Fei:GetEquippedWingItemID()
     if PawnWingItemID ~= nil and WingBackpackItemIDSet[PawnWingItemID] == true then
         return PawnWingItemID
     end
-    -- Wing actor updates this value on the owning client, so it also covers an
-    -- already-equipped wing restored before the backpack callback is received.
-    local StateWingItemID = StateMgr ~= nil and tonumber(StateMgr.ChiBang) or nil
-    if StateWingItemID ~= nil and StateWingItemID > 0 then
-        return StateWingItemID
-    end
     return 0
 end
 
@@ -410,17 +403,47 @@ function Fei:SetupFlyButtonInputMode()
 end
 
 function Fei:StartFly()
-    if self.bFlying then
+    if self.bFlying or self.bFlyStartPending or self.bFlyStartDeniedWhileHeld then
         return
     end
     if not self:IsWingEquipped() then
+        self.bFlyStartDeniedWhileHeld = true
         L_Com.ShowToast("请装备翅膀")
+        return
+    end
+
+    -- Preserve hold-to-fly, but wait for the authoritative equipment-slot check
+    -- before changing movement mode locally. This prevents a rejected request
+    -- from producing one visible frame of flight on packaged mobile clients.
+    self.bFlyStartPending = true
+    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+    if PlayerController == nil then
+        self.bFlyStartPending = false
+        return
+    end
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_BeginFlyState")
+end
+
+function Fei:ConfirmFlyStart()
+    self.bFlyStartPending = false
+    self.bFlyStartDeniedWhileHeld = false
+    if self.bFlyButtonHeld ~= true and self.bFlyKeyboardHeld ~= true then
+        local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+        if PlayerController ~= nil then
+            UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_StopFlyMove")
+        end
+        return
+    end
+    if self.bFlying then
         return
     end
 
     self.bFlying = true
     self.FlyMoveRpcElapsed = FLY_MOVE_RPC_INTERVAL
-    self:BeginFly()
+    local PlayerPawn = UGCGameSystem.GetLocalPlayerPawn()
+    if PlayerPawn ~= nil and PlayerPawn.BeginFly ~= nil then
+        PlayerPawn:BeginFly()
+    end
     self:SetFlyMovementMode(true)
     self:PlayFlyStartAnimation()
     self:SpawnFlyEffect()
@@ -429,6 +452,7 @@ function Fei:StartFly()
 end
 
 function Fei:StopFly()
+    self.bFlyStartPending = false
     if not self.bFlying then
         return
     end
@@ -579,6 +603,16 @@ end
 
 function Fei:RefreshFlyHoldState()
     local bShouldFly = self.bFlyButtonHeld == true or self.bFlyKeyboardHeld == true
+    if not bShouldFly then
+        self.bFlyStartDeniedWhileHeld = false
+        if self.bFlyStartPending then
+            self.bFlyStartPending = false
+            local PlayerController = GameplayStatics.GetPlayerController(self, 0)
+            if PlayerController ~= nil then
+                UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_StopFlyMove")
+            end
+        end
+    end
     if bShouldFly and not self.bFlying then
         self:StartFly()
     elseif not bShouldFly and self.bFlying then
