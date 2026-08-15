@@ -176,6 +176,28 @@ function UI02:RefreshToggleButtonColors()
     self:SetToggleButtonGray(self.Button_93, self.bAutoMeleeAttackEnabled ~= true)
 end
 
+-- GM 玩家数据重置后的统一 UI 收口。四个相关控件分别对应：
+-- Button_227（一键拾取）、Button_228（英雄无敌图标）、Button_3（英雄无敌开关）、
+-- Button_93（自动攻击）。
+function UI02:ResetAfterPlayerDataReset()
+    self.bAutoPickEnabled = false
+    self.bAutoMeleeAttackEnabled = false
+    self.YXWDInvincibleActive = false
+    self.YXWDBuffIconActive = false
+    self.YXWDBuffIconDurationSeconds = 0
+    self.YXWDBuffIconExpireToken = (self.YXWDBuffIconExpireToken or 0) + 1
+
+    if self.Button_228 ~= nil then
+        self.Button_228:SetVisibility(ESlateVisibility.Collapsed)
+    end
+    self:RefreshYXWDPurchaseButton()
+    self:RefreshToggleButtonColors()
+
+    if self.KJ04Instance ~= nil and self.KJ04Instance.SetGiftPackPurchased ~= nil then
+        self.KJ04Instance:SetGiftPackPurchased(false)
+    end
+end
+
 function UI02:EnableDefaultAutoAttackIfUnlocked()
     if self:HasAutoAttackButtonHidden() ~= true then
         return
@@ -652,6 +674,8 @@ end
 
 function UI02:Button_3_OnClicked()
     if self:HasYXWDInvincibleBuff() ~= true then
+        -- 未拥有英雄无敌时，主按钮与购买提示按钮保持一致，直接拉起购买确认界面。
+        self:Button_4_OnClicked()
         return
     end
 
@@ -1115,6 +1139,7 @@ function UI02:Button_0_OnClicked()
         return
     end
 
+    self.KJ04Instance = KJ04Instance
     KJ04Instance:AddToViewport(12000)
 
 end

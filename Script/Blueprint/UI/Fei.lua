@@ -246,19 +246,26 @@ function Fei:RefreshButton0Visibility()
     local EquippedWingItemID = self:GetEquippedWingItemID()
     local bHasWing = EquippedWingItemID > 0 or self:HasAnyWing()
     local bWingEquipped = EquippedWingItemID > 0
+    local bFeatureHidden = self:HasFeiButton0Hidden()
     if self.Button_0 ~= nil then
-        self.Button_0:SetVisibility((bHasWing or bTowerHidden) and ESlateVisibility.Collapsed or
+        self.Button_0:SetVisibility((bFeatureHidden or bHasWing or bTowerHidden) and ESlateVisibility.Collapsed or
                                         ESlateVisibility.Visible)
     end
 
     -- 只在状态变化时打印，既能定位开局时序，又不会每 0.5 秒刷屏。
     local DebugState = string.format("wing=%d,tower=%d,has=%s,equipped=%s,visible=%s", EquippedWingItemID,
         tonumber(self.TowerButtonsHiddenCount) or 0, tostring(bHasWing), tostring(bWingEquipped),
-        tostring(not bTowerHidden))
+        tostring(not (bFeatureHidden or bHasWing or bTowerHidden)))
     if self.LastVisibilityDebugState ~= DebugState then
         self.LastVisibilityDebugState = DebugState
         ugcprint("[Fei] visibility " .. DebugState)
     end
+end
+
+-- GM 玩家数据重置后的客户端刷新：恢复 Fei 购买入口判定并清理塔区域残留状态。
+function Fei:ResetAfterPlayerDataReset()
+    self.TowerButtonsHiddenCount = 0
+    self:RefreshButton0Visibility()
 end
 
 function Fei:HasFeiButton0Hidden()

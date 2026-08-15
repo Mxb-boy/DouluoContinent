@@ -189,6 +189,18 @@ FailReset = function(PlayerController, PlayerKey, Reason)
 end
 
 local function FinalizeServerState(PlayerController, PlayerPawn, PlayerState)
+    -- 清理三类可购买功能的运行时状态，避免存档已重置但旧计时器仍继续工作。
+    if UGCTimerUtility.RemoveLuaTimerByName ~= nil then
+        UGCTimerUtility.RemoveLuaTimerByName("AutoPick_" .. tostring(PlayerController.PlayerKey))
+        UGCTimerUtility.RemoveLuaTimerByName("AutoMeleeAttack")
+    end
+    PlayerController.bAutoPickEnabled = false
+    PlayerController.ClientAutoPickButtonHidden = nil
+    PlayerController.ClientAutoAttackButtonHidden = nil
+    if PlayerController.StopAutoMeleeAttack ~= nil then
+        PlayerController:StopAutoMeleeAttack()
+    end
+
     PlayerController.ProbabilityBonusPermanent = nil
     PlayerController.ProbabilityBonusPermanentValue = nil
     PlayerController.ProbabilityBonusRemainingSeconds = 0

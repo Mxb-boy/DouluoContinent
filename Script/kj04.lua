@@ -291,13 +291,8 @@ function kj04:ShowRewardPopup()
 end
 
 function kj04:HasPurchasedGiftPack()
-    if self.bGiftPackPurchased == true then
-        return true
-    end
-
-    if self:HasReachedShopPurchaseLimit() then
-        self.bGiftPackPurchased = true
-        return true
+    if self.bGiftPackPurchased ~= nil then
+        return self.bGiftPackPurchased == true
     end
 
     local PlayerState = self:GetLocalPlayerState()
@@ -310,27 +305,6 @@ function kj04:HasPurchasedGiftPack()
     end
 
     return tonumber(PlayerState.KJ04GiftPackPurchased) == 1
-end
-
-function kj04:HasReachedShopPurchaseLimit()
-    local ProductID = tonumber(KJ04_GIFT_PRODUCT.ProductID)
-    if ProductID == nil or ProductID <= 0 or ShopV2Manager == nil or
-        ShopV2Manager.GetProductConfigData == nil or ShopV2Manager.GetLimitPurchasedTimes == nil then
-        return false
-    end
-
-    local ProductOK, ProductData = pcall(ShopV2Manager.GetProductConfigData, ShopV2Manager, ProductID)
-    if not ProductOK or ProductData == nil then
-        return false
-    end
-
-    local PurchaseLimit = tonumber(ProductData.PurchaseLimit) or 0
-    if PurchaseLimit <= 0 then
-        return false
-    end
-
-    local PurchasedOK, PurchasedTimes = pcall(ShopV2Manager.GetLimitPurchasedTimes, ShopV2Manager, ProductID)
-    return PurchasedOK and (tonumber(PurchasedTimes) or 0) >= PurchaseLimit
 end
 
 function kj04:GetLocalPlayerState()
@@ -346,6 +320,11 @@ function kj04:SetGiftPackPurchased(value)
     if PlayerController ~= nil then
         if PlayerController.PlayerState ~= nil then
             PlayerController.PlayerState.KJ04GiftPackPurchased = bPurchased and 1 or 0
+        end
+        -- 购买结果由客户端委托回调收到，但购买判定必须落在服务端存档。
+        if bPurchased and UnrealNetwork ~= nil and UnrealNetwork.CallUnrealRPC ~= nil then
+            UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController,
+                "Server_SetKJ04GiftPackPurchased", 1)
         end
     end
 

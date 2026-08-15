@@ -249,7 +249,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_RefreshPlayerExp", "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Server_RequestRefreshProperty",
         "Client_StartAutoMeleeAttack", "Server_SetAutoFeatureButtonHidden", "Client_SetAutoFeatureButtonHidden",
         "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI", "Server_ClaimTowerTopReward",
-        "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden", "Client_ShowMonsterDamageNumber",
+        "Server_SetFeiButton0Hidden", "Client_SetFeiButton0Hidden", "Server_SetKJ04GiftPackPurchased",
+        "Client_ShowMonsterDamageNumber",
         "Client_PlayWQHitEffect",
         "Client_SetFeiTowerButtonsHidden", "Client_ResetFeiTowerButtonsHidden", "Server_AddFixedBaseProperty", "Server_AddTaskProgress",
         "Server_RequestPaTaState", "Server_RequestFreePaTa", "Server_RequestTicketPaTa", "Client_SyncPaTaState",
@@ -3226,6 +3227,12 @@ function UGCPlayerController:Client_PlayerDataReset()
         PlayerState.PlayerExp = 0
         PlayerState.PlayerMaxExp = 60
         PlayerState.LotteryState = {}
+        PlayerState.YXWD_InvincibleBuff = 0
+        PlayerState.YXWD_InvincibleBuffActive = false
+        PlayerState.AutoPickButtonHidden = 0
+        PlayerState.AutoAttackButtonHidden = 0
+        PlayerState.FeiButton0Hidden = 0
+        PlayerState.KJ04GiftPackPurchased = 0
         PlayerState.WeaponLevels = {}
         PlayerState.UnlockedTitles = {}
         PlayerState.KillMonsterCount = 0
@@ -3233,12 +3240,31 @@ function UGCPlayerController:Client_PlayerDataReset()
     end
 
     local PlayerPawn = self:K2_GetPawn()
+    self.ClientAutoPickButtonHidden = nil
+    self.ClientAutoAttackButtonHidden = nil
+    -- 英雄无敌拥有状态在客户端还有一份 Controller 缓存。
+    -- 仅重置 PlayerState 会让 UI 继续误判为已拥有，从而隐藏购买红点/入口。
+    self.ClientYXWDInvincibleBuffEnabled = false
+    self.ClientYXWDInvincibleBuffDurationSeconds = 0
+    self.bAutoPickEnabled = false
+    self.bAutoMeleeAttackEnabled = false
+    if self.StopAutoMeleeAttack ~= nil then
+        self:StopAutoMeleeAttack()
+    end
     if PlayerPawn ~= nil and PlayerPawn.RefreshSoulMesh ~= nil then
         PlayerPawn:RefreshSoulMesh(1)
     end
     if self.MainUIInstance ~= nil and self.MainUIInstance.RefreshRealmNameText ~= nil then
         self.MainUIInstance:RefreshRealmNameText()
     end
+    if self.MainUIInstance ~= nil and self.MainUIInstance.ResetAfterPlayerDataReset ~= nil then
+        self.MainUIInstance:ResetAfterPlayerDataReset()
+    end
+    if self.FeiUIInstance ~= nil and self.FeiUIInstance.ResetAfterPlayerDataReset ~= nil then
+        self.FeiUIInstance:ResetAfterPlayerDataReset()
+    end
+    RuntimeLog.Info("[TagLog] [GMReset] [CLIENT][feature_refresh] player=" .. tostring(self.PlayerKey) ..
+        " kj04=0 lottery_cache=cleared auto_pick=0 auto_attack=0 yxwd=0 fei=0")
 
     local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
     if StateMgr ~= nil then
@@ -3371,8 +3397,11 @@ function UGCPlayerController:Client_YXWDInvincibleBuffChanged(bEnabled, Duration
     self.ClientYXWDInvincibleBuffEnabled = bEnabled == true or tonumber(bEnabled) == 1
     self.ClientYXWDInvincibleBuffDurationSeconds = tonumber(DurationSeconds) or -2
 
-    if self.PlayerState ~= nil and self.ClientYXWDInvincibleBuffEnabled == true then
-        self.PlayerState.YXWD_InvincibleBuff = 1
+    if self.PlayerState ~= nil then
+        self.PlayerState.YXWD_InvincibleBuff = self.ClientYXWDInvincibleBuffEnabled and 1 or 0
+        if self.ClientYXWDInvincibleBuffEnabled ~= true then
+            self.PlayerState.YXWD_InvincibleBuffActive = false
+        end
     end
 
     if self.MainUIInstance ~= nil and self.MainUIInstance.OnYXWDInvincibleBuffChanged ~= nil then
@@ -3607,6 +3636,22 @@ function UGCPlayerController:Server_SetFeiButton0Hidden(value)
     end
 
     UnrealNetwork.CallUnrealRPC(self, self, "Client_SetFeiButton0Hidden", value)
+end
+
+-- 首充礼包购买状态由服务端写入项目存档；不接受客户端清零，清零只由 GM 重置流程完成。
+function UGCPlayerController:Server_SetKJ04GiftPackPurchased(value)
+    if self.PlayerState == nil or value ~= true and tonumber(value) ~= 1 then
+        return
+    end
+
+    if self.PlayerState.SetKJ04GiftPackPurchased ~= nil then
+        self.PlayerState:SetKJ04GiftPackPurchased(true)
+    else
+        self.PlayerState.KJ04GiftPackPurchased = 1
+        if self.PlayerState.SaveToArchive ~= nil then
+            self.PlayerState:SaveToArchive()
+        end
+    end
 end
 
 function UGCPlayerController:Client_SetFeiButton0Hidden(value)

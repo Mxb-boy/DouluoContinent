@@ -82,6 +82,18 @@ function UI14:Open()
     self:SetVisibility(ESlateVisibility.Visible)
 end
 
+-- GM 玩家数据重置后的客户端收口：服务端 LotteryState 清空后，必须同步清掉
+-- UI14 自己维护的已获得标记、待处理抽奖和票券临时偏移，避免旧缓存覆盖新进度。
+function UI14:ResetAfterPlayerDataReset()
+    self.LocalLotteryOKStates = {}
+    self.PendingLotteryRounds = {}
+    self.PendingLotteryCosts = {}
+    self:ResetLotteryTicketRefreshState()
+    self.SelectedLotteryType = LotteryType.Weapon
+    self.ActiveTabType = nil
+    self:Refresh()
+end
+
 function UI14:Btn_Close_OnClicked()
     self:Close()
 end

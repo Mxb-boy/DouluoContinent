@@ -172,11 +172,9 @@ table.insert(ARCHIVE_KEYS, {
 -- 不属于本次角色养成数据重置范围。
 local GM_RESET_PRESERVED_FIELDS = {
     SignInEvent = true,
-    YXWD_InvincibleBuff = true,
-    AutoPickButtonHidden = true,
-    AutoAttackButtonHidden = true,
-    FeiButton0Hidden = true,
-    KJ04GiftPackPurchased = true
+    -- GM“玩家数据重置”会同时撤销本项目内购买/解锁的功能入口：
+    -- 英雄无敌、自动拾取、自动攻击、Fei 飞行入口和首充礼包判定。
+    -- 官方签到状态仍属于独立系统权益，继续保留。
 }
 
 local function CloneArchiveDefault(DefaultValue)
