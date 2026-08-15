@@ -16,6 +16,14 @@ TalentConfig.UltimateNodeIDs = {
     [18] = true,
     [19] = true
 }
+TalentConfig.PassiveBuffs = {
+    Attack = {
+        NodeID = 4,
+        Chance = 0.1,
+        Path = "/Douluo/Asset/Blueprint/Prefabs/Buffs/TalentPassiveAttack.TalentPassiveAttack_C",
+        AttackPercent = 0.1
+    }
+}
 
 -- [TalentNodeID] = {
 --     ID = TalentNodeID,
@@ -73,9 +81,7 @@ TalentConfig.Nodes = {
         Cost = 1,
         RequireID = 2,
         Effects = {
-            Stats = {
-                AttackPercent = 0.1
-            }
+            PassiveBuffKey = "Attack"
         }
     },
     [5] = {

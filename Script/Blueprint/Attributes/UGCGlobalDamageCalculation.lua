@@ -3,6 +3,7 @@ local DamageSync = UGCGameSystem.UGCRequire('Script.Common.DamageSync')
 local TalentConfig = UGCGameSystem.UGCRequire('Script.Xiao.TalentConfig')
 local TalentEffectMgr = UGCGameSystem.UGCRequire('Script.Xiao.TalentEffectMgr')
 local UGCGlobalDamageCalculation = {}
+local TalentPassiveAttackBuffClass = nil
 
 local function SafeGet(Object, FieldName)
     if Object == nil then
@@ -113,6 +114,84 @@ local function AddCriticalResultTag(ExtraResult)
     end
 end
 
+local function GetTalentAttackBuffPercent(PlayerState)
+    if PlayerState == nil then
+        return 0
+    end
+    return math.max(0, tonumber(PlayerState.TalentBuff_AttackPercent) or 0)
+end
+
+local function GetPassiveAttackBuffConfig()
+    return TalentConfig.PassiveBuffs ~= nil and TalentConfig.PassiveBuffs.Attack or nil
+end
+
+local function IsTalentLearned(PlayerState, NodeID)
+    local LearnedTalents = PlayerState ~= nil and
+                               (PlayerState.GetLearnedTalents ~= nil and PlayerState:GetLearnedTalents() or
+                                   PlayerState.LearnedTalents) or nil
+    if type(LearnedTalents) ~= "table" then
+        return false
+    end
+
+    local Learned = LearnedTalents[tostring(NodeID)]
+    if Learned == nil then
+        Learned = LearnedTalents[NodeID]
+    end
+    return Learned == true or tonumber(Learned) == 1
+end
+
+local function GetTalentPassiveAttackBuffClass()
+    if TalentPassiveAttackBuffClass ~= nil then
+        return TalentPassiveAttackBuffClass
+    end
+
+    local Config = GetPassiveAttackBuffConfig()
+    local BuffPath = Config ~= nil and Config.Path or nil
+    if type(BuffPath) ~= "string" or BuffPath == "" then
+        return nil
+    end
+
+    if UGCObjectUtility ~= nil and UGCObjectUtility.LoadClass ~= nil then
+        local Success, Result = pcall(UGCObjectUtility.LoadClass, BuffPath)
+        if Success then
+            TalentPassiveAttackBuffClass = Result
+        end
+    end
+    if TalentPassiveAttackBuffClass == nil and UE ~= nil and UE.LoadClass ~= nil then
+        local Success, Result = pcall(UE.LoadClass, BuffPath)
+        if Success then
+            TalentPassiveAttackBuffClass = Result
+        end
+    end
+
+    return TalentPassiveAttackBuffClass
+end
+
+local function TryTriggerTalentPassiveAttackBuff(CauserActor, PlayerState)
+    if CauserActor == nil or PlayerState == nil or UGCPersistEffectSystem == nil or
+        UGCPersistEffectSystem.AddBuffByClass == nil then
+        return
+    end
+
+    local Config = GetPassiveAttackBuffConfig()
+    local NodeID = Config ~= nil and tonumber(Config.NodeID) or nil
+    local Chance = math.max(0, tonumber(Config ~= nil and Config.Chance or nil) or 0)
+    if NodeID == nil or not IsTalentLearned(PlayerState, NodeID) or math.random() >= Chance then
+        return
+    end
+
+    local BuffClass = GetTalentPassiveAttackBuffClass()
+    if BuffClass == nil then
+        ugcprint("[TalentPassiveAttack] buff class load failed")
+        return
+    end
+
+    local Success, Result = pcall(UGCPersistEffectSystem.AddBuffByClass, CauserActor, BuffClass, CauserActor)
+    if not Success then
+        ugcprint("[TalentPassiveAttack] add buff failed: " .. tostring(Result))
+    end
+end
+
 function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     local VictimActor = UGCAttributeSystem.GetVictimFromContext(Context)
     local InstigatorController = UGCAttributeSystem.GetInstigatorFromContext(Context)
@@ -133,6 +212,7 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     end
     local bCauserIsPlayer = CauserActor ~= nil and CauserActor.PlayerState ~= nil
     local bVictimIsPlayer = VictimActor ~= nil and VictimActor.PlayerState ~= nil
+    local PlayerState = bCauserIsPlayer and CauserActor.PlayerState or nil
     local ServerAttackPower = nil
     if bCauserIsPlayer and not bVictimIsPlayer then
         ServerAttackPower = UGCAttributeSystem.GetGameAttributeValue(CauserActor, "AttackPower")
@@ -179,11 +259,20 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
         return 1, ExtraResult
     end
 
+    local TalentAttackBuffPercent = GetTalentAttackBuffPercent(PlayerState)
+    if TalentAttackBuffPercent > 0 and bCauserIsPlayer and not bVictimIsPlayer then
+        local DamageBeforeTalentBuff = FinalDamage
+        FinalDamage = FinalDamage * (1 + TalentAttackBuffPercent)
+        if HasAuthority(InstigatorController) then
+            ugcprint("[TalentPassiveAttack] damage " .. tostring(DamageBeforeTalentBuff) .. " -> " ..
+                         tostring(FinalDamage) .. " percent=" .. tostring(TalentAttackBuffPercent))
+        end
+    end
+
     local CriticalConfig = TalentConfig.Critical or {}
     local bIsCritical = false
     if CriticalConfig.Enabled == true and bCauserIsPlayer and not bVictimIsPlayer and
         HasAuthority(InstigatorController) then
-        local PlayerState = CauserActor.PlayerState
         local CritRate = TalentEffectMgr:GetEffectiveCritRate(PlayerState)
         if CritRate > 0 and math.random() < CritRate then
             local CritMultiplier = TalentEffectMgr:GetEffectiveCritMultiplier(PlayerState)
@@ -198,6 +287,9 @@ function UGCGlobalDamageCalculation:GetCalculationResult(Context, ExtraResult)
     end
 
     if bCauserIsPlayer and not bVictimIsPlayer and HasAuthority(InstigatorController) then
+        if FinalDamage > 0 then
+            TryTriggerTalentPassiveAttackBuff(CauserActor, PlayerState)
+        end
         UnrealNetwork.CallUnrealRPC(InstigatorController, InstigatorController, "Client_ShowMonsterDamageNumber",
             VictimActor, FinalDamage)
     end

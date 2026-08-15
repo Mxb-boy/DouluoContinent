@@ -27,21 +27,33 @@ local function GetTableIconPath(IconPath)
     if IconPath == nil or IconPath == "" then
         return ""
     end
+
     local Path = ""
+
+    if type(IconPath) == "table" and IconPath.AssetPathName ~= nil then
+        Path = NormalizeIconPath(IconPath.AssetPathName)
+    end
+
+    if not IsValidIconPath(Path) then
+        Path = NormalizeIconPath(IconPath)
+    end
+
+    if IsValidIconPath(Path) then
+        return Path
+    end
+
+    local IconPathText = tostring(IconPath or "")
+    if string.find(IconPathText, "Texture2D") ~= nil or string.find(IconPathText, "UTexture2D") ~= nil then
+        return ""
+    end
+
     if KismetSystemLibrary ~= nil and KismetSystemLibrary.BreakSoftObjectPath ~= nil then
         local Success, Result = pcall(KismetSystemLibrary.BreakSoftObjectPath, IconPath)
         if Success and IsValidIconPath(Result) then
-            Path = Result
+            Path = NormalizeIconPath(Result)
         end
     end
-    if not IsValidIconPath(Path) and type(IconPath) == "table" and IconPath.AssetPathName ~= nil then
-        Path = IconPath.AssetPathName
-    end
-    if not IsValidIconPath(Path) then
-        Path = NormalizeIconPath(IconPath)
-    else
-        Path = NormalizeIconPath(Path)
-    end
+
     if IsValidIconPath(Path) then
         return Path
     end
@@ -70,9 +82,9 @@ local function LoadUGCObjectIcons()
     for _, Row in pairs(ObjectTable) do
         local ItemID = tonumber(Row.ItemID)
         if ItemID ~= nil and Row.ItemSmallIcon ~= nil then
-            local IconPath = KismetSystemLibrary.BreakSoftObjectPath(Row.ItemSmallIcon)
+            local IconPath = GetTableIconPath(Row.ItemSmallIcon)
             if IsValidIconPath(IconPath) then
-                Icons[ItemID] = NormalizeIconPath(IconPath)
+                Icons[ItemID] = IconPath
             end
         end
     end

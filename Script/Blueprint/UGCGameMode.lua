@@ -740,7 +740,13 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             local PlayerState = PC.PlayerState
             if PlayerState and PlayerState.LoadFromArchive then
                 local UID = UGCPawnAttrSystem.GetPlayerUID(PC.Pawn)
-                PlayerState:LoadFromArchive(tonumber(UID))
+                local ArchiveLoaded = PlayerState:LoadFromArchive(tonumber(UID))
+                if ArchiveLoaded == true and PC.SignInEventComponent ~= nil and
+                    PC.SignInEventComponent.RefreshSignInData ~= nil then
+                    PC.SignInEventComponent.CachedEventData = nil
+                    PC.SignInEventComponent.bLoadData = true
+                    PC.SignInEventComponent:RefreshSignInData()
+                end
                 SyncPlayerExpToClient(PC)
                 if PC.Server_RequestTalentState ~= nil then
                     PC:Server_RequestTalentState()

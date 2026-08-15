@@ -27,7 +27,6 @@
 --Edit Below--
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
-UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.ShopV2.ShopV2Manager")
 
 local UI14 = { bInitDoOnce = false }
 
@@ -59,7 +58,6 @@ function UI14:LuaInit()
     self:BindButton(self.Btn_Buy, self.Btn_Buy_OnClicked)
     self:BindAwardSlots()
     self:SetDetailVisible(false)
-    self:Refresh()
 end
 
 function UI14:BindButton(Button, Callback)
@@ -74,7 +72,6 @@ end
 
 function UI14:Open()
     self:ResetLotteryTicketRefreshState()
-    self:EnsureShopPurchaseCallbacks()
     self:SetBattleUIVisible(false)
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
         or GameplayStatics.GetPlayerController(self, 0)
@@ -82,7 +79,6 @@ function UI14:Open()
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestLotteryStateSync")
     end
     self:Refresh()
-    self:ScheduleLotteryTicketRefresh()
     self:SetVisibility(ESlateVisibility.Visible)
 end
 
@@ -130,9 +126,17 @@ function UI14:SetDetailVisible(bVisible)
 end
 
 function UI14:OpenLotteryTicketPurchaseUI()
-    if ShopV2Manager == nil or ShopV2Manager.CheckBackpackBeforePurchase == nil
-        or ShopV2Manager:CheckBackpackBeforePurchase() == false then
+    if not self:EnsureShopV2Manager() then
+        ugcprint("[UI14:OpenLotteryTicketPurchaseUI] ShopV2Manager require failed")
+        return false
+    end
+    if ShopV2Manager == nil or ShopV2Manager.CheckBackpackBeforePurchase == nil then
         ugcprint("[UI14:OpenLotteryTicketPurchaseUI] ShopV2Manager unavailable or backpack check failed")
+        return false
+    end
+    local BackpackCheckOK, bCanPurchase = pcall(ShopV2Manager.CheckBackpackBeforePurchase, ShopV2Manager)
+    if not BackpackCheckOK or bCanPurchase == false then
+        ugcprint("[UI14:OpenLotteryTicketPurchaseUI] backpack check failed")
         return false
     end
 
@@ -154,6 +158,20 @@ function UI14:OpenLotteryTicketPurchaseUI()
 
     self:EnsureShopPurchaseCallbacks()
     return self:OpenLotteryTicketPurchasePopup(PlayerController, ProductID)
+end
+
+function UI14:EnsureShopV2Manager()
+    if ShopV2Manager ~= nil then
+        return true
+    end
+
+    if UGCGameSystem == nil or UGCGameSystem.UGCRequire == nil then
+        return false
+    end
+
+    local Success = pcall(UGCGameSystem.UGCRequire,
+        "ExtendResource.ShopV2.OfficialPackage." .. "Script.ShopV2.ShopV2Manager")
+    return Success and ShopV2Manager ~= nil
 end
 
 function UI14:OpenLotteryTicketPurchasePopup(PlayerController, ProductID)
@@ -192,7 +210,11 @@ function UI14:GetShopProductID(ItemID)
         return nil
     end
 
-    local ProductDatas = ShopV2Manager:GetAllProductConfigData()
+    local Success, ProductDatas = pcall(ShopV2Manager.GetAllProductConfigData, ShopV2Manager)
+    if not Success then
+        ugcprint("[UI14:GetShopProductID] get product data failed")
+        return nil
+    end
     if ProductDatas == nil then
         return nil
     end
@@ -210,27 +232,53 @@ function UI14:EnsureShopPurchaseCallbacks()
         return
     end
 
-    if ShopV2Manager.bBuyProductResultBinded ~= true then
-        ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Add(ShopV2Manager.OnBuyProductResult,
-            ShopV2Manager)
+    local CommodityOperationManager = self:GetShopCommodityOperationManager()
+    if CommodityOperationManager ~= nil and ShopV2Manager.bBuyProductResultBinded ~= true then
+        CommodityOperationManager.BuyProductResultDelegate:Add(ShopV2Manager.OnBuyProductResult, ShopV2Manager)
         ShopV2Manager.bBuyProductResultBinded = true
     end
 
-    if ShopV2Manager.bAddItemResultDelegateBinded ~= true then
-        ShopV2Manager:GetVirtualItemManager().AddItemResultDelegate:Add(ShopV2Manager.OnAddVirtualItem, ShopV2Manager)
+    local VirtualItemManager = self:GetShopVirtualItemManager()
+    if VirtualItemManager ~= nil and ShopV2Manager.bAddItemResultDelegateBinded ~= true then
+        VirtualItemManager.AddItemResultDelegate:Add(ShopV2Manager.OnAddVirtualItem, ShopV2Manager)
         ShopV2Manager.bAddItemResultDelegateBinded = true
     end
 
-    if self.bLotteryTicketAddItemResultBinded ~= true then
-        ShopV2Manager:GetVirtualItemManager().AddItemResultDelegate:Add(self.OnLotteryTicketAddVirtualItem, self)
+    if VirtualItemManager ~= nil and self.bLotteryTicketAddItemResultBinded ~= true then
+        VirtualItemManager.AddItemResultDelegate:Add(self.OnLotteryTicketAddVirtualItem, self)
         self.bLotteryTicketAddItemResultBinded = true
     end
 
-    if self.bLotteryTicketBuyProductResultBinded ~= true then
-        ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Add(self.OnLotteryTicketBuyProductResult,
-            self)
+    if CommodityOperationManager ~= nil and self.bLotteryTicketBuyProductResultBinded ~= true then
+        CommodityOperationManager.BuyProductResultDelegate:Add(self.OnLotteryTicketBuyProductResult, self)
         self.bLotteryTicketBuyProductResultBinded = true
     end
+end
+
+function UI14:GetShopCommodityOperationManager()
+    if ShopV2Manager == nil or ShopV2Manager.GetCommodityOperationManager == nil then
+        return nil
+    end
+
+    local Success, Manager = pcall(ShopV2Manager.GetCommodityOperationManager, ShopV2Manager)
+    if not Success then
+        ugcprint("[UI14:GetShopCommodityOperationManager] manager unavailable")
+        return nil
+    end
+    return Manager
+end
+
+function UI14:GetShopVirtualItemManager()
+    if ShopV2Manager == nil or ShopV2Manager.GetVirtualItemManager == nil then
+        return nil
+    end
+
+    local Success, Manager = pcall(ShopV2Manager.GetVirtualItemManager, ShopV2Manager)
+    if not Success then
+        ugcprint("[UI14:GetShopVirtualItemManager] manager unavailable")
+        return nil
+    end
+    return Manager
 end
 
 function UI14:RemoveShopPurchaseCallbacks()
@@ -239,7 +287,7 @@ function UI14:RemoveShopPurchaseCallbacks()
     end
 
     if self.bLotteryTicketAddItemResultBinded == true then
-        local VirtualItemManager = ShopV2Manager:GetVirtualItemManager()
+        local VirtualItemManager = self:GetShopVirtualItemManager()
         if VirtualItemManager ~= nil and VirtualItemManager.AddItemResultDelegate ~= nil then
             VirtualItemManager.AddItemResultDelegate:Remove(self.OnLotteryTicketAddVirtualItem, self)
         end
@@ -247,7 +295,7 @@ function UI14:RemoveShopPurchaseCallbacks()
     end
 
     if self.bLotteryTicketBuyProductResultBinded == true then
-        local CommodityOperationManager = ShopV2Manager:GetCommodityOperationManager()
+        local CommodityOperationManager = self:GetShopCommodityOperationManager()
         if CommodityOperationManager ~= nil and CommodityOperationManager.BuyProductResultDelegate ~= nil then
             CommodityOperationManager.BuyProductResultDelegate:Remove(self.OnLotteryTicketBuyProductResult, self)
         end
@@ -699,6 +747,10 @@ function UI14:GetLotteryTicketCount()
 end
 
 function UI14:GetBackpackLotteryTicketCount()
+    if self.bLotteryTicketCountUnavailable == true then
+        return 0
+    end
+
     local ItemID = tonumber(LotteryConfig.CostItemID) or 0
     if ItemID <= 0 then
         return 0
@@ -707,11 +759,20 @@ function UI14:GetBackpackLotteryTicketCount()
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
         or GameplayStatics.GetPlayerController(self, 0)
     local PlayerPawn = PlayerController and PlayerController.Pawn or nil
-    if PlayerPawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.GetItemCountV2 ~= nil then
-        return tonumber(UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID)) or 0
+    if PlayerPawn == nil or UGCBackpackSystemV2 == nil then
+        return 0
     end
 
-    return 0
+    local Success, Count = pcall(function()
+        return UGCBackpackSystemV2.GetItemCountV2(PlayerPawn, ItemID)
+    end)
+    if not Success or Count == nil then
+        self.bLotteryTicketCountUnavailable = true
+        ugcprint("[UI14:GetBackpackLotteryTicketCount] UGCBackpackSystemV2.GetItemCountV2 unavailable")
+        return 0
+    end
+
+    return tonumber(Count) or 0
 end
 
 function UI14:GetAdjustedLotteryTicketCount()
@@ -756,6 +817,10 @@ function UI14:CanSummonLottery(LotteryTypeValue)
         return true
     end
 
+    if self.bLotteryTicketCountUnavailable == true then
+        return true
+    end
+
     local Cost = LotteryConfig.GetRoundCost(self:GetLotteryRound(LotteryTypeValue) + 1)
     return self:GetAdjustedLotteryTicketCount() >= Cost
 end
@@ -779,14 +844,21 @@ function UI14:SetAwardImage(Image, IconPath)
 
     local Texture = IconPath
     if type(IconPath) == "string" then
-        Texture = UE.LoadObject(IconPath)
+        local Success, LoadedTexture = pcall(UE.LoadObject, IconPath)
+        if not Success then
+            ugcprint("[UI14:SetAwardImage] load exception: " .. tostring(IconPath))
+            return
+        end
+        Texture = LoadedTexture
     end
     if Texture == nil then
         ugcprint("[UI14:SetAwardImage] load failed: " .. tostring(IconPath))
         return
     end
 
-    Image:SetBrushFromTexture(Texture)
+    if Image.SetBrushFromTexture ~= nil then
+        pcall(Image.SetBrushFromTexture, Image, Texture)
+    end
 end
 
 function UI14:RefreshAwardPreview(Award)
@@ -916,10 +988,21 @@ function UI14:SetBattleUIVisible(isVisible)
         Widget:SetVisibility(ESlateVisibility.Collapsed)
     end
 
-    HideWidget(UGCWidgetManagerSystem.GetMainUI())
-    HideWidget(UGCWidgetManagerSystem.GetMainControlUI())
-    HideWidget(UGCWidgetManagerSystem.GetShootingUIPanel())
-    HideWidget(UGCWidgetManagerSystem.GetSkillRootPanel())
+    local function HideManagedWidget(FunctionName)
+        if UGCWidgetManagerSystem == nil or UGCWidgetManagerSystem[FunctionName] == nil then
+            return
+        end
+
+        local Success, Widget = pcall(UGCWidgetManagerSystem[FunctionName])
+        if Success then
+            HideWidget(Widget)
+        end
+    end
+
+    HideManagedWidget("GetMainUI")
+    HideManagedWidget("GetMainControlUI")
+    HideManagedWidget("GetShootingUIPanel")
+    HideManagedWidget("GetSkillRootPanel")
 end
 
 function UI14:Destruct()
