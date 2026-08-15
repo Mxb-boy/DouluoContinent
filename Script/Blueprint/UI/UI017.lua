@@ -1,4 +1,5 @@
 ---@class UI017_C:UUserWidget
+---@field llo UWidgetAnimation
 ---@field Btn_Close UButton
 ---@field Button_0 UButton
 ---@field Button_1 UButton
@@ -55,6 +56,10 @@
 ---@field CanvasPanel_107 UCanvasPanel
 ---@field CheckBox_100 UCheckBox
 ---@field CheckBox_101 UCheckBox
+---@field dh1 UImage
+---@field dh2 UImage
+---@field dh3 UImage
+---@field dh4 UImage
 ---@field Image_0 UImage
 ---@field Image_1 UImage
 ---@field Image_2 UImage
@@ -132,6 +137,22 @@
 ---@field QQ8 UCanvasPanel
 ---@field QQ9 UCanvasPanel
 ---@field ScrollBox_254 UScrollBox
+---@field TextBlock_0 UTextBlock
+---@field TextBlock_1 UTextBlock
+---@field TextBlock_2 UTextBlock
+---@field TextBlock_3 UTextBlock
+---@field TextBlock_4 UTextBlock
+---@field TextBlock_5 UTextBlock
+---@field TextBlock_66 UTextBlock
+---@field TextBlock_159 UTextBlock
+---@field TextBlock_160 UTextBlock
+---@field TextBlock_161 UTextBlock
+---@field TextBlock_162 UTextBlock
+---@field TextBlock_163 UTextBlock
+---@field TextBlock_164 UTextBlock
+---@field TextBlock_165 UTextBlock
+---@field TextBlock_166 UTextBlock
+---@field TextBlock_248 UTextBlock
 ---@field TextBlock_330 UTextBlock
 ---@field TextBlock_332 UTextBlock
 ---@field TextBlock_423 UTextBlock
@@ -147,6 +168,8 @@
 ---@field TextBlock_454 UTextBlock
 ---@field TextBlock_457 UTextBlock
 ---@field TextBlock_521 UTextBlock
+---@field TextBlock_668 UTextBlock
+---@field TextBlock_669 UTextBlock
 ---@field WrapBox_0 UWrapBox
 --Edit Below--
 ---@class UI15_C:UUserWidget
@@ -154,7 +177,9 @@
 ---@field WrapBox_0 UWrapBox
 UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.ShopV2.ShopV2Manager")
 local UI017 = { bInitDoOnce = false }
-
+local TEXT_BLOCK_66_ITEM_ID = 8310134
+local CONVERT_SUCCESS_SOUND_PATH =
+    "/Game/WwiseEvent/UI_hall/Play_Pandora_PaySuccess_Little.Play_Pandora_PaySuccess_Little"
 local SOUL_RING_ITEM_IDS = {
     8310048, 8310049, 8310051, 8310053, 8310054, 8310055, 8310056, 8310057, 8310052, 8310050,
     8310122, 8310123, 8310124, 8310125, 8310126, 8310127, 8310128, 8310129, 8310130, 8310131
@@ -416,6 +441,24 @@ function UI017:GetLocalPlayerPawn()
         or (PlayerController ~= nil and (PlayerController.Pawn or
             (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)) or nil)
 end
+function UI017:RefreshTextBlock66ItemCount()
+    local CountText = self:GetWidget("TextBlock_66")
+    if CountText == nil then
+        return 0
+    end
+    local Player = self:GetLocalPlayerPawn() or self:GetLocalPlayerController()
+    local ItemCount = 0
+    if Player ~= nil and UGCBackpackSystemV2 ~= nil and
+        UGCBackpackSystemV2.GetItemCountV2 ~= nil then
+        local Success, Count = pcall(
+            UGCBackpackSystemV2.GetItemCountV2, Player, TEXT_BLOCK_66_ITEM_ID)
+        if Success then
+            ItemCount = math.max(0, math.floor(tonumber(Count) or 0))
+        end
+    end
+    CountText:SetText(tostring(ItemCount))
+    return ItemCount
+end
 function UI017:GetVirtualItemManager()
     if UGCBlueprintFunctionLibrary == nil or UGCGameSystem.GameState == nil then
         return nil
@@ -630,14 +673,18 @@ function UI017:SelectXzwqWeapon(Index)
 end
 function UI017:Button_81_OnClicked()
     local PlayerPawn = self:GetLocalPlayerPawn()
-    local PlayerController = self:GetLocalPlayerController()
-    if PlayerPawn ~= nil and PlayerPawn.SetOrbitWeaponEnabled ~= nil then
-        PlayerPawn:SetOrbitWeaponEnabled(false)
+    if PlayerPawn == nil or PlayerPawn.SetOrbitWeaponEnabled == nil then
+        return
     end
-    if PlayerController ~= nil then
-        PlayerController.OrbitWeaponEnabled = false
+    local bCurrentlyEnabled = PlayerPawn.IsOrbitWeaponEnabled ~= nil and
+        PlayerPawn:IsOrbitWeaponEnabled() or false
+    local bEnabled = not bCurrentlyEnabled
+    PlayerPawn:SetOrbitWeaponEnabled(bEnabled)
+    local PlayerController = self:GetLocalPlayerController()
+    local bAuthority = PlayerPawn.HasAuthority ~= nil and PlayerPawn:HasAuthority()
+    if not bAuthority and PlayerController ~= nil then
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SetOrbitWeaponEnabled",
-            false)
+            bEnabled)
     end
 end
 function UI017:Button_93_OnClicked() self:SelectXzwqWeapon(1) end
@@ -702,6 +749,7 @@ function UI017:LuaInit()
     end
     self.bInitDoOnce = true
     self:RefreshCurrentPlayerLevel()
+    self:RefreshTextBlock66ItemCount()
     local CloseButton = self:GetWidget("Btn_Close")
     if CloseButton ~= nil then
         CloseButton.OnClicked:Add(self.Btn_Close_OnClicked, self)
@@ -724,7 +772,16 @@ function UI017:LuaInit()
     end
     local Button81 = self:GetWidget("Button_81")
     if Button81 ~= nil then
-        Button81:SetVisibility(ESlateVisibility.Collapsed)
+        Button81:SetVisibility(ESlateVisibility.Visible)
+        Button81.OnClicked:Add(self.Button_81_OnClicked, self)
+    end
+    local Button126 = self:GetWidget("Button_126")
+    if Button126 ~= nil then
+        Button126.OnClicked:Add(self.Button_126_OnClicked, self)
+    end
+    local Button263 = self:GetWidget("Button_263")
+    if Button263 ~= nil then
+        Button263.OnClicked:Add(self.Button_263_OnClicked, self)
     end
     for _, ButtonName in ipairs(XZWQ_ACTION_BUTTON_NAMES) do
         local ActionButton = self:GetWidget(ButtonName)
@@ -790,9 +847,56 @@ end
 function UI017:Button_428_OnClicked()
     self:HideCanvasPanel107()
 end
+function UI017:SetSoulRingConvertButtonsEnabled(bEnabled)
+    for _, ButtonName in ipairs({"Button_126", "Button_263"}) do
+        local ConvertButton = self:GetWidget(ButtonName)
+        if ConvertButton ~= nil and ConvertButton.SetIsEnabled ~= nil then
+            ConvertButton:SetIsEnabled(bEnabled == true)
+        end
+    end
+end
+function UI017:PlayConvertAnimation()
+    if self.llo ~= nil and self.PlayAnimation ~= nil then
+        self:PlayAnimation(self.llo, 0, 1, EUMGSequencePlayMode.Forward, 1.4)
+    end
+    if self.ConvertSuccessSound == nil then
+        self.ConvertSuccessSound = UE.LoadObject(CONVERT_SUCCESS_SOUND_PATH)
+    end
+    if self.ConvertSuccessSound ~= nil and UGCSoundManagerSystem ~= nil and
+        UGCSoundManagerSystem.PlaySound2D ~= nil then
+        UGCGameSystem.SetTimer(self, function()
+            UGCSoundManagerSystem.PlaySound2D(self.ConvertSuccessSound)
+        end, 0.5, false)
+    end
+end
+function UI017:Button_126_OnClicked()
+    local PlayerController = self:GetLocalPlayerController()
+    if PlayerController == nil then
+        return
+    end
+    self:SetSoulRingConvertButtonsEnabled(false)
+    UnrealNetwork.CallUnrealRPC(
+        PlayerController, PlayerController, "Server_ConvertAllSoulRingsToStardust")
+end
+function UI017:Button_263_OnClicked()
+    local PlayerController = self:GetLocalPlayerController()
+    local SelectedData = self.SelectedSoulRingCell ~= nil and
+        self.SelectedSoulRingCell.SoulRingData or nil
+    local ItemID = SelectedData ~= nil and tonumber(SelectedData.ItemID) or nil
+    if PlayerController == nil or ItemID == nil then
+        if PlayerController ~= nil and PlayerController.Client_ShowToast ~= nil then
+            PlayerController:Client_ShowToast("请先选择魂环")
+        end
+        return
+    end
+    self:SetSoulRingConvertButtonsEnabled(false)
+    UnrealNetwork.CallUnrealRPC(
+        PlayerController, PlayerController, "Server_ConvertSelectedSoulRingToStardust", ItemID)
+end
 function UI017:Open()
     self:SetVisibility(ESlateVisibility.Visible)
     self:RefreshCurrentPlayerLevel()
+    self:RefreshTextBlock66ItemCount()
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
         or GameplayStatics.GetPlayerController(self, 0)
     if PlayerController ~= nil then
@@ -938,6 +1042,17 @@ end
 
 function UI017:ApplySoulRingInventorySnapshot(Snapshot)
     self:RefreshSoulRingList(self:ParseSoulRingInventorySnapshot(Snapshot))
+end
+function UI017:ApplySoulRingConversionResult(bSuccess, StardustReward, StardustCount, Snapshot)
+    self:SetSoulRingConvertButtonsEnabled(true)
+    if bSuccess == true then
+        self:PlayConvertAnimation()
+    end
+    local CountText = self:GetWidget("TextBlock_66")
+    if CountText ~= nil then
+        CountText:SetText(tostring(math.max(0, math.floor(tonumber(StardustCount) or 0))))
+    end
+    self:ApplySoulRingInventorySnapshot(Snapshot)
 end
 
 function UI017:GetSoulRingIconPath(ItemID, Row)

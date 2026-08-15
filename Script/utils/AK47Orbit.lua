@@ -3,8 +3,8 @@
 
 local AK47Orbit = {}
 
--- 当前发布版本禁用武器环绕。恢复功能时只需改为 true，并恢复 UI 开关显示。
-AK47Orbit.FEATURE_ENABLED = false
+-- 武器环绕总开关。
+AK47Orbit.FEATURE_ENABLED = true
 
 function AK47Orbit.IsFeatureEnabled()
     return AK47Orbit.FEATURE_ENABLED == true

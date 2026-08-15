@@ -49,6 +49,11 @@ local SoulRingItemIDs = {
     8310048, 8310049, 8310051, 8310053, 8310054, 8310055, 8310056, 8310057, 8310052, 8310050,
     8310122, 8310123, 8310124, 8310125, 8310126, 8310127, 8310128, 8310129, 8310130, 8310131
 }
+local SoulRingStardustRates = {}
+for Index, ItemID in ipairs(SoulRingItemIDs) do
+    SoulRingStardustRates[ItemID] = Index
+end
+local STARDUST_ITEM_ID = 8310134
 local WingItemIDs = {
     [8310012] = true,
     [8310013] = true,
@@ -237,6 +242,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Client_YXWDInvincibleActiveChanged", "Server_RequestLottery", "Client_LotteryResult",
         "Server_RequestLotteryStateSync", "Client_SyncLotteryState", "Client_RefreshProperty",
         "Server_RequestSoulRingInventory", "Client_SyncSoulRingInventory",
+        "Server_ConvertAllSoulRingsToStardust", "Server_ConvertSelectedSoulRingToStardust",
+        "Client_SoulRingConversionResult",
         "Client_RefreshPlayerExp", "Server_SetFinalMaxHp", "Server_SetFinalAttack", "Server_RequestRefreshProperty",
         "Client_StartAutoMeleeAttack", "Server_SetAutoFeatureButtonHidden", "Client_SetAutoFeatureButtonHidden",
         "Client_SetTowerOutBoxVisible", "Client_OpenTowerTopUI", "Server_ClaimTowerTopReward",
@@ -255,10 +262,10 @@ function UGCPlayerController:GetAvailableServerRPCs()
 end
 
 function UGCPlayerController:Server_SetOrbitWeaponEnabled(bEnabled)
-    self.OrbitWeaponEnabled = false
+    self.OrbitWeaponEnabled = bEnabled == true
     local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
     if Pawn ~= nil and Pawn.SetOrbitWeaponEnabled ~= nil then
-        Pawn:SetOrbitWeaponEnabled(false)
+        Pawn:SetOrbitWeaponEnabled(self.OrbitWeaponEnabled)
     end
 end
 
@@ -1321,6 +1328,163 @@ function UGCPlayerController:Client_SyncSoulRingInventory(Snapshot)
         or self.UI017Instance or self.UI15Instance
     if SoulRingUI ~= nil and SoulRingUI.ApplySoulRingInventorySnapshot ~= nil then
         SoulRingUI:ApplySoulRingInventorySnapshot(Snapshot)
+    end
+end
+
+local function BuildBackpackSoulRingSnapshot(PlayerController)
+    local Pawn = GetPlayerPawn(PlayerController)
+    local Entries = {}
+    if Pawn == nil or UGCBackpackSystemV2 == nil or UGCBackpackSystemV2.GetItemCountV2 == nil then
+        return ""
+    end
+
+    for _, ItemID in ipairs(SoulRingItemIDs) do
+        local Success, Count = pcall(UGCBackpackSystemV2.GetItemCountV2, Pawn, ItemID)
+        Count = Success and math.max(0, math.floor(tonumber(Count) or 0)) or 0
+        if Count > 0 then
+            table.insert(Entries, tostring(ItemID) .. ":" .. tostring(Count))
+        end
+    end
+    return table.concat(Entries, ",")
+end
+
+function UGCPlayerController:Server_ConvertAllSoulRingsToStardust()
+    if self.bSoulRingConversionInProgress == true then
+        return
+    end
+    self.bSoulRingConversionInProgress = true
+
+    local Pawn = GetPlayerPawn(self)
+    local RemovedItems = {}
+    local StardustReward = 0
+    local bBackpackAvailable = Pawn ~= nil and UGCBackpackSystemV2 ~= nil and
+        UGCBackpackSystemV2.GetItemCountV2 ~= nil and
+        UGCBackpackSystemV2.RemoveItemV2 ~= nil and
+        UGCBackpackSystemV2.AddItemV2 ~= nil
+    if bBackpackAvailable then
+        for Index, ItemID in ipairs(SoulRingItemIDs) do
+            local CountOK, Count = pcall(UGCBackpackSystemV2.GetItemCountV2, Pawn, ItemID)
+            Count = CountOK and math.max(0, math.floor(tonumber(Count) or 0)) or 0
+            if Count > 0 then
+                local RemoveOK, RemovedCount = pcall(
+                    UGCBackpackSystemV2.RemoveItemV2, Pawn, ItemID, Count)
+                RemovedCount = RemoveOK and math.max(0, math.floor(tonumber(RemovedCount) or 0)) or 0
+                if RemovedCount > 0 then
+                    table.insert(RemovedItems, {ItemID = ItemID, Count = RemovedCount})
+                    StardustReward = StardustReward + RemovedCount * Index
+                end
+            end
+        end
+    end
+
+    local bSuccess = StardustReward > 0
+    local Message = "没有可转换的魂环"
+    if bSuccess then
+        local AddOK, AddedCount = pcall(
+            UGCBackpackSystemV2.AddItemV2, Pawn, STARDUST_ITEM_ID, StardustReward)
+        AddedCount = AddOK and math.max(0, math.floor(tonumber(AddedCount) or 0)) or 0
+        bSuccess = AddedCount == StardustReward
+        if bSuccess then
+            Message = "成功转换为" .. tostring(StardustReward) .. "个星尘"
+        else
+            if AddedCount > 0 then
+                pcall(UGCBackpackSystemV2.RemoveItemV2, Pawn, STARDUST_ITEM_ID, AddedCount)
+            end
+            for _, RemovedItem in ipairs(RemovedItems) do
+                pcall(UGCBackpackSystemV2.AddItemV2, Pawn, RemovedItem.ItemID, RemovedItem.Count)
+            end
+            StardustReward = 0
+            Message = "转换失败，魂环已返还"
+        end
+    elseif not bBackpackAvailable then
+        Message = "背包暂不可用，请稍后重试"
+    end
+
+    local StardustCount = 0
+    if Pawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.GetItemCountV2 ~= nil then
+        local CountOK, Count = pcall(UGCBackpackSystemV2.GetItemCountV2, Pawn, STARDUST_ITEM_ID)
+        StardustCount = CountOK and math.max(0, math.floor(tonumber(Count) or 0)) or 0
+    end
+    local Snapshot = BuildBackpackSoulRingSnapshot(self)
+    self.bSoulRingConversionInProgress = false
+    UnrealNetwork.CallUnrealRPC(
+        self, self, "Client_SoulRingConversionResult",
+        bSuccess, StardustReward, StardustCount, Snapshot, Message)
+end
+
+function UGCPlayerController:Server_ConvertSelectedSoulRingToStardust(ItemID)
+    if self.bSoulRingConversionInProgress == true then
+        return
+    end
+    self.bSoulRingConversionInProgress = true
+
+    ItemID = tonumber(ItemID)
+    local StardustRate = SoulRingStardustRates[ItemID]
+    local Pawn = GetPlayerPawn(self)
+    local bBackpackAvailable = Pawn ~= nil and UGCBackpackSystemV2 ~= nil and
+        UGCBackpackSystemV2.GetItemCountV2 ~= nil and
+        UGCBackpackSystemV2.RemoveItemV2 ~= nil and
+        UGCBackpackSystemV2.AddItemV2 ~= nil
+    local bSuccess = false
+    local StardustReward = 0
+    local Message = "请选择要转换的魂环"
+
+    if StardustRate ~= nil and bBackpackAvailable then
+        local CountOK, Count = pcall(UGCBackpackSystemV2.GetItemCountV2, Pawn, ItemID)
+        Count = CountOK and math.max(0, math.floor(tonumber(Count) or 0)) or 0
+        if Count > 0 then
+            local RemoveOK, RemovedCount = pcall(
+                UGCBackpackSystemV2.RemoveItemV2, Pawn, ItemID, Count)
+            RemovedCount = RemoveOK and math.max(0, math.floor(tonumber(RemovedCount) or 0)) or 0
+            if RemovedCount > 0 then
+                StardustReward = RemovedCount * StardustRate
+                local AddOK, AddedCount = pcall(
+                    UGCBackpackSystemV2.AddItemV2, Pawn, STARDUST_ITEM_ID, StardustReward)
+                AddedCount = AddOK and math.max(0, math.floor(tonumber(AddedCount) or 0)) or 0
+                bSuccess = AddedCount == StardustReward
+                if bSuccess then
+                    Message = "成功转换为" .. tostring(StardustReward) .. "个星尘"
+                else
+                    if AddedCount > 0 then
+                        pcall(UGCBackpackSystemV2.RemoveItemV2, Pawn, STARDUST_ITEM_ID, AddedCount)
+                    end
+                    pcall(UGCBackpackSystemV2.AddItemV2, Pawn, ItemID, RemovedCount)
+                    StardustReward = 0
+                    Message = "转换失败，魂环已返还"
+                end
+            else
+                Message = "魂环扣除失败，请稍后重试"
+            end
+        else
+            Message = "选中的魂环已不在背包中"
+        end
+    elseif StardustRate ~= nil and not bBackpackAvailable then
+        Message = "背包暂不可用，请稍后重试"
+    end
+
+    local StardustCount = 0
+    if Pawn ~= nil and UGCBackpackSystemV2 ~= nil and UGCBackpackSystemV2.GetItemCountV2 ~= nil then
+        local CountOK, Count = pcall(UGCBackpackSystemV2.GetItemCountV2, Pawn, STARDUST_ITEM_ID)
+        StardustCount = CountOK and math.max(0, math.floor(tonumber(Count) or 0)) or 0
+    end
+    local Snapshot = BuildBackpackSoulRingSnapshot(self)
+    self.bSoulRingConversionInProgress = false
+    UnrealNetwork.CallUnrealRPC(
+        self, self, "Client_SoulRingConversionResult",
+        bSuccess, StardustReward, StardustCount, Snapshot, Message)
+end
+
+function UGCPlayerController:Client_SoulRingConversionResult(
+    bSuccess, StardustReward, StardustCount, Snapshot, Message)
+    local MainUI = self.MainUIInstance
+    local SoulRingUI = MainUI and (MainUI.UI017Instance or MainUI.UI15Instance)
+        or self.UI017Instance or self.UI15Instance
+    if SoulRingUI ~= nil and SoulRingUI.ApplySoulRingConversionResult ~= nil then
+        SoulRingUI:ApplySoulRingConversionResult(
+            bSuccess, StardustReward, StardustCount, Snapshot)
+    end
+    if Message ~= nil and tostring(Message) ~= "" then
+        L_Com.ShowToast(tostring(Message))
     end
 end
 
