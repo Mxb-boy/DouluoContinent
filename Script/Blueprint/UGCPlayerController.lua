@@ -35,6 +35,7 @@ local ShadowDisabler = UGCGameSystem.UGCRequire("Script.Common.ShadowDisabler")
 local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil")
 local WeaponRefineConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponRefineConfig")
 local DEFAULT_WQ_HIT_EFFECT_PATH = "/Game/UGC/UGCGame/Skill/Arts_Effect/CG034/Particle/P_CG034UGC_Skill_SwordFire_03.P_CG034UGC_Skill_SwordFire_03"
+local Eat_All_Soul_Rings_Particle_Path = '/Game/Arts_Effect/ParticleSystems/Share/P_levelup_01.P_levelup_01' -- 一键吃魂环粒子特效路径
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
 local PaTa_Spawn_Point_ID = 201 -- 爬塔出生点
 local PaTa_Ticket_Item_ID = 8310064 -- 爬塔传送券
@@ -1917,7 +1918,7 @@ local function TryDisuseBackpackItem(PlayerController, ItemDefineID)
     return false
 end
 
---- 一键吃掉背包里的魂环
+--[[----------------------一键吃掉背包里的魂环------------------------]]
 function UGCPlayerController:Server_EatAllSoulRings()
     local Pawn = GetPlayerPawn(self)
     if Pawn == nil then
@@ -1926,12 +1927,14 @@ function UGCPlayerController:Server_EatAllSoulRings()
 
     local LastBaseAttack = nil
     local LastBaseMaxHp = nil
+    local Has_Eaten_Soul_Ring = false -- 是否成功吃到魂环
 
     for _, ItemID in ipairs(SoulRingItemIDs) do
         local Count = GetItemCount(self, ItemID)
         if Count > 0 and RemoveItem(self, ItemID, Count) then
             local Success, _, NewBaseAttack, NewBaseMaxHp = pcall(L_Com.UseHunHuan, Pawn, ItemID, Count)
             if Success then
+                Has_Eaten_Soul_Ring = true
                 LastBaseAttack = NewBaseAttack
                 LastBaseMaxHp = NewBaseMaxHp
                 TaskMgr:AddTaskProgressOnServer(L_Enum.AllTask.UseHunHuan, Count, self)
@@ -1945,6 +1948,18 @@ function UGCPlayerController:Server_EatAllSoulRings()
     if LastBaseAttack ~= nil and LastBaseMaxHp ~= nil then
         UnrealNetwork.CallUnrealRPC(self, self, "Client_RefreshProperty", LastBaseAttack, LastBaseMaxHp)
     end
+    if Has_Eaten_Soul_Ring then
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_PlayEatAllSoulRingsEffects")
+    end
+end
+
+--[[----------------------播放一键吃魂环成功效果------------------------]]
+function UGCPlayerController:Client_PlayEatAllSoulRingsEffects()
+    local Pawn = GetPlayerPawn(self)
+    if Pawn ~= nil then
+        L_Com.PlayParticleAtLocation(self, Eat_All_Soul_Rings_Particle_Path, Pawn:K2_GetActorLocation())
+    end
+    L_Com.PlaySound2D()
 end
 
 --- 商城购买后通过 V2 API 把物品加到背包，并清理虚拟物品（必须在服务端执行）

@@ -107,7 +107,6 @@ local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local Ma_NumShow = UGCGameSystem.UGCRequire("Script.Ma.Ma_NumShow")
-local Eat_All_Soul_Rings_Particle_Path = '/Game/Arts_Effect/ParticleSystems/Share/P_levelup_01.P_levelup_01' -- 一键吃魂环粒子特效路径
 
 local UI02 = {
     bInitDoOnce = false
@@ -1162,18 +1161,12 @@ function UI02:Button_93_OnClicked()
     self:RefreshToggleButtonColors()
 end
 
---[[----------------------使用一键吃魂环并播放粒子特效------------------------]]
+--[[----------------------请求一键吃魂环------------------------]]
 function UI02:Button_94_OnClicked()
     local PC = GameplayStatics.GetPlayerController(self, 0)
     if PC == nil then
         return
     end
-
-    local Pawn = PC.Pawn
-    if Pawn ~= nil then
-        L_Com.PlayParticleAtLocation(self, Eat_All_Soul_Rings_Particle_Path, Pawn:K2_GetActorLocation())
-    end
-    L_Com.PlaySound2D()
 
     UnrealNetwork.CallUnrealRPC(PC, PC, "Server_EatAllSoulRings")
 end
