@@ -1407,4 +1407,4 @@ function UI017:SelectSoulRing(SelectedCell)
     self.SelectedSoulRingCell = SelectedCell
 end
 
-return UI017
+return UI017
