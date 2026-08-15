@@ -12,6 +12,7 @@ local UGCPlayerState = {
     YXWD_InvincibleBuffToken = 0,
     LotteryState = {},
     WeaponLevels = {},
+    WeaponRefineStats = {},
     SignInEvent = {},
     UnlockedTitles = {},
     KillMonsterCount = 0,
@@ -90,6 +91,10 @@ local ARCHIVE_KEYS = {{
 }, {
     key = "WeaponLevels",
     field = "WeaponLevels",
+    default = {}
+}, {
+    key = "WeaponRefineStats",
+    field = "WeaponRefineStats",
     default = {}
 }, {
     key = "BaseAttack",
@@ -616,6 +621,71 @@ function UGCPlayerState:SetWeaponLevel(WeaponID, Level)
     local WeaponLevels = self:GetWeaponLevels()
     WeaponLevels[WeaponID] = math.max(1, Level)
     self:SetWeaponLevels(WeaponLevels)
+end
+
+local function NormalizeWeaponRefineStats(Value)
+    local Result = {}
+    if type(Value) ~= "table" then
+        return Result
+    end
+    for Key, Stats in pairs(Value) do
+        local GunIndex = math.floor(tonumber(Key) or 0)
+        if GunIndex >= 1 and GunIndex <= 8 and type(Stats) == "table" then
+            local Attack = tonumber(Stats.Attack or Stats.attack or Stats[1])
+            local AttackSpeed = tonumber(Stats.AttackSpeed or Stats.attackSpeed or Stats[2])
+            if Attack ~= nil and Attack > 0 and AttackSpeed ~= nil and AttackSpeed > 0 then
+                Result[GunIndex] = {
+                    Attack = math.floor(Attack * 100 + 0.5) / 100,
+                    AttackSpeed = math.floor(AttackSpeed * 100 + 0.5) / 100
+                }
+            end
+        end
+    end
+    return Result
+end
+
+function UGCPlayerState:GetWeaponRefineStats()
+    if type(self.WeaponRefineStats) ~= "table" then
+        self.WeaponRefineStats = {}
+    end
+    return self.WeaponRefineStats
+end
+
+function UGCPlayerState:GetWeaponRefineStat(GunIndex)
+    GunIndex = math.floor(tonumber(GunIndex) or 0)
+    local Stats = self:GetWeaponRefineStats()
+    return Stats[GunIndex] or Stats[tostring(GunIndex)]
+end
+
+function UGCPlayerState:SetWeaponRefineStats(Value)
+    self.WeaponRefineStats = NormalizeWeaponRefineStats(Value)
+    if self.bLoadingArchive then
+        return true
+    end
+    return self:SaveToArchive() == true
+end
+
+function UGCPlayerState:SetWeaponRefineStat(GunIndex, Attack, AttackSpeed)
+    GunIndex = math.floor(tonumber(GunIndex) or 0)
+    Attack = tonumber(Attack)
+    AttackSpeed = tonumber(AttackSpeed)
+    if GunIndex < 1 or GunIndex > 8 or Attack == nil or Attack <= 0 or
+        AttackSpeed == nil or AttackSpeed <= 0 then
+        return false
+    end
+
+    local OldStats = NormalizeWeaponRefineStats(self:GetWeaponRefineStats())
+    local NewStats = NormalizeWeaponRefineStats(OldStats)
+    NewStats[GunIndex] = {
+        Attack = math.floor(Attack * 100 + 0.5) / 100,
+        AttackSpeed = math.floor(AttackSpeed * 100 + 0.5) / 100
+    }
+    self.WeaponRefineStats = NewStats
+    if self:SaveToArchive() == true then
+        return true
+    end
+    self.WeaponRefineStats = OldStats
+    return false
 end
 
 function UGCPlayerState:GetSignInEvent()

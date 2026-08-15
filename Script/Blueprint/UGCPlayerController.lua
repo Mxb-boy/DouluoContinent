@@ -33,6 +33,7 @@ local TalentEffectMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentEffectMgr")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local ShadowDisabler = UGCGameSystem.UGCRequire("Script.Common.ShadowDisabler")
 local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil")
+local WeaponRefineConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponRefineConfig")
 local DEFAULT_WQ_HIT_EFFECT_PATH = "/Game/UGC/UGCGame/Skill/Arts_Effect/CG034/Particle/P_CG034UGC_Skill_SwordFire_03.P_CG034UGC_Skill_SwordFire_03"
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
 local PaTa_Spawn_Point_ID = 201 -- 爬塔出生点
@@ -258,7 +259,9 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "ServerRequestLeaveTeam", "ServerRequestKickPlayer", "ServerRequestDisbandTeam", "UseRedemptionCode",
         "Server_LearnTalent", "Client_TalentLearnResult",
         "Server_RequestTalentState", "Client_SyncTalentState", "Server_SetOrbitWeaponEnabled",
-        "Server_SelectOrbitWeapon", "Server_SetOrbitWeaponActiveGun"
+        "Server_SelectOrbitWeapon", "Server_SetOrbitWeaponActiveGun",
+        "Server_RequestWeaponRefineState", "Server_RefineOrbitWeapon", "Client_WeaponRefineResult",
+        "Server_ResolveWeaponRefine", "Client_WeaponRefineDecisionResult"
 end
 
 function UGCPlayerController:Server_SetOrbitWeaponEnabled(bEnabled)
@@ -291,14 +294,15 @@ function UGCPlayerController:Server_SetOrbitWeaponActiveGun(GunIndex, DamagePerc
     local PlayerLevel = Pawn.PlayerState ~= nil and Pawn.PlayerState.GetPlayerLevel ~= nil and
         tonumber(Pawn.PlayerState:GetPlayerLevel()) or 0
     if GunIndex >= 1 and GunIndex <= 8 and PlayerLevel >= GunIndex then
-        DamagePercent = tonumber(DamagePercent)
-        if DamagePercent ~= nil then
-            DamagePercent = math.max(0.01, math.min(10000, DamagePercent))
-        end
+        local UnlockedCount = math.max(1, math.min(8, math.floor(PlayerLevel)))
+        local SavedAttack = WeaponRefineConfig.GetCurrentStats(Pawn.PlayerState, GunIndex, UnlockedCount)
+        DamagePercent = tonumber(SavedAttack) or tonumber(DamagePercent)
+        DamagePercent = DamagePercent ~= nil and math.max(0.01, math.min(10000, DamagePercent)) or nil
         local SavedTier = tonumber(self.OrbitWeaponActiveGunTier) or 0
         local EffectiveTier = math.max(SavedTier, GunIndex)
         self.OrbitWeaponActiveGunTier = EffectiveTier
-        if GunIndex >= SavedTier and DamagePercent ~= nil then
+        self.OrbitWeaponSelectedGunIndex = GunIndex
+        if DamagePercent ~= nil then
             self.OrbitWeaponDamagePercent = DamagePercent
         end
         Pawn:SetOrbitWeaponActiveGun(EffectiveTier, self.OrbitWeaponDamagePercent)
@@ -1482,6 +1486,191 @@ function UGCPlayerController:Client_SoulRingConversionResult(
     if SoulRingUI ~= nil and SoulRingUI.ApplySoulRingConversionResult ~= nil then
         SoulRingUI:ApplySoulRingConversionResult(
             bSuccess, StardustReward, StardustCount, Snapshot)
+    end
+    if Message ~= nil and tostring(Message) ~= "" then
+        L_Com.ShowToast(tostring(Message))
+    end
+end
+
+local function BuildWeaponRefineSnapshot(PlayerState)
+    local Entries = {}
+    local StatsByGun = PlayerState ~= nil and PlayerState.GetWeaponRefineStats ~= nil and
+        PlayerState:GetWeaponRefineStats() or {}
+    for GunIndex = 1, WeaponRefineConfig.MAX_GUN_COUNT do
+        local Stats = StatsByGun[GunIndex] or StatsByGun[tostring(GunIndex)]
+        local Attack = type(Stats) == "table" and tonumber(Stats.Attack) or nil
+        local AttackSpeed = type(Stats) == "table" and tonumber(Stats.AttackSpeed) or nil
+        if Attack ~= nil and AttackSpeed ~= nil then
+            table.insert(Entries, tostring(GunIndex) .. ":" ..
+                WeaponRefineConfig.FormatNumber(Attack) .. ":" ..
+                WeaponRefineConfig.FormatNumber(AttackSpeed))
+        end
+    end
+    return table.concat(Entries, ",")
+end
+
+local function GetBackpackItemCount(Pawn, ItemID)
+    if Pawn == nil or UGCBackpackSystemV2 == nil or UGCBackpackSystemV2.GetItemCountV2 == nil then
+        return 0
+    end
+    local Success, Count = pcall(UGCBackpackSystemV2.GetItemCountV2, Pawn, ItemID)
+    return Success and math.max(0, math.floor(tonumber(Count) or 0)) or 0
+end
+
+function UGCPlayerController:Server_RequestWeaponRefineState()
+    local PlayerState = self.PlayerState
+    if PlayerState == nil or PlayerState.bArchiveLoaded ~= true then
+        return false
+    end
+    local Pawn = GetPlayerPawn(self)
+    local Pending = self.PendingWeaponRefine
+    local GunIndex = Pending ~= nil and Pending.GunIndex or 0
+    local Attack = Pending ~= nil and Pending.Attack or 0
+    local AttackSpeed = Pending ~= nil and Pending.AttackSpeed or 0
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_WeaponRefineResult", true,
+        GunIndex, Attack, AttackSpeed,
+        GetBackpackItemCount(Pawn, WeaponRefineConfig.STARDUST_ITEM_ID),
+        BuildWeaponRefineSnapshot(PlayerState), "")
+    return true
+end
+
+function UGCPlayerController:Server_RefineOrbitWeapon(GunIndex, bLockAttack, bLockAttackSpeed)
+    if self.bWeaponRefineInProgress == true then
+        return false
+    end
+    self.bWeaponRefineInProgress = true
+
+    GunIndex = math.floor(tonumber(GunIndex) or 0)
+    bLockAttack = bLockAttack == true
+    bLockAttackSpeed = bLockAttackSpeed == true
+    local PlayerState = self.PlayerState
+    local Pawn = GetPlayerPawn(self)
+    local PlayerLevel = PlayerState ~= nil and PlayerState.GetPlayerLevel ~= nil and
+        math.floor(tonumber(PlayerState:GetPlayerLevel()) or 0) or 0
+    local UnlockedCount = math.max(1, math.min(WeaponRefineConfig.MAX_GUN_COUNT, PlayerLevel))
+    local Row = WeaponRefineConfig.GetRow(GunIndex, UnlockedCount)
+    local bSuccess = false
+    local Attack, AttackSpeed = 0, 0
+    local Message = "洗练失败，请稍后重试"
+
+    EnsurePlayerStateArchiveUID(self)
+    if PlayerState == nil or PlayerState.bArchiveLoaded ~= true then
+        Message = "存档尚未加载，请稍后重试"
+    elseif GunIndex < 1 or GunIndex > WeaponRefineConfig.MAX_GUN_COUNT or GunIndex > PlayerLevel then
+        Message = "该武器尚未解锁"
+    elseif bLockAttack and bLockAttackSpeed then
+        Message = "攻击和攻速不能同时锁定"
+    elseif self.PendingWeaponRefine ~= nil then
+        Message = "请先确认或放弃上一次洗练属性"
+    elseif Row == nil then
+        Message = "洗练配置读取失败"
+    elseif Pawn == nil or UGCBackpackSystemV2 == nil or
+        UGCBackpackSystemV2.GetItemCountV2 == nil or UGCBackpackSystemV2.RemoveItemV2 == nil then
+        Message = "背包暂不可用，请稍后重试"
+    else
+        local Cost = math.max(1, math.floor(tonumber(Row.Cost) or 1))
+        local StardustCount = GetBackpackItemCount(Pawn, WeaponRefineConfig.STARDUST_ITEM_ID)
+        if StardustCount < Cost then
+            Message = "星尘不足，需要" .. tostring(Cost) .. "个"
+        else
+            local RemoveOK, RemovedCount = pcall(UGCBackpackSystemV2.RemoveItemV2, Pawn,
+                WeaponRefineConfig.STARDUST_ITEM_ID, Cost)
+            RemovedCount = RemoveOK and math.max(0, math.floor(tonumber(RemovedCount) or 0)) or 0
+            if RemovedCount ~= Cost then
+                if RemovedCount > 0 and UGCBackpackSystemV2.AddItemV2 ~= nil then
+                    pcall(UGCBackpackSystemV2.AddItemV2, Pawn,
+                        WeaponRefineConfig.STARDUST_ITEM_ID, RemovedCount)
+                end
+                Message = "星尘扣除失败，请稍后重试"
+            else
+                Attack, AttackSpeed = WeaponRefineConfig.Roll(Row)
+                local CurrentAttack, CurrentAttackSpeed =
+                    WeaponRefineConfig.GetCurrentStats(PlayerState, GunIndex, UnlockedCount)
+                if bLockAttack then
+                    Attack = CurrentAttack
+                end
+                if bLockAttackSpeed then
+                    AttackSpeed = CurrentAttackSpeed
+                end
+                self.PendingWeaponRefine = {
+                    GunIndex = GunIndex,
+                    Attack = Attack,
+                    AttackSpeed = AttackSpeed,
+                    UnlockedCount = UnlockedCount
+                }
+                bSuccess = true
+                Message = "洗练完成，请确认是否更换属性"
+            end
+        end
+    end
+
+    local Snapshot = BuildWeaponRefineSnapshot(PlayerState)
+    local StardustCount = GetBackpackItemCount(Pawn, WeaponRefineConfig.STARDUST_ITEM_ID)
+    self.bWeaponRefineInProgress = false
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_WeaponRefineResult", bSuccess, GunIndex,
+        Attack, AttackSpeed, StardustCount, Snapshot, Message)
+    return bSuccess
+end
+
+function UGCPlayerController:Server_ResolveWeaponRefine(bAccept)
+    local Pending = self.PendingWeaponRefine
+    local PlayerState = self.PlayerState
+    local Pawn = GetPlayerPawn(self)
+    local bSuccess = false
+    local bAccepted = bAccept == true
+    local Message = "没有待处理的洗练属性"
+
+    if Pending ~= nil then
+        if not bAccepted then
+            self.PendingWeaponRefine = nil
+            bSuccess = true
+            Message = "已放弃新洗练属性"
+        elseif PlayerState == nil or PlayerState.bArchiveLoaded ~= true or
+            PlayerState.SetWeaponRefineStat == nil then
+            Message = "存档尚未加载，请稍后重试"
+        else
+            bSuccess = PlayerState:SetWeaponRefineStat(Pending.GunIndex,
+                Pending.Attack, Pending.AttackSpeed) == true
+            if bSuccess then
+                self.PendingWeaponRefine = nil
+                Message = "新洗练属性已更换"
+                if self.OrbitWeaponSelectedGunIndex == Pending.GunIndex and
+                    Pawn ~= nil and Pawn.SetOrbitWeaponActiveGun ~= nil then
+                    self.OrbitWeaponDamagePercent = Pending.Attack
+                    Pawn:SetOrbitWeaponActiveGun(Pending.UnlockedCount, Pending.Attack)
+                end
+            else
+                Message = "属性保存失败，请重试"
+            end
+        end
+    end
+
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_WeaponRefineDecisionResult",
+        bSuccess, bAccepted,
+        GetBackpackItemCount(Pawn, WeaponRefineConfig.STARDUST_ITEM_ID),
+        BuildWeaponRefineSnapshot(PlayerState), Message)
+    return bSuccess
+end
+
+function UGCPlayerController:Client_WeaponRefineResult(bSuccess, GunIndex, Attack, AttackSpeed,
+    StardustCount, Snapshot, Message)
+    local MainUI = self.MainUIInstance
+    local WeaponUI = MainUI and MainUI.UI017Instance or self.UI017Instance
+    if WeaponUI ~= nil and WeaponUI.ApplyWeaponRefineResult ~= nil then
+        WeaponUI:ApplyWeaponRefineResult(bSuccess, GunIndex, Attack, AttackSpeed,
+            StardustCount, Snapshot)
+    end
+    if Message ~= nil and tostring(Message) ~= "" then
+        L_Com.ShowToast(tostring(Message))
+    end
+end
+
+function UGCPlayerController:Client_WeaponRefineDecisionResult(bSuccess, bAccepted,
+    StardustCount, Snapshot, Message)
+    local MainUI = self.MainUIInstance
+    local WeaponUI = MainUI and MainUI.UI017Instance or self.UI017Instance
+    if WeaponUI ~= nil and WeaponUI.ApplyWeaponRefineDecisionResult ~= nil then
+        WeaponUI:ApplyWeaponRefineDecisionResult(bSuccess, bAccepted, StardustCount, Snapshot)
     end
     if Message ~= nil and tostring(Message) ~= "" then
         L_Com.ShowToast(tostring(Message))
