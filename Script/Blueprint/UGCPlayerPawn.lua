@@ -32,15 +32,6 @@ local DEFAULT_BASE_ATTACK = 40
 local WING_ATTACH_PART_TYPE = 61
 local WING_ATTACH_FIX_INTERVAL = 0.25
 local WING_ATTACH_FIX_ATTEMPTS = 120
-local WING_ITEM_IDS = {
-    [8310012] = true,
-    [8310013] = true,
-    [8310014] = true,
-    [8310058] = true,
-    [8310059] = true,
-    [8310010] = true
-}
-local WING_EQUIPMENT_SLOT = "CB_CW"
 local bTeamPanelCreated = false
 local bLobbyQuitScheduled = false
 
@@ -98,8 +89,9 @@ local function IsWingAttachConfig(Config)
     end
 
     local ActorPath = tostring(ActorClass)
-    if ActorClass.GetPathName ~= nil then
-        local SuccessPath, Path = pcall(ActorClass.GetPathName, ActorClass)
+    -- BlueprintGeneratedClass 的 UObject 方法不一定能通过实例索引访问；使用 Lua 全局对象接口。
+    if UE ~= nil and UE.GetPathName ~= nil then
+        local SuccessPath, Path = pcall(UE.GetPathName, ActorClass)
         if SuccessPath and Path ~= nil then
             ActorPath = tostring(Path)
         end
@@ -177,43 +169,6 @@ local function RefreshWingActorList(player, Configs, Actors)
     return SuccessLoop and bFixedAny == true
 end
 
-local function GetLocalWingHandle(player)
-    if not IsLocalPlayerPawn(player) or UGCBackpackSystemV2 == nil or
-        UGCBackpackSystemV2.GetEquippedItemBySlotName == nil or
-        UGCBackpackSystemV2.GetBackpackComponentV2 == nil then
-        return nil
-    end
-
-    local SuccessEquip, DefineID = pcall(UGCBackpackSystemV2.GetEquippedItemBySlotName, player,
-        WING_EQUIPMENT_SLOT)
-    if not SuccessEquip or DefineID == nil then
-        return nil
-    end
-
-    local SuccessID, ItemID = pcall(function()
-        if type(DefineID) == "number" or type(DefineID) == "string" then
-            return tonumber(DefineID)
-        end
-        return tonumber(DefineID.TypeSpecificID or DefineID.ItemID or DefineID.ItemId)
-    end)
-    if not SuccessID or WING_ITEM_IDS[ItemID] ~= true then
-        return nil
-    end
-
-    local SuccessBackpack, Backpack = pcall(UGCBackpackSystemV2.GetBackpackComponentV2, player)
-    if not SuccessBackpack or not IsValidObject(Backpack) then
-        return nil
-    end
-    local SuccessMethod, GetItemV2 = pcall(function()
-        return Backpack.GetItemV2
-    end)
-    if not SuccessMethod or GetItemV2 == nil then
-        return nil
-    end
-    local SuccessHandle, Handle = pcall(GetItemV2, Backpack, DefineID)
-    return SuccessHandle and Handle or nil
-end
-
 local function RefreshWingAttachments(player)
     if not IsValidObject(player) then
         return false
@@ -226,15 +181,8 @@ local function RefreshWingAttachments(player)
         end
     end
 
-    local bFixedAny = RefreshWingActorList(player, player.AttachActorConfigs, player.AttachActors)
-
-    -- 拥有者客户端的翅膀由物品 Handle 本地生成，不一定出现在 Pawn.AttachActors 中。
-    local WingHandle = GetLocalWingHandle(player)
-    if IsValidObject(WingHandle) then
-        bFixedAny = RefreshWingActorList(player, WingHandle.AttachActorConfigs,
-            WingHandle.SpawnedAttachActors) or bFixedAny
-    end
-    return bFixedAny
+    -- BP_UGCPlayerPawn 明确公开这两个字段；GetItemV2 返回的 BattleItemWrapper 不保证是装备 Handle 子类。
+    return RefreshWingActorList(player, player.AttachActorConfigs, player.AttachActors)
 end
 
 local function StartWingAttachmentFix(player)
@@ -1156,6 +1104,8 @@ function UGCPlayerPawn:ReceiveBeginPlay()
         self.OrbitWeaponClassPath = OrbitController.OrbitWeaponClassPath
         self.OrbitWeaponHitEffectPath = OrbitController.OrbitWeaponHitEffectPath
         self.OrbitWeaponDamagePercent = OrbitController.OrbitWeaponDamagePercent
+        self.OrbitWeaponSkinIndex = OrbitController.OrbitWeaponSkinIndex
+        self.OrbitWeaponDamagePercents = OrbitController.OrbitWeaponDamagePercents
     end
     local CurrentLevel = self.PlayerState ~= nil and self.PlayerState.GetPlayerLevel ~= nil and
         tonumber(self.PlayerState:GetPlayerLevel()) or 1
@@ -1257,6 +1207,14 @@ function UGCPlayerPawn:SetOrbitWeaponActiveGun(GunIndex, DamagePercent)
         end
     end
     return AK47Orbit.SetActiveGun(self, EffectiveTier, EffectiveDamagePercent)
+end
+
+function UGCPlayerPawn:SetOrbitWeaponDamagePercents(DamagePercents)
+    local OrbitController = GetOrbitWeaponController(self)
+    if OrbitController ~= nil then
+        OrbitController.OrbitWeaponDamagePercents = DamagePercents
+    end
+    return AK47Orbit.SetDamagePercents(self, DamagePercents)
 end
 
 function UGCPlayerPawn:ReceiveTick(DeltaTime)
