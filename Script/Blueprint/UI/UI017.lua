@@ -47,6 +47,8 @@
 ---@field Button_120 UButton
 ---@field Button_126 UButton
 ---@field Button_127 UButton
+---@field Button_148 UButton
+---@field Button_149 UButton
 ---@field Button_154 UButton
 ---@field Button_263 UButton
 ---@field Button_359 UButton
@@ -84,7 +86,11 @@
 ---@field Image_21 UImage
 ---@field Image_22 UImage
 ---@field Image_23 UImage
+---@field Image_24 UImage
+---@field Image_25 UImage
 ---@field Image_26 UImage
+---@field Image_27 UImage
+---@field Image_28 UImage
 ---@field Image_39 UImage
 ---@field Image_40 UImage
 ---@field Image_41 UImage
@@ -109,6 +115,8 @@
 ---@field Image_103 UImage
 ---@field Image_138 UImage
 ---@field Image_139 UImage
+---@field Image_154 UImage
+---@field Image_155 UImage
 ---@field Image_181 UImage
 ---@field Image_182 UImage
 ---@field Image_192 UImage
@@ -116,9 +124,11 @@
 ---@field Image_210 UImage
 ---@field Image_238 UImage
 ---@field Image_239 UImage
+---@field Image_296 UImage
 ---@field Image_358 UImage
 ---@field Image_375 UImage
 ---@field Image_397 UImage
+---@field Image_408 UImage
 ---@field Image_453 UImage
 ---@field Image_454 UImage
 ---@field Image_458 UImage
@@ -143,7 +153,11 @@
 ---@field TextBlock_3 UTextBlock
 ---@field TextBlock_4 UTextBlock
 ---@field TextBlock_5 UTextBlock
+---@field TextBlock_12 UTextBlock
+---@field TextBlock_14 UTextBlock
+---@field TextBlock_16 UTextBlock
 ---@field TextBlock_66 UTextBlock
+---@field TextBlock_108 UTextBlock
 ---@field TextBlock_159 UTextBlock
 ---@field TextBlock_160 UTextBlock
 ---@field TextBlock_161 UTextBlock
@@ -329,17 +343,6 @@ function UI017:SelectXzwqSlot(Index)
     end
     self.SelectedXzwqSlotIndex = Index
     self:RefreshSelectedXzwqStats(Index)
-    local Attack = self:GetCurrentWeaponStats(Index)
-    local PlayerPawn = self:GetLocalPlayerPawn()
-    if PlayerPawn ~= nil and PlayerPawn.SetOrbitWeaponActiveGun ~= nil then
-        PlayerPawn:SetOrbitWeaponActiveGun(Index, Attack)
-    end
-    local PlayerController = self:GetLocalPlayerController()
-    local bAuthority = PlayerPawn ~= nil and PlayerPawn.HasAuthority ~= nil and PlayerPawn:HasAuthority()
-    if not bAuthority and PlayerController ~= nil then
-        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SetOrbitWeaponActiveGun",
-            Index, Attack)
-    end
     self:RefreshXzwqSlotSelection()
     return true
 end
@@ -381,7 +384,7 @@ end
 
 function UI017:GetUnlockedXzwqSlotCount()
     local Count = 0
-    for Index = 1, WeaponRefineConfig.MAX_GUN_COUNT do
+    for Index = 1, WeaponRefineConfig.MAX_WEAPON_COUNT do
         if self.XzwqSlotUnlockedByIndex ~= nil and self.XzwqSlotUnlockedByIndex[Index] == true then
             Count = Count + 1
         end
@@ -389,16 +392,34 @@ function UI017:GetUnlockedXzwqSlotCount()
     return math.max(1, Count)
 end
 
-function UI017:GetCurrentWeaponStats(SlotIndex)
+function UI017:GetCurrentWeaponStats(SlotIndex, SkinIndex)
     SlotIndex = math.floor(tonumber(SlotIndex) or 1)
-    local Row = WeaponRefineConfig.GetRow(SlotIndex, self:GetUnlockedXzwqSlotCount())
+    SkinIndex = math.floor(tonumber(SkinIndex) or tonumber(self.SelectedXzwqIndex) or 0)
+    local Row = WeaponRefineConfig.GetRow(SkinIndex, SlotIndex)
     if Row == nil then
         return 0, 0, nil
     end
-    local Saved = self.WeaponRefineStats ~= nil and self.WeaponRefineStats[SlotIndex] or nil
+    local SkinStats = self.WeaponRefineStats ~= nil and self.WeaponRefineStats[SkinIndex] or nil
+    local Saved = SkinStats ~= nil and SkinStats[SlotIndex] or nil
     local Attack = Saved ~= nil and tonumber(Saved.Attack) or Row.DefaultAttack
     local AttackSpeed = Saved ~= nil and tonumber(Saved.AttackSpeed) or Row.DefaultAttackSpeed
     return Attack, AttackSpeed, Row
+end
+
+function UI017:ApplySelectedSkinDamagePercents()
+    local PlayerPawn = self:GetLocalPlayerPawn()
+    if PlayerPawn == nil or PlayerPawn.SetOrbitWeaponDamagePercents == nil or
+        self.SelectedXzwqIndex == nil then
+        return false
+    end
+    local DamagePercents = {}
+    for WeaponIndex = 1, self:GetUnlockedXzwqSlotCount() do
+        local Attack = self:GetCurrentWeaponStats(WeaponIndex)
+        if tonumber(Attack) ~= nil then
+            DamagePercents[WeaponIndex] = tonumber(Attack)
+        end
+    end
+    return PlayerPawn:SetOrbitWeaponDamagePercents(DamagePercents) == true
 end
 
 function UI017:RefreshSelectedXzwqStats(SlotIndex)
@@ -417,72 +438,91 @@ end
 function UI017:ApplyWeaponRefineSnapshot(Snapshot)
     local Stats = {}
     for Entry in string.gmatch(tostring(Snapshot or ""), "[^,]+") do
-        local GunText, AttackText, SpeedText = string.match(Entry,
-            "^(%d+):([%d%.]+):([%d%.]+)$")
-        local GunIndex = tonumber(GunText)
+        local SkinText, WeaponText, AttackText, SpeedText = string.match(Entry,
+            "^(%d+)%.(%d+):([%d%.]+):([%d%.]+)$")
+        local SkinIndex = tonumber(SkinText)
+        local WeaponIndex = tonumber(WeaponText)
         local Attack = tonumber(AttackText)
         local AttackSpeed = tonumber(SpeedText)
-        if GunIndex ~= nil and GunIndex >= 1 and GunIndex <= WeaponRefineConfig.MAX_GUN_COUNT and
+        if SkinIndex ~= nil and SkinIndex >= 1 and
+            SkinIndex <= WeaponRefineConfig.MAX_SKIN_COUNT and WeaponIndex ~= nil and
+            WeaponIndex >= 1 and WeaponIndex <= WeaponRefineConfig.MAX_WEAPON_COUNT and
             Attack ~= nil and AttackSpeed ~= nil then
-            Stats[GunIndex] = {Attack = Attack, AttackSpeed = AttackSpeed}
+            Stats[SkinIndex] = Stats[SkinIndex] or {}
+            Stats[SkinIndex][WeaponIndex] = {Attack = Attack, AttackSpeed = AttackSpeed}
         end
     end
     self.WeaponRefineStats = Stats
 end
 
-function UI017:ApplyWeaponRefineResult(bSuccess, GunIndex, Attack, AttackSpeed,
+function UI017:ApplyWeaponRefineResult(bSuccess, SkinIndex, WeaponIndex, Attack, AttackSpeed,
     StardustCount, Snapshot)
     self:ApplyWeaponRefineSnapshot(Snapshot)
+    self:ApplySelectedSkinDamagePercents()
     local CountText = self:GetWidget("TextBlock_66")
     if CountText ~= nil then
         CountText:SetText(tostring(math.max(0, math.floor(tonumber(StardustCount) or 0))))
     end
     local RefineButton = self:GetWidget("Button_127")
     if RefineButton ~= nil and RefineButton.SetIsEnabled ~= nil then
-        local bWaitingForDecision = bSuccess == true and (tonumber(GunIndex) or 0) >= 1
+        local bWaitingForDecision = bSuccess == true and (tonumber(SkinIndex) or 0) >= 1 and
+            (tonumber(WeaponIndex) or 0) >= 1
         RefineButton:SetIsEnabled(not bWaitingForDecision)
     end
     if self.SelectedXzwqSlotIndex ~= nil then
         self:RefreshSelectedXzwqStats(self.SelectedXzwqSlotIndex)
     end
-    if bSuccess == true and (tonumber(GunIndex) or 0) >= 1 then
-        self:OpenWeaponRefineResultPage(GunIndex, Attack, AttackSpeed)
+    if bSuccess == true and (tonumber(SkinIndex) or 0) >= 1 and
+        (tonumber(WeaponIndex) or 0) >= 1 then
+        self:OpenWeaponRefineResultPage(SkinIndex, WeaponIndex, Attack, AttackSpeed)
     end
 end
 
-function UI017:OpenWeaponRefineResultPage(GunIndex, Attack, AttackSpeed)
-    if self.Wq2Instance ~= nil then
-        if self.Wq2Instance.SetWeaponRefineResult ~= nil then
-            self.Wq2Instance:SetWeaponRefineResult(GunIndex, Attack, AttackSpeed, self)
-        end
-        self.Wq2Instance:SetVisibility(ESlateVisibility.Visible)
-        return true
-    end
-
-    local PlayerController = self:GetLocalPlayerController()
-    local Wq2Path = PROJECT_ROOT_PATH .. "Asset/Blueprint/UI/wq2.wq2_C"
-    local Wq2Class = UE.LoadClass(Wq2Path)
-    if PlayerController == nil or Wq2Class == nil then
-        ugcprint("[UI017] wq2 class load failed: " .. tostring(Wq2Path))
+function UI017:SetWeaponRefineResultPageVisible(bVisible)
+    local ResultPanel = self:GetWidget("CanvasPanel_9")
+    if ResultPanel == nil then
         return false
     end
-    local Wq2Instance = UserWidget.NewWidgetObjectBP(PlayerController, Wq2Class)
-    if Wq2Instance == nil then
-        ugcprint("[UI017] wq2 create failed")
-        return false
-    end
-    self.Wq2Instance = Wq2Instance
-    if Wq2Instance.SetWeaponRefineResult ~= nil then
-        Wq2Instance:SetWeaponRefineResult(GunIndex, Attack, AttackSpeed, self)
-    end
-    Wq2Instance:AddToViewport(12000)
-    Wq2Instance:SetVisibility(ESlateVisibility.Visible)
+    ResultPanel:SetVisibility(
+        bVisible == true and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
     return true
 end
 
+function UI017:SetWeaponRefineDecisionButtonsEnabled(bEnabled)
+    for _, ButtonName in ipairs({"Button_148", "Button_149"}) do
+        local Button = self:GetWidget(ButtonName)
+        if Button ~= nil and Button.SetIsEnabled ~= nil then
+            Button:SetIsEnabled(bEnabled == true)
+        end
+    end
+end
+
+function UI017:OpenWeaponRefineResultPage(SkinIndex, WeaponIndex, Attack, AttackSpeed)
+    local PreviousAttack, PreviousAttackSpeed =
+        self:GetCurrentWeaponStats(WeaponIndex, SkinIndex)
+    local Values = {
+        TextBlock_108 = PreviousAttack,
+        TextBlock_12 = PreviousAttackSpeed,
+        TextBlock_14 = Attack,
+        TextBlock_16 = AttackSpeed
+    }
+    for WidgetName, Value in pairs(Values) do
+        local TextWidget = self:GetWidget(WidgetName)
+        if TextWidget ~= nil then
+            TextWidget:SetText(WeaponRefineConfig.FormatNumber(Value))
+        end
+    end
+    self.PendingWeaponRefineSkinIndex = tonumber(SkinIndex)
+    self.PendingWeaponRefineWeaponIndex = tonumber(WeaponIndex)
+    self:SetWeaponRefineDecisionButtonsEnabled(true)
+    return self:SetWeaponRefineResultPageVisible(true)
+end
+
 function UI017:ResolveWeaponRefine(bAccept)
+    self:SetWeaponRefineDecisionButtonsEnabled(false)
     local PlayerController = self:GetLocalPlayerController()
     if PlayerController == nil then
+        self:SetWeaponRefineDecisionButtonsEnabled(true)
         return false
     end
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController,
@@ -492,14 +532,15 @@ end
 
 function UI017:ApplyWeaponRefineDecisionResult(bSuccess, bAccepted, StardustCount, Snapshot)
     self:ApplyWeaponRefineSnapshot(Snapshot)
+    self:ApplySelectedSkinDamagePercents()
     local CountText = self:GetWidget("TextBlock_66")
     if CountText ~= nil then
         CountText:SetText(tostring(math.max(0, math.floor(tonumber(StardustCount) or 0))))
     end
     if bSuccess == true then
-        if self.Wq2Instance ~= nil then
-            self.Wq2Instance:SetVisibility(ESlateVisibility.Collapsed)
-        end
+        self:SetWeaponRefineResultPageVisible(false)
+        self.PendingWeaponRefineSkinIndex = nil
+        self.PendingWeaponRefineWeaponIndex = nil
         local RefineButton = self:GetWidget("Button_127")
         if RefineButton ~= nil and RefineButton.SetIsEnabled ~= nil then
             RefineButton:SetIsEnabled(true)
@@ -507,15 +548,24 @@ function UI017:ApplyWeaponRefineDecisionResult(bSuccess, bAccepted, StardustCoun
         if self.SelectedXzwqSlotIndex ~= nil then
             self:RefreshSelectedXzwqStats(self.SelectedXzwqSlotIndex)
         end
-    elseif self.Wq2Instance ~= nil and self.Wq2Instance.SetDecisionButtonsEnabled ~= nil then
-        self.Wq2Instance:SetDecisionButtonsEnabled(true)
+    else
+        self:SetWeaponRefineDecisionButtonsEnabled(true)
     end
 end
 
+function UI017:Button_148_OnClicked()
+    return self:ResolveWeaponRefine(false)
+end
+
+function UI017:Button_149_OnClicked()
+    return self:ResolveWeaponRefine(true)
+end
+
 function UI017:Button_127_OnClicked()
-    local GunIndex = tonumber(self.SelectedXzwqSlotIndex)
+    local SkinIndex = tonumber(self.SelectedXzwqIndex)
+    local WeaponIndex = tonumber(self.SelectedXzwqSlotIndex)
     local PlayerController = self:GetLocalPlayerController()
-    if PlayerController == nil or GunIndex == nil then
+    if PlayerController == nil or SkinIndex == nil or WeaponIndex == nil then
         return
     end
     if self.bWeaponAttackLocked == true and self.bWeaponAttackSpeedLocked == true then
@@ -529,7 +579,7 @@ function UI017:Button_127_OnClicked()
         RefineButton:SetIsEnabled(false)
     end
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController,
-        "Server_RefineOrbitWeapon", GunIndex, self.bWeaponAttackLocked == true,
+        "Server_RefineOrbitWeapon", SkinIndex, WeaponIndex, self.bWeaponAttackLocked == true,
         self.bWeaponAttackSpeedLocked == true)
 end
 
@@ -780,6 +830,11 @@ function UI017:RefreshXzwqConfig(PlayerLevel)
     if self.SelectedXzwqIndex ~= nil then
         self:RefreshSelectedXzwqWeaponSlots(self.SelectedXzwqIndex)
     end
+    if not self.bXzwqSkinInitialized and self.SelectedXzwqIndex ~= nil then
+        self.bXzwqSkinInitialized = true
+        self:SelectXzwqWeapon(self.SelectedXzwqIndex)
+        return
+    end
     self:RefreshXzwqSlotSelection()
     if not self.bXzwqSlotInitialized and self.SelectedXzwqSlotIndex ~= nil then
         self.bXzwqSlotInitialized = true
@@ -810,15 +865,17 @@ function UI017:SelectXzwqWeapon(Index)
     if PlayerController ~= nil then
         PlayerController.OrbitWeaponClassPath = WeaponClassPath
         PlayerController.OrbitWeaponHitEffectPath = HitEffectPath
+        PlayerController.OrbitWeaponSkinIndex = Index
         PlayerController.OrbitWeaponEnabled = PlayerPawn.IsOrbitWeaponEnabled ~= nil and
             PlayerPawn:IsOrbitWeaponEnabled() or false
     end
     local bAuthority = PlayerPawn.HasAuthority ~= nil and PlayerPawn:HasAuthority()
     if not bAuthority and PlayerController ~= nil then
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SelectOrbitWeapon",
-            WeaponClassPath, HitEffectPath)
+            WeaponClassPath, HitEffectPath, Index)
     end
     self.SelectedXzwqIndex = Index
+    self:ApplySelectedSkinDamagePercents()
     self:RefreshSelectedXzwqWeaponSlots(Index)
     if self.SelectedXzwqSlotIndex ~= nil then
         self:SelectXzwqSlot(self.SelectedXzwqSlotIndex)
@@ -943,6 +1000,15 @@ function UI017:LuaInit()
     if Button127 ~= nil then
         Button127.OnClicked:Add(self.Button_127_OnClicked, self)
     end
+    local GiveUpButton = self:GetWidget("Button_148")
+    if GiveUpButton ~= nil then
+        GiveUpButton.OnClicked:Add(self.Button_148_OnClicked, self)
+    end
+    local ReplaceButton = self:GetWidget("Button_149")
+    if ReplaceButton ~= nil then
+        ReplaceButton.OnClicked:Add(self.Button_149_OnClicked, self)
+    end
+    self:SetWeaponRefineResultPageVisible(false)
     self.bWeaponAttackLocked = false
     self.bWeaponAttackSpeedLocked = false
     local AttackLockCheckBox = self:GetWidget("CheckBox_100")

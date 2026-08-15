@@ -626,16 +626,38 @@ local function NormalizeWeaponRefineStats(Value)
     if type(Value) ~= "table" then
         return Result
     end
-    for Key, Stats in pairs(Value) do
-        local GunIndex = math.floor(tonumber(Key) or 0)
-        if GunIndex >= 1 and GunIndex <= 8 and type(Stats) == "table" then
-            local Attack = tonumber(Stats.Attack or Stats.attack or Stats[1])
-            local AttackSpeed = tonumber(Stats.AttackSpeed or Stats.attackSpeed or Stats[2])
-            if Attack ~= nil and Attack > 0 and AttackSpeed ~= nil and AttackSpeed > 0 then
-                Result[GunIndex] = {
-                    Attack = math.floor(Attack * 100 + 0.5) / 100,
-                    AttackSpeed = math.floor(AttackSpeed * 100 + 0.5) / 100
-                }
+    local function NormalizeOne(Stats)
+        if type(Stats) ~= "table" then
+            return nil
+        end
+        local Attack = tonumber(Stats.Attack or Stats.attack or Stats[1])
+        local AttackSpeed = tonumber(Stats.AttackSpeed or Stats.attackSpeed or Stats[2])
+        if Attack == nil or Attack <= 0 or AttackSpeed == nil or AttackSpeed <= 0 then
+            return nil
+        end
+        return {
+            Attack = math.floor(Attack * 100 + 0.5) / 100,
+            AttackSpeed = math.floor(AttackSpeed * 100 + 0.5) / 100
+        }
+    end
+
+    for SkinKey, SkinStats in pairs(Value) do
+        local SkinIndex = math.floor(tonumber(SkinKey) or 0)
+        if SkinIndex >= 1 and SkinIndex <= 12 and type(SkinStats) == "table" then
+            local LegacyStats = NormalizeOne(SkinStats)
+            if LegacyStats ~= nil and SkinIndex <= 8 then
+                -- 旧存档只有“槽位 -> 属性”；统一迁移到第一套皮肤。
+                Result[1] = Result[1] or {}
+                Result[1][SkinIndex] = LegacyStats
+            else
+                for WeaponKey, Stats in pairs(SkinStats) do
+                    local WeaponIndex = math.floor(tonumber(WeaponKey) or 0)
+                    local Normalized = NormalizeOne(Stats)
+                    if WeaponIndex >= 1 and WeaponIndex <= 8 and Normalized ~= nil then
+                        Result[SkinIndex] = Result[SkinIndex] or {}
+                        Result[SkinIndex][WeaponIndex] = Normalized
+                    end
+                end
             end
         end
     end
@@ -649,10 +671,13 @@ function UGCPlayerState:GetWeaponRefineStats()
     return self.WeaponRefineStats
 end
 
-function UGCPlayerState:GetWeaponRefineStat(GunIndex)
-    GunIndex = math.floor(tonumber(GunIndex) or 0)
+function UGCPlayerState:GetWeaponRefineStat(SkinIndex, WeaponIndex)
+    SkinIndex = math.floor(tonumber(SkinIndex) or 0)
+    WeaponIndex = math.floor(tonumber(WeaponIndex) or 0)
     local Stats = self:GetWeaponRefineStats()
-    return Stats[GunIndex] or Stats[tostring(GunIndex)]
+    local SkinStats = Stats[SkinIndex] or Stats[tostring(SkinIndex)]
+    return type(SkinStats) == "table" and
+        (SkinStats[WeaponIndex] or SkinStats[tostring(WeaponIndex)]) or nil
 end
 
 function UGCPlayerState:SetWeaponRefineStats(Value)
@@ -663,18 +688,21 @@ function UGCPlayerState:SetWeaponRefineStats(Value)
     return self:SaveToArchive() == true
 end
 
-function UGCPlayerState:SetWeaponRefineStat(GunIndex, Attack, AttackSpeed)
-    GunIndex = math.floor(tonumber(GunIndex) or 0)
+function UGCPlayerState:SetWeaponRefineStat(SkinIndex, WeaponIndex, Attack, AttackSpeed)
+    SkinIndex = math.floor(tonumber(SkinIndex) or 0)
+    WeaponIndex = math.floor(tonumber(WeaponIndex) or 0)
     Attack = tonumber(Attack)
     AttackSpeed = tonumber(AttackSpeed)
-    if GunIndex < 1 or GunIndex > 8 or Attack == nil or Attack <= 0 or
+    if SkinIndex < 1 or SkinIndex > 12 or WeaponIndex < 1 or WeaponIndex > 8 or
+        Attack == nil or Attack <= 0 or
         AttackSpeed == nil or AttackSpeed <= 0 then
         return false
     end
 
     local OldStats = NormalizeWeaponRefineStats(self:GetWeaponRefineStats())
     local NewStats = NormalizeWeaponRefineStats(OldStats)
-    NewStats[GunIndex] = {
+    NewStats[SkinIndex] = NewStats[SkinIndex] or {}
+    NewStats[SkinIndex][WeaponIndex] = {
         Attack = math.floor(Attack * 100 + 0.5) / 100,
         AttackSpeed = math.floor(AttackSpeed * 100 + 0.5) / 100
     }

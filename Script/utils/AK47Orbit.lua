@@ -205,6 +205,7 @@ function AK47Orbit.Start(Pawn, PreloadedClass)
     if Actor.SetDamagePercent ~= nil and Pawn.OrbitWeaponDamagePercent ~= nil then
         Actor:SetDamagePercent(Pawn.OrbitWeaponDamagePercent)
     end
+    Actor.DamagePercentByGun = Pawn.OrbitWeaponDamagePercents or {}
     if Actor.SetActorEnableCollision ~= nil then
         pcall(Actor.SetActorEnableCollision, Actor, true)
     end
@@ -281,6 +282,26 @@ function AK47Orbit.SetActiveGun(Pawn, GunIndex, DamagePercent)
         if State.Actor.SetDamagePercent ~= nil and Pawn.OrbitWeaponDamagePercent ~= nil then
             State.Actor:SetDamagePercent(Pawn.OrbitWeaponDamagePercent)
         end
+    end
+    return true
+end
+
+function AK47Orbit.SetDamagePercents(Pawn, DamagePercents)
+    if not IsValid(Pawn) then
+        return false
+    end
+    local Normalized = {}
+    for WeaponIndex = 1, 8 do
+        local Percent = type(DamagePercents) == "table" and
+            tonumber(DamagePercents[WeaponIndex] or DamagePercents[tostring(WeaponIndex)]) or nil
+        if Percent ~= nil and Percent > 0 then
+            Normalized[WeaponIndex] = Percent
+        end
+    end
+    Pawn.OrbitWeaponDamagePercents = Normalized
+    local State = Pawn.AK47OrbitState
+    if State ~= nil and IsValid(State.Actor) then
+        State.Actor.DamagePercentByGun = Normalized
     end
     return true
 end

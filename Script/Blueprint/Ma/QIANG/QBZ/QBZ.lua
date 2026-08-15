@@ -294,7 +294,9 @@ function QBZ:TryDamageMonster(DamageBox, OtherActor)
     self.HitActors[DamageBox][OtherActor] = true
 
     local instigatorController = GetDamageInstigator(self)
-    local damage = DamageSync.GetAttackPercentDamage(instigatorController, self, self:GetDamagePercent())
+    local DamagePercent = DamageOnlyCollision.GetDamagePercentForBox(self, DamageBox,
+        self.ActiveGuns, DAMAGE_BOX_NAMES, GetComponentByName, self:GetDamagePercent())
+    local damage = DamageSync.GetAttackPercentDamage(instigatorController, self, DamagePercent)
     if instigatorController == nil or damage == nil or damage <= 0 then
         return nil;
     end

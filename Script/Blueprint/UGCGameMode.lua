@@ -71,6 +71,9 @@ local function RestoreOrbitWeaponState(PlayerController, PlayerPawn, PlayerLevel
             math.floor(math.max(SavedTier or 1, tonumber(PlayerLevel) or 1))))
         PlayerPawn:SetOrbitWeaponActiveGun(ActiveTier, PlayerController.OrbitWeaponDamagePercent)
     end
+    if PlayerPawn.SetOrbitWeaponDamagePercents ~= nil then
+        PlayerPawn:SetOrbitWeaponDamagePercents(PlayerController.OrbitWeaponDamagePercents or {})
+    end
     if PlayerPawn.SetOrbitWeaponEnabled ~= nil then
         PlayerPawn:SetOrbitWeaponEnabled(PlayerController.OrbitWeaponEnabled ~= false)
     end

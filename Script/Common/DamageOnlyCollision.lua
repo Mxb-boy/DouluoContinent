@@ -107,4 +107,29 @@ function DamageOnlyCollision.RefreshActiveBoxes(Actor, ActiveGuns, BoxNames, Get
     end
 end
 
+-- 根据发生重叠的碰撞盒找到 num，并返回该把旋转武器自己的攻击百分比。
+function DamageOnlyCollision.GetDamagePercentForBox(Actor, DamageBox, ActiveGuns,
+    BoxNames, GetComponentByName, DefaultPercent)
+    if Actor == nil or DamageBox == nil or GetComponentByName == nil then
+        return DefaultPercent
+    end
+    for WeaponIndex, BoxName in ipairs(BoxNames or {}) do
+        if (ActiveGuns == nil or ActiveGuns[WeaponIndex] == true) and
+            DamageBox == GetComponentByName(Actor, BoxName) then
+            local Percent = Actor.DamagePercentByGun ~= nil and
+                tonumber(Actor.DamagePercentByGun[WeaponIndex] or
+                    Actor.DamagePercentByGun[tostring(WeaponIndex)]) or nil
+            Percent = Percent or tonumber(DefaultPercent)
+            if Percent ~= nil and Percent > 0 then
+                -- 全局伤害计算也读取这个字段，必须与本次碰撞盒的百分比保持一致。
+                Actor.UseAttackPercentDamage = true
+                Actor.AttackDamagePercent = Percent
+                return Percent
+            end
+            return DefaultPercent
+        end
+    end
+    return DefaultPercent
+end
+
 return DamageOnlyCollision

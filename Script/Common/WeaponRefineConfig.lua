@@ -2,14 +2,18 @@ local WeaponRefineConfig = {}
 
 WeaponRefineConfig.TABLE_PATH = "Asset/Data/Table/Customized/gjConfig.gjConfig"
 WeaponRefineConfig.STARDUST_ITEM_ID = 8310134
-WeaponRefineConfig.MAX_GUN_COUNT = 8
+WeaponRefineConfig.REFINE_COST = 100
+WeaponRefineConfig.MAX_SKIN_COUNT = 12
+WeaponRefineConfig.MAX_WEAPON_COUNT = 8
+-- 兼容仍用旧名称表示“周围武器数量”的调用。
+WeaponRefineConfig.MAX_GUN_COUNT = WeaponRefineConfig.MAX_WEAPON_COUNT
 
 local FIELD_NAMES = {
     Attack = {"TAK", "TAK_22_E925F48B4B1EE84561F1309EEE8B57EC"},
     AttackRange = {"TAK_Q", "TAK_Q_23_93FCAF52488217850EE04F983D549FAA"},
     AttackSpeedRange = {"AS_Q", "AS_Q_24_741E2C33455CD9D957E6D5A7B8360017"},
-    GunIndex = {"BH", "BH_20_C3D0D0054939B24F311037A0BA2534D2"},
-    Tier = {"num", "num_28_444748B64BAE08E0EFF247B0F703CAA8"}
+    SkinIndex = {"BH", "BH_20_C3D0D0054939B24F311037A0BA2534D2"},
+    WeaponIndex = {"num", "num_28_444748B64BAE08E0EFF247B0F703CAA8"}
 }
 
 local function SafeGet(Row, Name)
@@ -61,18 +65,18 @@ function WeaponRefineConfig.LoadRows(bForceReload)
 
     local Rows = {}
     for _, Row in pairs(DataTable) do
-        local GunIndex = math.floor(tonumber(GetField(Row, "GunIndex")) or 0)
-        local Tier = math.floor(tonumber(GetField(Row, "Tier")) or 0)
-        if GunIndex >= 1 and GunIndex <= WeaponRefineConfig.MAX_GUN_COUNT and
-            Tier >= 1 and Tier <= WeaponRefineConfig.MAX_GUN_COUNT then
+        local SkinIndex = math.floor(tonumber(GetField(Row, "SkinIndex")) or 0)
+        local WeaponIndex = math.floor(tonumber(GetField(Row, "WeaponIndex")) or 0)
+        if SkinIndex >= 1 and SkinIndex <= WeaponRefineConfig.MAX_SKIN_COUNT and
+            WeaponIndex >= 1 and WeaponIndex <= WeaponRefineConfig.MAX_WEAPON_COUNT then
             local AttackMin, AttackMax = ParseRange(GetField(Row, "AttackRange"))
             local SpeedMin, SpeedMax = ParseRange(GetField(Row, "AttackSpeedRange"))
             if AttackMin ~= nil and SpeedMin ~= nil then
-                Rows[GunIndex] = Rows[GunIndex] or {}
-                Rows[GunIndex][Tier] = {
-                    GunIndex = GunIndex,
-                    Tier = Tier,
-                    Cost = Tier,
+                Rows[SkinIndex] = Rows[SkinIndex] or {}
+                Rows[SkinIndex][WeaponIndex] = {
+                    SkinIndex = SkinIndex,
+                    WeaponIndex = WeaponIndex,
+                    Cost = WeaponRefineConfig.REFINE_COST,
                     DefaultAttack = tonumber(GetField(Row, "Attack")) or
                         (AttackMin + AttackMax) * 0.5,
                     DefaultAttackSpeed = (SpeedMin + SpeedMax) * 0.5,
@@ -88,25 +92,40 @@ function WeaponRefineConfig.LoadRows(bForceReload)
     return Rows
 end
 
-function WeaponRefineConfig.GetRow(GunIndex, UnlockedCount)
-    GunIndex = math.max(1, math.min(WeaponRefineConfig.MAX_GUN_COUNT,
-        math.floor(tonumber(GunIndex) or 1)))
-    UnlockedCount = math.max(1, math.min(WeaponRefineConfig.MAX_GUN_COUNT,
-        math.floor(tonumber(UnlockedCount) or 1)))
+function WeaponRefineConfig.GetRow(SkinIndex, WeaponIndex)
+    SkinIndex = math.floor(tonumber(SkinIndex) or 0)
+    WeaponIndex = math.floor(tonumber(WeaponIndex) or 0)
+    if SkinIndex < 1 or SkinIndex > WeaponRefineConfig.MAX_SKIN_COUNT or
+        WeaponIndex < 1 or WeaponIndex > WeaponRefineConfig.MAX_WEAPON_COUNT then
+        return nil
+    end
     local Rows = WeaponRefineConfig.LoadRows(false)
-    return Rows ~= nil and Rows[GunIndex] ~= nil and Rows[GunIndex][UnlockedCount] or nil
+    return Rows ~= nil and Rows[SkinIndex] ~= nil and Rows[SkinIndex][WeaponIndex] or nil
 end
 
-function WeaponRefineConfig.GetCurrentStats(PlayerState, GunIndex, UnlockedCount)
-    local Row = WeaponRefineConfig.GetRow(GunIndex, UnlockedCount)
+function WeaponRefineConfig.GetCurrentStats(PlayerState, SkinIndex, WeaponIndex)
+    local Row = WeaponRefineConfig.GetRow(SkinIndex, WeaponIndex)
     if Row == nil then
         return nil, nil, nil
     end
     local Saved = PlayerState ~= nil and PlayerState.GetWeaponRefineStat ~= nil and
-        PlayerState:GetWeaponRefineStat(GunIndex) or nil
+        PlayerState:GetWeaponRefineStat(SkinIndex, WeaponIndex) or nil
     local Attack = Saved ~= nil and tonumber(Saved.Attack) or Row.DefaultAttack
     local AttackSpeed = Saved ~= nil and tonumber(Saved.AttackSpeed) or Row.DefaultAttackSpeed
     return Round2(Attack), Round2(AttackSpeed), Row
+end
+
+function WeaponRefineConfig.GetDamagePercents(PlayerState, SkinIndex, UnlockedCount)
+    local Result = {}
+    UnlockedCount = math.max(0, math.min(WeaponRefineConfig.MAX_WEAPON_COUNT,
+        math.floor(tonumber(UnlockedCount) or 0)))
+    for WeaponIndex = 1, UnlockedCount do
+        local Attack = WeaponRefineConfig.GetCurrentStats(PlayerState, SkinIndex, WeaponIndex)
+        if Attack ~= nil then
+            Result[WeaponIndex] = Attack
+        end
+    end
+    return Result
 end
 
 function WeaponRefineConfig.Roll(Row)
