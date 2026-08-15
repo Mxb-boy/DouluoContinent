@@ -4,6 +4,7 @@ local ToastManager = UGCGameSystem.UGCRequire("Script.Lin.ToastManager")
 local HUNHUAN_TABLE_PATH = "Data/Table/Customized/HunHuanConfig"
 local JingJieConfig = "Data/Table/Customized/JingJieConfig"
 local LastToastTime = 0
+UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage.Script.ShopV2.ShopV2Manager")
 
 --[[-----------------------显示小提示-----------------------]] --
 function L_Com.ShowToast(text)
@@ -78,6 +79,10 @@ function L_Com.BuyShopProduct(Product_ID, Buy_Count)
     if ShopV2Manager == nil or ShopV2Manager.CheckBackpackBeforePurchase == nil or
         ShopV2Manager:CheckBackpackBeforePurchase() == false then
         return nil
+    end
+    if ShopV2Manager.bAddItemResultDelegateBinded ~= true then
+        ShopV2Manager:GetVirtualItemManager().AddItemResultDelegate:Add(ShopV2Manager.OnAddVirtualItem, ShopV2Manager)
+        ShopV2Manager.bAddItemResultDelegateBinded = true
     end
     Buy_Count = Buy_Count or 1 -- 购买数量
     local Product_Data = ShopV2Manager:GetProductConfigData(Product_ID) -- 商品信息
