@@ -137,8 +137,8 @@ local MainFoldImages = {"Image_386", "Image_387", "Image_388", "Image_389", "Ima
                         "Image_396", "Image_19", "Image_21"}
 local MainFoldWidgets = {"Button_6", "Button_7", "Image_15", "Image_16", "Image_17", "Image_18", "Button_9",
                          "Button_11"}
-local HiddenMainWidgets = {"Button_147", "Button_156", "Button_157", "Button_54", "Button_Talent", "Image_9",
-                           "Image_14", "Image_397", "Image_398"}
+local HiddenMainWidgets = {"Button_147", "Button_156", "Button_157", "Image_9", "Image_14", "Image_397",
+                           "Image_398"}
 local ToggleButtonNormalColor = {
     R = 1.0,
     G = 1.0,
@@ -246,7 +246,6 @@ function UI02:LuaInit()
     self.Button_9.OnClicked:Add(self.Button_9_OnClicked, self)
     self.Button_10.OnClicked:Add(self.Button_10_OnClicked, self)
     self.Button_11.OnClicked:Add(self.Button_11_OnClicked, self)
-    self.Button_54.OnClicked:Add(self.Button_54_OnClicked, self)
 
     self.Button_2.OnClicked:Add(self.Button_2_OnClicked, self)
     self.Button_152.OnClicked:Add(self.Button_152_OnClicked, self)
@@ -262,7 +261,6 @@ function UI02:LuaInit()
     self.Button_4.OnClicked:Add(self.Button_4_OnClicked, self)
     self.Button_158.OnClicked:Add(self.Button_158_OnClicked, self)
     self.Button_154.OnClicked:Add(self.Button_154_OnClicked, self)
-    self.Button_Talent.OnClicked:Add(self.Button_Talent_OnClicked, self)
     self:ApplyButtonEffect(self.Button_0)
     self:ApplyButtonEffect(self.Button_1)
     self:ApplyButtonEffect(self.Button_5)
@@ -272,7 +270,6 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_9)
     self:ApplyButtonEffect(self.Button_10)
     self:ApplyButtonEffect(self.Button_11)
-    self:ApplyButtonEffect(self.Button_54)
 
     self:ApplyButtonEffect(self.Button_2)
     self:ApplyButtonEffect(self.Button_3)
@@ -296,7 +293,6 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_158)
     self:ApplyButtonEffect(self.Button_227)
     self:ApplyButtonEffect(self.Button_228)
-    self:ApplyButtonEffect(self.Button_Talent)
 
     UGCGenericMessageSystem.ListenGlobalMessage(self, L_Enum_Event.Enum.Test_01, self, self.OnhandleTest)
     if self.Button_228 ~= nil then
@@ -1037,7 +1033,7 @@ function UI02:Button_158_OnClicked()
     self.UI14Instance:Open()
 end
 
--- 境界
+-- 武器环绕/精炼界面
 function UI02:Button_54_OnClicked()
     if self.UI017Instance ~= nil then
         self.UI017Instance:Open()
