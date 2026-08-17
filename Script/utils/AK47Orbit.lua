@@ -2,6 +2,7 @@
 -- WQ.WQ_C 内部已经摆好了 8 把枪，因此这里只生成一个蓝图 Actor。
 
 local AK47Orbit = {}
+local WeaponRefineConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponRefineConfig")
 
 -- 武器环绕总开关。
 AK47Orbit.FEATURE_ENABLED = true
@@ -13,8 +14,8 @@ end
 -- 蓝图资源路径。
 local WQ_CLASS_PATH = "Asset/Blueprint/Ma/QIANG/QBZ/QBZ.QBZ_C"
 
--- 每秒旋转角度，数值越大转得越快。
-local ROTATION_SPEED = 50
+-- 未同步洗练数据前的兜底速度：8 个未解锁枪位，每个按 4 计算。
+local DEFAULT_ROTATION_SPEED = 4 * 8
 
 -- 相对人物 ActorLocation 的高度偏移；0 大约是人物腰部。
 local HEIGHT_OFFSET = 0
@@ -197,7 +198,8 @@ function AK47Orbit.Start(Pawn, PreloadedClass)
         if ActiveGunCode == nil then
             local PlayerLevel = Pawn.PlayerState ~= nil and Pawn.PlayerState.GetPlayerLevel ~= nil and
                 tonumber(Pawn.PlayerState:GetPlayerLevel()) or 1
-            ActiveGunCode = BuildActiveGunCode(PlayerLevel)
+            ActiveGunCode = BuildActiveGunCode(
+                WeaponRefineConfig.GetUnlockedWeaponCount(PlayerLevel))
             Pawn.OrbitWeaponActiveGunIndex = ActiveGunCode
         end
         Actor:SetActiveGuns(ActiveGunCode)
@@ -267,7 +269,7 @@ end
 
 function AK47Orbit.SetActiveGun(Pawn, GunIndex, DamagePercent)
     GunIndex = math.floor(tonumber(GunIndex) or 0)
-    if not IsValid(Pawn) or GunIndex < 1 or GunIndex > 8 then
+    if not IsValid(Pawn) or GunIndex < 0 or GunIndex > 8 then
         return false
     end
     local ActiveGunCode = BuildActiveGunCode(GunIndex)
@@ -306,6 +308,18 @@ function AK47Orbit.SetDamagePercents(Pawn, DamagePercents)
     return true
 end
 
+function AK47Orbit.SetRotationSpeed(Pawn, RotationSpeed)
+    if not IsValid(Pawn) then
+        return false
+    end
+    RotationSpeed = tonumber(RotationSpeed)
+    if RotationSpeed == nil or RotationSpeed < 0 then
+        return false
+    end
+    Pawn.OrbitWeaponRotationSpeed = RotationSpeed
+    return true
+end
+
 
 -- 由人物 ReceiveTick 每帧调用，使蓝图平滑跟随并水平旋转。
 function AK47Orbit.Update(Pawn, DeltaTime)
@@ -329,7 +343,9 @@ function AK47Orbit.Update(Pawn, DeltaTime)
 
     -- 使用真实帧间隔计算角度，帧率变化时旋转速度仍然一致。
     local SafeDeltaTime = tonumber(DeltaTime) or 0
-    State.Angle = (State.Angle - ROTATION_SPEED * SafeDeltaTime) % 360
+    local RotationSpeed = math.max(0,
+        tonumber(Pawn.OrbitWeaponRotationSpeed) or DEFAULT_ROTATION_SPEED)
+    State.Angle = (State.Angle - RotationSpeed * SafeDeltaTime) % 360
 
     -- 每帧同步到人物腰部位置，消除旧计时器低频更新造成的顿挫。
     local NewLocation = Vector.New(

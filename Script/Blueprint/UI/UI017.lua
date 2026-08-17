@@ -158,6 +158,7 @@
 ---@field TextBlock_16 UTextBlock
 ---@field TextBlock_66 UTextBlock
 ---@field TextBlock_108 UTextBlock
+---@field TextBlock_158 UTextBlock
 ---@field TextBlock_159 UTextBlock
 ---@field TextBlock_160 UTextBlock
 ---@field TextBlock_161 UTextBlock
@@ -182,6 +183,8 @@
 ---@field TextBlock_454 UTextBlock
 ---@field TextBlock_457 UTextBlock
 ---@field TextBlock_521 UTextBlock
+---@field TextBlock_601 UTextBlock
+---@field TextBlock_603 UTextBlock
 ---@field TextBlock_668 UTextBlock
 ---@field TextBlock_669 UTextBlock
 ---@field WrapBox_0 UWrapBox
@@ -192,6 +195,8 @@
 UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.ShopV2.ShopV2Manager")
 local UI017 = { bInitDoOnce = false }
 local WeaponRefineConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponRefineConfig")
+local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
+local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 local TEXT_BLOCK_66_ITEM_ID = 8310134
 local CONVERT_SUCCESS_SOUND_PATH =
     "/Game/WwiseEvent/UI_hall/Play_Pandora_PaySuccess_Little.Play_Pandora_PaySuccess_Little"
@@ -208,6 +213,10 @@ end
 local PROJECT_ROOT_PATH = UGCMapInfoLib.GetRootLongPackagePath()
 local XZWQ_CONFIG_PATH = 'Asset/Data/Table/Customized/XzwqConfig.XzwqConfig'
 local XZWQ_LOCK_TEXTURE_PATH = 'Asset/ui/UIxin/lock1.lock1'
+local XZWQ_PURCHASE_PRODUCT_BY_NAME = {
+    S12K = 9000054,
+    DJQ = 9000055
+}
 local XZWQ_ROW_NAMES = {
     'NewRow', 'NewRow_0', 'NewRow_1', 'NewRow_2', 'NewRow_3', 'NewRow_4',
     'NewRow_5', 'NewRow_6', 'NewRow_7', 'NewRow_8', 'NewRow_9', 'NewRow_10'
@@ -339,9 +348,13 @@ end
 
 function UI017:SelectXzwqSlot(Index)
     if self.XzwqSlotUnlockedByIndex == nil or self.XzwqSlotUnlockedByIndex[Index] ~= true then
+        ugcprint('[WeaponRefine:UI] slot locked, index=' .. tostring(Index) ..
+            ' level=' .. tostring(self.CurrentPlayerLevel))
         return false
     end
     self.SelectedXzwqSlotIndex = Index
+    ugcprint('[WeaponRefine:UI] slot selected, index=' .. tostring(Index) ..
+        ' level=' .. tostring(self.CurrentPlayerLevel))
     self:RefreshSelectedXzwqStats(Index)
     self:RefreshXzwqSlotSelection()
     return true
@@ -389,7 +402,7 @@ function UI017:GetUnlockedXzwqSlotCount()
             Count = Count + 1
         end
     end
-    return math.max(1, Count)
+    return Count
 end
 
 function UI017:GetCurrentWeaponStats(SlotIndex, SkinIndex)
@@ -413,13 +426,27 @@ function UI017:ApplySelectedSkinDamagePercents()
         return false
     end
     local DamagePercents = {}
-    for WeaponIndex = 1, self:GetUnlockedXzwqSlotCount() do
+    local RotationSpeed = 0
+    local UnlockedCount = self:GetUnlockedXzwqSlotCount()
+    for WeaponIndex = 1, WeaponRefineConfig.MAX_WEAPON_COUNT do
         local Attack = self:GetCurrentWeaponStats(WeaponIndex)
-        if tonumber(Attack) ~= nil then
+        local _, AttackSpeed = self:GetCurrentWeaponStats(WeaponIndex)
+        if WeaponIndex <= UnlockedCount and tonumber(Attack) ~= nil then
             DamagePercents[WeaponIndex] = tonumber(Attack)
         end
+        RotationSpeed = RotationSpeed + (WeaponIndex <= UnlockedCount and
+            (tonumber(AttackSpeed) or WeaponRefineConfig.LOCKED_SLOT_ROTATION_SPEED) or
+            WeaponRefineConfig.LOCKED_SLOT_ROTATION_SPEED)
     end
-    return PlayerPawn:SetOrbitWeaponDamagePercents(DamagePercents) == true
+    local DamageApplied = PlayerPawn:SetOrbitWeaponDamagePercents(DamagePercents) == true
+    if PlayerPawn.SetOrbitWeaponRotationSpeed ~= nil then
+        PlayerPawn:SetOrbitWeaponRotationSpeed(RotationSpeed)
+    end
+    local PlayerController = self:GetLocalPlayerController()
+    if PlayerController ~= nil then
+        PlayerController.OrbitWeaponRotationSpeed = RotationSpeed
+    end
+    return DamageApplied
 end
 
 function UI017:RefreshSelectedXzwqStats(SlotIndex)
@@ -568,10 +595,19 @@ function UI017:Button_127_OnClicked()
     if PlayerController == nil or SkinIndex == nil or WeaponIndex == nil then
         return
     end
+    ugcprint('[WeaponRefine:UI] request skin=' .. tostring(SkinIndex) ..
+        ' weapon=' .. tostring(WeaponIndex) .. ' level=' ..
+        tostring(self.CurrentPlayerLevel))
     if self.bWeaponAttackLocked == true and self.bWeaponAttackSpeedLocked == true then
         if PlayerController.Client_ShowToast ~= nil then
             PlayerController:Client_ShowToast("攻击和攻速不能同时锁定")
         end
+        return
+    end
+    if (self.bWeaponAttackLocked == true or self.bWeaponAttackSpeedLocked == true) and
+        self:GetAttributeLockCount() <= 0 then
+        self:ResetWeaponAttributeLockSelection()
+        self:OpenAttributeLockPurchasePopup()
         return
     end
     local RefineButton = self:GetWidget("Button_127")
@@ -583,12 +619,93 @@ function UI017:Button_127_OnClicked()
         self.bWeaponAttackSpeedLocked == true)
 end
 
+function UI017:GetAttributeLockCount()
+    local PlayerPawn = self:GetLocalPlayerPawn()
+    if PlayerPawn == nil or UGCBackpackSystemV2 == nil or
+        UGCBackpackSystemV2.GetItemCountV2 == nil then
+        return 0
+    end
+    local Success, Count = pcall(UGCBackpackSystemV2.GetItemCountV2,
+        PlayerPawn, WeaponRefineConfig.ATTRIBUTE_LOCK_ITEM_ID)
+    return Success and math.max(0, math.floor(tonumber(Count) or 0)) or 0
+end
+
+function UI017:GetShopProductIDByItemID(ItemID)
+    if ShopV2Manager == nil or ShopV2Manager.GetAllProductConfigData == nil then
+        return nil
+    end
+    local Success, ProductDatas = pcall(ShopV2Manager.GetAllProductConfigData, ShopV2Manager)
+    if not Success or ProductDatas == nil then
+        return nil
+    end
+    for ProductKey, ProductData in pairs(ProductDatas) do
+        if tonumber(SafeGetField(ProductData, "ItemID")) == tonumber(ItemID) then
+            return tonumber(SafeGetField(ProductData, "ProductID")) or
+                tonumber(SafeGetField(ProductData, "ProductId")) or tonumber(ProductKey)
+        end
+    end
+    return nil
+end
+
+function UI017:OpenAttributeLockPurchasePopup()
+    local ProductID = self:GetShopProductIDByItemID(
+        WeaponRefineConfig.ATTRIBUTE_LOCK_SHOP_ITEM_ID)
+    if ProductID == nil then
+        ugcprint("[WeaponRefine:UI] attribute lock product not found, shopItem=" ..
+            tostring(WeaponRefineConfig.ATTRIBUTE_LOCK_SHOP_ITEM_ID))
+        local PlayerController = self:GetLocalPlayerController()
+        if PlayerController ~= nil and PlayerController.Client_ShowToast ~= nil then
+            PlayerController:Client_ShowToast("属性锁商品配置未找到")
+        end
+        return false
+    end
+    local Success, PurchaseFuture = pcall(L_Com.BuyShopProduct, ProductID, 1)
+    if not Success or PurchaseFuture == nil then
+        ugcprint("[WeaponRefine:UI] open attribute lock purchase popup failed, product=" ..
+            tostring(ProductID))
+        return false
+    end
+    return true
+end
+
+function UI017:ResetWeaponAttributeLockSelection()
+    self.bWeaponAttackLocked = false
+    self.bWeaponAttackSpeedLocked = false
+    self.bUpdatingWeaponLockCheckbox = true
+    for _, CheckBoxName in ipairs({"CheckBox_100", "CheckBox_101"}) do
+        local CheckBox = self:GetWidget(CheckBoxName)
+        if CheckBox ~= nil and CheckBox.SetIsChecked ~= nil then
+            CheckBox:SetIsChecked(false)
+        end
+    end
+    self.bUpdatingWeaponLockCheckbox = false
+end
+
+function UI017:HandleWeaponAttributeLockChanged(CheckBoxName, StateFieldName, bIsChecked)
+    if self.bUpdatingWeaponLockCheckbox == true then
+        return
+    end
+    if bIsChecked ~= true then
+        self[StateFieldName] = false
+        return
+    end
+    if self:GetAttributeLockCount() > 0 then
+        self[StateFieldName] = true
+        return
+    end
+
+    self:ResetWeaponAttributeLockSelection()
+    self:OpenAttributeLockPurchasePopup()
+end
+
 function UI017:CheckBox_100_OnCheckStateChanged(bIsChecked)
-    self.bWeaponAttackLocked = bIsChecked == true
+    self:HandleWeaponAttributeLockChanged(
+        "CheckBox_100", "bWeaponAttackLocked", bIsChecked)
 end
 
 function UI017:CheckBox_101_OnCheckStateChanged(bIsChecked)
-    self.bWeaponAttackSpeedLocked = bIsChecked == true
+    self:HandleWeaponAttributeLockChanged(
+        "CheckBox_101", "bWeaponAttackSpeedLocked", bIsChecked)
 end
 
 function UI017:RefreshSelectedXzwqWeaponSlots(WeaponIndex)
@@ -612,10 +729,8 @@ function UI017:RefreshSelectedXzwqWeaponSlots(WeaponIndex)
         local LockButton = self:GetWidget(XZWQ_SLOT_LOCK_BUTTON_NAMES[SlotIndex])
         local bUnlocked = self.XzwqSlotUnlockedByIndex ~= nil and
             self.XzwqSlotUnlockedByIndex[SlotIndex] == true
-        local DisplayTexture = LockTexture
-        if bUnlocked then
-            DisplayTexture = IconTexture
-        end
+        -- 已解锁枪位显示当前皮肤，未解锁枪位直接显示锁图。
+        local DisplayTexture = bUnlocked and IconTexture or LockTexture
         if SlotIcon ~= nil and DisplayTexture ~= nil then
             SlotIcon:SetBrushFromTexture(DisplayTexture, true)
         end
@@ -627,7 +742,7 @@ function UI017:RefreshSelectedXzwqWeaponSlots(WeaponIndex)
             SlotName:SetText(WeaponName)
         end
         if AttributeWidget ~= nil then
-            local RequiredLevel = SlotIndex
+            local RequiredLevel = WeaponRefineConfig.GetWeaponUnlockLevel(SlotIndex) or 0
             if bUnlocked then
                 AttributeWidget:SetText("")
             else
@@ -722,6 +837,33 @@ function UI017:GetOwnedItemCount(ItemID)
     end
     return math.max(BackpackCount, VirtualCount)
 end
+function UI017:HasPurchasedShopProduct(ProductID)
+    ProductID = tonumber(ProductID)
+    if ProductID == nil then
+        return false
+    end
+    if self.XzwqPurchasedProducts ~= nil and self.XzwqPurchasedProducts[ProductID] == true then
+        return true
+    end
+    if ShopV2Manager == nil or ShopV2Manager.GetLimitPurchasedTimes == nil then
+        return false
+    end
+    local PurchasedOK, PurchasedTimes = pcall(
+        ShopV2Manager.GetLimitPurchasedTimes, ShopV2Manager, ProductID,
+        self:GetLocalPlayerController())
+    return PurchasedOK and (tonumber(PurchasedTimes) or 0) > 0
+end
+
+function UI017:ApplyOrbitWeaponSkinSelection(SkinIndex)
+    SkinIndex = math.floor(tonumber(SkinIndex) or 1)
+    if SkinIndex < 1 or SkinIndex > #XZWQ_ROW_NAMES then
+        SkinIndex = 1
+    end
+    self.SelectedXzwqIndex = SkinIndex
+    self.bXzwqSkinInitialized = true
+    self:RefreshSelectedXzwqWeaponSlots(SkinIndex)
+    self:ApplySelectedSkinDamagePercents()
+end
 function UI017:HasPurchasedShopItem(ItemID)
     if ShopV2Manager == nil or ShopV2Manager.GetAllProductConfigData == nil or
         ShopV2Manager.GetLimitPurchasedTimes == nil then
@@ -735,9 +877,7 @@ function UI017:HasPurchasedShopItem(ItemID)
         if tonumber(SafeGetField(ProductData, "ItemID")) == tonumber(ItemID) then
             local ActualProductID = tonumber(SafeGetField(ProductData, "ProductID")) or tonumber(ProductID)
             if ActualProductID ~= nil then
-                local PurchasedOK, PurchasedTimes = pcall(
-                    ShopV2Manager.GetLimitPurchasedTimes, ShopV2Manager, ActualProductID)
-                if PurchasedOK and (tonumber(PurchasedTimes) or 0) > 0 then
+                if self:HasPurchasedShopProduct(ActualProductID) then
                     return true
                 end
             end
@@ -746,6 +886,11 @@ function UI017:HasPurchasedShopItem(ItemID)
     return false
 end
 function UI017:IsShopWeaponPurchased(RowData)
+    local WeaponName = string.upper(GetConfigText(GetXzwqField(RowData, 'Name')))
+    local DirectProductID = XZWQ_PURCHASE_PRODUCT_BY_NAME[WeaponName]
+    if DirectProductID ~= nil and self:HasPurchasedShopProduct(DirectProductID) then
+        return true
+    end
     local IconPath = GetConfigAssetPath(GetXzwqField(RowData, 'iteam'))
     local ItemIDs = IconPath ~= nil and self:BuildShopWeaponItemMap()[IconPath] or nil
     if ItemIDs == nil then
@@ -757,6 +902,73 @@ function UI017:IsShopWeaponPurchased(RowData)
         end
     end
     return false
+end
+function UI017:RefreshXzwqPurchaseButtons()
+    local PurchaseButtons = {
+        Button_425 = {
+            ProductID = XZWQ_PURCHASE_PRODUCT_BY_NAME.S12K,
+            TextWidgetName = "TextBlock_601"
+        },
+        Button_427 = {
+            ProductID = XZWQ_PURCHASE_PRODUCT_BY_NAME.DJQ,
+            TextWidgetName = "TextBlock_603"
+        }
+    }
+    for ButtonName, PurchaseData in pairs(PurchaseButtons) do
+        local PurchaseButton = self:GetWidget(ButtonName)
+        local bPurchased = self:HasPurchasedShopProduct(PurchaseData.ProductID)
+        if PurchaseButton ~= nil then
+            PurchaseButton:SetVisibility(ESlateVisibility.Visible)
+            PurchaseButton:SetIsEnabled(not bPurchased)
+        end
+        if bPurchased then
+            local PurchaseText = self:GetWidget(PurchaseData.TextWidgetName)
+            if PurchaseText ~= nil then
+                PurchaseText:SetText("已获取")
+            end
+        end
+    end
+end
+function UI017:EnsureXzwqPurchaseResultCallback()
+    if self.bXzwqPurchaseResultBound == true or UGCCommoditySystem == nil or
+        UGCCommoditySystem.BuyUGCCommodityResultDelegate == nil then
+        return
+    end
+    UGCCommoditySystem.BuyUGCCommodityResultDelegate:Add(self.OnXzwqPurchaseResult, self)
+    self.bXzwqPurchaseResultBound = true
+end
+function UI017:OpenXzwqPurchasePopup(ProductID)
+    ProductID = tonumber(ProductID)
+    if ProductID == nil then
+        return false
+    end
+    if self:HasPurchasedShopProduct(ProductID) then
+        self:RefreshCurrentPlayerLevel()
+        self:RefreshXzwqPurchaseButtons()
+        return true
+    end
+    self:EnsureXzwqPurchaseResultCallback()
+    local Success, PurchaseFuture = pcall(L_Com.BuyShopProduct, ProductID, 1)
+    if not Success or PurchaseFuture == nil then
+        ugcprint('[UI017] open weapon purchase popup failed, product=' .. tostring(ProductID))
+        return false
+    end
+    self.PendingXzwqPurchaseProductID = ProductID
+    return true
+end
+function UI017:OnXzwqPurchaseResult(bSucceeded, PlayerKey, CommodityID, Count, UID, ProductID)
+    ProductID = tonumber(ProductID)
+    if bSucceeded ~= true or ProductID == nil or
+        XZWQ_PURCHASE_PRODUCT_BY_NAME.S12K ~= ProductID and
+        XZWQ_PURCHASE_PRODUCT_BY_NAME.DJQ ~= ProductID then
+        return
+    end
+    self.XzwqPurchasedProducts = self.XzwqPurchasedProducts or {}
+    self.XzwqPurchasedProducts[ProductID] = true
+    self.PendingXzwqPurchaseProductID = nil
+    self:RefreshCurrentPlayerLevel()
+    self:RefreshXzwqPurchaseButtons()
+    ugcprint('[UI017] weapon purchase unlocked, product=' .. tostring(ProductID))
 end
 function UI017:RefreshXzwqConfig(PlayerLevel)
     local FullTablePath = UGCGameSystem.GetUGCResourcesFullPath(XZWQ_CONFIG_PATH)
@@ -770,7 +982,7 @@ function UI017:RefreshXzwqConfig(PlayerLevel)
     self.XzwqUnlockedByIndex = {}
     self.XzwqSlotUnlockedByIndex = {}
     for SlotIndex = 1, #XZWQ_SLOT_LOCK_BUTTON_NAMES do
-        local RequiredLevel = SlotIndex
+        local RequiredLevel = WeaponRefineConfig.GetWeaponUnlockLevel(SlotIndex) or 0
         local bSlotUnlocked = PlayerLevel >= RequiredLevel
         self.XzwqSlotUnlockedByIndex[SlotIndex] = bSlotUnlocked
         local SlotLock = self:GetWidget(XZWQ_SLOT_LOCK_BUTTON_NAMES[SlotIndex])
@@ -820,16 +1032,21 @@ function UI017:RefreshXzwqConfig(PlayerLevel)
         end
     end
     if self.SelectedXzwqIndex == nil then
-        for Index, RowData in ipairs(self.XzwqConfigRows) do
-            if GetConfigText(GetXzwqField(RowData, 'Name')) == "QBZ" then
-                self.SelectedXzwqIndex = Index
-                break
-            end
+        local PlayerController = self:GetLocalPlayerController()
+        local PlayerState = PlayerController ~= nil and PlayerController.PlayerState or nil
+        local SavedSkinIndex = PlayerController ~= nil and tonumber(PlayerController.OrbitWeaponSkinIndex) or nil
+        if SavedSkinIndex == nil and PlayerState ~= nil then
+            SavedSkinIndex = PlayerState.GetOrbitWeaponSkinIndex ~= nil and
+                PlayerState:GetOrbitWeaponSkinIndex() or tonumber(PlayerState.OrbitWeaponSkinIndex)
         end
+        SavedSkinIndex = math.floor(tonumber(SavedSkinIndex) or 1)
+        self.SelectedXzwqIndex = self.XzwqConfigRows[SavedSkinIndex] ~= nil and
+            SavedSkinIndex or 1
     end
     if self.SelectedXzwqIndex ~= nil then
         self:RefreshSelectedXzwqWeaponSlots(self.SelectedXzwqIndex)
     end
+    self:RefreshXzwqPurchaseButtons()
     if not self.bXzwqSkinInitialized and self.SelectedXzwqIndex ~= nil then
         self.bXzwqSkinInitialized = true
         self:SelectXzwqWeapon(self.SelectedXzwqIndex)
@@ -873,6 +1090,10 @@ function UI017:SelectXzwqWeapon(Index)
     if not bAuthority and PlayerController ~= nil then
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SelectOrbitWeapon",
             WeaponClassPath, HitEffectPath, Index)
+    elseif bAuthority and PlayerController ~= nil and
+        PlayerController.Server_SelectOrbitWeapon ~= nil then
+        -- 单机/房主客户端拥有 Authority，不经过 RPC 时也必须写入选择存档。
+        PlayerController:Server_SelectOrbitWeapon(WeaponClassPath, HitEffectPath, Index)
     end
     self.SelectedXzwqIndex = Index
     self:ApplySelectedSkinDamagePercents()
@@ -884,6 +1105,21 @@ function UI017:SelectXzwqWeapon(Index)
     end
     return true
 end
+function UI017:RefreshOrbitWeaponToggleText(bEnabled)
+    if bEnabled == nil then
+        local PlayerPawn = self:GetLocalPlayerPawn()
+        if PlayerPawn ~= nil and PlayerPawn.IsOrbitWeaponEnabled ~= nil then
+            bEnabled = PlayerPawn:IsOrbitWeaponEnabled()
+        else
+            local PlayerController = self:GetLocalPlayerController()
+            bEnabled = PlayerController == nil or PlayerController.OrbitWeaponEnabled ~= false
+        end
+    end
+    local ToggleText = self:GetWidget("TextBlock_158")
+    if ToggleText ~= nil then
+        ToggleText:SetText(bEnabled == true and "脱下所有" or "穿戴所有")
+    end
+end
 function UI017:Button_81_OnClicked()
     local PlayerPawn = self:GetLocalPlayerPawn()
     if PlayerPawn == nil or PlayerPawn.SetOrbitWeaponEnabled == nil then
@@ -893,6 +1129,7 @@ function UI017:Button_81_OnClicked()
         PlayerPawn:IsOrbitWeaponEnabled() or false
     local bEnabled = not bCurrentlyEnabled
     PlayerPawn:SetOrbitWeaponEnabled(bEnabled)
+    self:RefreshOrbitWeaponToggleText(bEnabled)
     local PlayerController = self:GetLocalPlayerController()
     local bAuthority = PlayerPawn.HasAuthority ~= nil and PlayerPawn:HasAuthority()
     if not bAuthority and PlayerController ~= nil then
@@ -912,6 +1149,12 @@ function UI017:Button_113_OnClicked() self:SelectXzwqWeapon(9) end
 function UI017:Button_115_OnClicked() self:SelectXzwqWeapon(10) end
 function UI017:Button_117_OnClicked() self:SelectXzwqWeapon(11) end
 function UI017:Button_119_OnClicked() self:SelectXzwqWeapon(12) end
+function UI017:Button_425_OnClicked()
+    self:OpenXzwqPurchasePopup(XZWQ_PURCHASE_PRODUCT_BY_NAME.S12K)
+end
+function UI017:Button_427_OnClicked()
+    self:OpenXzwqPurchasePopup(XZWQ_PURCHASE_PRODUCT_BY_NAME.DJQ)
+end
 
 function UI017:Button_359_OnClicked() self:SelectXzwqSlot(1) end
 function UI017:Button_1_OnClicked() self:SelectXzwqSlot(2) end
@@ -930,24 +1173,39 @@ function UI017:SetCurrentPlayerLevel(PlayerLevel)
         TextBlock521:SetText(tostring(PlayerLevel))
     end
     self:RefreshXzwqConfig(PlayerLevel)
-    local HighestUnlockedSlot = math.max(1, math.min(8, math.floor(PlayerLevel)))
-    self.SelectedXzwqSlotIndex = HighestUnlockedSlot
-    self.bXzwqSlotInitialized = true
-    self:SelectXzwqSlot(HighestUnlockedSlot)
+    local HighestUnlockedSlot = WeaponRefineConfig.GetUnlockedWeaponCount(PlayerLevel)
+    self.SelectedXzwqSlotIndex = HighestUnlockedSlot > 0 and HighestUnlockedSlot or nil
+    self.bXzwqSlotInitialized = HighestUnlockedSlot > 0
+    if HighestUnlockedSlot > 0 then
+        self:SelectXzwqSlot(HighestUnlockedSlot)
+    else
+        self:RefreshXzwqSlotSelection()
+    end
+    if self.SelectedXzwqIndex ~= nil then
+        self:ApplySelectedSkinDamagePercents()
+    end
 end
 function UI017:RefreshCurrentPlayerLevel()
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
         or GameplayStatics.GetPlayerController(self, 0)
     local PlayerState = PlayerController ~= nil and PlayerController.PlayerState or nil
-    local PlayerLevel = PlayerController ~= nil and tonumber(PlayerController.ClientPlayerLevel) or nil
-    if PlayerLevel == nil and PlayerState ~= nil then
+    local PlayerLevel = PlayerController ~= nil and tonumber(PlayerController.ClientPlayerLevel) or 1
+    if PlayerState ~= nil then
+        local StoredLevel = 1
         if PlayerState.GetPlayerLevel ~= nil then
-            PlayerLevel = tonumber(PlayerState:GetPlayerLevel()) or 1
+            StoredLevel = tonumber(PlayerState:GetPlayerLevel()) or 1
         else
-            PlayerLevel = tonumber(PlayerState.PlayerLevel) or 1
+            StoredLevel = tonumber(PlayerState.PlayerLevel) or 1
+        end
+        PlayerLevel = math.max(PlayerLevel, StoredLevel)
+        if PlayerLevelMgr ~= nil and PlayerLevelMgr.GetLevelByExp ~= nil and
+            PlayerState.GetPlayerExp ~= nil then
+            local ExpLevel = PlayerLevelMgr:GetLevelByExp(PlayerState:GetPlayerExp())
+            PlayerLevel = math.max(PlayerLevel, tonumber(ExpLevel) or 1)
         end
     end
-    self:SetCurrentPlayerLevel(PlayerLevel or 1)
+    ugcprint('[WeaponRefine:UI] refresh level=' .. tostring(PlayerLevel))
+    self:SetCurrentPlayerLevel(PlayerLevel)
 end
 function UI017:RequestCurrentPlayerLevel()
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
@@ -983,11 +1241,22 @@ function UI017:LuaInit()
     if Button428 ~= nil then
         Button428.OnClicked:Add(self.Button_428_OnClicked, self)
     end
+    local Button425 = self:GetWidget("Button_425")
+    if Button425 ~= nil then
+        Button425.OnClicked:Add(self.Button_425_OnClicked, self)
+    end
+    local Button427 = self:GetWidget("Button_427")
+    if Button427 ~= nil then
+        Button427.OnClicked:Add(self.Button_427_OnClicked, self)
+    end
+    self:EnsureXzwqPurchaseResultCallback()
+    self:RefreshXzwqPurchaseButtons()
     local Button81 = self:GetWidget("Button_81")
     if Button81 ~= nil then
         Button81:SetVisibility(ESlateVisibility.Visible)
         Button81.OnClicked:Add(self.Button_81_OnClicked, self)
     end
+    self:RefreshOrbitWeaponToggleText()
     local Button126 = self:GetWidget("Button_126")
     if Button126 ~= nil then
         Button126.OnClicked:Add(self.Button_126_OnClicked, self)
@@ -1143,6 +1412,7 @@ function UI017:Button_263_OnClicked()
 end
 function UI017:Open()
     self:SetVisibility(ESlateVisibility.Visible)
+    self:RefreshOrbitWeaponToggleText()
     self:RefreshCurrentPlayerLevel()
     self:RefreshTextBlock66ItemCount()
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
@@ -1407,4 +1677,12 @@ function UI017:SelectSoulRing(SelectedCell)
     self.SelectedSoulRingCell = SelectedCell
 end
 
-return UI017
+function UI017:Destruct()
+    if self.bXzwqPurchaseResultBound == true and UGCCommoditySystem ~= nil and
+        UGCCommoditySystem.BuyUGCCommodityResultDelegate ~= nil then
+        UGCCommoditySystem.BuyUGCCommodityResultDelegate:Remove(self.OnXzwqPurchaseResult, self)
+        self.bXzwqPurchaseResultBound = false
+    end
+end
+
+return UI017

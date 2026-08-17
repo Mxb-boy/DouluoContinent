@@ -10,6 +10,8 @@ local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 local TalentEffectMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentEffectMgr")
 local AK47Orbit = UGCGameSystem.UGCRequire("Script.utils.AK47Orbit")
+local WeaponRefineConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponRefineConfig")
+local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local MA_CS = UGCGameSystem.UGCRequire("Script.Ma.MA_CS")
 
 local FLY_STATE_TAG = "PawnState.Movement.Flying"
@@ -210,13 +212,31 @@ local function GetOrbitWeaponController(Pawn)
     return nil
 end
 
+-- PlayerState 中保存的等级可能晚于经验值刷新，因此武器解锁统一取可确认的最高等级。
+local function GetEffectiveOrbitPlayerLevel(Pawn)
+    if Pawn == nil then
+        return 1
+    end
+    local PlayerState = Pawn.PlayerState
+    local PlayerLevel = PlayerState ~= nil and PlayerState.GetPlayerLevel ~= nil and
+        tonumber(PlayerState:GetPlayerLevel()) or 1
+    if PlayerLevelMgr ~= nil and PlayerState ~= nil and PlayerState.GetPlayerExp ~= nil then
+        local ExpLevel = PlayerLevelMgr:GetLevelByExp(PlayerState:GetPlayerExp())
+        PlayerLevel = math.max(PlayerLevel, tonumber(ExpLevel) or 1)
+    end
+    local OrbitController = GetOrbitWeaponController(Pawn)
+    PlayerLevel = math.max(PlayerLevel,
+        OrbitController ~= nil and tonumber(OrbitController.ClientPlayerLevel) or 1)
+    return PlayerLevel
+end
+
 local function BuildOrbitWeaponCode(Tier)
-    Tier = math.max(1, math.min(8, math.floor(tonumber(Tier) or 1)))
+    Tier = math.max(0, math.min(8, math.floor(tonumber(Tier) or 0)))
     local CodeText = ""
     for Index = 1, Tier do
         CodeText = CodeText .. tostring(Index)
     end
-    return tonumber(CodeText) or 1
+    return tonumber(CodeText) or 0
 end
 
 local function SyncTeamCombatPower()
@@ -1106,13 +1126,11 @@ function UGCPlayerPawn:ReceiveBeginPlay()
         self.OrbitWeaponDamagePercent = OrbitController.OrbitWeaponDamagePercent
         self.OrbitWeaponSkinIndex = OrbitController.OrbitWeaponSkinIndex
         self.OrbitWeaponDamagePercents = OrbitController.OrbitWeaponDamagePercents
+        self.OrbitWeaponRotationSpeed = OrbitController.OrbitWeaponRotationSpeed
     end
-    local CurrentLevel = self.PlayerState ~= nil and self.PlayerState.GetPlayerLevel ~= nil and
-        tonumber(self.PlayerState:GetPlayerLevel()) or 1
-    local RestoredTier = OrbitController ~= nil and
-        tonumber(OrbitController.OrbitWeaponActiveGunTier) or nil
-    local ActiveTier = math.max(RestoredTier or 1, CurrentLevel)
-    self:SetOrbitWeaponActiveGun(math.max(1, math.min(8, ActiveTier)), self.OrbitWeaponDamagePercent)
+    local CurrentLevel = GetEffectiveOrbitPlayerLevel(self)
+    local ActiveTier = WeaponRefineConfig.GetUnlockedWeaponCount(CurrentLevel)
+    self:SetOrbitWeaponActiveGun(ActiveTier, self.OrbitWeaponDamagePercent)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.Test_01)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi)
     UGCGenericMessageSystem.RegisterUserDefinedMessage(L_Enum_Event.Enum.ReFreshZhanLi_01)
@@ -1190,20 +1208,15 @@ function UGCPlayerPawn:SetOrbitWeaponConfig(WeaponClassPath, HitEffectPath)
 end
 
 function UGCPlayerPawn:SetOrbitWeaponActiveGun(GunIndex, DamagePercent)
-    local RequestedTier = math.max(1, math.min(8, math.floor(tonumber(GunIndex) or 1)))
+    local RequestedTier = math.max(0, math.min(8, math.floor(tonumber(GunIndex) or 0)))
     local OrbitController = GetOrbitWeaponController(self)
-    local SavedTier = OrbitController ~= nil and
-        tonumber(OrbitController.OrbitWeaponActiveGunTier) or 0
-    local EffectiveTier = math.max(tonumber(self.OrbitWeaponActiveGunTier) or 0,
-        SavedTier, RequestedTier)
+    local EffectiveTier = RequestedTier
     self.OrbitWeaponActiveGunTier = EffectiveTier
     local EffectiveDamagePercent = DamagePercent
     if OrbitController ~= nil then
         OrbitController.OrbitWeaponActiveGunTier = EffectiveTier
-        if RequestedTier >= SavedTier and tonumber(DamagePercent) ~= nil and tonumber(DamagePercent) > 0 then
+        if tonumber(DamagePercent) ~= nil and tonumber(DamagePercent) > 0 then
             OrbitController.OrbitWeaponDamagePercent = tonumber(DamagePercent)
-        elseif RequestedTier < SavedTier then
-            EffectiveDamagePercent = OrbitController.OrbitWeaponDamagePercent
         end
     end
     return AK47Orbit.SetActiveGun(self, EffectiveTier, EffectiveDamagePercent)
@@ -1215,6 +1228,16 @@ function UGCPlayerPawn:SetOrbitWeaponDamagePercents(DamagePercents)
         OrbitController.OrbitWeaponDamagePercents = DamagePercents
     end
     return AK47Orbit.SetDamagePercents(self, DamagePercents)
+end
+
+function UGCPlayerPawn:SetOrbitWeaponRotationSpeed(RotationSpeed)
+    RotationSpeed = math.max(0, tonumber(RotationSpeed) or 0)
+    self.OrbitWeaponRotationSpeed = RotationSpeed
+    local OrbitController = GetOrbitWeaponController(self)
+    if OrbitController ~= nil then
+        OrbitController.OrbitWeaponRotationSpeed = RotationSpeed
+    end
+    return AK47Orbit.SetRotationSpeed(self, RotationSpeed)
 end
 
 function UGCPlayerPawn:ReceiveTick(DeltaTime)
@@ -1260,18 +1283,12 @@ function UGCPlayerPawn:ReceiveTick(DeltaTime)
                 (CurrentActorClassPath ~= nil and CurrentActorClassPath ~= DesiredWeaponClassPath)) then
             self:SetOrbitWeaponConfig(DesiredWeaponClassPath, DesiredHitEffectPath)
         end
-        local PlayerStateLevel = self.PlayerState ~= nil and self.PlayerState.GetPlayerLevel ~= nil and
-            tonumber(self.PlayerState:GetPlayerLevel()) or 1
-        local DesiredTier = math.max(
-            tonumber(self.OrbitWeaponActiveGunTier) or 1,
-            OrbitController ~= nil and tonumber(OrbitController.OrbitWeaponActiveGunTier) or 1,
-            OrbitController ~= nil and tonumber(OrbitController.ClientPlayerLevel) or 1,
-            PlayerStateLevel)
-        DesiredTier = math.max(1, math.min(8, math.floor(DesiredTier)))
+        local EffectiveLevel = GetEffectiveOrbitPlayerLevel(self)
+        local DesiredTier = WeaponRefineConfig.GetUnlockedWeaponCount(EffectiveLevel)
         local OrbitActor = self.AK47OrbitState ~= nil and self.AK47OrbitState.Actor or nil
         local ActualGunCode = OrbitActor ~= nil and tonumber(OrbitActor.ActiveGunCode) or nil
         local ExpectedGunCode = BuildOrbitWeaponCode(DesiredTier)
-        if DesiredTier > (tonumber(self.OrbitWeaponActiveGunTier) or 0) or
+        if DesiredTier ~= (tonumber(self.OrbitWeaponActiveGunTier) or 0) or
             (ActualGunCode ~= nil and ActualGunCode ~= ExpectedGunCode) then
             self:SetOrbitWeaponActiveGun(DesiredTier,
                 OrbitController ~= nil and OrbitController.OrbitWeaponDamagePercent or

@@ -2,11 +2,38 @@ local WeaponRefineConfig = {}
 
 WeaponRefineConfig.TABLE_PATH = "Asset/Data/Table/Customized/gjConfig.gjConfig"
 WeaponRefineConfig.STARDUST_ITEM_ID = 8310134
+WeaponRefineConfig.ATTRIBUTE_LOCK_ITEM_ID = 8310135
+WeaponRefineConfig.ATTRIBUTE_LOCK_SHOP_ITEM_ID = 1061
 WeaponRefineConfig.REFINE_COST = 100
 WeaponRefineConfig.MAX_SKIN_COUNT = 12
 WeaponRefineConfig.MAX_WEAPON_COUNT = 8
 -- 兼容仍用旧名称表示“周围武器数量”的调用。
 WeaponRefineConfig.MAX_GUN_COUNT = WeaponRefineConfig.MAX_WEAPON_COUNT
+-- 未解锁枪位仍参与整组武器的旋转速度计算，每个枪位固定提供 4。
+WeaponRefineConfig.LOCKED_SLOT_ROTATION_SPEED = 4
+WeaponRefineConfig.SLOT_UNLOCK_LEVELS = {10, 20, 30, 40, 50, 60, 70, 80}
+
+function WeaponRefineConfig.GetWeaponUnlockLevel(WeaponIndex)
+    WeaponIndex = math.floor(tonumber(WeaponIndex) or 0)
+    return WeaponRefineConfig.SLOT_UNLOCK_LEVELS[WeaponIndex]
+end
+
+function WeaponRefineConfig.IsWeaponUnlocked(WeaponIndex, PlayerLevel)
+    local RequiredLevel = WeaponRefineConfig.GetWeaponUnlockLevel(WeaponIndex)
+    return RequiredLevel ~= nil and (tonumber(PlayerLevel) or 0) >= RequiredLevel
+end
+
+function WeaponRefineConfig.GetUnlockedWeaponCount(PlayerLevel)
+    local Count = 0
+    for WeaponIndex = 1, WeaponRefineConfig.MAX_WEAPON_COUNT do
+        if WeaponRefineConfig.IsWeaponUnlocked(WeaponIndex, PlayerLevel) then
+            Count = WeaponIndex
+        else
+            break
+        end
+    end
+    return Count
+end
 
 local FIELD_NAMES = {
     Attack = {"TAK", "TAK_22_E925F48B4B1EE84561F1309EEE8B57EC"},
@@ -126,6 +153,23 @@ function WeaponRefineConfig.GetDamagePercents(PlayerState, SkinIndex, UnlockedCo
         end
     end
     return Result
+end
+
+-- 整组旋转速度 = 8 个枪位速度之和：已解锁读取该枪位攻速，未解锁固定为 4。
+function WeaponRefineConfig.GetRotationSpeed(PlayerState, SkinIndex, UnlockedCount)
+    UnlockedCount = math.max(0, math.min(WeaponRefineConfig.MAX_WEAPON_COUNT,
+        math.floor(tonumber(UnlockedCount) or 0)))
+    local TotalSpeed = 0
+    for WeaponIndex = 1, WeaponRefineConfig.MAX_WEAPON_COUNT do
+        local SlotSpeed = WeaponRefineConfig.LOCKED_SLOT_ROTATION_SPEED
+        if WeaponIndex <= UnlockedCount then
+            local _, AttackSpeed = WeaponRefineConfig.GetCurrentStats(
+                PlayerState, SkinIndex, WeaponIndex)
+            SlotSpeed = tonumber(AttackSpeed) or SlotSpeed
+        end
+        TotalSpeed = TotalSpeed + math.max(0, SlotSpeed)
+    end
+    return Round2(TotalSpeed)
 end
 
 function WeaponRefineConfig.Roll(Row)

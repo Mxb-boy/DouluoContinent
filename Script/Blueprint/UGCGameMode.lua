@@ -7,6 +7,7 @@ local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelCon
 local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local PlayerInitialData = UGCGameSystem.UGCRequire("Script.Common.PlayerInitialData")
+local WeaponRefineConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponRefineConfig")
 
 local WING_EQUIPMENT_SLOT = "CB_CW"
 local WING_ITEM_IDS = {
@@ -61,18 +62,30 @@ local function RestoreOrbitWeaponState(PlayerController, PlayerPawn, PlayerLevel
     if PlayerController == nil or PlayerPawn == nil then
         return
     end
+    local EffectiveLevel = tonumber(PlayerLevel) or 1
+    local PlayerState = PlayerController.PlayerState
+    if PlayerLevelMgr ~= nil and PlayerState ~= nil and PlayerState.GetPlayerExp ~= nil then
+        local ExpLevel = PlayerLevelMgr:GetLevelByExp(PlayerState:GetPlayerExp())
+        EffectiveLevel = math.max(EffectiveLevel, tonumber(ExpLevel) or 1)
+    end
     if PlayerController.OrbitWeaponClassPath ~= nil and PlayerPawn.SetOrbitWeaponConfig ~= nil then
         PlayerPawn:SetOrbitWeaponConfig(PlayerController.OrbitWeaponClassPath,
             PlayerController.OrbitWeaponHitEffectPath)
     end
     if PlayerPawn.SetOrbitWeaponActiveGun ~= nil then
-        local SavedTier = tonumber(PlayerController.OrbitWeaponActiveGunTier)
-        local ActiveTier = math.max(1, math.min(8,
-            math.floor(math.max(SavedTier or 1, tonumber(PlayerLevel) or 1))))
+        local ActiveTier = WeaponRefineConfig.GetUnlockedWeaponCount(EffectiveLevel)
         PlayerPawn:SetOrbitWeaponActiveGun(ActiveTier, PlayerController.OrbitWeaponDamagePercent)
     end
     if PlayerPawn.SetOrbitWeaponDamagePercents ~= nil then
         PlayerPawn:SetOrbitWeaponDamagePercents(PlayerController.OrbitWeaponDamagePercents or {})
+    end
+    if PlayerPawn.SetOrbitWeaponRotationSpeed ~= nil then
+        local SkinIndex = math.max(1, math.min(WeaponRefineConfig.MAX_SKIN_COUNT,
+            math.floor(tonumber(PlayerController.OrbitWeaponSkinIndex) or 1)))
+        local RotationSpeed = WeaponRefineConfig.GetRotationSpeed(PlayerController.PlayerState,
+            SkinIndex, WeaponRefineConfig.GetUnlockedWeaponCount(EffectiveLevel))
+        PlayerController.OrbitWeaponRotationSpeed = RotationSpeed
+        PlayerPawn:SetOrbitWeaponRotationSpeed(RotationSpeed)
     end
     if PlayerPawn.SetOrbitWeaponEnabled ~= nil then
         PlayerPawn:SetOrbitWeaponEnabled(PlayerController.OrbitWeaponEnabled ~= false)
@@ -744,6 +757,9 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             if PlayerState and PlayerState.LoadFromArchive then
                 local UID = UGCPawnAttrSystem.GetPlayerUID(PC.Pawn)
                 local ArchiveLoaded = PlayerState:LoadFromArchive(tonumber(UID))
+                if ArchiveLoaded == true and PC.RestoreSavedOrbitWeaponSkin ~= nil then
+                    PC:RestoreSavedOrbitWeaponSkin()
+                end
                 if ArchiveLoaded == true and PC.SignInEventComponent ~= nil and
                     PC.SignInEventComponent.RefreshSignInData ~= nil then
                     PC.SignInEventComponent.CachedEventData = nil

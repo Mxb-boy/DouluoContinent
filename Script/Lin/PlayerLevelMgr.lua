@@ -1,4 +1,5 @@
 local PlayerLevelMgr = {}
+local WeaponRefineConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponRefineConfig")
 --[[----------------------负责等级经验规则------------------------]] --
 
 --[[----------------------等级公式参数------------------------]] --
@@ -132,8 +133,17 @@ function PlayerLevelMgr:AddExpToPlayer(PlayerController, amount)
     local PlayerPawn = PlayerController.Pawn or
         (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)
     if PlayerPawn ~= nil and PlayerPawn.SetOrbitWeaponActiveGun ~= nil then
-        PlayerPawn:SetOrbitWeaponActiveGun(math.max(1, math.min(8, newLevel)),
+        local UnlockedCount = WeaponRefineConfig.GetUnlockedWeaponCount(newLevel)
+        PlayerPawn:SetOrbitWeaponActiveGun(UnlockedCount,
             PlayerPawn.OrbitWeaponDamagePercent)
+        if PlayerPawn.SetOrbitWeaponRotationSpeed ~= nil then
+            local SkinIndex = math.max(1, math.min(WeaponRefineConfig.MAX_SKIN_COUNT,
+                math.floor(tonumber(PlayerController.OrbitWeaponSkinIndex) or 1)))
+            local RotationSpeed = WeaponRefineConfig.GetRotationSpeed(playerState,
+                SkinIndex, UnlockedCount)
+            PlayerController.OrbitWeaponRotationSpeed = RotationSpeed
+            PlayerPawn:SetOrbitWeaponRotationSpeed(RotationSpeed)
+        end
     end
 
     --[[-----------------------客户端提示----------------------]] --

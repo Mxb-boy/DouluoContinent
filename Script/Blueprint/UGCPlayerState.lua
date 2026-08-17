@@ -13,6 +13,7 @@ local UGCPlayerState = {
     LotteryState = {},
     WeaponLevels = {},
     WeaponRefineStats = {},
+    OrbitWeaponSkinIndex = 1,
     SignInEvent = {},
     UnlockedTitles = {},
     KillMonsterCount = 0,
@@ -96,6 +97,10 @@ local ARCHIVE_KEYS = {{
     key = "WeaponRefineStats",
     field = "WeaponRefineStats",
     default = {}
+}, {
+    key = "OrbitWeaponSkinIndex",
+    field = "OrbitWeaponSkinIndex",
+    default = 1
 }, {
     key = "BaseAttack",
     field = "BaseAttack",
@@ -220,7 +225,7 @@ function UGCPlayerState:GetReplicatedProperties()
         {"HunHuan", "Probability_Bonus", "RegenPercent", "HP", "YXWD_InvincibleBuff", "LotteryState", "WeaponLevels",
          "BaseAttack", "BaseMaxHp", "AutoPickButtonHidden", "AutoAttackButtonHidden", "UnlockedTitles",
          "KillMonsterCount", "EquippedTitleID", "FeiButton0Hidden", "KJ04GiftPackPurchased", "InitialItem8310006Granted", "PlayerLevel", "PlayerExp",
-         "PlayerMaxExp", "PaTaRefreshDay"}, {"RankAttackBonus", "Lazy"}
+         "PlayerMaxExp", "PaTaRefreshDay", "OrbitWeaponSkinIndex"}, {"RankAttackBonus", "Lazy"}
 end
 
 -- ------ 跨对局存档 ------ --
@@ -669,6 +674,22 @@ function UGCPlayerState:GetWeaponRefineStats()
         self.WeaponRefineStats = {}
     end
     return self.WeaponRefineStats
+end
+
+function UGCPlayerState:GetOrbitWeaponSkinIndex()
+    return math.max(1, math.min(12, math.floor(tonumber(self.OrbitWeaponSkinIndex) or 1)))
+end
+
+function UGCPlayerState:SetOrbitWeaponSkinIndex(Value)
+    local SkinIndex = math.floor(tonumber(Value) or 0)
+    if SkinIndex < 1 or SkinIndex > 12 then
+        return false
+    end
+    self.OrbitWeaponSkinIndex = SkinIndex
+    if self.bLoadingArchive then
+        return true
+    end
+    return self:SaveToArchive() == true
 end
 
 function UGCPlayerState:GetWeaponRefineStat(SkinIndex, WeaponIndex)

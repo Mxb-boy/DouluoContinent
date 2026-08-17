@@ -34,6 +34,7 @@ local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local ShadowDisabler = UGCGameSystem.UGCRequire("Script.Common.ShadowDisabler")
 local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil")
 local WeaponRefineConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponRefineConfig")
+local OrbitWeaponSkinConfig = UGCGameSystem.UGCRequire("Script.Common.OrbitWeaponSkinConfig")
 local DEFAULT_WQ_HIT_EFFECT_PATH = "/Game/UGC/UGCGame/Skill/Arts_Effect/CG034/Particle/P_CG034UGC_Skill_SwordFire_03.P_CG034UGC_Skill_SwordFire_03"
 local Eat_All_Soul_Rings_Particle_Path = '/Game/Arts_Effect/ParticleSystems/Share/P_levelup_01.P_levelup_01' -- 一键吃魂环粒子特效路径
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
@@ -69,6 +70,30 @@ local WingItemIDs = {
     [8310010] = true
 }
 local WING_EQUIPMENT_SLOT = "CB_CW"
+
+-- 存档中的 PlayerLevel 可能晚于 PlayerExp 刷新。旋转武器的服务端校验统一
+-- 使用两者计算出的较高等级，避免界面已解锁、服务端却仍按 1 级拦截。
+local function GetEffectivePlayerLevel(PlayerState)
+    if PlayerState == nil then
+        return 0
+    end
+
+    local StoredLevel = 0
+    if PlayerState.GetPlayerLevel ~= nil then
+        StoredLevel = math.floor(tonumber(PlayerState:GetPlayerLevel()) or 0)
+    else
+        StoredLevel = math.floor(tonumber(PlayerState.PlayerLevel) or 0)
+    end
+
+    local ExpLevel = 0
+    if PlayerLevelMgr ~= nil and PlayerLevelMgr.GetLevelByExp ~= nil and
+        PlayerState.GetPlayerExp ~= nil then
+        local CalculatedLevel = PlayerLevelMgr:GetLevelByExp(PlayerState:GetPlayerExp())
+        ExpLevel = math.floor(tonumber(CalculatedLevel) or 0)
+    end
+
+    return math.max(1, StoredLevel, ExpLevel)
+end
 
 local function GetSoulRingConversionField(Row, FieldName)
     if Row == nil then
@@ -316,7 +341,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "ServerRequestLeaveTeam", "ServerRequestKickPlayer", "ServerRequestDisbandTeam", "UseRedemptionCode",
         "Server_LearnTalent", "Client_TalentLearnResult",
         "Server_RequestTalentState", "Client_SyncTalentState", "Server_SetOrbitWeaponEnabled",
-        "Server_SelectOrbitWeapon", "Server_SetOrbitWeaponActiveGun",
+        "Server_SelectOrbitWeapon", "Client_SyncOrbitWeaponSkinSelection", "Server_SetOrbitWeaponActiveGun",
         "Server_RequestWeaponRefineState", "Server_RefineOrbitWeapon", "Client_WeaponRefineResult",
         "Server_ResolveWeaponRefine", "Client_WeaponRefineDecisionResult"
 end
@@ -343,17 +368,60 @@ function UGCPlayerController:Server_SelectOrbitWeapon(WeaponClassPath, HitEffect
             self.OrbitWeaponClassPath = WeaponClassPath
             self.OrbitWeaponHitEffectPath = HitEffectPath
             self.OrbitWeaponSkinIndex = SkinIndex
-            local PlayerLevel = self.PlayerState ~= nil and self.PlayerState.GetPlayerLevel ~= nil and
-                tonumber(self.PlayerState:GetPlayerLevel()) or 1
-            local UnlockedCount = math.max(1, math.min(WeaponRefineConfig.MAX_WEAPON_COUNT,
-                math.floor(PlayerLevel)))
+            if self.PlayerState ~= nil and self.PlayerState.bArchiveLoaded == true and
+                self.PlayerState.SetOrbitWeaponSkinIndex ~= nil then
+                self.PlayerState:SetOrbitWeaponSkinIndex(SkinIndex)
+            end
+            local PlayerLevel = GetEffectivePlayerLevel(self.PlayerState)
+            local UnlockedCount = WeaponRefineConfig.GetUnlockedWeaponCount(PlayerLevel)
             local DamagePercents = WeaponRefineConfig.GetDamagePercents(
                 self.PlayerState, SkinIndex, UnlockedCount)
             self.OrbitWeaponDamagePercents = DamagePercents
+            local RotationSpeed = WeaponRefineConfig.GetRotationSpeed(
+                self.PlayerState, SkinIndex, UnlockedCount)
+            self.OrbitWeaponRotationSpeed = RotationSpeed
             if Pawn.SetOrbitWeaponDamagePercents ~= nil then
                 Pawn:SetOrbitWeaponDamagePercents(DamagePercents)
             end
+            if Pawn.SetOrbitWeaponRotationSpeed ~= nil then
+                Pawn:SetOrbitWeaponRotationSpeed(RotationSpeed)
+            end
+            UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncOrbitWeaponSkinSelection",
+                SkinIndex, WeaponClassPath, HitEffectPath)
         end
+    end
+end
+
+function UGCPlayerController:RestoreSavedOrbitWeaponSkin()
+    local SkinIndex = self.PlayerState ~= nil and self.PlayerState.GetOrbitWeaponSkinIndex ~= nil and
+        self.PlayerState:GetOrbitWeaponSkinIndex() or 1
+    local WeaponClassPath, HitEffectPath = OrbitWeaponSkinConfig.GetPaths(SkinIndex)
+    if WeaponClassPath == nil and SkinIndex ~= 1 then
+        SkinIndex = 1
+        WeaponClassPath, HitEffectPath = OrbitWeaponSkinConfig.GetPaths(SkinIndex)
+    end
+    if WeaponClassPath ~= nil then
+        self:Server_SelectOrbitWeapon(WeaponClassPath, HitEffectPath, SkinIndex)
+        return true
+    end
+    ugcprint("[OrbitWeapon] failed to restore skin index=" .. tostring(SkinIndex))
+    return false
+end
+
+function UGCPlayerController:Client_SyncOrbitWeaponSkinSelection(SkinIndex, WeaponClassPath, HitEffectPath)
+    SkinIndex = math.max(1, math.min(WeaponRefineConfig.MAX_SKIN_COUNT,
+        math.floor(tonumber(SkinIndex) or 1)))
+    self.OrbitWeaponSkinIndex = SkinIndex
+    self.OrbitWeaponClassPath = WeaponClassPath
+    self.OrbitWeaponHitEffectPath = HitEffectPath
+    local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
+    if Pawn ~= nil and Pawn.SetOrbitWeaponConfig ~= nil and WeaponClassPath ~= nil then
+        Pawn:SetOrbitWeaponConfig(WeaponClassPath, HitEffectPath)
+    end
+    local MainUI = self.MainUIInstance
+    local WeaponUI = self.UI017Instance or (MainUI ~= nil and MainUI.UI017Instance or nil)
+    if WeaponUI ~= nil and WeaponUI.ApplyOrbitWeaponSkinSelection ~= nil then
+        WeaponUI:ApplyOrbitWeaponSkinSelection(SkinIndex)
     end
 end
 
@@ -363,22 +431,27 @@ function UGCPlayerController:Server_SetOrbitWeaponActiveGun(GunIndex, DamagePerc
     if Pawn == nil or Pawn.SetOrbitWeaponActiveGun == nil then
         return
     end
-    local PlayerLevel = Pawn.PlayerState ~= nil and Pawn.PlayerState.GetPlayerLevel ~= nil and
-        tonumber(Pawn.PlayerState:GetPlayerLevel()) or 0
-    if GunIndex >= 1 and GunIndex <= 8 and PlayerLevel >= GunIndex then
+    local PlayerLevel = GetEffectivePlayerLevel(Pawn.PlayerState)
+    if GunIndex >= 1 and GunIndex <= 8 and
+        WeaponRefineConfig.IsWeaponUnlocked(GunIndex, PlayerLevel) then
         local SkinIndex = math.max(1, math.min(WeaponRefineConfig.MAX_SKIN_COUNT,
             math.floor(tonumber(self.OrbitWeaponSkinIndex) or 1)))
         local SavedAttack = WeaponRefineConfig.GetCurrentStats(Pawn.PlayerState, SkinIndex, GunIndex)
         DamagePercent = tonumber(SavedAttack) or tonumber(DamagePercent)
         DamagePercent = DamagePercent ~= nil and math.max(0.01, math.min(10000, DamagePercent)) or nil
-        local SavedTier = tonumber(self.OrbitWeaponActiveGunTier) or 0
-        local EffectiveTier = math.max(SavedTier, GunIndex)
+        local EffectiveTier = WeaponRefineConfig.GetUnlockedWeaponCount(PlayerLevel)
         self.OrbitWeaponActiveGunTier = EffectiveTier
         self.OrbitWeaponSelectedGunIndex = GunIndex
         if DamagePercent ~= nil then
             self.OrbitWeaponDamagePercent = DamagePercent
         end
         Pawn:SetOrbitWeaponActiveGun(EffectiveTier, self.OrbitWeaponDamagePercent)
+        local RotationSpeed = WeaponRefineConfig.GetRotationSpeed(Pawn.PlayerState,
+            SkinIndex, EffectiveTier)
+        self.OrbitWeaponRotationSpeed = RotationSpeed
+        if Pawn.SetOrbitWeaponRotationSpeed ~= nil then
+            Pawn:SetOrbitWeaponRotationSpeed(RotationSpeed)
+        end
     end
 end
 
@@ -1655,20 +1728,32 @@ function UGCPlayerController:Server_RefineOrbitWeapon(SkinIndex, WeaponIndex,
     bLockAttackSpeed = bLockAttackSpeed == true
     local PlayerState = self.PlayerState
     local Pawn = GetPlayerPawn(self)
-    local PlayerLevel = PlayerState ~= nil and PlayerState.GetPlayerLevel ~= nil and
-        math.floor(tonumber(PlayerState:GetPlayerLevel()) or 0) or 0
+    local PlayerLevel = GetEffectivePlayerLevel(PlayerState)
     local Row = WeaponRefineConfig.GetRow(SkinIndex, WeaponIndex)
+    local AttributeLockCost = (bLockAttack or bLockAttackSpeed) and 1 or 0
     local bSuccess = false
     local Attack, AttackSpeed = 0, 0
     local Message = "洗练失败，请稍后重试"
+
+    local StoredLevel = PlayerState ~= nil and PlayerState.GetPlayerLevel ~= nil and
+        tonumber(PlayerState:GetPlayerLevel()) or 0
+    local PlayerExp = PlayerState ~= nil and PlayerState.GetPlayerExp ~= nil and
+        tonumber(PlayerState:GetPlayerExp()) or 0
+    ugcprint('[WeaponRefine:SERVER] request skin=' .. tostring(SkinIndex) ..
+        ' weapon=' .. tostring(WeaponIndex) .. ' storedLevel=' .. tostring(StoredLevel) ..
+        ' exp=' .. tostring(PlayerExp) .. ' effectiveLevel=' .. tostring(PlayerLevel) ..
+        ' row=' .. tostring(Row ~= nil))
 
     EnsurePlayerStateArchiveUID(self)
     if PlayerState == nil or PlayerState.bArchiveLoaded ~= true then
         Message = "存档尚未加载，请稍后重试"
     elseif SkinIndex < 1 or SkinIndex > WeaponRefineConfig.MAX_SKIN_COUNT or
-        WeaponIndex < 1 or WeaponIndex > WeaponRefineConfig.MAX_WEAPON_COUNT or
-        WeaponIndex > PlayerLevel then
-        Message = "该武器尚未解锁"
+        WeaponIndex < 1 or WeaponIndex > WeaponRefineConfig.MAX_WEAPON_COUNT then
+        Message = "武器选择无效"
+    elseif not WeaponRefineConfig.IsWeaponUnlocked(WeaponIndex, PlayerLevel) then
+        local RequiredLevel = WeaponRefineConfig.GetWeaponUnlockLevel(WeaponIndex) or 0
+        Message = "该武器需要达到" .. tostring(RequiredLevel) .. "级，当前等级" ..
+            tostring(PlayerLevel)
     elseif bLockAttack and bLockAttackSpeed then
         Message = "攻击和攻速不能同时锁定"
     elseif self.PendingWeaponRefine ~= nil then
@@ -1676,12 +1761,17 @@ function UGCPlayerController:Server_RefineOrbitWeapon(SkinIndex, WeaponIndex,
     elseif Row == nil then
         Message = "洗练配置读取失败"
     elseif Pawn == nil or UGCBackpackSystemV2 == nil or
-        UGCBackpackSystemV2.GetItemCountV2 == nil or UGCBackpackSystemV2.RemoveItemV2 == nil then
+        UGCBackpackSystemV2.GetItemCountV2 == nil or UGCBackpackSystemV2.RemoveItemV2 == nil or
+        AttributeLockCost > 0 and UGCBackpackSystemV2.AddItemV2 == nil then
         Message = "背包暂不可用，请稍后重试"
     else
         local Cost = WeaponRefineConfig.REFINE_COST
         local StardustCount = GetBackpackItemCount(Pawn, WeaponRefineConfig.STARDUST_ITEM_ID)
-        if StardustCount < Cost then
+        local AttributeLockCount = GetBackpackItemCount(
+            Pawn, WeaponRefineConfig.ATTRIBUTE_LOCK_ITEM_ID)
+        if AttributeLockCount < AttributeLockCost then
+            Message = "属性锁不足，需要1个"
+        elseif StardustCount < Cost then
             Message = "星尘不足，需要" .. tostring(Cost) .. "个"
         else
             local RemoveOK, RemovedCount = pcall(UGCBackpackSystemV2.RemoveItemV2, Pawn,
@@ -1694,23 +1784,43 @@ function UGCPlayerController:Server_RefineOrbitWeapon(SkinIndex, WeaponIndex,
                 end
                 Message = "星尘扣除失败，请稍后重试"
             else
-                Attack, AttackSpeed = WeaponRefineConfig.Roll(Row)
-                local CurrentAttack, CurrentAttackSpeed =
-                    WeaponRefineConfig.GetCurrentStats(PlayerState, SkinIndex, WeaponIndex)
-                if bLockAttack then
-                    Attack = CurrentAttack
+                local RemovedLockCount = 0
+                local LockRemoveOK = true
+                if AttributeLockCost > 0 then
+                    LockRemoveOK, RemovedLockCount = pcall(UGCBackpackSystemV2.RemoveItemV2,
+                        Pawn, WeaponRefineConfig.ATTRIBUTE_LOCK_ITEM_ID, AttributeLockCost)
+                    RemovedLockCount = LockRemoveOK and
+                        math.max(0, math.floor(tonumber(RemovedLockCount) or 0)) or 0
                 end
-                if bLockAttackSpeed then
-                    AttackSpeed = CurrentAttackSpeed
+                if RemovedLockCount ~= AttributeLockCost then
+                    if UGCBackpackSystemV2.AddItemV2 ~= nil then
+                        pcall(UGCBackpackSystemV2.AddItemV2, Pawn,
+                            WeaponRefineConfig.STARDUST_ITEM_ID, Cost)
+                        if RemovedLockCount > 0 then
+                            pcall(UGCBackpackSystemV2.AddItemV2, Pawn,
+                                WeaponRefineConfig.ATTRIBUTE_LOCK_ITEM_ID, RemovedLockCount)
+                        end
+                    end
+                    Message = "属性锁扣除失败，请稍后重试"
+                else
+                    Attack, AttackSpeed = WeaponRefineConfig.Roll(Row)
+                    local CurrentAttack, CurrentAttackSpeed =
+                        WeaponRefineConfig.GetCurrentStats(PlayerState, SkinIndex, WeaponIndex)
+                    if bLockAttack then
+                        Attack = CurrentAttack
+                    end
+                    if bLockAttackSpeed then
+                        AttackSpeed = CurrentAttackSpeed
+                    end
+                    self.PendingWeaponRefine = {
+                        SkinIndex = SkinIndex,
+                        WeaponIndex = WeaponIndex,
+                        Attack = Attack,
+                        AttackSpeed = AttackSpeed
+                    }
+                    bSuccess = true
+                    Message = "洗练完成，请确认是否更换属性"
                 end
-                self.PendingWeaponRefine = {
-                    SkinIndex = SkinIndex,
-                    WeaponIndex = WeaponIndex,
-                    Attack = Attack,
-                    AttackSpeed = AttackSpeed
-                }
-                bSuccess = true
-                Message = "洗练完成，请确认是否更换属性"
             end
         end
     end
@@ -1718,6 +1828,9 @@ function UGCPlayerController:Server_RefineOrbitWeapon(SkinIndex, WeaponIndex,
     local Snapshot = BuildWeaponRefineSnapshot(PlayerState)
     local StardustCount = GetBackpackItemCount(Pawn, WeaponRefineConfig.STARDUST_ITEM_ID)
     self.bWeaponRefineInProgress = false
+    ugcprint('[WeaponRefine:SERVER] result success=' .. tostring(bSuccess) ..
+        ' skin=' .. tostring(SkinIndex) .. ' weapon=' .. tostring(WeaponIndex) ..
+        ' message=' .. tostring(Message))
     UnrealNetwork.CallUnrealRPC(self, self, "Client_WeaponRefineResult", bSuccess, SkinIndex,
         WeaponIndex, Attack, AttackSpeed, StardustCount, Snapshot, Message)
     return bSuccess
@@ -1747,12 +1860,18 @@ function UGCPlayerController:Server_ResolveWeaponRefine(bAccept)
                 Message = "新洗练属性已更换"
                 if self.OrbitWeaponSkinIndex == Pending.SkinIndex and Pawn ~= nil and
                     Pawn.SetOrbitWeaponDamagePercents ~= nil then
-                    local PlayerLevel = PlayerState.GetPlayerLevel ~= nil and
-                        tonumber(PlayerState:GetPlayerLevel()) or 1
+                    local PlayerLevel = GetEffectivePlayerLevel(PlayerState)
+                    local UnlockedCount = WeaponRefineConfig.GetUnlockedWeaponCount(PlayerLevel)
                     local DamagePercents = WeaponRefineConfig.GetDamagePercents(PlayerState,
-                        Pending.SkinIndex, math.floor(PlayerLevel))
+                        Pending.SkinIndex, UnlockedCount)
                     self.OrbitWeaponDamagePercents = DamagePercents
                     Pawn:SetOrbitWeaponDamagePercents(DamagePercents)
+                    local RotationSpeed = WeaponRefineConfig.GetRotationSpeed(PlayerState,
+                        Pending.SkinIndex, UnlockedCount)
+                    self.OrbitWeaponRotationSpeed = RotationSpeed
+                    if Pawn.SetOrbitWeaponRotationSpeed ~= nil then
+                        Pawn:SetOrbitWeaponRotationSpeed(RotationSpeed)
+                    end
                 end
             else
                 Message = "属性保存失败，请重试"
@@ -3133,7 +3252,7 @@ function UGCPlayerController:Client_RefreshPlayerExp(playerExp, playerMaxExp, pl
     self.ClientPlayerLevel = playerLevel
     local Pawn = self.Pawn or (self.K2_GetPawn ~= nil and self:K2_GetPawn() or nil)
     if Pawn ~= nil and Pawn.SetOrbitWeaponActiveGun ~= nil then
-        Pawn:SetOrbitWeaponActiveGun(math.max(1, math.min(8, math.floor(tonumber(playerLevel) or 1))),
+        Pawn:SetOrbitWeaponActiveGun(WeaponRefineConfig.GetUnlockedWeaponCount(playerLevel),
             Pawn.OrbitWeaponDamagePercent)
     end
     if self.MainUIInstance ~= nil and self.MainUIInstance.RefreshPlayerExpUI ~= nil then
@@ -3146,8 +3265,8 @@ function UGCPlayerController:Client_RefreshPlayerExp(playerExp, playerMaxExp, pl
     end
 
     local MainUI = self.MainUIInstance
-    local SoulRingUI = MainUI and (MainUI.UI017Instance or MainUI.UI15Instance)
-        or self.UI017Instance or self.UI15Instance
+    local SoulRingUI = self.UI017Instance or (MainUI and MainUI.UI017Instance)
+        or self.UI15Instance or (MainUI and MainUI.UI15Instance)
     if SoulRingUI ~= nil and SoulRingUI.SetCurrentPlayerLevel ~= nil then
         SoulRingUI:SetCurrentPlayerLevel(playerLevel)
     end
