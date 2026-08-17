@@ -4,10 +4,13 @@
 local TalentPassiveCritRate = {}
 
 local TalentConfig = UGCGameSystem.UGCRequire("Script.Xiao.TalentConfig")
+local TalentEffectMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentEffectMgr")
 
-local function GetCritRateBonus()
+local function GetCritRateBonus(PlayerState)
     local Config = TalentConfig.PassiveBuffs ~= nil and TalentConfig.PassiveBuffs.CritRate or nil
-    return math.max(0, tonumber(Config ~= nil and Config.CritRate or nil) or 0)
+    local BaseBonus = tonumber(Config ~= nil and Config.CritRate or nil) or 0
+    local TalentBonus = TalentEffectMgr:GetPassiveBuffStatBonus(PlayerState, "CritRate", "CritRate")
+    return math.max(0, BaseBonus + TalentBonus)
 end
 
 local function GetBuffOwnerActor(Buff)
@@ -55,7 +58,7 @@ function TalentPassiveCritRate:LuaFunction()
         return
     end
 
-    local CritRateBonus = GetCritRateBonus()
+    local CritRateBonus = GetCritRateBonus(PlayerState)
     PlayerState.TalentBuff_CritRate = CritRateBonus
     ugcprint("[TalentPassiveCritRate] apply crit rate=" .. tostring(CritRateBonus))
 end

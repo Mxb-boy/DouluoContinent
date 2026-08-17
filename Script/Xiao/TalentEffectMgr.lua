@@ -59,6 +59,7 @@ end
 -- Node effect schema:
 -- Effects = {
 --     Stats = { MaxHealthFlat = 100, AttackFlat = 10, CritRate = 0.05 },
+--     PassiveBuffStats = { CritRate = { CritRate = 0.1 } },
 --     PassiveSkillPaths = { "Asset/.../PassiveSkill.PassiveSkill_C" },
 --     UltimateSkillPath = "Asset/.../UltimateSkill.UltimateSkill_C"
 -- }
@@ -85,6 +86,24 @@ function TalentEffectMgr:GetStatBonus(playerState, statName)
         return 0
     end
     return tonumber(self:GetStatBonuses(playerState)[statName]) or 0
+end
+
+function TalentEffectMgr:GetPassiveBuffStatBonus(playerState, buffKey, statName)
+    if type(buffKey) ~= "string" or buffKey == "" or type(statName) ~= "string" or statName == "" then
+        return 0
+    end
+
+    local bonus = 0
+    for _, nodeID in ipairs(self:GetLearnedNodeIDs(playerState)) do
+        local node = TalentConfig.Nodes[nodeID]
+        local effects = node ~= nil and node.Effects or nil
+        local passiveBuffStats = type(effects) == "table" and effects.PassiveBuffStats or nil
+        local buffStats = type(passiveBuffStats) == "table" and passiveBuffStats[buffKey] or nil
+        if type(buffStats) == "table" then
+            bonus = bonus + (tonumber(buffStats[statName]) or 0)
+        end
+    end
+    return bonus
 end
 
 function TalentEffectMgr:GetEffectiveBaseMaxHp(playerState, baseMaxHp)

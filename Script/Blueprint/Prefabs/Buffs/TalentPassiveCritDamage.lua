@@ -4,10 +4,13 @@
 local TalentPassiveCritDamage = {}
 
 local TalentConfig = UGCGameSystem.UGCRequire("Script.Xiao.TalentConfig")
+local TalentEffectMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentEffectMgr")
 
-local function GetCritMultiplierBonus()
+local function GetCritMultiplierBonus(PlayerState)
     local Config = TalentConfig.PassiveBuffs ~= nil and TalentConfig.PassiveBuffs.CritDamage or nil
-    return math.max(0, tonumber(Config ~= nil and Config.CritMultiplierFlat or nil) or 0)
+    local BaseBonus = tonumber(Config ~= nil and Config.CritMultiplierFlat or nil) or 0
+    local TalentBonus = TalentEffectMgr:GetPassiveBuffStatBonus(PlayerState, "CritDamage", "CritMultiplierFlat")
+    return math.max(0, BaseBonus + TalentBonus)
 end
 
 local function GetBuffOwnerActor(Buff)
@@ -55,7 +58,7 @@ function TalentPassiveCritDamage:LuaFunction()
         return
     end
 
-    local CritMultiplierBonus = GetCritMultiplierBonus()
+    local CritMultiplierBonus = GetCritMultiplierBonus(PlayerState)
     PlayerState.TalentBuff_CritMultiplierFlat = CritMultiplierBonus
     ugcprint("[TalentPassiveCritDamage] apply crit multiplier=" .. tostring(CritMultiplierBonus))
 end

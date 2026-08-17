@@ -26,6 +26,11 @@ TalentConfig.PassiveBuffs = {
         Path = "/Douluo/Asset/Blueprint/Prefabs/Buffs/TalentPassiveAttack.TalentPassiveAttack_C",
         AttackPercent = 0.1
     },
+    Heal = {
+        Chance = 0.02,
+        Path = "/Douluo/Asset/Blueprint/Prefabs/Buffs/TalentPassiveHeal.TalentPassiveHeal_C",
+        HealMaxHealthPercent = 0.1
+    },
     CritRate = {
         Chance = 0.02,
         Path = "/Douluo/Asset/Blueprint/Prefabs/Buffs/TalentPassiveCritRate.TalentPassiveCritRate_C",
@@ -99,11 +104,14 @@ TalentConfig.Nodes = {
     },
     [5] = {
         ID = 5,
-        Name = "待定节点5",
+        Name = "生命恢复",
         Row = 3,
         Column = 6,
         Cost = 1,
-        RequireID = 2
+        RequireID = 2,
+        Effects = {
+            PassiveBuffKey = "Heal"
+        }
     },
     [6] = {
         ID = 6,
@@ -140,11 +148,16 @@ TalentConfig.Nodes = {
     },
     [9] = {
         ID = 9,
-        Name = "属性加成待定节点9",
+        Name = "攻击强化",
         Row = 4,
         Column = 3,
         Cost = 1,
-        RequireID = 4
+        RequireID = 4,
+        Effects = {
+            Stats = {
+                AttackPercent = 0.1
+            }
+        }
     },
     [10] = {
         ID = 10,
@@ -164,35 +177,59 @@ TalentConfig.Nodes = {
     },
     [12] = {
         ID = 12,
-        Name = "属性加成待定节点12",
+        Name = "精准",
         Row = 4,
         Column = 9,
         Cost = 1,
-        RequireID = 6
+        RequireID = 6,
+        Effects = {
+            Stats = {
+                CritRate = 0.1
+            }
+        }
     },
     [13] = {
         ID = 13,
-        Name = "属性加成待定节点13",
+        Name = "暴击增幅",
         Row = 4,
         Column = 11,
         Cost = 1,
-        RequireID = 6
+        RequireID = 6,
+        Effects = {
+            PassiveBuffStats = {
+                CritRate = {
+                    CritRate = 0.1
+                }
+            }
+        }
     },
     [14] = {
         ID = 14,
-        Name = "属性加成待定节点14",
+        Name = "毁灭",
         Row = 4,
         Column = 13,
         Cost = 1,
-        RequireID = 7
+        RequireID = 7,
+        Effects = {
+            Stats = {
+                CritMultiplierFlat = 0.5
+            }
+        }
     },
     [15] = {
         ID = 15,
-        Name = "属性加成待定节点15",
+        Name = "暴伤增幅",
         Row = 4,
         Column = 15,
         Cost = 1,
-        RequireID = 7
+        RequireID = 7,
+        Effects = {
+            PassiveBuffStats = {
+                CritDamage = {
+                    CritMultiplierFlat = 0.5
+                }
+            }
+        }
     },
     [16] = {
         ID = 16,
