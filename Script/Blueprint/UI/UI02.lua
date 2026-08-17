@@ -9,8 +9,9 @@
 ---@field Button_6 UButton
 ---@field Button_7 UButton
 ---@field Button_8 UButton
+---@field Button_9 UButton
 ---@field Button_10 UButton
----@field Button_54 UButton
+---@field Button_11 UButton
 ---@field Button_92 UButton
 ---@field Button_93 UButton
 ---@field Button_94 UButton
@@ -35,7 +36,6 @@
 ---@field Button_226 UButton
 ---@field Button_227 UButton
 ---@field Button_228 UButton
----@field Button_Talent UButton
 ---@field gjl UTextBlock
 ---@field hp UTextBlock
 ---@field Image_0 UImage
@@ -57,6 +57,10 @@
 ---@field Image_16 UImage
 ---@field Image_17 UImage
 ---@field Image_18 UImage
+---@field Image_19 UImage
+---@field Image_20 UImage
+---@field Image_21 UImage
+---@field Image_22 UImage
 ---@field Image_43 UImage
 ---@field Image_62 UImage
 ---@field Image_109 UImage
@@ -125,12 +129,16 @@ local MainButtonRedDots = {
     Button_151 = "Image_11",
     Button_152 = "Image_12",
     Button_153 = "Image_13",
-    Button_158 = "Image_7"
+    Button_158 = "Image_7",
+    Button_9 = "Image_20",
+    Button_11 = "Image_22"
 }
 local MainFoldImages = {"Image_386", "Image_387", "Image_388", "Image_389", "Image_392", "Image_393", "Image_395",
-                        "Image_396"}
-local MainFoldWidgets = {"Button_6", "Button_7", "Image_15", "Image_16", "Image_17", "Image_18"}
-local HiddenMainWidgets = {"Button_147", "Button_156", "Button_157", "Image_9", "Image_14", "Image_397", "Image_398"}
+                        "Image_396", "Image_19", "Image_21"}
+local MainFoldWidgets = {"Button_6", "Button_7", "Image_15", "Image_16", "Image_17", "Image_18", "Button_9",
+                         "Button_11"}
+local HiddenMainWidgets = {"Button_147", "Button_156", "Button_157", "Button_54", "Button_Talent", "Image_9",
+                           "Image_14", "Image_397", "Image_398"}
 local ToggleButtonNormalColor = {
     R = 1.0,
     G = 1.0,
@@ -235,7 +243,9 @@ function UI02:LuaInit()
     self.Button_6.OnClicked:Add(self.Button_6_OnClicked, self)
     self.Button_7.OnClicked:Add(self.Button_7_OnClicked, self)
     self.Button_8.OnClicked:Add(self.Button_8_OnClicked, self)
+    self.Button_9.OnClicked:Add(self.Button_9_OnClicked, self)
     self.Button_10.OnClicked:Add(self.Button_10_OnClicked, self)
+    self.Button_11.OnClicked:Add(self.Button_11_OnClicked, self)
     self.Button_54.OnClicked:Add(self.Button_54_OnClicked, self)
 
     self.Button_2.OnClicked:Add(self.Button_2_OnClicked, self)
@@ -259,7 +269,9 @@ function UI02:LuaInit()
     self:ApplyButtonEffect(self.Button_6)
     self:ApplyButtonEffect(self.Button_7)
     self:ApplyButtonEffect(self.Button_8)
+    self:ApplyButtonEffect(self.Button_9)
     self:ApplyButtonEffect(self.Button_10)
+    self:ApplyButtonEffect(self.Button_11)
     self:ApplyButtonEffect(self.Button_54)
 
     self:ApplyButtonEffect(self.Button_2)
@@ -339,6 +351,18 @@ function UI02:Button_Talent_OnClicked()
     self.UI018Instance:Open()
 end
 
+-- Main menu entry for the orbiting-weapon/refine panel.
+function UI02:Button_9_OnClicked()
+    self:HideMainButtonRedDot("Button_9")
+    self:Button_54_OnClicked()
+end
+
+-- Main menu entry for the talent panel.
+function UI02:Button_11_OnClicked()
+    self:HideMainButtonRedDot("Button_11")
+    self:Button_Talent_OnClicked()
+end
+
 function UI02:HideHiddenMainWidgets()
     for _, WidgetName in ipairs(HiddenMainWidgets) do
         if self[WidgetName] ~= nil then
@@ -374,7 +398,12 @@ function UI02:Button_134_OnClicked()
     local Visibility = self.bHideMainButtons and ESlateVisibility.Collapsed or ESlateVisibility.Visible
     for ButtonName, ImageName in pairs(MainButtonRedDots) do
         self[ButtonName]:SetVisibility(Visibility)
-        self[ImageName]:SetVisibility(Visibility)
+        local RedDotVisibility = Visibility
+        if not self.bHideMainButtons and self.MainButtonRedDotHidden ~= nil and
+            self.MainButtonRedDotHidden[ButtonName] == true then
+            RedDotVisibility = ESlateVisibility.Collapsed
+        end
+        self[ImageName]:SetVisibility(RedDotVisibility)
     end
     for _, ImageName in ipairs(MainFoldImages) do
         self[ImageName]:SetVisibility(Visibility)
