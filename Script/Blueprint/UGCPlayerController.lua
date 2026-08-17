@@ -498,6 +498,14 @@ local function RequestTalentPropertyRefresh(PlayerController)
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_RequestRefreshProperty")
 end
 
+local function RefreshTalentSkillCooldowns(PlayerController)
+    local PlayerPawn = PlayerController ~= nil and PlayerController.Pawn or nil
+    local PlayerState = PlayerController ~= nil and PlayerController.PlayerState or nil
+    if PlayerPawn ~= nil and PlayerState ~= nil then
+        TalentEffectMgr:RefreshSkillCooldowns(PlayerPawn, PlayerState)
+    end
+end
+
 function UGCPlayerController:Server_LearnTalent(NodeID)
     local PlayerState = self.PlayerState
     if PlayerState == nil then
@@ -516,6 +524,9 @@ function UGCPlayerController:Server_LearnTalent(NodeID)
     end
 
     local Success = TalentMgr:LearnTalent(PlayerState, TalentNodeID)
+    if Success then
+        RefreshTalentSkillCooldowns(self)
+    end
     local TalentPoints, LearnedTalents, EquippedUltimateID = GetTalentStateSnapshot(PlayerState)
     UnrealNetwork.CallUnrealRPC(self, self, "Client_TalentLearnResult", Success, TalentNodeID, TalentPoints,
         LearnedTalents, EquippedUltimateID)
@@ -552,6 +563,9 @@ function UGCPlayerController:Server_EquipTalentUltimate(NodeID)
     end
 
     local Success = TalentMgr:EquipUltimate(PlayerState, TalentNodeID)
+    if Success then
+        RefreshTalentSkillCooldowns(self)
+    end
     local TalentPoints, LearnedTalents, EquippedUltimateID = GetTalentStateSnapshot(PlayerState)
     UnrealNetwork.CallUnrealRPC(self, self, "Client_TalentUltimateEquipResult", Success, TalentNodeID,
         TalentPoints, LearnedTalents, EquippedUltimateID)
@@ -578,6 +592,7 @@ function UGCPlayerController:Server_RequestTalentState()
         ugcprint("[Talent] Granted initial test points")
     end
 
+    RefreshTalentSkillCooldowns(self)
     local TalentPoints, LearnedTalents, EquippedUltimateID = GetTalentStateSnapshot(PlayerState)
     UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncTalentState", TalentPoints, LearnedTalents,
         EquippedUltimateID)

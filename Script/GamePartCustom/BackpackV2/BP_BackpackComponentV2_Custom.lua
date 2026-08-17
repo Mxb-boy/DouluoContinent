@@ -2,6 +2,7 @@
 --Edit Below--
 local BP_BackpackComponentV2_Custom = {} 
 local WeaponLevelConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponLevelConfig")
+local TalentEffectMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentEffectMgr")
 local WingItemIDs = {
     [8310012] = true,
     [8310013] = true,
@@ -151,6 +152,18 @@ local function GetWeaponLevelFromDefineID(ItemDefineID, WeaponInfo)
     return math.max(1, math.min(WeaponInfo.MaxLevel, tonumber(WeaponInfo.Level) or 1))
 end
 
+local function RefreshTalentSkillCooldownsLater(Pawn)
+    if Pawn == nil then
+        return
+    end
+
+    UGCTimerUtility.CreateLuaTimer(0.2, function()
+        if Pawn ~= nil and Pawn.PlayerState ~= nil then
+            TalentEffectMgr:RefreshSkillCooldowns(Pawn, Pawn.PlayerState)
+        end
+    end, false)
+end
+
 local function SetEquippedWeaponFromDefineID(self, ItemDefineID)
     local ItemID = GetItemIDFromDefineID(ItemDefineID)
     local WeaponInfo = WeaponLevelConfig.GetWeaponInfo(ItemID)
@@ -172,6 +185,7 @@ local function SetEquippedWeaponFromDefineID(self, ItemDefineID)
     if Pawn.RefreshWeaponAttackBonus ~= nil then
         Pawn:RefreshWeaponAttackBonus(true)
     end
+    RefreshTalentSkillCooldownsLater(Pawn)
 end
 
 local function ClearEquippedWeaponFromDefineID(self, ItemDefineID)

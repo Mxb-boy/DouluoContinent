@@ -1,6 +1,7 @@
 local TalentConfig = UGCGameSystem.UGCRequire("Script.Xiao.TalentConfig")
 
 local TalentEffectMgr = {}
+local OriginalSkillCooldowns = {}
 
 local function GetLearnedTalents(playerState)
     if playerState == nil then
@@ -132,6 +133,111 @@ function TalentEffectMgr:GetEffectiveCritMultiplier(playerState, baseMultiplier)
 
     local passiveBuffMultiplier = playerState ~= nil and tonumber(playerState.TalentBuff_CritMultiplierFlat) or 0
     return math.max(1, multiplier + self:GetStatBonus(playerState, "CritMultiplierFlat") + passiveBuffMultiplier)
+end
+
+local function RequestGameplayTag(tagName)
+    if type(tagName) ~= "string" or tagName == "" or UGCGameplayTagSystem == nil or
+        UGCGameplayTagSystem.RequestGameplayTag == nil then
+        return nil
+    end
+
+    local success, gameplayTag = pcall(UGCGameplayTagSystem.RequestGameplayTag, tagName)
+    return success and gameplayTag or nil
+end
+
+function TalentEffectMgr:GetSkillCooldownMultiplier(playerState)
+    local multiplier = 1
+    for _, nodeID in ipairs(self:GetLearnedNodeIDs(playerState)) do
+        local node = TalentConfig.Nodes[nodeID]
+        local effects = node ~= nil and node.Effects or nil
+        local nodeMultiplier = type(effects) == "table" and tonumber(effects.SkillCooldownMultiplier) or nil
+        if nodeMultiplier ~= nil then
+            multiplier = multiplier * math.max(0, nodeMultiplier)
+        end
+    end
+    return multiplier
+end
+
+local function ApplySkillCooldownMultiplier(skill, multiplier)
+    if skill == nil or skill.GetCDRecoveryTime == nil or skill.SetCDRecoveryTime == nil then
+        return false, false
+    end
+
+    local success, currentCooldown = pcall(skill.GetCDRecoveryTime, skill)
+    currentCooldown = success and tonumber(currentCooldown) or nil
+    if currentCooldown == nil or currentCooldown <= 0 then
+        return false, false
+    end
+
+    local originalCooldown = OriginalSkillCooldowns[skill]
+    if originalCooldown == nil then
+        originalCooldown = currentCooldown
+        OriginalSkillCooldowns[skill] = originalCooldown
+    end
+
+    local targetCooldown = math.max(0.01, originalCooldown * multiplier)
+    if math.abs(currentCooldown - targetCooldown) <= 0.001 then
+        return true, false
+    end
+
+    local err = nil
+    success, err = pcall(skill.SetCDRecoveryTime, skill, targetCooldown)
+    if not success then
+        ugcprint("[TalentCooldown] SetCDRecoveryTime failed: " .. tostring(err))
+        return false, false
+    end
+    return true, true
+end
+
+function TalentEffectMgr:RefreshSkillCooldowns(ownerActor, playerState)
+    local skillTags = TalentConfig.SkillCooldownTags
+    if ownerActor == nil or playerState == nil or type(skillTags) ~= "table" or
+        UGCPersistEffectSystem == nil or UGCPersistEffectSystem.GetSkillsByTag == nil then
+        return 0
+    end
+    if UGCGameSystem.IsServer ~= nil and not UGCGameSystem.IsServer() then
+        return 0
+    end
+
+    local multiplier = self:GetSkillCooldownMultiplier(playerState)
+    local matchedCount = 0
+    local updatedCount = 0
+    local seenSkills = {}
+    for _, tagName in ipairs(skillTags) do
+        local gameplayTag = RequestGameplayTag(tagName)
+        if gameplayTag ~= nil then
+            local success, skills = pcall(UGCPersistEffectSystem.GetSkillsByTag, ownerActor, gameplayTag)
+            if success and skills ~= nil then
+                local iterateSuccess, iterateError = pcall(function()
+                    for _, skill in ipairs(skills) do
+                        if skill ~= nil and seenSkills[skill] ~= true then
+                            seenSkills[skill] = true
+                            local matched, updated = ApplySkillCooldownMultiplier(skill, multiplier)
+                            if matched then
+                                matchedCount = matchedCount + 1
+                            end
+                            if updated then
+                                updatedCount = updatedCount + 1
+                            end
+                        end
+                    end
+                end)
+                if not iterateSuccess then
+                    ugcprint("[TalentCooldown] iterate skills failed for tag=" .. tostring(tagName) ..
+                                 ": " .. tostring(iterateError))
+                end
+            elseif not success then
+                ugcprint("[TalentCooldown] GetSkillsByTag failed for tag=" .. tostring(tagName) ..
+                             ": " .. tostring(skills))
+            end
+        else
+            ugcprint("[TalentCooldown] invalid skill tag=" .. tostring(tagName))
+        end
+    end
+
+    ugcprint("[TalentCooldown] multiplier=" .. tostring(multiplier) ..
+                 ", matched=" .. tostring(matchedCount) .. ", updated=" .. tostring(updatedCount))
+    return matchedCount
 end
 
 function TalentEffectMgr:GetLearnedPassiveSkillPaths(playerState)

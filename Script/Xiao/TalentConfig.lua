@@ -16,6 +16,10 @@ TalentConfig.UltimateNodeIDs = {
     [18] = true,
     [19] = true
 }
+TalentConfig.SkillCooldownTags = {
+    "TalentSkillWeapon",
+    "TalentSkillUltimate"
+}
 TalentConfig.PassiveBuffs = {
     Attack = {
         Chance = 0.02,
@@ -95,7 +99,7 @@ TalentConfig.Nodes = {
     },
     [5] = {
         ID = 5,
-        Name = "被动技能CD",
+        Name = "待定节点5",
         Row = 3,
         Column = 6,
         Cost = 1,
@@ -125,11 +129,14 @@ TalentConfig.Nodes = {
     },
     [8] = {
         ID = 8,
-        Name = "属性加成待定节点8",
+        Name = "冷却缩减",
         Row = 4,
         Column = 1,
         Cost = 1,
-        RequireID = 4
+        RequireID = 4,
+        Effects = {
+            SkillCooldownMultiplier = 0.5
+        }
     },
     [9] = {
         ID = 9,
