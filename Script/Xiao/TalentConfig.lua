@@ -18,10 +18,19 @@ TalentConfig.UltimateNodeIDs = {
 }
 TalentConfig.PassiveBuffs = {
     Attack = {
-        NodeID = 4,
-        Chance = 0.1,
+        Chance = 0.02,
         Path = "/Douluo/Asset/Blueprint/Prefabs/Buffs/TalentPassiveAttack.TalentPassiveAttack_C",
         AttackPercent = 0.1
+    },
+    CritRate = {
+        Chance = 0.02,
+        Path = "/Douluo/Asset/Blueprint/Prefabs/Buffs/TalentPassiveCritRate.TalentPassiveCritRate_C",
+        CritRate = 0.1
+    },
+    CritDamage = {
+        Chance = 0.02,
+        Path = "/Douluo/Asset/Blueprint/Prefabs/Buffs/TalentPassiveCritDamage.TalentPassiveCritDamage_C",
+        CritMultiplierFlat = 0.5
     }
 }
 
@@ -100,9 +109,7 @@ TalentConfig.Nodes = {
         Cost = 1,
         RequireID = 3,
         Effects = {
-            Stats = {
-                CritRate = 0.1
-            }
+            PassiveBuffKey = "CritRate"
         }
     },
     [7] = {
@@ -113,9 +120,7 @@ TalentConfig.Nodes = {
         Cost = 1,
         RequireID = 3,
         Effects = {
-            Stats = {
-                CritMultiplierFlat = 0.5
-            }
+            PassiveBuffKey = "CritDamage"
         }
     },
     [8] = {

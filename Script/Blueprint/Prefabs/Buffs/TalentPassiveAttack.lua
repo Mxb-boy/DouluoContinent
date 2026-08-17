@@ -31,16 +31,11 @@ end
 
 function TalentPassiveAttack:OnApply_BP(OwnerActor)
     self.OwnerActor = OwnerActor
+    self:LuaFunction()
 end
 
 function TalentPassiveAttack:OnUnApply_BP(OwnerActor, Reason)
     self.OwnerActor = OwnerActor or self.OwnerActor
-end
-
-function TalentPassiveAttack:OnStackChange_BP(PreNum, CurNum)
-    if self.RefreshBuff ~= nil then
-        self:RefreshBuff()
-    end
 end
 
 function TalentPassiveAttack:LuaFunction()

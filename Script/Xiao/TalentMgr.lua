@@ -27,7 +27,11 @@ function TalentMgr:HasLearnedTalent(playerState, nodeID)
         return false
     end
 
-    return learnedTalents[tostring(node.ID)] == true or learnedTalents[node.ID] == true
+    local learned = learnedTalents[tostring(node.ID)]
+    if learned == nil then
+        learned = learnedTalents[node.ID]
+    end
+    return learned == true or tonumber(learned) == 1
 end
 
 function TalentMgr:ArePrerequisitesMet(playerState, nodeID)

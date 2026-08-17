@@ -107,6 +107,11 @@ function TalentEffectMgr:GetEffectiveBaseAttack(playerState, baseAttack)
     return math.max(0, attackWithFlatBonus * (1 + attackPercent))
 end
 
+function TalentEffectMgr:GetOutgoingDamageMultiplier(playerState)
+    local passiveBuffPercent = playerState ~= nil and tonumber(playerState.TalentBuff_AttackPercent) or 0
+    return 1 + math.max(0, passiveBuffPercent)
+end
+
 function TalentEffectMgr:GetEffectiveCritRate(playerState, baseRate)
     local criticalConfig = TalentConfig.Critical or {}
     local rate = tonumber(baseRate)
@@ -114,7 +119,8 @@ function TalentEffectMgr:GetEffectiveCritRate(playerState, baseRate)
         rate = tonumber(criticalConfig.BaseRate) or 0
     end
 
-    return math.max(0, math.min(1, rate + self:GetStatBonus(playerState, "CritRate")))
+    local passiveBuffRate = playerState ~= nil and tonumber(playerState.TalentBuff_CritRate) or 0
+    return math.max(0, math.min(1, rate + self:GetStatBonus(playerState, "CritRate") + passiveBuffRate))
 end
 
 function TalentEffectMgr:GetEffectiveCritMultiplier(playerState, baseMultiplier)
@@ -124,7 +130,8 @@ function TalentEffectMgr:GetEffectiveCritMultiplier(playerState, baseMultiplier)
         multiplier = tonumber(criticalConfig.BaseMultiplier) or 1
     end
 
-    return math.max(1, multiplier + self:GetStatBonus(playerState, "CritMultiplierFlat"))
+    local passiveBuffMultiplier = playerState ~= nil and tonumber(playerState.TalentBuff_CritMultiplierFlat) or 0
+    return math.max(1, multiplier + self:GetStatBonus(playerState, "CritMultiplierFlat") + passiveBuffMultiplier)
 end
 
 function TalentEffectMgr:GetLearnedPassiveSkillPaths(playerState)
