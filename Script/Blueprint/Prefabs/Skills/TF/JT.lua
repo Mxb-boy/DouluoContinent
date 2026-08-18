@@ -1,4 +1,4 @@
----@class JT_C:PESkillTemplate_Charge_C
+---@class JT_C:PESkillTemplate_Base_C
 --Edit Below--
 local JT = {}
  
