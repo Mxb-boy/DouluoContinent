@@ -25,6 +25,8 @@
 ---@field Btn_Talent_08 UButton
 ---@field Btn_Talent_09 UButton
 ---@field BtnIn_Quit UButton
+---@field Button_0 UButton
+---@field Button_1 UButton
 ---@field CheckBox_1 UCheckBox
 ---@field CheckBox_2 UCheckBox
 ---@field CheckBox_3 UCheckBox
@@ -33,6 +35,8 @@
 ---@field Image_1 UImage
 ---@field Image_2 UImage
 ---@field Image_3 UImage
+---@field Image_4 UImage
+---@field Image_5 UImage
 ---@field Image_19 UImage
 ---@field Image_22 UImage
 ---@field Image_23 UImage
