@@ -156,6 +156,16 @@ function TalentEffectMgr:GetEffectiveCritMultiplier(playerState, baseMultiplier)
     return math.max(1, multiplier + self:GetStatBonus(playerState, "CritMultiplierFlat") + passiveBuffMultiplier)
 end
 
+function TalentEffectMgr:ClearTransientBuffState(playerState)
+    if playerState == nil then
+        return
+    end
+
+    playerState.TalentBuff_AttackPercent = 0
+    playerState.TalentBuff_CritRate = 0
+    playerState.TalentBuff_CritMultiplierFlat = 0
+end
+
 local function RequestGameplayTag(tagName)
     if type(tagName) ~= "string" or tagName == "" or UGCGameplayTagSystem == nil or
         UGCGameplayTagSystem.RequestGameplayTag == nil then

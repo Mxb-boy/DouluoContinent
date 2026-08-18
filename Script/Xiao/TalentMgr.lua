@@ -228,4 +228,54 @@ function TalentMgr:LearnTalent(playerState, nodeID)
     return true
 end
 
+function TalentMgr:HasResettableTalents(playerState)
+    if playerState == nil then
+        return false
+    end
+
+    local learnedTalents = playerState.GetLearnedTalents ~= nil and playerState:GetLearnedTalents() or
+                               playerState.LearnedTalents
+    for _, learned in pairs(learnedTalents or {}) do
+        if learned == true or tonumber(learned) == 1 then
+            return true
+        end
+    end
+
+    local equippedUltimateID = playerState.GetEquippedUltimateID ~= nil and playerState:GetEquippedUltimateID() or
+                                   math.max(0, math.floor(tonumber(playerState.EquippedUltimateID) or 0))
+    return equippedUltimateID > 0
+end
+
+function TalentMgr:ResetTalents(playerState)
+    if playerState == nil then
+        return false, 0, "invalid_player_state"
+    end
+
+    local oldTalentPoints = playerState.GetTalentPoints ~= nil and playerState:GetTalentPoints() or
+                                math.max(0, math.floor(tonumber(playerState.TalentPoints) or 0))
+    local oldLearnedTalents = playerState.GetLearnedTalents ~= nil and playerState:GetLearnedTalents() or
+                                  playerState.LearnedTalents
+    local oldEquippedUltimateID = playerState.GetEquippedUltimateID ~= nil and
+                                      playerState:GetEquippedUltimateID() or
+                                      math.max(0, math.floor(tonumber(playerState.EquippedUltimateID) or 0))
+    local refundedPoints = self:GetSpentTalentPoints(playerState)
+
+    if not self:HasResettableTalents(playerState) then
+        return false, 0, "nothing_to_reset"
+    end
+
+    playerState.TalentPoints = oldTalentPoints + refundedPoints
+    playerState.LearnedTalents = {}
+    playerState.EquippedUltimateID = 0
+
+    if playerState.SaveToArchive == nil or playerState:SaveToArchive() ~= true then
+        playerState.TalentPoints = oldTalentPoints
+        playerState.LearnedTalents = oldLearnedTalents
+        playerState.EquippedUltimateID = oldEquippedUltimateID
+        return false, 0, "save_failed"
+    end
+
+    return true, refundedPoints, "success"
+end
+
 return TalentMgr

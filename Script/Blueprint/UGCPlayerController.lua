@@ -28,8 +28,10 @@ local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local L_Enum = UGCGameSystem.UGCRequire("Script.Lin.L_Enum")
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr")
+local TalentConfig = UGCGameSystem.UGCRequire("Script.Xiao.TalentConfig")
 local TalentMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentMgr")
 local TalentEffectMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentEffectMgr")
+local TalentUltimateMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentUltimateMgr")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local ShadowDisabler = UGCGameSystem.UGCRequire("Script.Common.ShadowDisabler")
 local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil")
@@ -339,7 +341,8 @@ function UGCPlayerController:GetAvailableServerRPCs()
         "Server_RequestRuntimeLogs", "Server_RuntimeLogProbe", "Client_RuntimeLogBatch",
         "ServerRequestInvitePlayer", "ServerRespondInvite", "ServerRequestJoinTeam", "ServerRespondJoinRequest",
         "ServerRequestLeaveTeam", "ServerRequestKickPlayer", "ServerRequestDisbandTeam", "UseRedemptionCode",
-        "Server_LearnTalent", "Client_TalentLearnResult",
+        "Server_LearnTalent", "Client_TalentLearnResult", "Server_ResetTalents", "Client_TalentResetResult",
+        "Server_EquipTalentUltimate", "Client_TalentUltimateEquipResult",
         "Server_RequestTalentState", "Client_SyncTalentState", "Server_SetOrbitWeaponEnabled",
         "Server_SelectOrbitWeapon", "Client_SyncOrbitWeaponSkinSelection", "Server_SetOrbitWeaponActiveGun",
         "Server_RequestWeaponRefineState", "Server_RefineOrbitWeapon", "Client_WeaponRefineResult",
@@ -545,6 +548,131 @@ function UGCPlayerController:Client_TalentLearnResult(Success, NodeID, TalentPoi
     ugcprint("[Talent] Client result node=" .. tostring(NodeID) .. " success=" .. tostring(Success))
 end
 
+local function RefreshTalentUltimate(PlayerController)
+    local PlayerPawn = PlayerController ~= nil and PlayerController.Pawn or nil
+    if PlayerPawn == nil and PlayerController ~= nil and PlayerController.K2_GetPawn ~= nil then
+        PlayerPawn = PlayerController:K2_GetPawn()
+    end
+    local PlayerState = PlayerController ~= nil and PlayerController.PlayerState or nil
+    if PlayerPawn == nil or PlayerState == nil then
+        return false
+    end
+    return TalentUltimateMgr:RefreshEquippedUltimate(PlayerPawn, PlayerState)
+end
+
+function UGCPlayerController:Server_ResetTalents()
+    local PlayerState = self.PlayerState
+    if PlayerState == nil then
+        return false
+    end
+
+    local function Respond(Success, RefundedPoints, Reason)
+        local TalentPoints, LearnedTalents, EquippedUltimateID = GetTalentStateSnapshot(PlayerState)
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_TalentResetResult", Success, RefundedPoints, Reason,
+            TalentPoints, LearnedTalents, EquippedUltimateID)
+        ugcprint("[Talent] Reset success=" .. tostring(Success) .. " refunded=" .. tostring(RefundedPoints) ..
+                     " reason=" .. tostring(Reason))
+        return Success
+    end
+
+    EnsurePlayerStateArchiveUID(self)
+    if PlayerState.bArchiveLoaded ~= true then
+        ugcprint("[Talent] Reset rejected: archive is not loaded")
+        return Respond(false, 0, "archive_not_loaded")
+    end
+
+    if not TalentMgr:HasResettableTalents(PlayerState) then
+        return Respond(false, 0, "nothing_to_reset")
+    end
+
+    local PlayerPawn = self.Pawn
+    if PlayerPawn == nil and self.K2_GetPawn ~= nil then
+        PlayerPawn = self:K2_GetPawn()
+    end
+    local PotionItemID = tonumber(TalentConfig.ResetPotionItemID)
+    local ConsumeCount = math.max(1, math.floor(tonumber(TalentConfig.ResetPotionConsumeCount) or 1))
+    if PlayerPawn == nil or PotionItemID == nil or UGCBackpackSystemV2 == nil or
+        UGCBackpackSystemV2.GetItemCountV2 == nil or UGCBackpackSystemV2.RemoveItemV2 == nil then
+        return Respond(false, 0, "inventory_unavailable")
+    end
+
+    local function RefundPotion(ItemCount)
+        local RefundCount = math.max(0, math.floor(tonumber(ItemCount) or 0))
+        if RefundCount <= 0 then
+            return true
+        end
+        if UGCBackpackSystemV2.AddItemV2 == nil then
+            ugcprint("[Talent] Reset potion refund unavailable item=" .. tostring(PotionItemID))
+            return false
+        end
+
+        local RefundSucceeded, RefundResult = pcall(UGCBackpackSystemV2.AddItemV2, PlayerPawn, PotionItemID,
+            RefundCount)
+        local RefundedItemCount = RefundResult == true and RefundCount or math.max(0, tonumber(RefundResult) or 0)
+        if not RefundSucceeded or RefundedItemCount < RefundCount then
+            ugcprint("[Talent] Reset potion refund failed item=" .. tostring(PotionItemID) ..
+                         " result=" .. tostring(RefundResult))
+            return false
+        end
+        return true
+    end
+
+    local CountSucceeded, CountResult = pcall(UGCBackpackSystemV2.GetItemCountV2, PlayerPawn, PotionItemID)
+    local PotionCount = CountSucceeded and math.max(0, math.floor(tonumber(CountResult) or 0)) or 0
+    if PotionCount < ConsumeCount then
+        return Respond(false, 0, "missing_reset_item")
+    end
+
+    local RemoveSucceeded, RemoveResult = pcall(UGCBackpackSystemV2.RemoveItemV2, PlayerPawn, PotionItemID,
+        ConsumeCount)
+    local RemovedCount = RemoveResult == true and ConsumeCount or math.max(0, tonumber(RemoveResult) or 0)
+    if not RemoveSucceeded or RemovedCount < ConsumeCount then
+        RefundPotion(RemovedCount)
+        return Respond(false, 0, "consume_failed")
+    end
+
+    local Success, RefundedPoints, Reason = TalentMgr:ResetTalents(PlayerState)
+    if Success then
+        TalentEffectMgr:ClearTransientBuffState(PlayerState)
+        RefreshTalentUltimate(self)
+        RefreshTalentSkillCooldowns(self)
+    else
+        RefundPotion(ConsumeCount)
+    end
+
+    return Respond(Success, RefundedPoints, Reason)
+end
+
+function UGCPlayerController:Client_TalentResetResult(Success, RefundedPoints, Reason, TalentPoints,
+    LearnedTalents, EquippedUltimateID)
+    ApplyTalentStateSnapshot(self, TalentPoints, LearnedTalents, EquippedUltimateID)
+    RefreshTalentUI(self)
+
+    if Success then
+        TalentEffectMgr:ClearTransientBuffState(self.PlayerState)
+        RequestTalentPropertyRefresh(self)
+        L_Com.ShowToast("洗点成功，返还" .. tostring(RefundedPoints) .. "点天赋点")
+    elseif Reason == "nothing_to_reset" then
+        L_Com.ShowToast("当前没有已学习的天赋")
+    elseif Reason == "missing_reset_item" then
+        L_Com.ShowToast("洗点药水不足")
+        local TalentUI = self.TalentUIInstance
+        if TalentUI == nil and self.MainUIInstance ~= nil then
+            TalentUI = self.MainUIInstance.UI018Instance
+        end
+        if TalentUI == nil or TalentUI.OpenResetPotionPurchasePopup == nil or
+            TalentUI:OpenResetPotionPurchasePopup() ~= true then
+            L_Com.ShowToast("洗点药水商品打开失败")
+        end
+    elseif Reason == "archive_not_loaded" then
+        L_Com.ShowToast("天赋数据尚未加载，请稍后重试")
+    elseif Reason == "inventory_unavailable" or Reason == "consume_failed" then
+        L_Com.ShowToast("洗点药水扣除失败，请重试")
+    else
+        L_Com.ShowToast("洗点失败，请重试")
+    end
+end
+
 function UGCPlayerController:Server_EquipTalentUltimate(NodeID)
     local PlayerState = self.PlayerState
     if PlayerState == nil then
@@ -562,9 +690,19 @@ function UGCPlayerController:Server_EquipTalentUltimate(NodeID)
         return false
     end
 
+    local PreviousUltimateID = PlayerState.GetEquippedUltimateID ~= nil and
+                                   PlayerState:GetEquippedUltimateID() or
+                                   math.max(0, math.floor(tonumber(PlayerState.EquippedUltimateID) or 0))
     local Success = TalentMgr:EquipUltimate(PlayerState, TalentNodeID)
     if Success then
-        RefreshTalentSkillCooldowns(self)
+        Success = RefreshTalentUltimate(self)
+        if Success then
+            RefreshTalentSkillCooldowns(self)
+        else
+            TalentMgr:EquipUltimate(PlayerState, PreviousUltimateID)
+            RefreshTalentUltimate(self)
+            RefreshTalentSkillCooldowns(self)
+        end
     end
     local TalentPoints, LearnedTalents, EquippedUltimateID = GetTalentStateSnapshot(PlayerState)
     UnrealNetwork.CallUnrealRPC(self, self, "Client_TalentUltimateEquipResult", Success, TalentNodeID,
@@ -592,6 +730,7 @@ function UGCPlayerController:Server_RequestTalentState()
         ugcprint("[Talent] Granted initial test points")
     end
 
+    RefreshTalentUltimate(self)
     RefreshTalentSkillCooldowns(self)
     local TalentPoints, LearnedTalents, EquippedUltimateID = GetTalentStateSnapshot(PlayerState)
     UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncTalentState", TalentPoints, LearnedTalents,

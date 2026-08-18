@@ -4,6 +4,7 @@
 ---@field Btn_Close UButton
 ---@field Btn_Confirm UButton
 ---@field Btn_Detail UButton
+---@field Btn_Libao UButton
 ---@field Btn_lock_1 UButton
 ---@field Btn_lock_2 UButton
 ---@field Btn_lock_3 UButton
@@ -24,9 +25,12 @@
 ---@field Btn_Talent_07 UButton
 ---@field Btn_Talent_08 UButton
 ---@field Btn_Talent_09 UButton
+---@field Btn_Xidian UButton
 ---@field BtnIn_Quit UButton
 ---@field Button_0 UButton
 ---@field Button_1 UButton
+---@field Button_2 UButton
+---@field CanvasPanel_6 UCanvasPanel
 ---@field CheckBox_1 UCheckBox
 ---@field CheckBox_2 UCheckBox
 ---@field CheckBox_3 UCheckBox
@@ -37,6 +41,9 @@
 ---@field Image_3 UImage
 ---@field Image_4 UImage
 ---@field Image_5 UImage
+---@field Image_6 UImage
+---@field Image_7 UImage
+---@field Image_8 UImage
 ---@field Image_19 UImage
 ---@field Image_22 UImage
 ---@field Image_23 UImage
@@ -102,9 +109,12 @@
 ---@field Image_375 UImage
 ---@field Panel_Confirm UCanvasPanel
 ---@field Panel_Detail UCanvasPanel
+---@field TextBlock_18 UTextBlock
 ---@field Txt_ConfirmContent UTextBlock
 ---@field Txt_TalentPoints UTextBlock
 --Edit Below--
+UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.ShopV2.ShopV2Manager")
+local TalentConfig = UGCGameSystem.UGCRequire("Script.Xiao.TalentConfig")
 local TalentMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentMgr")
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
 
@@ -158,8 +168,39 @@ function UI018:LuaInit()
         self:SetConfirmVisible(false)
     end)
     self:BindButton("Btn_AddPoint", function()
-        ugcprint("[TalentUI] Talent point source is not configured")
+        if self:OpenShopItemPurchasePopup(TalentConfig.SkillBookShopItemID, "skill book") ~= true then
+            L_Com.ShowToast("技能书商品打开失败")
+        end
     end)
+    self:BindButton("Btn_Xidian", function()
+        if not TalentMgr:HasResettableTalents(self:GetPlayerState()) then
+            L_Com.ShowToast("当前没有已学习的天赋")
+            return
+        end
+        if self:GetResetPotionCount() <= 0 then
+            L_Com.ShowToast("洗点药水不足")
+            if self:OpenResetPotionPurchasePopup() ~= true then
+                L_Com.ShowToast("洗点药水商品打开失败")
+            end
+            return
+        end
+        self:SetResetConfirmVisible(true)
+    end)
+    self:BindButton("Button_0", function()
+        self:SetResetConfirmVisible(false)
+        local PlayerController = GetLocalPlayerController(self)
+        if PlayerController ~= nil then
+            UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_ResetTalents")
+        end
+    end)
+    self:BindButton("Button_1", function()
+        self:SetResetConfirmVisible(false)
+    end)
+    self:BindButton("Button_2", function()
+        self:SetResetConfirmVisible(false)
+    end)
+
+    self:SetResetConfirmVisible(false)
 
     for NodeID = 1, 15 do
         local CurrentNodeID = NodeID
@@ -210,6 +251,69 @@ function UI018:SetDetailVisible(bVisible)
         DetailPanel:SetVisibility(bVisible and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
     end
 end
+
+function UI018:SetResetConfirmVisible(bVisible)
+    local ConfirmPanel = self:GetWidget("CanvasPanel_6")
+    if ConfirmPanel ~= nil then
+        ConfirmPanel:SetVisibility(bVisible and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
+    end
+end
+
+function UI018:GetResetPotionCount()
+    local PlayerController = GetLocalPlayerController(self)
+    local PlayerPawn = PlayerController ~= nil and PlayerController.Pawn or nil
+    local PotionItemID = tonumber(TalentConfig.ResetPotionItemID)
+    if PlayerPawn == nil or PotionItemID == nil or UGCBackpackSystemV2 == nil or
+        UGCBackpackSystemV2.GetItemCountV2 == nil then
+        return 0
+    end
+
+    local Success, Count = pcall(UGCBackpackSystemV2.GetItemCountV2, PlayerPawn, PotionItemID)
+    return Success and math.max(0, math.floor(tonumber(Count) or 0)) or 0
+end
+
+function UI018:GetShopProductID(ShopItemID)
+    if ShopV2Manager == nil or ShopV2Manager.GetAllProductConfigData == nil then
+        return nil
+    end
+
+    local Success, ProductDatas = pcall(ShopV2Manager.GetAllProductConfigData, ShopV2Manager)
+    if not Success or ProductDatas == nil then
+        return nil
+    end
+
+    ShopItemID = tonumber(ShopItemID)
+    for ProductKey, ProductData in pairs(ProductDatas) do
+        local ReadSucceeded, ItemID, ProductID, AlternateProductID = pcall(function()
+            return ProductData.ItemID, ProductData.ProductID, ProductData.ProductId
+        end)
+        if ReadSucceeded and tonumber(ItemID) == ShopItemID then
+            return tonumber(ProductID) or tonumber(AlternateProductID) or tonumber(ProductKey)
+        end
+    end
+    return nil
+end
+
+function UI018:OpenShopItemPurchasePopup(ShopItemID, DebugName)
+    local ProductID = self:GetShopProductID(ShopItemID)
+    if ProductID == nil then
+        ugcprint("[TalentUI] Product not found name=" .. tostring(DebugName) ..
+                     " shopItem=" .. tostring(ShopItemID))
+        return false
+    end
+
+    local Success, PurchaseFuture = pcall(L_Com.BuyShopProduct, ProductID, 1)
+    if not Success or PurchaseFuture == nil then
+        ugcprint("[TalentUI] Open purchase failed name=" .. tostring(DebugName) ..
+                     " product=" .. tostring(ProductID))
+        return false
+    end
+    return true
+end
+
+function UI018:OpenResetPotionPurchasePopup()
+    return self:OpenShopItemPurchasePopup(TalentConfig.ResetPotionShopItemID, "reset potion")
+end
 function UI018:SetConfirmVisible(bVisible)
     local ConfirmPanel = self:GetWidget("Panel_Confirm")
     if ConfirmPanel ~= nil then
@@ -224,6 +328,7 @@ function UI018:Open()
     self:SetVisibility(ESlateVisibility.Visible)
     self:SetDetailVisible(false)
     self:SetConfirmVisible(false)
+    self:SetResetConfirmVisible(false)
     self:RefreshTalentState()
 
     local PlayerController = GetLocalPlayerController(self)
@@ -345,4 +450,4 @@ function UI018:RefreshTalentState()
     self.bRefreshingUltimateCheckBoxes = false
 end
 
-return UI018
+return UI018
