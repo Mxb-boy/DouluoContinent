@@ -58,7 +58,7 @@ end
 
 -- Node effect schema:
 -- Effects = {
---     Stats = { MaxHealthFlat = 100, AttackFlat = 10, CritRate = 0.05 },
+--     Stats = { MaxHealthFlat = 100, MaxHealthPercent = 0.1, AttackFlat = 10, CritRate = 0.05 },
 --     PassiveBuffStats = { CritRate = { CritRate = 0.1 } },
 --     PassiveSkillPaths = { "Asset/.../PassiveSkill.PassiveSkill_C" },
 --     UltimateSkillPath = "Asset/.../UltimateSkill.UltimateSkill_C"
@@ -112,7 +112,9 @@ function TalentEffectMgr:GetEffectiveBaseMaxHp(playerState, baseMaxHp)
         baseValue = playerState.GetBaseMaxHp ~= nil and tonumber(playerState:GetBaseMaxHp()) or
                         tonumber(playerState.BaseMaxHp)
     end
-    return math.max(0, (baseValue or 100) + self:GetStatBonus(playerState, "MaxHealthFlat"))
+    local healthWithFlatBonus = (baseValue or 100) + self:GetStatBonus(playerState, "MaxHealthFlat")
+    local healthPercent = math.max(0, self:GetStatBonus(playerState, "MaxHealthPercent"))
+    return math.max(0, healthWithFlatBonus * (1 + healthPercent))
 end
 
 function TalentEffectMgr:GetEffectiveBaseAttack(playerState, baseAttack)

@@ -161,19 +161,31 @@ TalentConfig.Nodes = {
     },
     [10] = {
         ID = 10,
-        Name = "属性加成待定节点10",
+        Name = "生命强化",
         Row = 4,
         Column = 5,
         Cost = 1,
-        RequireID = 5
+        RequireID = 5,
+        Effects = {
+            Stats = {
+                MaxHealthPercent = 0.15
+            }
+        }
     },
     [11] = {
         ID = 11,
-        Name = "属性加成待定节点11",
+        Name = "愈合强化",
         Row = 4,
         Column = 7,
         Cost = 1,
-        RequireID = 5
+        RequireID = 5,
+        Effects = {
+            PassiveBuffStats = {
+                Heal = {
+                    HealMaxHealthPercent = 0.05
+                }
+            }
+        }
     },
     [12] = {
         ID = 12,
