@@ -501,7 +501,8 @@ function SignInEventComponent:TryGrantDailySkillBook(EventID, AwardSource, Playe
             " count=" .. tostring(AddedCount) .. " reservedBefore=" .. tostring(ReservedPoints) ..
             " max=" .. tostring(MaxTotalPoints))
     end
-    return AddedCount > 0 and ItemID or 0, AddedCount
+    local DisplayItemID = tonumber(Reward.DisplayItemID) or ItemID
+    return AddedCount > 0 and DisplayItemID or 0, AddedCount
 end
 
 function SignInEventComponent:GetSignInAward(EventID, LocalEventDatas, AwardSource)

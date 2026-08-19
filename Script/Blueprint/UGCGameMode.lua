@@ -768,7 +768,7 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
                 end
                 SyncPlayerExpToClient(PC)
                 if PC.Server_RequestTalentState ~= nil then
-                    PC:Server_RequestTalentState()
+                    PC:Server_RequestTalentState(true)
                 end
                 -- PlayerState 的复制可能晚于客户端主界面创建。存档恢复后显式同步一次
                 -- 永久解锁状态，避免 Button_5 / Button_2 按默认值 0 再次显示。

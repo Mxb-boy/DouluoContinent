@@ -28,6 +28,8 @@ function SignInEvent_ItemGet_UIBP:Popup(ItemID, Num, ExtraItemID, ExtraNum)
         local ItemData = NumericItemID ~= nil and ObjectDatas[NumericItemID] or nil
         if ItemData ~= nil and NumericNum > 0 then
             table.insert(self.Rewards, {ItemData = ItemData, Num = NumericNum})
+        elseif NumericNum > 0 then
+            print("[SignInEvent_ItemGet_UIBP] Missing display data for item=" .. tostring(NumericItemID))
         end
     end
 

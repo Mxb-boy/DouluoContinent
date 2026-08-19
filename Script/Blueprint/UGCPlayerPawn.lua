@@ -1168,7 +1168,7 @@ local PLAYER_SKILL_1_PATH = 'Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/Play
 function UGCPlayerPawn:OnPawnInit()
     local playerState = self.PlayerState
     if playerState ~= nil and playerState.bArchiveLoaded == true then
-        TalentUltimateMgr:RefreshEquippedUltimate(self, playerState)
+        TalentUltimateMgr:ScheduleLoginRestore(self, playerState)
     end
 
     if playerState ~= nil and playerState:GetPlayerLevel() >= PLAYER_SKILL_1_REQUIRED_LEVEL then

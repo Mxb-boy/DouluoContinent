@@ -8,6 +8,7 @@ TalentConfig.SkillBookPointsPerUse = 1
 TalentConfig.SignInSkillBookReward = {
     EventID = 10086,
     ItemID = TalentConfig.SkillBookItemID,
+    DisplayItemID = TalentConfig.SkillBookShopItemID,
     Count = 1
 }
 TalentConfig.ResetPotionItemID = 8310136

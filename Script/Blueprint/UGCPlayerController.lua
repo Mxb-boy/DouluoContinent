@@ -548,7 +548,7 @@ function UGCPlayerController:Client_TalentLearnResult(Success, NodeID, TalentPoi
     ugcprint("[Talent] Client result node=" .. tostring(NodeID) .. " success=" .. tostring(Success))
 end
 
-local function RefreshTalentUltimate(PlayerController)
+local function RefreshTalentUltimate(PlayerController, bDeferLoginRestore)
     local PlayerPawn = PlayerController ~= nil and PlayerController.Pawn or nil
     if PlayerPawn == nil and PlayerController ~= nil and PlayerController.K2_GetPawn ~= nil then
         PlayerPawn = PlayerController:K2_GetPawn()
@@ -556,6 +556,9 @@ local function RefreshTalentUltimate(PlayerController)
     local PlayerState = PlayerController ~= nil and PlayerController.PlayerState or nil
     if PlayerPawn == nil or PlayerState == nil then
         return false
+    end
+    if bDeferLoginRestore == true then
+        return TalentUltimateMgr:ScheduleLoginRestore(PlayerPawn, PlayerState)
     end
     return TalentUltimateMgr:RefreshEquippedUltimate(PlayerPawn, PlayerState)
 end
@@ -720,7 +723,7 @@ function UGCPlayerController:Client_TalentUltimateEquipResult(Success, NodeID, T
                  " equipped=" .. tostring(EquippedUltimateID))
 end
 
-function UGCPlayerController:Server_RequestTalentState()
+function UGCPlayerController:Server_RequestTalentState(bDeferUltimateRestore)
     local PlayerState = self.PlayerState
     if PlayerState == nil or PlayerState.bArchiveLoaded ~= true then
         return false
@@ -730,7 +733,11 @@ function UGCPlayerController:Server_RequestTalentState()
         ugcprint("[Talent] Granted initial test points")
     end
 
-    RefreshTalentUltimate(self)
+    if bDeferUltimateRestore == true then
+        RefreshTalentUltimate(self, true)
+    else
+        RefreshTalentUltimate(self)
+    end
     RefreshTalentSkillCooldowns(self)
     local TalentPoints, LearnedTalents, EquippedUltimateID = GetTalentStateSnapshot(PlayerState)
     UnrealNetwork.CallUnrealRPC(self, self, "Client_SyncTalentState", TalentPoints, LearnedTalents,

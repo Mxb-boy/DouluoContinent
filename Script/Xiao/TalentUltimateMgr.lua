@@ -4,6 +4,8 @@ local TalentConfig = UGCGameSystem.UGCRequire("Script.Xiao.TalentConfig")
 local TalentEffectMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentEffectMgr")
 
 local ULTIMATE_SKILL_SLOT = "Skill.Slot.Slot0"
+local LOGIN_RESTORE_RETRY_INTERVAL = 0.2
+local LOGIN_RESTORE_MAX_RETRIES = 20
 
 local function Log(message)
     if ugcprint ~= nil then
@@ -156,6 +158,62 @@ function TalentUltimateMgr:RefreshEquippedUltimate(playerPawn, playerState)
     playerPawn.TalentUltimateSkillPath = desiredPath
     Log("equipped path=" .. tostring(desiredPath) .. " slot=" .. ULTIMATE_SKILL_SLOT ..
         " enabled=" .. enabledState)
+    return true
+end
+
+local function IsWeaponRuntimeReady(playerPawn)
+    if playerPawn == nil or UGCWeaponManagerSystem == nil or
+        UGCWeaponManagerSystem.GetCurrentWeaponSlot == nil or
+        UGCWeaponManagerSystem.GetCurrentWeapon == nil or
+        ESurviveWeaponPropSlot == nil then
+        return false
+    end
+
+    local slotSuccess, currentSlot = pcall(UGCWeaponManagerSystem.GetCurrentWeaponSlot, playerPawn)
+    local weaponSuccess, currentWeapon = pcall(UGCWeaponManagerSystem.GetCurrentWeapon, playerPawn)
+    local meleeSlot = ESurviveWeaponPropSlot.SWPS_MeleeWeapon
+    return slotSuccess and weaponSuccess and currentWeapon ~= nil and meleeSlot ~= nil and
+        tonumber(currentSlot) == tonumber(meleeSlot)
+end
+
+function TalentUltimateMgr:ScheduleLoginRestore(playerPawn, playerState)
+    if playerPawn == nil or playerState == nil then
+        return false
+    end
+    if UGCGameSystem.IsServer ~= nil and not UGCGameSystem.IsServer() then
+        return false
+    end
+    if UGCTimerUtility == nil or UGCTimerUtility.CreateLuaTimer == nil then
+        return self:RefreshEquippedUltimate(playerPawn, playerState)
+    end
+
+    local restoreSerial = (tonumber(playerPawn.TalentUltimateLoginRestoreSerial) or 0) + 1
+    playerPawn.TalentUltimateLoginRestoreSerial = restoreSerial
+    local retryCount = 0
+
+    local function TryRestore()
+        if playerPawn == nil or playerState == nil or
+            playerPawn.TalentUltimateLoginRestoreSerial ~= restoreSerial then
+            return
+        end
+
+        local archiveReady = playerState.bArchiveLoaded == true
+        local weaponReady = archiveReady and IsWeaponRuntimeReady(playerPawn)
+        if weaponReady or retryCount >= LOGIN_RESTORE_MAX_RETRIES then
+            local success = TalentUltimateMgr:RefreshEquippedUltimate(playerPawn, playerState)
+            if success and TalentEffectMgr.RefreshSkillCooldowns ~= nil then
+                TalentEffectMgr:RefreshSkillCooldowns(playerPawn, playerState)
+            end
+            Log("login restore success=" .. tostring(success) .. " weaponReady=" .. tostring(weaponReady) ..
+                " retries=" .. tostring(retryCount))
+            return
+        end
+
+        retryCount = retryCount + 1
+        UGCTimerUtility.CreateLuaTimer(LOGIN_RESTORE_RETRY_INTERVAL, TryRestore, false)
+    end
+
+    UGCTimerUtility.CreateLuaTimer(LOGIN_RESTORE_RETRY_INTERVAL, TryRestore, false)
     return true
 end
 
