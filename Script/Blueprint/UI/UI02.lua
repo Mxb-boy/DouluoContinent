@@ -888,15 +888,30 @@ function UI02:Button_8_OnClicked()
 end
 
 function UI02:Button_10_OnClicked()
-    if self.RedemptionCodeUI08Instance ~= nil then
-        self.RedemptionCodeUI08Instance:SetVisibility(ESlateVisibility.Visible)
+    if self.ShouChongUIInstance ~= nil then
+        self.ShouChongUIInstance:SetVisibility(ESlateVisibility.Visible)
         return
     end
 
-    local SecondUIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath('Asset/Blueprint/Yan/UI/UI08.UI08_C'))
+    local ShouChongUIClass = UE.LoadClass(UGCGameSystem.GetUGCResourcesFullPath(
+        'Asset/Blueprint/Yan/UI/shouchong1.shouchong1_C'))
+    if ShouChongUIClass == nil then
+        ugcprint('[UI02:Button_10_OnClicked] shouchong1 class load failed')
+        return
+    end
+
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
-    self.RedemptionCodeUI08Instance = UserWidget.NewWidgetObjectBP(PlayerController, SecondUIClass)
-    self.RedemptionCodeUI08Instance:AddToViewport(10000)
+    if PlayerController == nil then
+        return
+    end
+
+    self.ShouChongUIInstance = UserWidget.NewWidgetObjectBP(PlayerController, ShouChongUIClass)
+    if self.ShouChongUIInstance == nil then
+        ugcprint('[UI02:Button_10_OnClicked] shouchong1 create failed')
+        return
+    end
+
+    self.ShouChongUIInstance:AddToViewport(10000)
 end
 
 function UI02:Button_144_OnClicked()

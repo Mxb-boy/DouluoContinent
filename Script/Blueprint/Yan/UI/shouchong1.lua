@@ -69,13 +69,67 @@
 ---@field Image_347 UImage
 ---@field Image_348 UImage
 --Edit Below--
-local shouchong1 = { bInitDoOnce = false } 
+local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
+local DirectBundlePurchaseService = UGCGameSystem.UGCRequire("Script.Common.DirectBundlePurchaseService")
 
---[==[ Construct
+local shouchong1 = { bInitDoOnce = false }
+
+local PURCHASE_BUTTONS = {
+    {ButtonName = "Button_39", PackKey = "NewPlayer"},
+    {ButtonName = "Button_7", PackKey = "Deluxe"},
+    {ButtonName = "Button_8", PackKey = "Forge"},
+    {ButtonName = "Button_9", PackKey = "Realm"},
+    {ButtonName = "Button_10", PackKey = "SoulRing"},
+}
+
 function shouchong1:Construct()
-	
+    self:LuaInit()
 end
--- Construct ]==]
+
+function shouchong1:LuaInit()
+    if self.bInitDoOnce then
+        return
+    end
+    self.bInitDoOnce = true
+
+    for _, Entry in ipairs(PURCHASE_BUTTONS) do
+        local Button = self[Entry.ButtonName]
+        if Button ~= nil then
+            local PackKey = Entry.PackKey
+            if UIEffectUtil ~= nil then
+                UIEffectUtil.SetButtonStateBrushSameAsNormal(Button)
+                UIEffectUtil.BindPressScale(self, Button, Button, 1.06, 1.0)
+            end
+            Button.OnClicked:Add(function()
+                self:PurchaseBundle(PackKey)
+            end, self)
+        end
+    end
+
+    if self.Btn_Close ~= nil then
+        if UIEffectUtil ~= nil then
+            UIEffectUtil.SetButtonStateBrushSameAsNormal(self.Btn_Close)
+            UIEffectUtil.BindPressScale(self, self.Btn_Close, self.Btn_Close, 1.06, 1.0)
+        end
+        self.Btn_Close.OnClicked:Add(self.Btn_Close_OnClicked, self)
+    end
+
+    if DirectBundlePurchaseService ~= nil then
+        DirectBundlePurchaseService:RecoverPendingPurchases()
+    end
+end
+
+function shouchong1:PurchaseBundle(PackKey)
+    if DirectBundlePurchaseService ~= nil then
+        DirectBundlePurchaseService:Purchase(PackKey)
+    end
+end
+
+function shouchong1:Btn_Close_OnClicked()
+    if self.SetVisibility ~= nil then
+        self:SetVisibility(ESlateVisibility.Collapsed)
+    end
+end
 
 -- function shouchong1:Tick(MyGeometry, InDeltaTime)
 

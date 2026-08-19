@@ -37,6 +37,7 @@ local ShadowDisabler = UGCGameSystem.UGCRequire("Script.Common.ShadowDisabler")
 local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil")
 local WeaponRefineConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponRefineConfig")
 local OrbitWeaponSkinConfig = UGCGameSystem.UGCRequire("Script.Common.OrbitWeaponSkinConfig")
+local DirectBundleConfig = UGCGameSystem.UGCRequire("Script.Common.DirectBundleConfig")
 local DEFAULT_WQ_HIT_EFFECT_PATH = "/Game/UGC/UGCGame/Skill/Arts_Effect/CG034/Particle/P_CG034UGC_Skill_SwordFire_03.P_CG034UGC_Skill_SwordFire_03"
 local Eat_All_Soul_Rings_Particle_Path = '/Game/Arts_Effect/ParticleSystems/Share/P_levelup_01.P_levelup_01' -- 一键吃魂环粒子特效路径
 local TOWER_ATTENTION_SOUND_PATH = 'Asset/WwiseEvent/Attention.Attention'
@@ -318,6 +319,7 @@ function UGCPlayerController:GetAvailableServerRPCs()
     return "Server_TeleportToSpawn", "Server_TeleportToLocation", "Server_UpdateRankingListScore",
         "Server_ClearAllRankingListData", "Client_BroadcastPlantMessage", "Client_ForgeWeaponResult",
         "Server_ForgeWeapon", "Server_AddShopItemToBackpackV2", "Server_CleanupStaleShopVirtualItem",
+        "Server_ClaimDirectPurchaseBundle", "Client_DirectPurchaseBundleResult",
         "Server_EquipTitle", "Server_BeginFlyState", "Server_RequestEquippedWingState",
         "Client_SetEquippedWingItemID", "Client_ConfirmFlyStart", "Client_RejectFlyStart",
         "Server_EndFlyState", "Server_FlyMove", "Server_StopFlyMove", "Server_UpdateWeaponAttackBonus",
@@ -2441,6 +2443,78 @@ function UGCPlayerController:Server_CleanupStaleShopVirtualItem(VirtualItemID)
     print("[ShopV2:SERVER] stale virtual item removed itemID=" .. tostring(VirtualItemID) ..
               " count=" .. tostring(Count) .. " callSucceeded=" .. tostring(RemoveSucceeded) ..
               " result=" .. tostring(RemoveResult))
+end
+
+--- 验证购买占位物后，把直购组合中的物品一次性发到背包。
+---@param VirtualItemID number
+function UGCPlayerController:Server_ClaimDirectPurchaseBundle(VirtualItemID)
+    if not UGCGameSystem.IsServer() then
+        return
+    end
+
+    VirtualItemID = tonumber(VirtualItemID)
+    local Config = VirtualItemID ~= nil and DirectBundleConfig.ByTokenItemID[VirtualItemID] or nil
+    local VirtualItemManager = GetVirtualItemManager()
+    local Pawn = GetPlayerPawn(self)
+    if Config == nil or VirtualItemManager == nil or VirtualItemManager.GetItemNum == nil or
+        VirtualItemManager.RemoveVirtualItem == nil or Pawn == nil or UGCBackpackSystemV2 == nil or
+        UGCBackpackSystemV2.AddItemV2 == nil or UGCBackpackSystemV2.RemoveItemV2 == nil then
+        return
+    end
+
+    local CountSucceeded, CountResult = pcall(VirtualItemManager.GetItemNum,
+        VirtualItemManager, VirtualItemID, self)
+    if not CountSucceeded or (tonumber(CountResult) or 0) < 1 then
+        return
+    end
+
+    if BackpackCapacityUtil ~= nil and BackpackCapacityUtil.IsFullIncludingEquipped ~= nil and
+        BackpackCapacityUtil.IsFullIncludingEquipped(Pawn) == true then
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_DirectPurchaseBundleResult", false,
+            Config.PackKey, "背包已满，奖励将在下次打开页面时重试")
+        return
+    end
+
+    local AddedRewards = {}
+    local bAllAdded = true
+    for _, Reward in ipairs(Config.Rewards or {}) do
+        local RequestedCount = math.max(0, math.floor(tonumber(Reward.Count) or 0))
+        local CallSucceeded, AddResult = pcall(UGCBackpackSystemV2.AddItemV2,
+            Pawn, tonumber(Reward.ItemID), RequestedCount)
+        local AddedCount = CallSucceeded and math.max(0, math.floor(tonumber(AddResult) or 0)) or 0
+        if AddedCount > 0 then
+            table.insert(AddedRewards, {ItemID = Reward.ItemID, Count = AddedCount})
+        end
+        if AddedCount < RequestedCount then
+            bAllAdded = false
+            break
+        end
+    end
+
+    if bAllAdded then
+        local RemoveSucceeded, RemoveResult = pcall(VirtualItemManager.RemoveVirtualItem,
+            VirtualItemManager, self, VirtualItemID, 1)
+        bAllAdded = RemoveSucceeded and RemoveResult ~= false and RemoveResult ~= 0
+    end
+
+    if not bAllAdded then
+        for _, Added in ipairs(AddedRewards) do
+            pcall(UGCBackpackSystemV2.RemoveItemV2, Pawn, Added.ItemID, Added.Count)
+        end
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_DirectPurchaseBundleResult", false,
+            Config.PackKey, "奖励发放失败，购买物品已保留，请稍后重试")
+        return
+    end
+
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_DirectPurchaseBundleResult", true,
+        Config.PackKey, "购买成功，物品已发放到背包")
+end
+
+function UGCPlayerController:Client_DirectPurchaseBundleResult(bSucceeded, PackKey, Message)
+    ugcprint("[DirectBundle] key=" .. tostring(PackKey) .. " success=" .. tostring(bSucceeded))
+    if L_Com ~= nil and L_Com.ShowToast ~= nil then
+        L_Com.ShowToast(tostring(Message))
+    end
 end
 
 function UGCPlayerController:Server_ForgeWeapon(ItemID, UseProtect)
