@@ -271,7 +271,6 @@ function UI018:GetPlayerState()
     local PlayerController = GetLocalPlayerController(self)
     return PlayerController ~= nil and PlayerController.PlayerState or nil
 end
-
 function UI018:CanReceiveSkillBooks(RewardCount, Source)
     local PlayerController = GetLocalPlayerController(self)
     local PlayerState = PlayerController ~= nil and PlayerController.PlayerState or nil
@@ -281,7 +280,6 @@ function UI018:CanReceiveSkillBooks(RewardCount, Source)
     if CanReceive then
         return true
     end
-
     ugcprint("[TalentUI] Skill book reward blocked: source=" .. tostring(Source) ..
                  " count=" .. tostring(RewardCount) .. " reason=" .. tostring(Reason) ..
                  " reserved=" .. tostring(ReservedPoints) .. " max=" .. tostring(MaxTotalPoints))
@@ -292,7 +290,6 @@ function UI018:CanReceiveSkillBooks(RewardCount, Source)
     end
     return false
 end
-
 function UI018:SetDetailVisible(bVisible)
     local DetailPanel = self:GetWidget("Panel_Detail")
     if DetailPanel ~= nil then
@@ -306,7 +303,6 @@ function UI018:SetResetConfirmVisible(bVisible)
         ConfirmPanel:SetVisibility(bVisible and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
     end
 end
-
 function UI018:GetResetPotionCount()
     local PlayerController = GetLocalPlayerController(self)
     local PlayerPawn = PlayerController ~= nil and PlayerController.Pawn or nil
@@ -315,11 +311,9 @@ function UI018:GetResetPotionCount()
         UGCBackpackSystemV2.GetItemCountV2 == nil then
         return 0
     end
-
     local Success, Count = pcall(UGCBackpackSystemV2.GetItemCountV2, PlayerPawn, PotionItemID)
     return Success and math.max(0, math.floor(tonumber(Count) or 0)) or 0
 end
-
 function UI018:GetShopProductID(ShopItemID)
     if ShopV2Manager == nil or ShopV2Manager.GetAllProductConfigData == nil then
         return nil
@@ -341,7 +335,6 @@ function UI018:GetShopProductID(ShopItemID)
     end
     return nil
 end
-
 function UI018:OpenShopItemPurchasePopup(ShopItemID, DebugName)
     local ProductID = self:GetShopProductID(ShopItemID)
     if ProductID == nil then
@@ -349,10 +342,8 @@ function UI018:OpenShopItemPurchasePopup(ShopItemID, DebugName)
                      " shopItem=" .. tostring(ShopItemID))
         return false
     end
-
     return self:OpenShopProductPurchasePopup(ProductID, DebugName)
 end
-
 function UI018:OpenShopProductPurchasePopup(ProductID, DebugName)
     ProductID = tonumber(ProductID)
     if ProductID == nil or ProductID <= 0 then
@@ -360,7 +351,6 @@ function UI018:OpenShopProductPurchasePopup(ProductID, DebugName)
                      " product=" .. tostring(ProductID))
         return false
     end
-
     local Success, PurchaseFuture = pcall(L_Com.BuyShopProduct, ProductID, 1)
     if not Success or PurchaseFuture == nil then
         ugcprint("[TalentUI] Open purchase failed name=" .. tostring(DebugName) ..
@@ -369,7 +359,6 @@ function UI018:OpenShopProductPurchasePopup(ProductID, DebugName)
     end
     return true
 end
-
 function UI018:OpenResetPotionPurchasePopup()
     return self:OpenShopItemPurchasePopup(TalentConfig.ResetPotionShopItemID, "reset potion")
 end
@@ -380,6 +369,18 @@ function UI018:SetConfirmVisible(bVisible)
     end
     if not bVisible then
         self.PendingTalentNodeID = nil
+    end
+end
+
+function UI018:SetConfirmActionMode(bCanLearn)
+    local ConfirmButton = self:GetWidget("Btn_Confirm")
+    if ConfirmButton ~= nil then
+        ConfirmButton:SetVisibility(bCanLearn and ESlateVisibility.Visible or ESlateVisibility.Collapsed)
+    end
+
+    local CancelText = self:GetWidget("TextBlock_14")
+    if CancelText ~= nil then
+        CancelText:SetText(bCanLearn and "取消" or "关闭")
     end
 end
 
@@ -405,9 +406,28 @@ end
 function UI018:TryOpenLearnConfirm(NodeID)
     local PlayerState = self:GetPlayerState()
     local Node = TalentMgr:GetNode(NodeID)
-    if PlayerState == nil or Node == nil or TalentMgr:HasLearnedTalent(PlayerState, NodeID) then
+    if PlayerState == nil or Node == nil then
         return
     end
+
+    local bLearned = TalentMgr:HasLearnedTalent(PlayerState, NodeID)
+    if bLearned then
+        -- 大招解锁后使用复选框切换装备，不改变其现有交互。
+        if TalentMgr:IsUltimateNode(NodeID) then
+            return
+        end
+
+        self.PendingTalentNodeID = nil
+        self:SetConfirmActionMode(false)
+        local ConfirmText = self:GetWidget("Txt_ConfirmContent")
+        if ConfirmText ~= nil then
+            ConfirmText:SetText("【" .. tostring(Node.Name or "天赋") .. "】已解锁\n" ..
+                                    tostring(Node.Description or "该天赋效果已生效。"))
+        end
+        self:SetConfirmVisible(true)
+        return
+    end
+
     if not TalentMgr:ArePrerequisitesMet(PlayerState, NodeID) then
         return
     end
@@ -419,9 +439,13 @@ function UI018:TryOpenLearnConfirm(NodeID)
         return
     end
     self.PendingTalentNodeID = Node.ID
+    self:SetConfirmActionMode(true)
     local ConfirmText = self:GetWidget("Txt_ConfirmContent")
     if ConfirmText ~= nil then
-        ConfirmText:SetText("是否消耗" .. tostring(Cost) .. "点天赋点解锁“" .. tostring(Node.Name or "天赋") .. "”？")
+        local Description = tostring(Node.Description or "")
+        local DescriptionLine = Description ~= "" and ("\n" .. Description) or ""
+        ConfirmText:SetText("【" .. tostring(Node.Name or "天赋") .. "】" .. DescriptionLine ..
+                                "\n消耗" .. tostring(Cost) .. "点天赋点解锁？")
     end
     self:SetConfirmVisible(true)
 end
@@ -479,7 +503,7 @@ function UI018:RefreshTalentState()
         if Button ~= nil then
             local bLearned = TalentMgr:HasLearnedTalent(PlayerState, NodeID)
             local bPrerequisitesMet = TalentMgr:ArePrerequisitesMet(PlayerState, NodeID)
-            Button:SetVisibility(bLearned and ESlateVisibility.HitTestInvisible or ESlateVisibility.Visible)
+            Button:SetVisibility(ESlateVisibility.Visible)
             Button:SetIsEnabled(bLearned or bPrerequisitesMet)
             if Button.SetRenderOpacity ~= nil then
                 Button:SetRenderOpacity(bLearned and 1.0 or 0.55)
