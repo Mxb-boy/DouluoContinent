@@ -384,6 +384,21 @@ function UI018:SetConfirmActionMode(bCanLearn)
     end
 end
 
+function UI018:GetTalentPrerequisiteText(Node)
+    local RequireID = Node ~= nil and Node.RequireID or nil
+    if RequireID == nil then
+        return ""
+    end
+
+    local RequireIDs = type(RequireID) == "table" and RequireID or { RequireID }
+    local Names = {}
+    for _, PrerequisiteID in ipairs(RequireIDs) do
+        local PrerequisiteNode = TalentMgr:GetNode(PrerequisiteID)
+        table.insert(Names, tostring(PrerequisiteNode ~= nil and PrerequisiteNode.Name or PrerequisiteID))
+    end
+    return table.concat(Names, "、")
+end
+
 function UI018:Open()
     self:SetVisibility(ESlateVisibility.Visible)
     self:SetDetailVisible(false)
@@ -429,13 +444,30 @@ function UI018:TryOpenLearnConfirm(NodeID)
     end
 
     if not TalentMgr:ArePrerequisitesMet(PlayerState, NodeID) then
+        self.PendingTalentNodeID = nil
+        self:SetConfirmActionMode(false)
+        local ConfirmText = self:GetWidget("Txt_ConfirmContent")
+        if ConfirmText ~= nil then
+            ConfirmText:SetText("【" .. tostring(Node.Name or "天赋") .. "】未解锁\n" ..
+                                    tostring(Node.Description or "") .. "\n需要先解锁：" ..
+                                    self:GetTalentPrerequisiteText(Node))
+        end
+        self:SetConfirmVisible(true)
         return
     end
     local TalentPoints = PlayerState.GetTalentPoints ~= nil and PlayerState:GetTalentPoints() or
                              math.max(0, math.floor(tonumber(PlayerState.TalentPoints) or 0))
     local Cost = math.max(0, math.floor(tonumber(Node.Cost) or 0))
     if TalentPoints < Cost then
-        L_Com.ShowToast("天赋点不足")
+        self.PendingTalentNodeID = nil
+        self:SetConfirmActionMode(false)
+        local ConfirmText = self:GetWidget("Txt_ConfirmContent")
+        if ConfirmText ~= nil then
+            ConfirmText:SetText("【" .. tostring(Node.Name or "天赋") .. "】天赋点不足\n" ..
+                                    tostring(Node.Description or "") .. "\n需要" .. tostring(Cost) ..
+                                    "点，当前" .. tostring(TalentPoints) .. "点")
+        end
+        self:SetConfirmVisible(true)
         return
     end
     self.PendingTalentNodeID = Node.ID
@@ -504,9 +536,10 @@ function UI018:RefreshTalentState()
             local bLearned = TalentMgr:HasLearnedTalent(PlayerState, NodeID)
             local bPrerequisitesMet = TalentMgr:ArePrerequisitesMet(PlayerState, NodeID)
             Button:SetVisibility(ESlateVisibility.Visible)
-            Button:SetIsEnabled(bLearned or bPrerequisitesMet)
+            Button:SetIsEnabled(true)
             if Button.SetRenderOpacity ~= nil then
-                Button:SetRenderOpacity(bLearned and 1.0 or 0.55)
+                local Opacity = bLearned and 1.0 or (bPrerequisitesMet and 0.55 or 0.35)
+                Button:SetRenderOpacity(Opacity)
             end
         end
     end
