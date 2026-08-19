@@ -9,6 +9,7 @@ local RankMgr = {
     RankBonusCycleCheckIntervalSeconds = 60,
     RankBonusSettlementDelaySeconds = 120,
     LastUploadZhanLi = nil,
+    bConsumePurchaseResultBound = false,
     RankRewardBackpackItemIDs = {
         [1057] = 8310121, -- 强化保护卷
         [1044] = 8310069, -- 30分钟十倍魂环爆率
@@ -216,6 +217,38 @@ function RankMgr:BeginConsumePurchase(ProductID, ItemID, Price, Num)
         Num = Num,
     }
     return true
+end
+
+function RankMgr:EnsureConsumePurchaseResultCallback()
+    if self.bConsumePurchaseResultBound == true then
+        return true
+    end
+    if UGCCommoditySystem == nil or UGCCommoditySystem.BuyUGCCommodityResultDelegate == nil then
+        return false
+    end
+
+    UGCCommoditySystem.BuyUGCCommodityResultDelegate:Add(self.OnConsumePurchaseResult, self)
+    self.bConsumePurchaseResultBound = true
+    return true
+end
+
+function RankMgr:OnConsumePurchaseResult(bSucceeded, PlayerKey, CommodityID, Count, UID, ProductID)
+    local Pending = self.PendingConsumePurchase
+    ProductID = tonumber(ProductID)
+    if Pending == nil or ProductID == nil or Pending.ProductID ~= ProductID then
+        return
+    end
+
+    if bSucceeded == true then
+        local Amount = Pending.Price * Pending.Num
+        local bUpdated = self:ConfirmConsumePurchase()
+        ugcprint("[RankMgr] Consume purchase confirmed: ProductID=" .. tostring(ProductID) ..
+            " Amount=" .. tostring(Amount) .. " Updated=" .. tostring(bUpdated))
+        return
+    end
+
+    self:CancelConsumePurchase()
+    ugcprint("[RankMgr] Consume purchase canceled: ProductID=" .. tostring(ProductID))
 end
 
 function RankMgr:CancelConsumePurchase()

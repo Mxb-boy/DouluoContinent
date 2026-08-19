@@ -1,6 +1,7 @@
 local L_Com = {}
 
 local ToastManager = UGCGameSystem.UGCRequire("Script.Lin.ToastManager")
+local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
 local HUNHUAN_TABLE_PATH = "Data/Table/Customized/HunHuanConfig"
 local JingJieConfig = "Data/Table/Customized/JingJieConfig"
 local LastToastTime = 0
@@ -76,6 +77,12 @@ end
 
 --[[----------------------购买商城商品------------------------]]
 function L_Com.BuyShopProduct(Product_ID, Buy_Count)
+    Product_ID = tonumber(Product_ID)
+    Buy_Count = math.max(1, math.floor(tonumber(Buy_Count) or 1))
+    if Product_ID == nil then
+        return nil
+    end
+
     if ShopV2Manager == nil or ShopV2Manager.CheckBackpackBeforePurchase == nil or
         ShopV2Manager:CheckBackpackBeforePurchase() == false then
         return nil
@@ -86,8 +93,23 @@ function L_Com.BuyShopProduct(Product_ID, Buy_Count)
     end
     Buy_Count = Buy_Count or 1 -- 购买数量
     local Product_Data = ShopV2Manager:GetProductConfigData(Product_ID) -- 商品信息
+    if Product_Data == nil then
+        return nil
+    end
     local Object_Data = ShopV2Manager:GetItemConfigData(Product_Data.ItemID) -- 物品信息
+    if Object_Data == nil then
+        return nil
+    end
 
-    return UGCCommoditySystem.BuyUGCCommodity2(Product_ID, Object_Data.ItemIcon, Object_Data.ItemDesc, Buy_Count)
+    local PurchaseFuture = UGCCommoditySystem.BuyUGCCommodity2(Product_ID, Object_Data.ItemIcon, Object_Data.ItemDesc,
+        Buy_Count)
+    if PurchaseFuture ~= nil and Product_Data.CurrencyType == ECurrencyType.OasisCoin and RankMgr ~= nil and
+        RankMgr.BeginConsumePurchase ~= nil and RankMgr.EnsureConsumePurchaseResultCallback ~= nil and
+        RankMgr:EnsureConsumePurchaseResultCallback() then
+        RankMgr:BeginConsumePurchase(Product_ID, Product_Data.ItemID, ShopV2Manager:GetDiscountPrice(Product_ID),
+            Buy_Count)
+    end
+
+    return PurchaseFuture
 end
 return L_Com

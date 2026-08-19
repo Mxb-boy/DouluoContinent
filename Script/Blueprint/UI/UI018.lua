@@ -117,6 +117,7 @@ UGCGameSystem.UGCRequire("ExtendResource.ShopV2.OfficialPackage." .. "Script.Sho
 local TalentConfig = UGCGameSystem.UGCRequire("Script.Xiao.TalentConfig")
 local TalentMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentMgr")
 local L_Com = UGCGameSystem.UGCRequire("Script.Lin.L_Com")
+local GiftPackPurchaseService = UGCGameSystem.UGCRequire("Script.Common.GiftPackPurchaseService")
 
 local UI018 = { bInitDoOnce = false }
 
@@ -170,6 +171,12 @@ function UI018:LuaInit()
     self:BindButton("Btn_AddPoint", function()
         if self:OpenShopItemPurchasePopup(TalentConfig.SkillBookShopItemID, "skill book") ~= true then
             L_Com.ShowToast("技能书商品打开失败")
+        end
+    end)
+    self:BindButton("Btn_Libao", function()
+        if GiftPackPurchaseService == nil or
+            GiftPackPurchaseService:Purchase("TalentPoint") == nil then
+            L_Com.ShowToast("一毛礼包打开失败")
         end
     end)
     self:BindButton("Btn_Xidian", function()
@@ -299,6 +306,17 @@ function UI018:OpenShopItemPurchasePopup(ShopItemID, DebugName)
     if ProductID == nil then
         ugcprint("[TalentUI] Product not found name=" .. tostring(DebugName) ..
                      " shopItem=" .. tostring(ShopItemID))
+        return false
+    end
+
+    return self:OpenShopProductPurchasePopup(ProductID, DebugName)
+end
+
+function UI018:OpenShopProductPurchasePopup(ProductID, DebugName)
+    ProductID = tonumber(ProductID)
+    if ProductID == nil or ProductID <= 0 then
+        ugcprint("[TalentUI] Invalid product id name=" .. tostring(DebugName) ..
+                     " product=" .. tostring(ProductID))
         return false
     end
 

@@ -13,18 +13,7 @@
 ---@field Image_113 UImage
 --Edit Below--
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
-local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
-
--- Fill this mapping after the standalone shop gift product is configured.
-local KJ04_GIFT_PRODUCT = {
-    ProductID = 9000051,
-    ItemID = 1055,
-}
-local KJ04_REWARD_ITEMS = {
-    {ItemID = 1028, BackpackItemID = 8310012, Num = 1},
-    {ItemID = 1047, BackpackItemID = 8310051, Num = 6},
-    {ItemID = 1057, BackpackItemID = 8310121, Num = 2},
-}
+local GiftPackPurchaseService = UGCGameSystem.UGCRequire("Script.Common.GiftPackPurchaseService")
 
 local kj04 = { bInitDoOnce = false } 
 
@@ -84,166 +73,18 @@ function kj04:PurchaseGiftPack()
         return false
     end
 
-    if ShopV2Manager == nil or ShopV2Manager:CheckBackpackBeforePurchase() == false then
+    if GiftPackPurchaseService == nil then
         return false
     end
 
-    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
-    local ProductID = tonumber(KJ04_GIFT_PRODUCT.ProductID)
-    local ItemID = tonumber(KJ04_GIFT_PRODUCT.ItemID)
-    if ProductID == nil or ProductID <= 0 then
-        ProductID = self:GetShopProductID(ItemID)
-    end
-    if PlayerController == nil or ProductID == nil then
-        ugcprint("[kj04:PurchaseGiftPack] gift product mapping is not configured")
-        return false
-    end
-
-    if ShopV2Manager == nil or ShopV2Manager.bBlockRepeatPurchase == true then
-        return false
-    end
-
-    local ProductData = ShopV2Manager:GetProductConfigData(ProductID)
-    if ProductData == nil then
-        return false
-    end
-
-    self:EnsureShopPurchaseCallbacks()
-    self.PurchasingProductID = ProductID
-    self.PurchasingProductItemID = ProductData.ItemID
-    ShopV2Manager.bBlockRepeatPurchase = true
-
-    if ProductData ~= nil and RankMgr ~= nil and RankMgr.BeginConsumePurchase ~= nil then
-        RankMgr:BeginConsumePurchase(ProductID, ProductData.ItemID, ShopV2Manager:GetDiscountPrice(ProductID), 1)
-    end
-
-    if ProductData.CurrencyType == ECurrencyType.OtherCoin then
-        ShopV2Manager:BuyProduct(ProductID, 1, ShopV2Manager:GetDiscountPrice(ProductID))
-    else
-        local ObjectData = ShopV2Manager:GetItemConfigData(ProductData.ItemID)
-        if ObjectData == nil then
-            if RankMgr ~= nil and RankMgr.CancelConsumePurchase ~= nil then
-                RankMgr:CancelConsumePurchase()
-            end
-            ShopV2Manager.bBlockRepeatPurchase = false
-            self:RemoveShopPurchaseCallback()
-            self.PurchasingProductID = nil
-            self.PurchasingProductItemID = nil
-            return false
-        end
-
-        self.GiftPackCanAfford = ShopV2Manager:CanAfford(ProductID, 1)
-        local PromiseFuture = UGCCommoditySystem.BuyUGCCommodity2(ProductID, ObjectData.ItemIcon, ObjectData.ItemDesc, 1)
-        if PromiseFuture ~= nil then
-            PromiseFuture:Then(function(Result)
-                local UI = Result:Get()
-                if UI ~= nil and UI.ConfirmationOperationDelegate ~= nil then
-                    UI.ConfirmationOperationDelegate:Add(self.OnGiftPackPurchaseConfirm, self)
-                end
-            end)
-        else
-            if RankMgr ~= nil and RankMgr.CancelConsumePurchase ~= nil then
-                RankMgr:CancelConsumePurchase()
-            end
-            ShopV2Manager.bBlockRepeatPurchase = false
-            self:RemoveShopPurchaseCallback()
-            self.PurchasingProductID = nil
-            self.PurchasingProductItemID = nil
-            return false
-        end
-    end
-
-    return true
-end
-
-function kj04:GetShopProductID(ItemID)
-    if ItemID == nil or ItemID <= 0 then
-        return nil
-    end
-
-    if ShopV2Manager == nil or ShopV2Manager.GetAllProductConfigData == nil then
-        return nil
-    end
-
-    local ProductDatas = ShopV2Manager:GetAllProductConfigData()
-    if ProductDatas == nil then
-        return nil
-    end
-
-    for ProductID, ProductData in pairs(ProductDatas) do
-        if tonumber(ProductData.ItemID) == tonumber(ItemID) then
-            return tonumber(ProductData.ProductID) or tonumber(ProductData.ProductId) or tonumber(ProductID)
-        end
-    end
-
-    return nil
-end
-
-function kj04:EnsureShopPurchaseCallbacks()
-    if ShopV2Manager == nil then
-        return
-    end
-
-    if ShopV2Manager.bBuyProductResultBinded ~= true then
-        ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Add(ShopV2Manager.OnBuyProductResult,
-            ShopV2Manager)
-        ShopV2Manager.bBuyProductResultBinded = true
-    end
-
-    if self.bKJ04BuyProductResultBinded ~= true then
-        ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Add(self.OnKJ04BuyProductResult, self)
-        self.bKJ04BuyProductResultBinded = true
-    end
-end
-
-function kj04:RemoveShopPurchaseCallback()
-    if self.bKJ04BuyProductResultBinded ~= true or ShopV2Manager == nil then
-        return
-    end
-
-    ShopV2Manager:GetCommodityOperationManager().BuyProductResultDelegate:Remove(self.OnKJ04BuyProductResult, self)
-    self.bKJ04BuyProductResultBinded = false
-end
-
-function kj04:OnGiftPackPurchaseConfirm(Value)
-    if not Value or not self.GiftPackCanAfford then
-        if RankMgr ~= nil and RankMgr.CancelConsumePurchase ~= nil then
-            RankMgr:CancelConsumePurchase()
-        end
-        ShopV2Manager.bBlockRepeatPurchase = false
-        self:RemoveShopPurchaseCallback()
-        self.PurchasingProductID = nil
-        self.PurchasingProductItemID = nil
-        self.GiftPackCanAfford = nil
-        return
-    end
-end
-
-function kj04:OnKJ04BuyProductResult(Result)
-    if Result == nil or tonumber(Result.ProductID) ~= tonumber(self.PurchasingProductID) then
-        return
-    end
-
-    if Result.bSucceeded == true then
-        self:GrantRewardsToBackpack()
-        self:UnlockFlight()
-        self:ShowRewardPopup()
-        self:SetGiftPackPurchased(true)
-    end
-
-    if RankMgr ~= nil and RankMgr.ConfirmConsumePurchase ~= nil then
-        if Result.bSucceeded == true then
-            RankMgr:ConfirmConsumePurchase(self.PurchasingProductItemID)
-        elseif RankMgr.CancelConsumePurchase ~= nil then
-            RankMgr:CancelConsumePurchase()
-        end
-    end
-
-    ShopV2Manager.bBlockRepeatPurchase = false
-    self:RemoveShopPurchaseCallback()
-    self.PurchasingProductID = nil
-    self.PurchasingProductItemID = nil
-    self.GiftPackCanAfford = nil
+    local Widget = self
+    local PurchaseFuture = GiftPackPurchaseService:Purchase("FirstRecharge", {
+        OnPurchaseSuccess = function()
+            Widget:UnlockFlight()
+            Widget:SetGiftPackPurchased(true)
+        end,
+    })
+    return PurchaseFuture ~= nil
 end
 
 function kj04:UnlockFlight()
@@ -256,38 +97,6 @@ function kj04:UnlockFlight()
         PlayerController.PlayerState.FeiButton0Hidden = 1
     end
     UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_SetFeiButton0Hidden", 1)
-end
-
-function kj04:GrantRewardsToBackpack()
-    local PlayerController = GameplayStatics.GetPlayerController(self, 0)
-    if PlayerController == nil or UnrealNetwork == nil or UnrealNetwork.CallUnrealRPC == nil then
-        return
-    end
-
-    for _, Reward in ipairs(KJ04_REWARD_ITEMS) do
-        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Server_AddShopItemToBackpackV2",
-            Reward.BackpackItemID, Reward.Num or 1, nil)
-    end
-end
-
-function kj04:ShowRewardPopup()
-    local PlayerController = UGCGameSystem.GetLocalPlayerController()
-        or GameplayStatics.GetPlayerController(self, 0)
-    local LotteryComponent = PlayerController and PlayerController.LotteryComponent or nil
-    if LotteryComponent ~= nil and LotteryComponent.OpenGetItemUI ~= nil then
-        local ItemList = {}
-        for _, Reward in ipairs(KJ04_REWARD_ITEMS) do
-            table.insert(ItemList, {ItemID = Reward.ItemID, ItemNum = Reward.Num or 1})
-        end
-        LotteryComponent:OpenGetItemUI(ItemList)
-        return
-    end
-
-    for _, Reward in ipairs(KJ04_REWARD_ITEMS) do
-        if ShopV2Manager ~= nil and ShopV2Manager.ShowItemGetPopup ~= nil then
-            ShopV2Manager:ShowItemGetPopup(Reward.ItemID, Reward.Num or 1)
-        end
-    end
 end
 
 function kj04:HasPurchasedGiftPack()
@@ -349,7 +158,6 @@ end
 -- end
 
 function kj04:Destruct()
-    self:RemoveShopPurchaseCallback()
 end
 
 return kj04
