@@ -156,6 +156,7 @@
 ---@field TextBlock_12 UTextBlock
 ---@field TextBlock_14 UTextBlock
 ---@field TextBlock_16 UTextBlock
+---@field TextBlock_43 UTextBlock
 ---@field TextBlock_66 UTextBlock
 ---@field TextBlock_108 UTextBlock
 ---@field TextBlock_158 UTextBlock
@@ -167,6 +168,7 @@
 ---@field TextBlock_164 UTextBlock
 ---@field TextBlock_165 UTextBlock
 ---@field TextBlock_166 UTextBlock
+---@field TextBlock_167 UTextBlock
 ---@field TextBlock_248 UTextBlock
 ---@field TextBlock_330 UTextBlock
 ---@field TextBlock_332 UTextBlock
@@ -718,9 +720,20 @@ function UI017:RefreshSelectedXzwqWeaponSlots(WeaponIndex)
     local IconTexture = IconPath ~= nil and UE.LoadObject(IconPath) or nil
     local LockTexture = UE.LoadObject(UGCGameSystem.GetUGCResourcesFullPath(XZWQ_LOCK_TEXTURE_PATH))
     local WeaponName = GetConfigText(GetXzwqField(RowData, 'Name'))
-    local CurrentWeaponImage = self:GetWidget("Image_42")
-    if CurrentWeaponImage ~= nil and IconTexture ~= nil then
-        CurrentWeaponImage:SetBrushFromTexture(IconTexture, true)
+    -- 两个详情图片始终使用同一张当前武器图标；不匹配纹理尺寸，保留蓝图中设置的显示尺寸。
+    for _, WidgetName in ipairs({"Image_42", "Image_155"}) do
+        local WeaponImage = self:GetWidget(WidgetName)
+        if WeaponImage ~= nil and IconTexture ~= nil and WeaponImage.SetBrushFromTexture ~= nil then
+            WeaponImage:SetBrushFromTexture(IconTexture)
+        elseif WeaponImage == nil then
+            ugcprint('[UI017] weapon detail image not found: ' .. WidgetName)
+        end
+    end
+    for _, WidgetName in ipairs({"TextBlock_43", "TextBlock_167"}) do
+        local SelectedWeaponName = self:GetWidget(WidgetName)
+        if SelectedWeaponName ~= nil then
+            SelectedWeaponName:SetText(WeaponName)
+        end
     end
     for SlotIndex = 1, #XZWQ_SLOT_ICON_NAMES do
         local SlotIcon = self:GetWidget(XZWQ_SLOT_ICON_NAMES[SlotIndex])
@@ -1372,6 +1385,7 @@ function UI017:SetSoulRingConvertButtonsEnabled(bEnabled)
         end
     end
 end
+
 function UI017:PlayConvertAnimation()
     if self.llo ~= nil and self.PlayAnimation ~= nil then
         self:PlayAnimation(self.llo, 0, 1, EUMGSequencePlayMode.Forward, 1.4)
