@@ -18,12 +18,22 @@ function SignInEvent_ItemGet_UIBP:OnConfirmClick()
     self:SetVisibility(ESlateVisibility.Collapsed);
 end
 
-function SignInEvent_ItemGet_UIBP:Popup(ItemID, Num)
+function SignInEvent_ItemGet_UIBP:Popup(ItemID, Num, ExtraItemID, ExtraNum)
 
-    self.Num = Num or 1;
+    self.Rewards = {};
+    local ObjectDatas = Common.GetObjectDatas() or {};
+    local function AddReward(RewardItemID, RewardNum)
+        local NumericItemID = tonumber(RewardItemID)
+        local NumericNum = math.max(0, math.floor(tonumber(RewardNum) or 0))
+        local ItemData = NumericItemID ~= nil and ObjectDatas[NumericItemID] or nil
+        if ItemData ~= nil and NumericNum > 0 then
+            table.insert(self.Rewards, {ItemData = ItemData, Num = NumericNum})
+        end
+    end
 
-    self.ItemData = Common.GetObjectDatas()[ItemID];
-    self.ItemList:Reload(1);
+    AddReward(ItemID, Num or 1);
+    AddReward(ExtraItemID, ExtraNum);
+    self.ItemList:Reload(#self.Rewards);
 
     if CheckObjectContainsField(self, "DX_GXHD") then
         self:PlayAnimation(self.DX_GXHD, 0, 1, EUMGSequencePlayMode.Forward, 1);
@@ -33,13 +43,20 @@ function SignInEvent_ItemGet_UIBP:Popup(ItemID, Num)
 end
 
 function SignInEvent_ItemGet_UIBP:OnUpdateItem(Item, Idx)
-    
-    Common.LoadObjectAsync(self.ItemData.ItemIcon, 
+
+    local Reward = self.Rewards ~= nil and self.Rewards[Idx + 1] or nil
+    if Reward == nil then
+        return
+    end
+
+    Common.LoadObjectAsync(Reward.ItemData.ItemIcon,
         function (IconTexture)
-            if self ~= nil and UE.IsValid(self) then
+            if self ~= nil and UE.IsValid(self) and self.Rewards ~= nil and
+                self.Rewards[Idx + 1] == Reward and Item ~= nil and UE.IsValid(Item) and
+                IconTexture ~= nil then
                 Item.ItemIcon:SetBrushFromTexture(IconTexture);
-                Item.ItemNameText:SetText(self.ItemData.ItemName);
-                Item.NumText:SetText(tostring(self.Num));
+                Item.ItemNameText:SetText(Reward.ItemData.ItemName);
+                Item.NumText:SetText(tostring(Reward.Num));
             end
         end
     )

@@ -169,11 +169,31 @@ function UI018:LuaInit()
         self:SetConfirmVisible(false)
     end)
     self:BindButton("Btn_AddPoint", function()
-        if self:OpenShopItemPurchasePopup(TalentConfig.SkillBookShopItemID, "skill book") ~= true then
+        local ProductID = self:GetShopProductID(TalentConfig.SkillBookShopItemID)
+        local ProductData = ProductID ~= nil and ShopV2Manager:GetProductConfigData(ProductID) or nil
+        local RewardCount = ProductData ~= nil and math.max(0, math.floor(tonumber(ProductData.ItemNum) or 0)) or 0
+        if ProductID == nil or RewardCount <= 0 then
+            L_Com.ShowToast("技能书商品配置读取失败")
+            return
+        end
+        if not self:CanReceiveSkillBooks(RewardCount, "shop") then
+            return
+        end
+        if self:OpenShopProductPurchasePopup(ProductID, "skill book") ~= true then
             L_Com.ShowToast("技能书商品打开失败")
         end
     end)
     self:BindButton("Btn_Libao", function()
+        local RewardCount = GiftPackPurchaseService ~= nil and
+                                GiftPackPurchaseService:GetConfiguredRewardCount("TalentPoint",
+                                    TalentConfig.SkillBookShopItemID) or nil
+        if RewardCount == nil or RewardCount <= 0 then
+            L_Com.ShowToast("一毛礼包奖励配置读取失败")
+            return
+        end
+        if not self:CanReceiveSkillBooks(RewardCount, "gift") then
+            return
+        end
         if GiftPackPurchaseService == nil or
             GiftPackPurchaseService:Purchase("TalentPoint") == nil then
             L_Com.ShowToast("一毛礼包打开失败")
@@ -250,6 +270,27 @@ end
 function UI018:GetPlayerState()
     local PlayerController = GetLocalPlayerController(self)
     return PlayerController ~= nil and PlayerController.PlayerState or nil
+end
+
+function UI018:CanReceiveSkillBooks(RewardCount, Source)
+    local PlayerController = GetLocalPlayerController(self)
+    local PlayerState = PlayerController ~= nil and PlayerController.PlayerState or nil
+    local PlayerPawn = PlayerController ~= nil and PlayerController.Pawn or nil
+    local CanReceive, Reason, ReservedPoints, MaxTotalPoints =
+        TalentMgr:CanGrantSkillBooks(PlayerState, PlayerPawn, RewardCount, false)
+    if CanReceive then
+        return true
+    end
+
+    ugcprint("[TalentUI] Skill book reward blocked: source=" .. tostring(Source) ..
+                 " count=" .. tostring(RewardCount) .. " reason=" .. tostring(Reason) ..
+                 " reserved=" .. tostring(ReservedPoints) .. " max=" .. tostring(MaxTotalPoints))
+    if Reason == "talent_point_limit" then
+        L_Com.ShowToast("领取后将超过天赋点上限")
+    else
+        L_Com.ShowToast("天赋数据尚未准备好，请稍后重试")
+    end
+    return false
 end
 
 function UI018:SetDetailVisible(bVisible)

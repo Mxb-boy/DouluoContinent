@@ -42,6 +42,30 @@ function GiftPackPurchaseService:GetPack(PackKey)
     return GiftPackConfig.Packs[PackKey]
 end
 
+function GiftPackPurchaseService:GetConfiguredRewardCount(PackKey, RewardItemID)
+    local Config = self:GetPack(PackKey)
+    RewardItemID = tonumber(RewardItemID)
+    if Config == nil or RewardItemID == nil or GiftPackManager == nil or
+        GiftPackManager.GetPackageDropItems == nil then
+        return nil
+    end
+
+    local Succeeded, DropItems = pcall(GiftPackManager.GetPackageDropItems, GiftPackManager,
+        tonumber(Config.GiftPackID))
+    if not Succeeded or type(DropItems) ~= "table" then
+        return nil
+    end
+
+    local RewardCount = 0
+    for _, Item in pairs(DropItems) do
+        if tonumber(Item.ItemID) == RewardItemID then
+            RewardCount = RewardCount + math.max(0, math.floor(tonumber(Item.ItemMaxNum) or
+                tonumber(Item.ItemMinNum) or 0))
+        end
+    end
+    return RewardCount
+end
+
 function GiftPackPurchaseService:EnsureCallbacks()
     if ShopV2Manager == nil then
         return false

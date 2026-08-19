@@ -8,9 +8,12 @@
 ---@field QuantityText UTextBlock
 ---@field RedDot UImage
 ---@field StateSwitcher UWidgetSwitcher
+---@field TextBlock_56 UTextBlock
 ---@field ShowTipPressTime float
 --Edit Below--
 local SignInAwardDisplayName = UGCGameSystem.UGCRequire("Script.Common.SignInAwardDisplayName");
+local TalentConfig = UGCGameSystem.UGCRequire("Script.Xiao.TalentConfig");
+local TalentMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentMgr");
 local IconTextureCache = {};
 
 local SignInEvent_Weekly_Item_UIBP = 
@@ -28,11 +31,35 @@ function SignInEvent_Weekly_Item_UIBP:Construct()
     self.ConfirmButton.OnReleased:Add(self.OnRelease, self);
 end
 
+function SignInEvent_Weekly_Item_UIBP:RefreshExtraSkillBookText(EventID)
+    local ExtraRewardText = self.TextBlock_56
+    if ExtraRewardText == nil and self.GetWidgetFromName ~= nil then
+        ExtraRewardText = self:GetWidgetFromName("TextBlock_56")
+    end
+    if ExtraRewardText == nil then
+        return
+    end
+
+    local Reward = TalentConfig.SignInSkillBookReward
+    local PlayerController = UGCGameSystem.GetLocalPlayerController()
+    local PlayerState = PlayerController ~= nil and PlayerController.PlayerState or nil
+    local PlayerPawn = PlayerController ~= nil and PlayerController.Pawn or nil
+    local RewardCount = type(Reward) == "table" and math.max(0, math.floor(tonumber(Reward.Count) or 0)) or 0
+    local CanGrant = type(Reward) == "table" and tonumber(EventID) == tonumber(Reward.EventID) and
+                         TalentMgr:CanGrantSkillBooks(PlayerState, PlayerPawn, RewardCount, false) == true
+
+    ExtraRewardText:SetVisibility(CanGrant and ESlateVisibility.HitTestInvisible or ESlateVisibility.Collapsed)
+    if CanGrant then
+        ExtraRewardText:SetText("技能书X" .. tostring(RewardCount))
+    end
+end
+
 function SignInEvent_Weekly_Item_UIBP:Refresh(EventID, DayIndex, SupplementDay)
     
     self:Reset();
     self.EventID = EventID;
     self.DayIndex = DayIndex;
+    self:RefreshExtraSkillBookText(EventID);
 
     local Config = SignInEventManager:GetEventConfigData(EventID);
     local Awards = Config.Awards;

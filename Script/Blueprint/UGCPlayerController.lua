@@ -2346,6 +2346,19 @@ function UGCPlayerController:Server_AddShopItemToBackpackV2(BackpackItemID, Num,
         print("[ShopV2:SERVER] PlayerPawn nil")
         return
     end
+    if BackpackItemID == tonumber(TalentConfig.SkillBookItemID) then
+        local CanGrant, Reason, ReservedPoints, MaxTotalPoints =
+            TalentMgr:CanGrantSkillBooks(self.PlayerState, PlayerPawn, Num)
+        if not CanGrant then
+            print("[ShopV2:SERVER] Skill book conversion blocked: reason=" .. tostring(Reason) ..
+                      " requested=" .. tostring(Num) .. " reserved=" .. tostring(ReservedPoints) ..
+                      " max=" .. tostring(MaxTotalPoints) .. " virtualItem=" .. tostring(VirtualItemID))
+            local Message = Reason == "talent_point_limit" and "天赋点及技能书已达上限，商品暂未转入背包" or
+                                "技能书商品暂未转入背包，请稍后重试"
+            UnrealNetwork.CallUnrealRPC(self, self, "Client_ShowToast", Message)
+            return
+        end
+    end
     if BackpackCapacityUtil ~= nil and BackpackCapacityUtil.IsFullIncludingEquipped ~= nil and
         BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn) == true then
         print("[ShopV2:SERVER] Backpack full including equipped items, keeping virtual item as fallback")

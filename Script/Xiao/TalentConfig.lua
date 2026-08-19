@@ -5,6 +5,11 @@ TalentConfig.TestGrantPoints = 19
 TalentConfig.SkillBookItemID = 8310132
 TalentConfig.SkillBookShopItemID = 1058
 TalentConfig.SkillBookPointsPerUse = 1
+TalentConfig.SignInSkillBookReward = {
+    EventID = 10086,
+    ItemID = TalentConfig.SkillBookItemID,
+    Count = 1
+}
 TalentConfig.ResetPotionItemID = 8310136
 TalentConfig.ResetPotionShopItemID = 1062
 TalentConfig.ResetPotionConsumeCount = 1

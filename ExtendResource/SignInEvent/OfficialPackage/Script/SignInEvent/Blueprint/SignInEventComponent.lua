@@ -11,7 +11,12 @@ UGCGameSystem.UGCRequire("ExtendResource.SignInEvent.OfficialPackage." .. "Scrip
 
 local Delegate = UGCGameSystem.UGCRequire("common.Delegate");
 local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr");
+local TalentConfig = UGCGameSystem.UGCRequire("Script.Xiao.TalentConfig");
+local TalentMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentMgr");
 local STExtraGMDelegatesMgr = KismetLibrary.New("/Script/ShadowTrackerExtra.STExtraGMDelegatesMgr");
+
+local AWARD_SOURCE_DAILY = "Daily"
+local AWARD_SOURCE_SUPPLEMENT = "Supplement"
 
 local SignInAwardItemMap =
 {
@@ -44,6 +49,13 @@ local function NormalizeEventDataKeys(EventData)
             EventData[EventID] = nil
         end
     end
+end
+
+local function NormalizeAddedCount(Result, RequestedCount)
+    if Result == true then
+        return RequestedCount
+    end
+    return math.max(0, math.min(math.floor(tonumber(Result) or 0), RequestedCount))
 end
 
 function SignInEventComponent:ReceiveBeginPlay()
@@ -280,10 +292,10 @@ function SignInEventComponent:ShowSupplementTip(Message)
     end
 end
 
-function SignInEventComponent:ShowItemGetPopup(ItemID, Num)
+function SignInEventComponent:ShowItemGetPopup(ItemID, Num, ExtraItemID, ExtraNum)
     
     if self.MainUI ~= nil then
-        self.MainUI:ShowItemGetPopup(ItemID, Num);
+        self.MainUI:ShowItemGetPopup(ItemID, Num, ExtraItemID, ExtraNum);
     end
 end
 
@@ -451,7 +463,48 @@ function SignInEventComponent:UseSupplement(EventID)
     UnrealNetwork.CallUnrealRPC(self:GetOwner(), self, "Server_UseSupplement", EventID, self:GetEventData(EventID));
 end
 
-function SignInEventComponent:GetSignInAward(EventID, LocalEventDatas)
+function SignInEventComponent:TryGrantDailySkillBook(EventID, AwardSource, PlayerPawn)
+    local Reward = TalentConfig.SignInSkillBookReward
+    if AwardSource ~= AWARD_SOURCE_DAILY or type(Reward) ~= "table" or
+        tonumber(EventID) ~= tonumber(Reward.EventID) then
+        return 0, 0
+    end
+
+    local ItemID = tonumber(Reward.ItemID)
+    local RequestedCount = math.max(0, math.floor(tonumber(Reward.Count) or 0))
+    local PlayerState = self:GetOwner().PlayerState
+    if ItemID == nil or RequestedCount <= 0 or PlayerPawn == nil or PlayerState == nil then
+        print("[SignInEventComponent] Daily skill book skipped: invalid context")
+        return 0, 0
+    end
+
+    local CanGrant, Reason, ReservedPoints, MaxTotalPoints =
+        TalentMgr:CanGrantSkillBooks(PlayerState, PlayerPawn, RequestedCount)
+    if not CanGrant then
+        print("[SignInEventComponent] Daily skill book skipped: reason=" .. tostring(Reason) ..
+            " reserved=" .. tostring(ReservedPoints) .. " max=" .. tostring(MaxTotalPoints))
+        return 0, 0
+    end
+
+    if UGCBackpackSystemV2 == nil or UGCBackpackSystemV2.AddItemV2 == nil then
+        print("[SignInEventComponent] Daily skill book skipped: backpack unavailable")
+        return 0, 0
+    end
+
+    local Succeeded, Result = pcall(UGCBackpackSystemV2.AddItemV2, PlayerPawn, ItemID, RequestedCount)
+    local AddedCount = Succeeded and NormalizeAddedCount(Result, RequestedCount) or 0
+    if AddedCount < RequestedCount then
+        print("[SignInEventComponent] Daily skill book add incomplete: requested=" ..
+            tostring(RequestedCount) .. " added=" .. tostring(AddedCount))
+    else
+        print("[SignInEventComponent] Daily skill book granted: item=" .. tostring(ItemID) ..
+            " count=" .. tostring(AddedCount) .. " reservedBefore=" .. tostring(ReservedPoints) ..
+            " max=" .. tostring(MaxTotalPoints))
+    end
+    return AddedCount > 0 and ItemID or 0, AddedCount
+end
+
+function SignInEventComponent:GetSignInAward(EventID, LocalEventDatas, AwardSource)
     print("[SignInEventComponent] GetSignInAward");
 
     if not self:GetOwner():HasAuthority() then
@@ -529,7 +582,10 @@ function SignInEventComponent:GetSignInAward(EventID, LocalEventDatas)
     local AwardItemID = SignInAwardItemMap[Award.ItemID] or Award.ItemID;
     local PlayerPawn = UGCGameSystem.GetPlayerPawnByPlayerController(self:GetOwner());
     UGCBackpackSystemV2.AddItemV2(PlayerPawn, AwardItemID, Award.ItemNum);
-    UnrealNetwork.CallUnrealRPC(self:GetOwner(), self, "ShowItemGetPopup", Award.ItemID, Award.ItemNum);
+    local ExtraItemID, ExtraItemNum = self:TryGrantDailySkillBook(EventID, AwardSource, PlayerPawn)
+    UnrealNetwork.CallUnrealRPC(self:GetOwner(), self, "ShowItemGetPopup", Award.ItemID, Award.ItemNum,
+        ExtraItemID, ExtraItemNum);
+    return true
 end
 
 function SignInEventComponent:Server_GetDailySignInAward(EventID, LocalEventDatas)
@@ -548,7 +604,7 @@ function SignInEventComponent:Server_GetDailySignInAward(EventID, LocalEventData
         return
     end
 
-    self:GetSignInAward(EventID, LocalEventDatas)
+    self:GetSignInAward(EventID, LocalEventDatas, AWARD_SOURCE_DAILY)
 end
 
 function SignInEventComponent:Server_UseSupplement(EventID, LocalEventDatas)
@@ -587,7 +643,7 @@ function SignInEventComponent:Server_UseSupplement(EventID, LocalEventDatas)
         self:Server_RemoveItem(ConfigData.SupplementItemID, ConfigData.SupplementItemNum,
             function (Result)
                 if Result.bSucceeded then
-                    self:GetSignInAward(EventID, LocalEventDatas); 
+                    self:GetSignInAward(EventID, LocalEventDatas, AWARD_SOURCE_SUPPLEMENT);
                 end
             end
         );

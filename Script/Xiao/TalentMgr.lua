@@ -110,6 +110,49 @@ function TalentMgr:GetTotalTalentPoints(playerState)
     return availablePoints + self:GetSpentTalentPoints(playerState)
 end
 
+function TalentMgr:GetOwnedSkillBookCount(itemOwner)
+    local itemID = tonumber(TalentConfig.SkillBookItemID)
+    if itemOwner == nil or itemID == nil or UGCBackpackSystemV2 == nil or
+        UGCBackpackSystemV2.GetItemCountV2 == nil then
+        return nil
+    end
+
+    local succeeded, count = pcall(UGCBackpackSystemV2.GetItemCountV2, itemOwner, itemID)
+    count = succeeded and tonumber(count) or nil
+    if count == nil then
+        return nil
+    end
+    return math.max(0, math.floor(count))
+end
+
+function TalentMgr:CanGrantSkillBooks(playerState, itemOwner, count, requireArchiveLoaded)
+    local grantCount = math.floor(tonumber(count) or 0)
+    if playerState == nil or grantCount <= 0 then
+        return false, "invalid_context"
+    end
+    if requireArchiveLoaded ~= false and playerState.bArchiveLoaded ~= true then
+        return false, "archive_not_loaded"
+    end
+
+    local maxTotalPoints = tonumber(TalentConfig.MaxTotalPoints)
+    if maxTotalPoints == nil then
+        return true, "no_limit"
+    end
+
+    local ownedCount = self:GetOwnedSkillBookCount(itemOwner)
+    if ownedCount == nil then
+        return false, "inventory_unavailable"
+    end
+
+    local pointsPerBook = math.max(1, math.floor(tonumber(TalentConfig.SkillBookPointsPerUse) or 1))
+    local reservedPoints = self:GetTotalTalentPoints(playerState) + ownedCount * pointsPerBook
+    maxTotalPoints = math.max(0, math.floor(maxTotalPoints))
+    if reservedPoints + grantCount * pointsPerBook > maxTotalPoints then
+        return false, "talent_point_limit", reservedPoints, maxTotalPoints
+    end
+    return true, "success", reservedPoints, maxTotalPoints
+end
+
 function TalentMgr:CanGrantTalentPoints(playerState, amount)
     local grantAmount = math.floor(tonumber(amount) or 0)
     if playerState == nil or grantAmount <= 0 then

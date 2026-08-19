@@ -257,10 +257,10 @@ function SignInEvent_Main_UIBP:ShowSupplementTip(Message)
     self.SupplementTip:ShowMessageTip(Message);
 end
 
-function SignInEvent_Main_UIBP:ShowItemGetPopup(ItemID, Num)
+function SignInEvent_Main_UIBP:ShowItemGetPopup(ItemID, Num, ExtraItemID, ExtraNum)
     
     self.ItemGet:SetVisibility(ESlateVisibility.SelfHitTestInvisible);
-    self.ItemGet:Popup(ItemID, Num);
+    self.ItemGet:Popup(ItemID, Num, ExtraItemID, ExtraNum);
 end
 
 function SignInEvent_Main_UIBP:ShowRuleTip(Text)
