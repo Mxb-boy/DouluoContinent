@@ -8,8 +8,6 @@
 ---@field PriceButton UButton
 ---@field SoldOutButton UButton
 --Edit Below--
-local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
-
 local ShopV2_CommonButton_UIBP = 
 { 
     bInitDoOnce = false;
@@ -97,42 +95,9 @@ function ShopV2_CommonButton_UIBP:OnClick()
     --     return;
     -- end
 
+    -- 所有商城商品统一先进入数量选择弹窗；具体货币的购买接口由弹窗处理。
     ShopV2Manager.bBlockRepeatPurchase = true;
-    local ProductData = ShopV2Manager:GetProductConfigData(self.ProductID);
-
-    if ProductData.CurrencyType == ECurrencyType.OtherCoin then
-        ShopV2Manager:OpenPurchaseUI(self.ProductID);
-    else
-        local ObjectData = ShopV2Manager:GetItemConfigData(ProductData.ItemID);
-        self.bCanAfford = ShopV2Manager:CanAfford(self.ProductID, 1)
-        if RankMgr ~= nil and RankMgr.BeginConsumePurchase ~= nil then
-            RankMgr:BeginConsumePurchase(self.ProductID, ProductData.ItemID, ShopV2Manager:GetDiscountPrice(self.ProductID), 1)
-        end
-        local PromiseFuture = UGCCommoditySystem.BuyUGCCommodity2(self.ProductID, ObjectData.ItemIcon, ObjectData.ItemDesc, 1);
-        if PromiseFuture ~= nil then
-            PromiseFuture:Then(
-                function (Result)
-                    local UI = Result:Get();
-                    UI.ConfirmationOperationDelegate:Add(self.ShouldBlockRepeatPurchase, self);
-                end
-            )
-        end
-    end
-end
-
-function ShopV2_CommonButton_UIBP:ShouldBlockRepeatPurchase(Value)
-
-    if not Value or not self.bCanAfford then        --取消购买或买不起
-        if RankMgr ~= nil and RankMgr.CancelConsumePurchase ~= nil then
-            RankMgr:CancelConsumePurchase()
-        end
-        ShopV2Manager.bBlockRepeatPurchase = false
-    else
-        if RankMgr ~= nil and RankMgr.ConfirmConsumePurchase ~= nil then
-            RankMgr:ConfirmConsumePurchase()
-        end
-        ShopV2Manager.bBlockRepeatPurchase = true; 
-    end
+    ShopV2Manager:OpenPurchaseUI(self.ProductID);
 end
 
 return ShopV2_CommonButton_UIBP;

@@ -16,6 +16,8 @@
 ---@field TotalPriceText UTextBlock
 --Edit Below--
 
+local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
+
 local ShopV2_PurchasePopups_UIBP = 
 { 
     bInitDoOnce = false;
@@ -124,7 +126,37 @@ function ShopV2_PurchasePopups_UIBP:OnBuyClick()
     elseif ShopV2Manager:IsProductValid(self.ProductData.ProductID) == false then
         ShopV2Manager:ShowPurchaseTip("购买失败，商品未上架");
     else
-        bRequested = ShopV2Manager:BuyProduct(self.ProductData.ProductID, self.Count, self.CurrentPrice) ~= false
+        if self.ProductData.CurrencyType == ECurrencyType.OtherCoin then
+            bRequested = ShopV2Manager:BuyProduct(self.ProductData.ProductID, self.Count, self.CurrentPrice) ~= false
+        else
+            local ItemData = ShopV2Manager:GetItemConfigData(self.ProductData.ItemID)
+            if ItemData ~= nil then
+                self.bCanAfford = ShopV2Manager:CanAfford(self.ProductData.ProductID, self.Count)
+                if RankMgr ~= nil and RankMgr.BeginConsumePurchase ~= nil then
+                    RankMgr:BeginConsumePurchase(self.ProductData.ProductID, self.ProductData.ItemID,
+                        self.CurrentPrice, self.Count)
+                end
+
+                local PurchaseFuture = UGCCommoditySystem.BuyUGCCommodity2(self.ProductData.ProductID,
+                    ItemData.ItemIcon, ItemData.ItemDesc, self.Count)
+                if PurchaseFuture ~= nil then
+                    bRequested = true
+                    PurchaseFuture:Then(function(Result)
+                        local ConfirmUI = Result ~= nil and Result:Get() or nil
+                        if ConfirmUI ~= nil and ConfirmUI.ConfirmationOperationDelegate ~= nil then
+                            ConfirmUI.ConfirmationOperationDelegate:Add(self.OnOasisCoinPurchaseConfirm, self)
+                        else
+                            if RankMgr ~= nil and RankMgr.CancelConsumePurchase ~= nil then
+                                RankMgr:CancelConsumePurchase()
+                            end
+                            ShopV2Manager.bBlockRepeatPurchase = false
+                        end
+                    end)
+                elseif RankMgr ~= nil and RankMgr.CancelConsumePurchase ~= nil then
+                    RankMgr:CancelConsumePurchase()
+                end
+            end
+        end
     end
 
     self:SetVisibility(ESlateVisibility.Collapsed);
@@ -132,6 +164,23 @@ function ShopV2_PurchasePopups_UIBP:OnBuyClick()
     if not bRequested then
         ShopV2Manager.bBlockRepeatPurchase = false
     end
+end
+
+function ShopV2_PurchasePopups_UIBP:OnOasisCoinPurchaseConfirm(Value)
+
+    if Value ~= true or self.bCanAfford ~= true then
+        if RankMgr ~= nil and RankMgr.CancelConsumePurchase ~= nil then
+            RankMgr:CancelConsumePurchase()
+        end
+        ShopV2Manager.bBlockRepeatPurchase = false
+        return
+    end
+
+    if RankMgr ~= nil and RankMgr.ConfirmConsumePurchase ~= nil then
+        RankMgr:ConfirmConsumePurchase()
+    end
+    -- 确认后保持防重复购买，正式购买结果会由 ShopV2Manager 解除。
+    ShopV2Manager.bBlockRepeatPurchase = true
 end
 
 function ShopV2_PurchasePopups_UIBP:OnIncreaseClick()
