@@ -103,15 +103,18 @@ local function IsWingAttachConfig(Config)
     return string.find(ActorPath, "/Douluo/Asset/ChiBang/Models/", 1, true) ~= nil
 end
 
-local function IsAlreadyAttachedToSocket(WingActor, ParentMesh, SocketName)
-    local Success, bMatches = pcall(function()
-        local Root = WingActor.RootComponent
-        if Root == nil or Root.GetAttachSocketName == nil then
-            return false
-        end
-        return Root.AttachParent == ParentMesh and tostring(Root:GetAttachSocketName()) == tostring(SocketName)
+local function IsMarkedWingActor(WingActor)
+    if not IsValidObject(WingActor) then
+        return false
+    end
+    local SuccessMarker, Marker = pcall(function()
+        return WingActor.IsDouluoWingActor
     end)
-    return Success and bMatches == true
+    if not SuccessMarker or type(Marker) ~= "function" then
+        return false
+    end
+    local SuccessCall, bIsWing = pcall(Marker, WingActor)
+    return SuccessCall and bIsWing == true
 end
 
 -- 装备存档在进场时会很早恢复。远端客户端收到 AttachActorConfigs 时，角色部位 Socket
@@ -127,17 +130,18 @@ local function RefreshWingActorList(player, Configs, Actors)
     local SuccessLoop, bFixedAny = pcall(function()
         local bFixed = false
         for Index, Config in pairs(Configs) do
+            local SuccessActor, WingActor = pcall(function()
+                return Actors[Index]
+            end)
             local SuccessConfig, AttachPos, PartType, bUsePartType, Offset = pcall(function()
                 local Pos = Config ~= nil and Config.AttachPos or nil
                 return Pos, Pos ~= nil and tonumber(Pos.PartType) or nil,
                     Pos ~= nil and Pos.bUsePartType or nil, Pos ~= nil and Pos.Offset or nil
             end)
-            if SuccessConfig and IsWingAttachConfig(Config) and AttachPos ~= nil and
+            local bIsWing = IsWingAttachConfig(Config) or (SuccessActor and IsMarkedWingActor(WingActor))
+            if SuccessConfig and bIsWing and AttachPos ~= nil and
                 PartType == WING_ATTACH_PART_TYPE and
                 bUsePartType ~= false and Offset ~= nil then
-                local SuccessActor, WingActor = pcall(function()
-                    return Actors[Index]
-                end)
                 if SuccessActor and IsValidObject(WingActor) and WingActor.K2_AttachToComponent ~= nil and
                     WingActor.K2_SetActorRelativeTransform ~= nil and IsSafeWingActorOwner(WingActor, player) then
                     local SuccessSocket, SocketName = pcall(UGCBlueprintFunctionLibrary.GetMeshSocketBySelector,
@@ -150,12 +154,11 @@ local function RefreshWingActorList(player, Configs, Actors)
                         bSocketReady = SuccessExists and bExists == true
                     end
                     if bSocketReady then
-                        local SuccessAttach, AttachResult = true, true
-                        if not IsAlreadyAttachedToSocket(WingActor, player.Mesh, SocketName) then
-                            SuccessAttach, AttachResult = pcall(WingActor.K2_AttachToComponent, WingActor,
-                                player.Mesh, SocketName, EAttachmentRule.SnapToTarget,
-                                EAttachmentRule.SnapToTarget, EAttachmentRule.SnapToTarget, false)
-                        end
+                        -- 即使当前记录的 Parent/Socket 相同也重新吸附。后进客户端可能在人物外观
+                        -- 初始化完成前已经挂过一次，此时记录正确但世界位置仍是旧结果。
+                        local SuccessAttach, AttachResult = pcall(WingActor.K2_AttachToComponent, WingActor,
+                            player.Mesh, SocketName, EAttachmentRule.SnapToTarget,
+                            EAttachmentRule.SnapToTarget, EAttachmentRule.SnapToTarget, false)
                         if SuccessAttach and AttachResult ~= false then
                             local SuccessOffset, OffsetResult = pcall(WingActor.K2_SetActorRelativeTransform,
                                 WingActor, Offset, false, {}, false)
@@ -211,16 +214,8 @@ local function CleanupWingActors(player)
         -- 配置数组可能已经先清空，但 Actor 数组里仍留着旧对象。翅膀 Actor 的 Lua
         -- 模块提供统一标记，保证这种“有 Actor、无 Config”的残影也能被识别。
         for _, WingActor in pairs(player.AttachActors) do
-            if IsValidObject(WingActor) then
-                local SuccessMarker, Marker = pcall(function()
-                    return WingActor.IsDouluoWingActor
-                end)
-                if SuccessMarker and type(Marker) == "function" then
-                    local SuccessCall, bIsWing = pcall(Marker, WingActor)
-                    if SuccessCall and bIsWing == true then
-                        Candidates[WingActor] = true
-                    end
-                end
+            if IsMarkedWingActor(WingActor) then
+                Candidates[WingActor] = true
             end
         end
         for WingActor in pairs(Candidates) do
@@ -1348,9 +1343,6 @@ function UGCPlayerPawn:ReceiveTick(DeltaTime)
             self.WingAttachFixAttemptsLeft = self.WingAttachFixAttemptsLeft - 1
             if RefreshWingAttachments(self) then
                 self.WingAttachFixSuccesses = (tonumber(self.WingAttachFixSuccesses) or 0) + 1
-                if self.WingAttachFixSuccesses >= 4 then
-                    self.WingAttachFixAttemptsLeft = 0
-                end
             else
                 self.WingAttachFixSuccesses = 0
             end
