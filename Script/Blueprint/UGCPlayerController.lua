@@ -1025,6 +1025,11 @@ function UGCPlayerController:Server_BeginFlyState()
 
     -- 存档恢复装备时可能不会触发自定义装备回调；在首次起飞时修复服务端和拥有者客户端缓存。
     pawn.CurrentEquippedWingItemID = EquippedWingItemID
+    if pawn.SetEquippedWingVisualItemID ~= nil then
+        pawn:SetEquippedWingVisualItemID(EquippedWingItemID)
+    else
+        pawn.EquippedWingVisualItemID = EquippedWingItemID
+    end
     self.EquippedWingItemID = EquippedWingItemID
     UnrealNetwork.CallUnrealRPC(self, self, "Client_SetEquippedWingItemID", EquippedWingItemID)
 
@@ -1040,6 +1045,11 @@ function UGCPlayerController:Server_RequestEquippedWingState()
     local EquippedWingItemID = GetWingItemIDFromEquipmentSlot(pawn) or 0
     if pawn ~= nil then
         pawn.CurrentEquippedWingItemID = EquippedWingItemID > 0 and EquippedWingItemID or nil
+        if pawn.SetEquippedWingVisualItemID ~= nil then
+            pawn:SetEquippedWingVisualItemID(EquippedWingItemID)
+        else
+            pawn.EquippedWingVisualItemID = EquippedWingItemID
+        end
     end
     self.EquippedWingItemID = EquippedWingItemID > 0 and EquippedWingItemID or nil
     UnrealNetwork.CallUnrealRPC(self, self, "Client_SetEquippedWingItemID", EquippedWingItemID)

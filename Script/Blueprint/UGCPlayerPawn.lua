@@ -34,6 +34,7 @@ local DEFAULT_BASE_ATTACK = 40
 local WING_ATTACH_PART_TYPE = 61
 local WING_ATTACH_FIX_INTERVAL = 0.25
 local WING_ATTACH_FIX_ATTEMPTS = 120
+local WING_CLEANUP_ATTEMPTS = 120
 local bTeamPanelCreated = false
 local bLobbyQuitScheduled = false
 
@@ -187,6 +188,59 @@ local function RefreshWingAttachments(player)
     return RefreshWingActorList(player, player.AttachActorConfigs, player.AttachActors)
 end
 
+-- AttachActorConfigs/AttachActors 的复制并非原子操作。卸下翅膀后，远端仍可能在随后几帧
+-- 根据旧配置生成 Actor，因此不能只清一次缓存；只清理由本项目翅膀配置生成且属于当前 Pawn 的 Actor。
+local function CleanupWingActors(player)
+    if not IsValidObject(player) or player.AttachActorConfigs == nil or player.AttachActors == nil then
+        return 0
+    end
+
+    local SuccessLoop, RemovedCount = pcall(function()
+        local Count = 0
+        local Candidates = {}
+        for Index, Config in pairs(player.AttachActorConfigs) do
+            if IsWingAttachConfig(Config) then
+                local SuccessActor, WingActor = pcall(function()
+                    return player.AttachActors[Index]
+                end)
+                if SuccessActor and IsValidObject(WingActor) then
+                    Candidates[WingActor] = true
+                end
+            end
+        end
+        -- 配置数组可能已经先清空，但 Actor 数组里仍留着旧对象。翅膀 Actor 的 Lua
+        -- 模块提供统一标记，保证这种“有 Actor、无 Config”的残影也能被识别。
+        for _, WingActor in pairs(player.AttachActors) do
+            if IsValidObject(WingActor) then
+                local SuccessMarker, Marker = pcall(function()
+                    return WingActor.IsDouluoWingActor
+                end)
+                if SuccessMarker and type(Marker) == "function" then
+                    local SuccessCall, bIsWing = pcall(Marker, WingActor)
+                    if SuccessCall and bIsWing == true then
+                        Candidates[WingActor] = true
+                    end
+                end
+            end
+        end
+        for WingActor in pairs(Candidates) do
+            if IsValidObject(WingActor) and IsSafeWingActorOwner(WingActor, player) then
+                    local SuccessDestroy = false
+                    if WingActor.K2_DestroyActor ~= nil then
+                        SuccessDestroy = pcall(WingActor.K2_DestroyActor, WingActor)
+                    elseif UGCActorComponentUtility ~= nil and UGCActorComponentUtility.DestroyActor ~= nil then
+                        SuccessDestroy = pcall(UGCActorComponentUtility.DestroyActor, WingActor)
+                    end
+                    if SuccessDestroy then
+                        Count = Count + 1
+                    end
+            end
+        end
+        return Count
+    end)
+    return SuccessLoop and (tonumber(RemovedCount) or 0) or 0
+end
+
 local function StartWingAttachmentFix(player)
     if not IsValidObject(player) then
         return
@@ -194,6 +248,26 @@ local function StartWingAttachmentFix(player)
     player.WingAttachFixElapsed = 0
     player.WingAttachFixAttemptsLeft = WING_ATTACH_FIX_ATTEMPTS
     player.WingAttachFixSuccesses = 0
+end
+
+local function StartWingCleanup(player)
+    if not IsValidObject(player) then
+        return
+    end
+    player.WingAttachFixAttemptsLeft = 0
+    player.WingCleanupElapsed = 0
+    player.WingCleanupAttemptsLeft = WING_CLEANUP_ATTEMPTS
+    CleanupWingActors(player)
+end
+
+local function ApplyWingVisualState(player)
+    local ItemID = tonumber(player ~= nil and player.EquippedWingVisualItemID) or -1
+    if ItemID > 0 then
+        player.WingCleanupAttemptsLeft = 0
+        StartWingAttachmentFix(player)
+    elseif ItemID == 0 then
+        StartWingCleanup(player)
+    end
 end
 
 local function GetOrbitWeaponController(Pawn)
@@ -1105,17 +1179,35 @@ function UGCPlayerPawn:OnRep_AttachActorConfigs()
     if UGCPlayerPawn.SuperClass ~= nil and UGCPlayerPawn.SuperClass.OnRep_AttachActorConfigs ~= nil then
         UGCPlayerPawn.SuperClass.OnRep_AttachActorConfigs(self)
     end
-    StartWingAttachmentFix(self)
+    if tonumber(self.EquippedWingVisualItemID) == 0 then
+        StartWingCleanup(self)
+    else
+        StartWingAttachmentFix(self)
+    end
 end
 
 function UGCPlayerPawn:RequestWingAttachmentFix()
     StartWingAttachmentFix(self)
 end
 
+function UGCPlayerPawn:SetEquippedWingVisualItemID(ItemID)
+    ItemID = math.max(0, tonumber(ItemID) or 0)
+    self.EquippedWingVisualItemID = ItemID
+    ApplyWingVisualState(self)
+end
+
+function UGCPlayerPawn:OnRep_EquippedWingVisualItemID()
+    ApplyWingVisualState(self)
+end
+
 function UGCPlayerPawn:ReceiveBeginPlay()
     UGCPlayerPawn.SuperClass.ReceiveBeginPlay(self)
     -- 兼容 AttachActorConfigs 在 Lua BeginPlay 之前已经完成首次复制的情况。
-    StartWingAttachmentFix(self)
+    if tonumber(self.EquippedWingVisualItemID) == 0 then
+        StartWingCleanup(self)
+    else
+        StartWingAttachmentFix(self)
+    end
     -- 默认开启身上旋转武器；Button_81 可在运行时切换开关。
     local OrbitController = GetOrbitWeaponController(self)
     self.bOrbitWeaponEnabled = OrbitController == nil or OrbitController.OrbitWeaponEnabled ~= false
@@ -1262,6 +1354,16 @@ function UGCPlayerPawn:ReceiveTick(DeltaTime)
             else
                 self.WingAttachFixSuccesses = 0
             end
+        end
+    end
+
+    if (tonumber(self.WingCleanupAttemptsLeft) or 0) > 0 and
+        tonumber(self.EquippedWingVisualItemID) == 0 then
+        self.WingCleanupElapsed = (tonumber(self.WingCleanupElapsed) or 0) + SafeDeltaTime
+        if self.WingCleanupElapsed >= WING_ATTACH_FIX_INTERVAL then
+            self.WingCleanupElapsed = 0
+            self.WingCleanupAttemptsLeft = self.WingCleanupAttemptsLeft - 1
+            CleanupWingActors(self)
         end
     end
 
@@ -1656,7 +1758,7 @@ function UGCPlayerPawn:UGC_TakeDamageOverrideEvent(Damage, DamageType, EventInst
 end
 
 function UGCPlayerPawn:GetReplicatedProperties()
-    return {"__SubObjectRepList", "Lazy", "EquippedTitleID"}
+    return {"__SubObjectRepList", "Lazy"}, {"EquippedTitleID", "EquippedWingVisualItemID"}
 end
 
 return UGCPlayerPawn

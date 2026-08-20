@@ -12,6 +12,10 @@ local function DestroyIfOwnerInvalid(actor)
     end
 end
 
+function CB_5:IsDouluoWingActor()
+    return true
+end
+
 --[[
 function CB_5:ReceiveBeginPlay()
     CB_5.SuperClass.ReceiveBeginPlay(self)

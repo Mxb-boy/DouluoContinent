@@ -13,6 +13,10 @@ local function DestroyIfOwnerInvalid(actor)
     end
 end
 
+function cb_6:IsDouluoWingActor()
+    return true
+end
+
 function cb_6:ReceiveBeginPlay()
     cb_6.SuperClass.ReceiveBeginPlay(self)
     if StateMgr ~= nil and StateMgr.UI ~= nil then

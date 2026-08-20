@@ -103,6 +103,11 @@ local function SetEquippedWingFromDefineID(self, ItemDefineID)
     local Controller = GetOwnerController(self)
     if Pawn ~= nil then
         Pawn.CurrentEquippedWingItemID = ItemID
+        if Pawn.SetEquippedWingVisualItemID ~= nil then
+            Pawn:SetEquippedWingVisualItemID(ItemID)
+        else
+            Pawn.EquippedWingVisualItemID = ItemID
+        end
     end
     if Controller ~= nil then
         Controller.EquippedWingItemID = ItemID
@@ -122,6 +127,11 @@ local function ClearEquippedWingFromDefineID(self, ItemDefineID)
     local Controller = GetOwnerController(self)
     if Pawn ~= nil and tonumber(Pawn.CurrentEquippedWingItemID) == ItemID then
         Pawn.CurrentEquippedWingItemID = nil
+        if Pawn.SetEquippedWingVisualItemID ~= nil then
+            Pawn:SetEquippedWingVisualItemID(0)
+        else
+            Pawn.EquippedWingVisualItemID = 0
+        end
     end
     if Controller ~= nil and tonumber(Controller.EquippedWingItemID) == ItemID then
         Controller.EquippedWingItemID = nil

@@ -174,6 +174,11 @@ end
 local function ClearEquippedWingCache(PlayerController, PlayerPawn)
     if PlayerPawn ~= nil then
         PlayerPawn.CurrentEquippedWingItemID = nil
+        if PlayerPawn.SetEquippedWingVisualItemID ~= nil then
+            PlayerPawn:SetEquippedWingVisualItemID(0)
+        else
+            PlayerPawn.EquippedWingVisualItemID = 0
+        end
     end
     if PlayerController ~= nil then
         PlayerController.EquippedWingItemID = nil
@@ -222,6 +227,15 @@ local function ScheduleUnequipWingOnLogin(PlayerController)
                 PlayerController.bLoginWingUnequipCompleted = true
                 ugcprint("[UGCGameMode] Login wing check skipped unexpected item, ItemID=" .. tostring(ItemID))
                 return
+            end
+            -- 在真正卸下前也发布一次权威外显状态。若背包已满导致卸下失败，
+            -- 旁观客户端仍会把翅膀校准到正确挂点，而不是把 Actor 留在脚下。
+            if SuccessGet and WING_ITEM_IDS[ItemID] then
+                if PlayerPawn.SetEquippedWingVisualItemID ~= nil then
+                    PlayerPawn:SetEquippedWingVisualItemID(ItemID)
+                else
+                    PlayerPawn.EquippedWingVisualItemID = ItemID
+                end
             end
             if SuccessGet and WING_ITEM_IDS[ItemID] and
                 UnequipWing(PlayerPawn, "login", true) then
