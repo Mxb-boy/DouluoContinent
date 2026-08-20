@@ -105,6 +105,7 @@ UGCGameSystem.UGCRequire("ExtendResource.GiftPack.OfficialPackage.Script.GiftPac
 local TaskManager = UGCGameSystem.UGCRequire("ExtendResource.TaskTemplate.OfficialPackage.Script.Task.TaskManager")
 local L_Enum_Event = UGCGameSystem.UGCRequire("Script.Lin.L_Enum_Event")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
+local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
 local RealmConfig = UGCGameSystem.UGCRequire("Script.Common.RealmConfig")
 local StateMgr = UGCGameSystem.UGCRequire("Script.Lin.StateMgr")
 local RankMgr = UGCGameSystem.UGCRequire("Script.Xiao.RankMgr")
@@ -316,6 +317,8 @@ function UI02:LuaInit()
     self:SetTowerOutBoxImageVisible(false)
     self:RefreshMainButtonRedDots()
     self:HideHiddenMainWidgets()
+    self:PreloadUI14Class()
+    self:PreloadLotteryTableAssets()
 
 end
 
@@ -1021,31 +1024,183 @@ function UI02:Button_153_OnClicked()
     end
 end
 
-function UI02:Button_158_OnClicked()
-    self:HideMainButtonRedDot("Button_158")
+function UI02:GetUI14ClassPath()
+    return UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI14.UI14_C"
+end
+
+function UI02:IsUI14OwnerValid()
+    return self ~= nil and (UE == nil or UE.IsValid == nil or UE.IsValid(self))
+end
+
+function UI02:PreloadUI14Class()
+    if self.UI14Class ~= nil or self.bUI14ClassLoading == true then
+        return true
+    end
+    if Common == nil or Common.LoadObjectAsync == nil then
+        ugcprint("[LotteryOpenTrace][UI02] UI14 async loader unavailable")
+        return false
+    end
+
+    local UI14Path = self:GetUI14ClassPath()
+    self.bUI14ClassLoading = true
+    Common.LoadObjectAsync(UI14Path, function(UI14Class)
+        if not self:IsUI14OwnerValid() then
+            return
+        end
+
+        self.bUI14ClassLoading = false
+        if UI14Class == nil then
+            ugcprint("[LotteryOpenTrace][UI02] UI14 async class load failed")
+            self.bOpenUI14WhenReady = false
+            return
+        end
+
+        self.UI14Class = UI14Class
+        ugcprint("[LotteryOpenTrace][UI02] UI14 async class loaded and cached")
+        self:TryResumePendingUI14Open()
+    end)
+    return true
+end
+
+function UI02:GetLotteryTableAssetPaths()
+    local ProjectRootPath = UGCMapInfoLib.GetRootLongPackagePath()
+    return {
+        ProjectRootPath .. "Asset/Data/Table/Customized/LotteryPoolConfig.LotteryPoolConfig",
+        ProjectRootPath .. "Asset/Data/Table/Customized/LotteryAwardConfig.LotteryAwardConfig",
+    }
+end
+
+function UI02:PreloadLotteryTableAssets()
+    if self.bLotteryConfigReady == true then
+        return true
+    end
+    if self.bLotteryTableAssetsReady == true then
+        self:ScheduleLotteryConfigCacheBuild()
+        return true
+    end
+    if self.bLotteryTableAssetsLoading == true then
+        return true
+    end
+    if Common == nil or Common.LoadObjectAsync == nil then
+        ugcprint("[LotteryOpenTrace][UI02] lottery table async loader unavailable")
+        return false
+    end
+
+    self.bLotteryTableAssetsLoading = true
+    self.LotteryTableAssets = self.LotteryTableAssets or {}
+    self.LotteryTableAssetLoadCount = 0
+    self.bLotteryTableAssetLoadFailed = false
+    local TablePaths = self:GetLotteryTableAssetPaths()
+    for _, TablePath in ipairs(TablePaths) do
+        local RequestedPath = TablePath
+        Common.LoadObjectAsync(RequestedPath, function(TableAsset)
+            if not self:IsUI14OwnerValid() then
+                return
+            end
+
+            self.LotteryTableAssets[RequestedPath] = TableAsset
+            if TableAsset == nil then
+                self.bLotteryTableAssetLoadFailed = true
+                ugcprint("[LotteryOpenTrace][UI02] lottery table asset load failed: " .. tostring(RequestedPath))
+            end
+            self.LotteryTableAssetLoadCount = (tonumber(self.LotteryTableAssetLoadCount) or 0) + 1
+            if self.LotteryTableAssetLoadCount < #TablePaths then
+                return
+            end
+
+            self.bLotteryTableAssetsLoading = false
+            if self.bLotteryTableAssetLoadFailed == true then
+                self.bLotteryTableAssetsReady = false
+                self.bOpenUI14WhenReady = false
+                return
+            end
+            self.bLotteryTableAssetsReady = true
+            self:ScheduleLotteryConfigCacheBuild()
+        end)
+    end
+    return true
+end
+
+function UI02:ScheduleLotteryConfigCacheBuild()
+    if self.bLotteryConfigReady == true or self.bLotteryConfigCacheScheduled == true then
+        return
+    end
+    if UGCTimerUtility == nil or UGCTimerUtility.CreateLuaTimer == nil then
+        ugcprint("[LotteryOpenTrace][UI02] lottery config cache timer unavailable")
+        return
+    end
+
+    self.bLotteryConfigCacheScheduled = true
+    UGCTimerUtility.CreateLuaTimer(0.05, function()
+        if not self:IsUI14OwnerValid() then
+            return
+        end
+
+        self.bLotteryConfigCacheScheduled = false
+        local CallSucceeded, LoadedOrError = pcall(function()
+            return LotteryConfig.EnsureLoaded()
+        end)
+        if not CallSucceeded or LoadedOrError ~= true then
+            self.bLotteryConfigReady = false
+            ugcprint("[LotteryOpenTrace][UI02] lottery config cache build failed: " .. tostring(LoadedOrError))
+            return
+        end
+
+        self.bLotteryConfigReady = true
+        ugcprint("[LotteryOpenTrace][UI02] lottery config cache ready")
+        self:TryResumePendingUI14Open()
+    end, false)
+end
+
+function UI02:TryResumePendingUI14Open()
+    if self.bOpenUI14WhenReady ~= true or self.UI14Class == nil or self.bLotteryConfigReady ~= true then
+        return false
+    end
+
+    self.bOpenUI14WhenReady = false
+    return self:OpenUI14WithCachedClass()
+end
+
+function UI02:OpenUI14WithCachedClass()
     if self.UI14Instance ~= nil then
         self.UI14Instance:Open()
-        return
+        return true
+    end
+    if self.UI14Class == nil or self.bLotteryConfigReady ~= true then
+        return false
     end
 
     local PlayerController = GameplayStatics.GetPlayerController(self, 0)
     if PlayerController == nil then
-        return
+        ugcprint("[LotteryOpenTrace][UI02] PlayerController is nil")
+        return false
     end
 
-    local UI14Path = UGCMapInfoLib.GetRootLongPackagePath() .. "Asset/Blueprint/UI/UI14.UI14_C"
-    local UI14Class = UE.LoadClass(UI14Path)
-    if UI14Class == nil then
-        return
-    end
-
-    self.UI14Instance = UserWidget.NewWidgetObjectBP(PlayerController, UI14Class)
+    self.UI14Instance = UserWidget.NewWidgetObjectBP(PlayerController, self.UI14Class)
     if self.UI14Instance == nil then
-        return
+        ugcprint("[LotteryOpenTrace][UI02] UI14 widget create failed")
+        return false
     end
-
     self.UI14Instance:AddToViewport(11000)
     self.UI14Instance:Open()
+    return true
+end
+
+function UI02:Button_158_OnClicked()
+    ugcprint("[LotteryOpenTrace][UI02] Button_158 clicked")
+    self:HideMainButtonRedDot("Button_158")
+    if self:OpenUI14WithCachedClass() then
+        return
+    end
+
+    self.bOpenUI14WhenReady = true
+    if not self:PreloadUI14Class() then
+        self.bOpenUI14WhenReady = false
+        return
+    end
+    if not self:PreloadLotteryTableAssets() then
+        self.bOpenUI14WhenReady = false
+    end
 end
 
 -- 武器环绕/精炼界面

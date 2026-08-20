@@ -72,25 +72,6 @@ function IsValidIconPath(IconPath)
         and (string.find(IconPath, "/") ~= nil or string.find(IconPath, "Asset/") == 1)
 end
 
-local function LoadUGCObjectIcons()
-    local Icons = {}
-    local Success, ObjectTable = pcall(UGCGameSystem.GetTableData, "Data/Table/UGCObject")
-    if not Success or ObjectTable == nil then
-        return Icons
-    end
-
-    for _, Row in pairs(ObjectTable) do
-        local ItemID = tonumber(Row.ItemID)
-        if ItemID ~= nil and Row.ItemSmallIcon ~= nil then
-            local IconPath = GetTableIconPath(Row.ItemSmallIcon)
-            if IsValidIconPath(IconPath) then
-                Icons[ItemID] = IconPath
-            end
-        end
-    end
-    return Icons
-end
-
 LotteryConfig.Types = {
     Weapon = 1,
     Wing = 2,
@@ -114,10 +95,10 @@ LotteryConfig.Pools = {}
 LotteryConfig.bLoadedTables = false
 
 function LotteryConfig.LoadFromTables()
-    LotteryConfig.bLoadedTables = true
     local SuccessPool, PoolTable = pcall(UGCGameSystem.GetTableData, PoolTablePath)
     local SuccessAward, AwardTable = pcall(UGCGameSystem.GetTableData, AwardTablePath)
     if not SuccessPool or not SuccessAward or PoolTable == nil or AwardTable == nil then
+        LotteryConfig.bLoadedTables = false
         ugcprint("[LotteryConfig] Load table failed")
         return false
     end
@@ -138,11 +119,11 @@ function LotteryConfig.LoadFromTables()
     end
 
     if PoolCount <= 0 then
+        LotteryConfig.bLoadedTables = false
         ugcprint("[LotteryConfig] No open lottery pool")
         return false
     end
 
-    local UGCObjectIcons = LoadUGCObjectIcons()
     for _, Row in pairs(AwardTable) do
         local PoolID = tonumber(Row.PoolID)
         local AwardIndex = tonumber(Row.AwardIndex)
@@ -151,9 +132,6 @@ function LotteryConfig.LoadFromTables()
             local ItemID = tonumber(Row.ItemID) or 0
             local RawIconPath = Row.IconPath or Row.IconPathText or Row.IconPathStr
             local IconPath = GetTableIconPath(RawIconPath)
-            if not IsValidIconPath(IconPath) then
-                IconPath = UGCObjectIcons[ItemID] or ""
-            end
             local Award = {
                 ItemID = ItemID,
                 Count = tonumber(Row.Count) or 1,
@@ -177,13 +155,15 @@ function LotteryConfig.LoadFromTables()
     end
 
     LotteryConfig.Pools = Pools
+    LotteryConfig.bLoadedTables = true
     return true
 end
 
 function LotteryConfig.EnsureLoaded()
     if not LotteryConfig.bLoadedTables then
-        LotteryConfig.LoadFromTables()
+        return LotteryConfig.LoadFromTables()
     end
+    return true
 end
 
 function LotteryConfig.GetPool(LotteryType)

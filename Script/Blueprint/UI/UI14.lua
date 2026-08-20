@@ -71,6 +71,7 @@ function UI14:BindButton(Button, Callback)
 end
 
 function UI14:Open()
+    ugcprint("[LotteryOpenTrace][UI14] Open begin")
     self:ResetLotteryTicketRefreshState()
     self:SetBattleUIVisible(false)
     local PlayerController = UGCGameSystem.GetLocalPlayerController()
@@ -80,6 +81,7 @@ function UI14:Open()
     end
     self:Refresh()
     self:SetVisibility(ESlateVisibility.Visible)
+    ugcprint("[LotteryOpenTrace][UI14] Open end")
 end
 
 -- GM 玩家数据重置后的客户端收口：服务端 LotteryState 清空后，必须同步清掉
