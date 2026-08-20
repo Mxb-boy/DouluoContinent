@@ -1,4 +1,4 @@
----@class TSSJ_C:BP_UGC_MeleeWeap_TangDao_C
+---@class XLSJ_C:BP_UGC_MeleeWeap_TangDao_C
 --Edit Below--
 local HTC = {}
  
