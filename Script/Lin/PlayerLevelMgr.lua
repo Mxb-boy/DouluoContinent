@@ -155,6 +155,45 @@ function PlayerLevelMgr:AddExpToPlayer(PlayerController, amount)
     return newLevel > oldLevel, newLevel
 end
 
+--[[----------------------将单个玩家提升到指定等级------------------------]] --
+-- 只允许提升，不允许降级；提升后目标等级内经验为 0。
+-- 复用正常加经验链路，确保等级属性、技能、旋转武器和客户端 UI 同步。
+function PlayerLevelMgr:RaisePlayerToLevel(PlayerController, targetLevel)
+    targetLevel = tonumber(targetLevel)
+    if PlayerController == nil or targetLevel == nil or targetLevel ~= math.floor(targetLevel) or
+        targetLevel < DEFAULT_PLAYER_LEVEL or targetLevel > DEFAULT_MAX_LEVEL then
+        return false, "invalid_target", DEFAULT_PLAYER_LEVEL, DEFAULT_PLAYER_EXP
+    end
+
+    local playerState = PlayerController.PlayerState
+    if playerState == nil then
+        return false, "player_state_nil", DEFAULT_PLAYER_LEVEL, DEFAULT_PLAYER_EXP
+    end
+
+    local oldExp = playerState:GetPlayerExp()
+    local expLevel = self:GetLevelByExp(oldExp)
+    local oldLevel = math.max(playerState:GetPlayerLevel(), expLevel)
+    if targetLevel <= oldLevel then
+        return false, "target_not_higher", oldLevel, oldExp
+    end
+
+    local targetTotalExp = self:GetLevelTotalExp(targetLevel)
+    local addExp = targetTotalExp - oldExp
+    if addExp <= 0 then
+        return false, "target_exp_not_higher", oldLevel, oldExp
+    end
+
+    local _, newLevel = self:AddExpToPlayer(PlayerController, addExp)
+    local savedExp = playerState:GetPlayerExp()
+    local verifiedLevel = self:GetLevelByExp(savedExp)
+    local currentLevelExp = self:GetCurrentLevelExp(savedExp, verifiedLevel)
+    if newLevel ~= targetLevel or verifiedLevel ~= targetLevel or math.abs(currentLevelExp) > 0.5 then
+        return false, "verify_failed", verifiedLevel, savedExp
+    end
+
+    return true, "completed", verifiedLevel, savedExp
+end
+
 --[[----------------------按动态队伍共享经验------------------------]] --
 -- 同队每名在线成员获得完整经验，不分摊、不限制距离；未组队时仅发给原玩家。
 -- 返回值保持原约定：返回原获得者是否升级、增加经验后的等级。

@@ -3,6 +3,7 @@ local PlayerInitialData = UGCGameSystem.UGCRequire("Script.Common.PlayerInitialD
 local TaskMgr = UGCGameSystem.UGCRequire("Script.Lin.TaskMgr")
 local TitleConfig = UGCGameSystem.UGCRequire("Script.Common.TitleConfig")
 local GMResetLog = UGCGameSystem.UGCRequire("Script.Common.GMResetLog")
+local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 
 local PLAYER_SKILL_1_PATH = "Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/PlayerSkill_1.PlayerSkill_1_C"
 local RESET_RETRY_DELAY = 0.5
@@ -13,6 +14,8 @@ local RESET_TASK_MAX_ATTEMPTS = 3
 local RESET_GRANT_MAX_ATTEMPTS = 4
 local ResetTransactions = {}
 local FailReset
+local GetPlayerPawn
+local GM_PLAYER_LEVEL_MAX = 80
 
 local function GetTitleOptionText()
     local Options = {}
@@ -52,7 +55,81 @@ function GM:Register(DebugUI)
         {UGCGMUI.ItemTypeEnum.Button, { {"清空运行日志"}, {"清空当前客户端日志缓存"} },
          "C_ClearRuntimeLog"}
     }
+    CurFuncList["角色"] = CurFuncList["角色"] or {}
+    CurFuncList["角色"]["玩家等级提升"] = {
+        {UGCGMUI.ItemTypeEnum.TextInput,
+         { {"提升当前玩家等级", "输入目标等级（2-80）"}, {"只允许提升；提升后目标等级内经验归零"} },
+         "S_RaiseCurrentPlayerLevel"}
+    }
     return CurFuncList
+end
+
+function GM:S_RaiseCurrentPlayerLevel(Param, PlayerController)
+    if not UGCGameSystem.IsServer() then
+        return
+    end
+
+    local PlayerKey = PlayerController ~= nil and PlayerController.PlayerKey or nil
+    local TargetLevel = tonumber(Param)
+    if PlayerController == nil or PlayerKey == nil then
+        ugcprint("[TagLog] [GMLevel] rejected reason=controller_or_player_key_nil")
+        return
+    end
+    if TargetLevel == nil or TargetLevel ~= math.floor(TargetLevel) or
+        TargetLevel < 2 or TargetLevel > GM_PLAYER_LEVEL_MAX then
+        ugcprint("[TagLog] [GMLevel] rejected player=" .. tostring(PlayerKey) ..
+            " reason=invalid_target param=" .. tostring(Param))
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+            "请输入2-80之间的整数等级")
+        return
+    end
+
+    local PlayerState = PlayerController.PlayerState
+    local PlayerPawn = GetPlayerPawn(PlayerController)
+    if PlayerState == nil or PlayerPawn == nil or PlayerState.bArchiveLoaded ~= true then
+        ugcprint("[TagLog] [GMLevel] rejected player=" .. tostring(PlayerKey) ..
+            " targetLevel=" .. tostring(TargetLevel) .. " reason=player_not_ready")
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+            "玩家数据尚未加载，请稍后重试")
+        return
+    end
+    if PlayerController.bGMResetInProgress == true then
+        ugcprint("[TagLog] [GMLevel] rejected player=" .. tostring(PlayerKey) ..
+            " targetLevel=" .. tostring(TargetLevel) .. " reason=reset_in_progress")
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+            "玩家数据正在重置，请稍后重试")
+        return
+    end
+
+    local ExpLevel = PlayerLevelMgr:GetLevelByExp(PlayerState:GetPlayerExp())
+    local OldLevel = math.max(PlayerState:GetPlayerLevel(), ExpLevel)
+    if TargetLevel <= OldLevel then
+        ugcprint("[TagLog] [GMLevel] skipped player=" .. tostring(PlayerKey) ..
+            " oldLevel=" .. tostring(OldLevel) .. " targetLevel=" .. tostring(TargetLevel) ..
+            " reason=target_not_higher")
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+            "目标等级必须高于当前等级" .. tostring(OldLevel))
+        return
+    end
+
+    ugcprint("[TagLog] [GMLevel] request player=" .. tostring(PlayerKey) ..
+        " oldLevel=" .. tostring(OldLevel) .. " targetLevel=" .. tostring(TargetLevel))
+    local Success, Reason, NewLevel, NewExp = PlayerLevelMgr:RaisePlayerToLevel(PlayerController, TargetLevel)
+    if not Success then
+        ugcprint("[TagLog] [GMLevel] failed player=" .. tostring(PlayerKey) ..
+            " oldLevel=" .. tostring(OldLevel) .. " targetLevel=" .. tostring(TargetLevel) ..
+            " actualLevel=" .. tostring(NewLevel) .. " exp=" .. tostring(NewExp) ..
+            " reason=" .. tostring(Reason))
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+            "等级提升失败，请查看GMLevel日志")
+        return
+    end
+
+    ugcprint("[TagLog] [GMLevel] completed player=" .. tostring(PlayerKey) ..
+        " oldLevel=" .. tostring(OldLevel) .. " newLevel=" .. tostring(NewLevel) ..
+        " totalExp=" .. tostring(NewExp) .. " currentLevelExp=0")
+    UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
+        "玩家等级已提升至" .. tostring(NewLevel) .. "级")
 end
 
 function GM:C_OpenRuntimeLog(Param)
@@ -84,7 +161,7 @@ local function LogReset(PlayerController, Level, Stage, Message)
     GMResetLog.Emit(PlayerController, Level, Stage, Message)
 end
 
-local function GetPlayerPawn(PlayerController)
+GetPlayerPawn = function(PlayerController)
     if PlayerController == nil then
         return nil
     end
