@@ -1343,6 +1343,9 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
                 RespawnedController.PlayerState.GetPlayerLevel ~= nil and
                 RespawnedController.PlayerState:GetPlayerLevel() or 1
             RestoreOrbitWeaponState(RespawnedController, RespawnedController.Pawn, PlayerLevel)
+            if RespawnedController.Pawn.RestoreLevelSkill ~= nil then
+                RespawnedController.Pawn:RestoreLevelSkill()
+            end
             if RespawnedController.Pawn.RefreshStateMgrProperty ~= nil then
                 RespawnedController.Pawn:RefreshStateMgrProperty(true)
             end

@@ -1255,7 +1255,17 @@ local PLAYER_SKILL_1_PATH = 'Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/Play
 --[[----------------------根据玩家等级恢复技能------------------------]]
 function UGCPlayerPawn:RestoreLevelSkill()
     local Player_State = self.PlayerState -- 玩家状态
-    if Player_State ~= nil and Player_State:GetPlayerLevel() >= PLAYER_SKILL_1_REQUIRED_LEVEL then
+    if Player_State == nil then
+        return
+    end
+
+    local Player_Level = tonumber(Player_State:GetPlayerLevel()) or 1 -- 玩家字段等级
+    if PlayerLevelMgr ~= nil and Player_State.GetPlayerExp ~= nil then
+        local Exp_Level = PlayerLevelMgr:GetLevelByExp(Player_State:GetPlayerExp()) -- 累计经验对应等级
+        Player_Level = math.max(Player_Level, tonumber(Exp_Level) or 1)
+    end
+
+    if Player_Level >= PLAYER_SKILL_1_REQUIRED_LEVEL then
         local Skill_Class = UGCGameSystem.GetUGCResourcesFullPath(PLAYER_SKILL_1_PATH) -- 玩家技能1的蓝图类
         local Skills = UGCPersistEffectSystem.GetSkillsByClass(self, Skill_Class) -- 当前已拥有的玩家技能1
         if #Skills == 0 then
