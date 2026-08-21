@@ -1252,15 +1252,26 @@ end
 local PLAYER_SKILL_1_REQUIRED_LEVEL = 50 -- 第一个技能解锁需要的等级
 local PLAYER_SKILL_1_PATH = 'Asset/Blueprint/Prefabs/Skills/Lin/PlayerSkill/PlayerSkill_1.PlayerSkill_1_C'
 
+--[[----------------------根据玩家等级恢复技能------------------------]]
+function UGCPlayerPawn:RestoreLevelSkill()
+    local Player_State = self.PlayerState -- 玩家状态
+    if Player_State ~= nil and Player_State:GetPlayerLevel() >= PLAYER_SKILL_1_REQUIRED_LEVEL then
+        local Skill_Class = UGCGameSystem.GetUGCResourcesFullPath(PLAYER_SKILL_1_PATH) -- 玩家技能1的蓝图类
+        local Skills = UGCPersistEffectSystem.GetSkillsByClass(self, Skill_Class) -- 当前已拥有的玩家技能1
+        if #Skills == 0 then
+            UGCPersistEffectSystem.AddSkillByClass(self, Skill_Class)
+        end
+    end
+end
+
+--[[----------------------初始化玩家角色------------------------]]
 function UGCPlayerPawn:OnPawnInit()
     local playerState = self.PlayerState
     if playerState ~= nil and playerState.bArchiveLoaded == true then
         TalentUltimateMgr:ScheduleLoginRestore(self, playerState)
     end
 
-    if playerState ~= nil and playerState:GetPlayerLevel() >= PLAYER_SKILL_1_REQUIRED_LEVEL then
-        UGCPersistEffectSystem.AddSkillByClass(self, UGCGameSystem.GetUGCResourcesFullPath(PLAYER_SKILL_1_PATH))
-    end
+    self:RestoreLevelSkill()
 end
 
 -- 身上旋转武器开关：false 立即销毁，true 立即生成并恢复旋转。

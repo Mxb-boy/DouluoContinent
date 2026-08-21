@@ -771,6 +771,9 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
             if PlayerState and PlayerState.LoadFromArchive then
                 local UID = UGCPawnAttrSystem.GetPlayerUID(PC.Pawn)
                 local ArchiveLoaded = PlayerState:LoadFromArchive(tonumber(UID))
+                if ArchiveLoaded == true and PC.Pawn.RestoreLevelSkill ~= nil then
+                    PC.Pawn:RestoreLevelSkill()
+                end
                 if ArchiveLoaded == true and PC.RestoreSavedOrbitWeaponSkin ~= nil then
                     PC:RestoreSavedOrbitWeaponSkin()
                 end
