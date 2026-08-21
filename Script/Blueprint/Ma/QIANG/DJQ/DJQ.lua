@@ -1,4 +1,4 @@
----@class AWM_C:AActor
+---@class DJQ_C:AActor
 ---@field ParticleSystem14 UParticleSystemComponent
 ---@field ParticleSystem13 UParticleSystemComponent
 ---@field ParticleSystem12 UParticleSystemComponent
