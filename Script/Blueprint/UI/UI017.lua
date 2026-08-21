@@ -117,6 +117,7 @@
 ---@field Image_139 UImage
 ---@field Image_154 UImage
 ---@field Image_155 UImage
+---@field Image_179 UImage
 ---@field Image_181 UImage
 ---@field Image_182 UImage
 ---@field Image_192 UImage
