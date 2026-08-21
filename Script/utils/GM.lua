@@ -15,7 +15,7 @@ local RESET_GRANT_MAX_ATTEMPTS = 4
 local ResetTransactions = {}
 local FailReset
 local GetPlayerPawn
-local GM_PLAYER_LEVEL_MAX = 80
+local GM_PLAYER_LEVEL_MAX = 100
 
 local function GetTitleOptionText()
     local Options = {}
@@ -58,7 +58,9 @@ function GM:Register(DebugUI)
     CurFuncList["角色"] = CurFuncList["角色"] or {}
     CurFuncList["角色"]["玩家等级提升"] = {
         {UGCGMUI.ItemTypeEnum.TextInput,
-         { {"提升当前玩家等级", "输入目标等级（2-80）"}, {"只允许提升；提升后目标等级内经验归零"} },
+         { {"提升当前玩家等级",
+             "输入目标等级（2-" .. tostring(GM_PLAYER_LEVEL_MAX) .. "）"},
+           {"只允许提升；提升后目标等级内经验归零"} },
          "S_RaiseCurrentPlayerLevel"}
     }
     return CurFuncList
@@ -80,7 +82,7 @@ function GM:S_RaiseCurrentPlayerLevel(Param, PlayerController)
         ugcprint("[TagLog] [GMLevel] rejected player=" .. tostring(PlayerKey) ..
             " reason=invalid_target param=" .. tostring(Param))
         UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast",
-            "请输入2-80之间的整数等级")
+            "请输入2-" .. tostring(GM_PLAYER_LEVEL_MAX) .. "之间的整数等级")
         return
     end
 
