@@ -1,13 +1,21 @@
 ---@class QBZ_C:AActor
----@field Box7 UBoxComponent
----@field Box6 UBoxComponent
----@field Box5 UBoxComponent
----@field Box4 UBoxComponent
----@field Box3 UBoxComponent
----@field Box2 UBoxComponent
----@field Box1 UBoxComponent
----@field ParticleSystem7 UParticleSystemComponent
+---@field StaticMesh111 UStaticMeshComponent
 ---@field Box UBoxComponent
+---@field StaticMesh33 UStaticMeshComponent
+---@field Box1 UBoxComponent
+---@field StaticMesh55 UStaticMeshComponent
+---@field Box2 UBoxComponent
+---@field aa UStaticMeshComponent
+---@field Box3 UBoxComponent
+---@field qe UStaticMeshComponent
+---@field Box4 UBoxComponent
+---@field StaticMesh15 UStaticMeshComponent
+---@field Box7 UBoxComponent
+---@field StaticMesh13 UStaticMeshComponent
+---@field Box6 UBoxComponent
+---@field StaticMesh11 UStaticMeshComponent
+---@field Box5 UBoxComponent
+---@field ParticleSystem7 UParticleSystemComponent
 ---@field ParticleSystem6 UParticleSystemComponent
 ---@field ParticleSystem5 UParticleSystemComponent
 ---@field ParticleSystem3 UParticleSystemComponent
@@ -15,21 +23,13 @@
 ---@field ParticleSystem4 UParticleSystemComponent
 ---@field ParticleSystem2 UParticleSystemComponent
 ---@field ParticleSystem UParticleSystemComponent
----@field StaticMesh15 UStaticMeshComponent
 ---@field StaticMesh_8 UStaticMeshComponent
----@field StaticMesh13 UStaticMeshComponent
 ---@field StaticMesh_7 UStaticMeshComponent
----@field StaticMesh11 UStaticMeshComponent
 ---@field StaticMesh_6 UStaticMeshComponent
----@field qe UStaticMeshComponent
 ---@field StaticMesh_5 UStaticMeshComponent
----@field aa UStaticMeshComponent
 ---@field StaticMesh_4 UStaticMeshComponent
----@field StaticMesh55 UStaticMeshComponent
 ---@field StaticMesh_3 UStaticMeshComponent
----@field StaticMesh33 UStaticMeshComponent
 ---@field StaticMesh_2 UStaticMeshComponent
----@field StaticMesh111 UStaticMeshComponent
 ---@field StaticMesh_1 UStaticMeshComponent
 ---@field DefaultSceneRoot USceneComponent
 --Edit Below--
@@ -94,7 +94,9 @@ function QBZ:ReceiveBeginPlay()
     -- 临时模拟外部传入12345：激活第1、2、3、4、5把枪。
     if not self.GunDisplayInitialized then
         self.GunDisplayInitialized = true
-        self:SetActiveGuns(12345678)
+        -- 客户端可能先收到复制属性、后进入 BeginPlay；优先采用服务端同步的
+        -- 枪位编码，避免 BeginPlay 又把其他客户端的显示重置为全部开启。
+        self:SetActiveGuns(self.ActiveGunCode or 12345678)
     end
 
     if self.DamageBoxesBound then
@@ -144,6 +146,10 @@ function QBZ:SetActiveGuns(GunCode)
     DamageOnlyCollision.RefreshActiveBoxes(self, self.ActiveGuns, DAMAGE_BOX_NAMES, GetComponentByName)
 
     return self.ActiveGuns
+end
+
+function QBZ:OnRep_ActiveGunCode()
+    self:SetActiveGuns(self.ActiveGunCode)
 end
 
 
@@ -319,6 +325,10 @@ function QBZ:Box_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherCom
         self.HitActors[OverlappedComponent][OtherActor] = nil
     end
     return nil
+end
+
+function QBZ:GetReplicatedProperties()
+    return {"ActiveGunCode", "OrbitRotationSpeed"}
 end
 
 -- [Editor Generated Lua] function define End;

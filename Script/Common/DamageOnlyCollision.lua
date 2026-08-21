@@ -1,4 +1,6 @@
 local DamageOnlyCollision = {}
+local OrbitWeaponFollower = UGCGameSystem.UGCRequire(
+    "Script.Common.OrbitWeaponFollower")
 
 local function CallIfExists(Object, FunctionName, ...)
     if Object ~= nil and Object[FunctionName] ~= nil then
@@ -87,6 +89,10 @@ function DamageOnlyCollision.Apply(Actor, MeshNames, BoxNames, GetComponentByNam
     for _, BoxName in ipairs(BoxNames or {}) do
         SetOverlapOnly(GetComponentByName(Actor, BoxName))
     end
+
+    -- Replicated movement only provides discrete network snapshots. On remote
+    -- clients, follow the replicated owner every local tick for smooth visuals.
+    OrbitWeaponFollower.Start(Actor)
 end
 
 -- 武器显示切换时同步开关一一对应的伤害盒，防止隐藏武器的碰撞仍留在场景中。

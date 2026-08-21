@@ -94,7 +94,7 @@ function MK47:ReceiveBeginPlay()
     -- 临时模拟外部传入12345：激活第1、2、3、4、5把枪。
     if not self.GunDisplayInitialized then
         self.GunDisplayInitialized = true
-        self:SetActiveGuns(12345678)
+        self:SetActiveGuns(self.ActiveGunCode or 12345678)
     end
 
     if self.DamageBoxesBound then
@@ -150,6 +150,10 @@ end
 -- 保留原调用名，旧代码调用ActivateGun(126)也支持组合激活。
 function MK47:SetActiveGun(GunCode)
     return self:SetActiveGuns(GunCode)
+end
+
+function MK47:OnRep_ActiveGunCode()
+    self:SetActiveGuns(self.ActiveGunCode)
 end
 
 function MK47:ActivateGun(GunCode)
@@ -319,6 +323,10 @@ function MK47:Box_OnComponentEndOverlap(OverlappedComponent, OtherActor, OtherCo
         self.HitActors[OverlappedComponent][OtherActor] = nil
     end
     return nil
+end
+
+function MK47:GetReplicatedProperties()
+    return {"ActiveGunCode", "OrbitRotationSpeed"}
 end
 
 -- [Editor Generated Lua] function define End;

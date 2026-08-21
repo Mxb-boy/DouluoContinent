@@ -55,6 +55,36 @@ local function GetRetryTimerName(Pawn)
     return "WQOrbitRetry_" .. tostring(Pawn)
 end
 
+-- 环绕武器由服务端创建后，登记到 Pawn 的同步子对象列表。这样 Actor 本体以及
+-- 它的复制属性都会下发给观察该 Pawn 的所有客户端，而不是只留在拥有者本地。
+
+local function SetOrbitActorReplication(Pawn, Actor, bAdd)
+    if not IsValid(Pawn) or Pawn.HasAuthority == nil or not Pawn:HasAuthority() then
+        return
+    end
+
+    Pawn.__SubObjectRepList = Pawn.__SubObjectRepList or {}
+    local ReplicatedActors = Pawn.__SubObjectRepList
+    if bAdd then
+        for _, ExistingActor in ipairs(ReplicatedActors) do
+            if ExistingActor == Actor then
+                return
+            end
+        end
+        table.insert(ReplicatedActors, Actor)
+    else
+        for Index = #ReplicatedActors, 1, -1 do
+            if ReplicatedActors[Index] == Actor then
+                table.remove(ReplicatedActors, Index)
+            end
+        end
+    end
+
+    if UnrealNetwork ~= nil and UnrealNetwork.RepLazyProperty ~= nil then
+        pcall(UnrealNetwork.RepLazyProperty, Pawn, "__SubObjectRepList")
+    end
+end
+
 -- 加载指定的旋转武器蓝图类。
 local function LoadWQClassByPath(ClassPath)
     local FullPath = ClassPath
@@ -155,7 +185,12 @@ function AK47Orbit.Start(Pawn, PreloadedClass)
     if not IsValid(Pawn) then
         return false
     end
+    if Pawn.HasAuthority == nil or not Pawn:HasAuthority() then
+        return false
+    end
 
+    -- SpawnActor 在客户端调用只会产生本地 Actor。展示需要所有玩家可见，必须
+    -- 由权威端创建，再通过 Actor 网络复制分发给各客户端。
     -- 已经生成过时不再重复生成。
     if Pawn.AK47OrbitState ~= nil then
         return
@@ -193,6 +228,16 @@ function AK47Orbit.Start(Pawn, PreloadedClass)
     -- 环绕枪只做展示，关闭碰撞并取消自动销毁。
     Actor.DamageOwnerPawn = Pawn
     Actor.HitEffectPath = Pawn.OrbitWeaponHitEffectPath
+    Actor.OrbitRotationSpeed = math.max(0,
+        tonumber(Pawn.OrbitWeaponRotationSpeed) or DEFAULT_ROTATION_SPEED)
+
+    -- The Actor itself must replicate so every client can see it, but its movement
+    -- must not replicate. Remote clients render the orbit from the replicated Owner
+    -- every local tick; replicated movement would continuously correct that local
+    -- transform and cause visible flashing/jitter.
+    if Actor.SetReplicateMovement ~= nil then
+        pcall(Actor.SetReplicateMovement, Actor, false)
+    end
     if Actor.SetActiveGuns ~= nil then
         local ActiveGunCode = tonumber(Pawn.OrbitWeaponActiveGunIndex)
         if ActiveGunCode == nil then
@@ -221,6 +266,7 @@ function AK47Orbit.Start(Pawn, PreloadedClass)
         Angle = 0,
         WeaponClassPath = Pawn.OrbitWeaponClassPath or WQ_CLASS_PATH,
     }
+    SetOrbitActorReplication(Pawn, Actor, true)
     Log("蓝图生成成功")
     return true
 end
@@ -241,6 +287,14 @@ function AK47Orbit.SetWeapon(Pawn, WeaponClassPath, HitEffectPath)
     local OldHitEffectPath = Pawn.OrbitWeaponHitEffectPath
     Pawn.OrbitWeaponClassPath = WeaponClassPath
     Pawn.OrbitWeaponHitEffectPath = HitEffectPath
+
+    if Pawn.HasAuthority == nil or not Pawn:HasAuthority() then
+        return true
+    end
+
+    -- 客户端只保存本地 UI 的选择并等待服务端 RPC；不能在这里生成本地展示
+    -- Actor，否则会再次出现“仅自己可见”的不同步副本。
+
     if not AK47Orbit.IsFeatureEnabled() then
         Pawn.bOrbitWeaponEnabled = false
         AK47Orbit.Stop(Pawn)
@@ -317,6 +371,14 @@ function AK47Orbit.SetRotationSpeed(Pawn, RotationSpeed)
         return false
     end
     Pawn.OrbitWeaponRotationSpeed = RotationSpeed
+    local State = Pawn.AK47OrbitState
+    if State ~= nil and IsValid(State.Actor) then
+        State.Actor.OrbitRotationSpeed = RotationSpeed
+        if UnrealNetwork ~= nil and UnrealNetwork.RepLazyProperty ~= nil then
+            pcall(UnrealNetwork.RepLazyProperty,
+                State.Actor, "OrbitRotationSpeed")
+        end
+    end
     return true
 end
 
@@ -354,7 +416,7 @@ function AK47Orbit.Update(Pawn, DeltaTime)
         PawnLocation.Z + HEIGHT_OFFSET
     )
     if State.Actor.K2_SetActorLocation ~= nil then
-        pcall(State.Actor.K2_SetActorLocation, State.Actor, NewLocation, true, nil, true)
+        pcall(State.Actor.K2_SetActorLocation, State.Actor, NewLocation, false, nil, true)
     end
 
     -- 只改变 Yaw，让整个 WQ 蓝图沿水平方向转圈。
@@ -381,6 +443,7 @@ function AK47Orbit.Stop(Pawn)
 
     if State ~= nil and IsValid(State.Actor) then
         local Actor = State.Actor
+        SetOrbitActorReplication(Pawn, Actor, false)
 
         -- 优先使用 Actor 自身的销毁接口，确保本地生成的 WQ 也能立即消失。
         if Actor.K2_DestroyActor ~= nil then

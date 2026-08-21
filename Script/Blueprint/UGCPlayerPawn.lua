@@ -59,6 +59,24 @@ local function IsLocalPlayerPawn(player)
     return UGCGameSystem.GetLocalPlayerPawn() == player
 end
 
+local ORBIT_VISUAL_REPLICATED_PROPERTIES = {
+    "bOrbitWeaponEnabled",
+    "OrbitWeaponClassPath",
+    "OrbitWeaponHitEffectPath",
+    "OrbitWeaponActiveGunIndex",
+    "OrbitWeaponRotationSpeed"
+}
+
+local function ReplicateOrbitVisualState(player)
+    if player == nil or player.HasAuthority == nil or not player:HasAuthority() or
+        UnrealNetwork == nil or UnrealNetwork.RepLazyProperty == nil then
+        return
+    end
+    for _, propertyName in ipairs(ORBIT_VISUAL_REPLICATED_PROPERTIES) do
+        pcall(UnrealNetwork.RepLazyProperty, player, propertyName)
+    end
+end
+
 local function IsValidObject(Object)
     if Object == nil then
         return false
@@ -1234,9 +1252,8 @@ function UGCPlayerPawn:ReceiveBeginPlay()
     self:RefreshWeaponAttackBonus(true)
     self:NotifyPropertyChangedIfNeeded(true)
 
-    -- Standalone/listen-server Pawn has Authority; a client-owned Pawn is local.
-    -- Cover both cases before the early return below.
-    if self:IsOrbitWeaponEnabled() and (self:HasAuthority() or IsLocalPlayerPawn(self)) then
+    -- 环绕武器仅服务端创建，生成的 Actor 会复制到每一个客户端。
+    if self:IsOrbitWeaponEnabled() and self:HasAuthority() then
         AK47Orbit.Start(self)
     end
 
@@ -1293,9 +1310,10 @@ function UGCPlayerPawn:SetOrbitWeaponEnabled(bEnabled)
     end
     if not self.bOrbitWeaponEnabled then
         AK47Orbit.Stop(self)
-    elseif self:HasAuthority() or IsLocalPlayerPawn(self) then
+    elseif self:HasAuthority() then
         AK47Orbit.Start(self)
     end
+    ReplicateOrbitVisualState(self)
     return self.bOrbitWeaponEnabled
 end
 
@@ -1314,6 +1332,7 @@ function UGCPlayerPawn:SetOrbitWeaponConfig(WeaponClassPath, HitEffectPath)
         OrbitController.OrbitWeaponHitEffectPath = HitEffectPath
         OrbitController.OrbitWeaponEnabled = self.bOrbitWeaponEnabled ~= false
     end
+    ReplicateOrbitVisualState(self)
     return true
 end
 
@@ -1329,7 +1348,9 @@ function UGCPlayerPawn:SetOrbitWeaponActiveGun(GunIndex, DamagePercent)
             OrbitController.OrbitWeaponDamagePercent = tonumber(DamagePercent)
         end
     end
-    return AK47Orbit.SetActiveGun(self, EffectiveTier, EffectiveDamagePercent)
+    local bApplied = AK47Orbit.SetActiveGun(self, EffectiveTier, EffectiveDamagePercent)
+    ReplicateOrbitVisualState(self)
+    return bApplied
 end
 
 function UGCPlayerPawn:SetOrbitWeaponDamagePercents(DamagePercents)
@@ -1347,7 +1368,9 @@ function UGCPlayerPawn:SetOrbitWeaponRotationSpeed(RotationSpeed)
     if OrbitController ~= nil then
         OrbitController.OrbitWeaponRotationSpeed = RotationSpeed
     end
-    return AK47Orbit.SetRotationSpeed(self, RotationSpeed)
+    local bApplied = AK47Orbit.SetRotationSpeed(self, RotationSpeed)
+    ReplicateOrbitVisualState(self)
+    return bApplied
 end
 
 function UGCPlayerPawn:ReceiveTick(DeltaTime)
@@ -1386,7 +1409,7 @@ function UGCPlayerPawn:ReceiveTick(DeltaTime)
         if self.AK47OrbitState ~= nil then
             AK47Orbit.Stop(self)
         end
-    elseif self:IsOrbitWeaponEnabled() and (self:HasAuthority() or IsLocalPlayerPawn(self)) then
+    elseif self:IsOrbitWeaponEnabled() and self:HasAuthority() then
         -- 重生时Controller/PlayerState可能晚于Pawn就绪；存活期间主动校准，避免一直停留在默认1把。
         local OrbitController = GetOrbitWeaponController(self)
         local DesiredWeaponClassPath = OrbitController ~= nil and
@@ -1413,7 +1436,7 @@ function UGCPlayerPawn:ReceiveTick(DeltaTime)
         end
         AK47Orbit.Start(self)
         AK47Orbit.Update(self, SafeDeltaTime)
-    elseif self.AK47OrbitState ~= nil then
+    elseif self:HasAuthority() and self.AK47OrbitState ~= nil then
         AK47Orbit.Stop(self)
     end
 
@@ -1771,7 +1794,10 @@ function UGCPlayerPawn:UGC_TakeDamageOverrideEvent(Damage, DamageType, EventInst
 end
 
 function UGCPlayerPawn:GetReplicatedProperties()
-    return {"__SubObjectRepList", "Lazy"}, {"EquippedTitleID", "EquippedWingVisualItemID"}
+    return {"__SubObjectRepList", "Lazy"}, {"EquippedTitleID", "EquippedWingVisualItemID"},
+        {"bOrbitWeaponEnabled", "Lazy"}, {"OrbitWeaponClassPath", "Lazy"},
+        {"OrbitWeaponHitEffectPath", "Lazy"}, {"OrbitWeaponActiveGunIndex", "Lazy"},
+        {"OrbitWeaponRotationSpeed", "Lazy"}
 end
 
 return UGCPlayerPawn
