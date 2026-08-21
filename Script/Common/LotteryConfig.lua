@@ -23,37 +23,12 @@ local function NormalizeIconPath(IconPath)
     return Path
 end
 
-local function GetTableIconPath(IconPath)
-    if IconPath == nil or IconPath == "" then
+local function GetTableIconPath(IconReference)
+    if IconReference == nil or IconReference == "" then
         return ""
     end
 
-    local Path = ""
-
-    if type(IconPath) == "table" and IconPath.AssetPathName ~= nil then
-        Path = NormalizeIconPath(IconPath.AssetPathName)
-    end
-
-    if not IsValidIconPath(Path) then
-        Path = NormalizeIconPath(IconPath)
-    end
-
-    if IsValidIconPath(Path) then
-        return Path
-    end
-
-    local IconPathText = tostring(IconPath or "")
-    if string.find(IconPathText, "Texture2D") ~= nil or string.find(IconPathText, "UTexture2D") ~= nil then
-        return ""
-    end
-
-    if KismetSystemLibrary ~= nil and KismetSystemLibrary.BreakSoftObjectPath ~= nil then
-        local Success, Result = pcall(KismetSystemLibrary.BreakSoftObjectPath, IconPath)
-        if Success and IsValidIconPath(Result) then
-            Path = NormalizeIconPath(Result)
-        end
-    end
-
+    local Path = NormalizeIconPath(IconReference)
     if IsValidIconPath(Path) then
         return Path
     end
@@ -130,7 +105,9 @@ function LotteryConfig.LoadFromTables()
         local Pool = Pools[PoolID]
         if Pool ~= nil and AwardIndex ~= nil then
             local ItemID = tonumber(Row.ItemID) or 0
-            local RawIconPath = Row.IconPath or Row.IconPathText or Row.IconPathStr
+            -- IconPath is editor preview only. Runtime strictly reads the plain string
+            -- so loading this table never resolves texture object references.
+            local RawIconPath = Row.IconPathText
             local IconPath = GetTableIconPath(RawIconPath)
             local Award = {
                 ItemID = ItemID,

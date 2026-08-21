@@ -8,6 +8,7 @@ local TeamConfig = UGCGameSystem.UGCRequire("Script.Common.TeamConfig")
 local PlayerLevelMgr = UGCGameSystem.UGCRequire("Script.Lin.PlayerLevelMgr")
 local PlayerInitialData = UGCGameSystem.UGCRequire("Script.Common.PlayerInitialData")
 local WeaponRefineConfig = UGCGameSystem.UGCRequire("Script.Common.WeaponRefineConfig")
+local TalentUltimateMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentUltimateMgr")
 
 local WING_EQUIPMENT_SLOT = "CB_CW"
 local WING_ITEM_IDS = {
@@ -1294,6 +1295,10 @@ function UGCGameMode:UGC_PlayerRespawnEvent(RespawnedController)
         PC:Server_TeleportToSpawn(201)
     end
 
+    if PC.Pawn ~= nil and PC.PlayerState ~= nil then
+        TalentUltimateMgr:RestoreAfterRespawn(PC.Pawn, PC.PlayerState)
+    end
+
     UGCTimerUtility.CreateLuaTimer(1, function()
         if PC and PC.Pawn then
             RestoreBackpackSnapshot(PlayerKey, PC.Pawn)
@@ -1349,6 +1354,7 @@ function UGCGameMode:OnPawnDefeat(VictimPlayerKey, InstigatorPlayerKey, DamageTy
             if RespawnedController.Pawn.RefreshStateMgrProperty ~= nil then
                 RespawnedController.Pawn:RefreshStateMgrProperty(true)
             end
+            TalentUltimateMgr:RestoreAfterRespawn(RespawnedController.Pawn, RespawnedController.PlayerState)
         end
     end, false)
 end

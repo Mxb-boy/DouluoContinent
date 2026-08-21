@@ -217,6 +217,31 @@ function TalentUltimateMgr:ScheduleLoginRestore(playerPawn, playerState)
     return true
 end
 
+function TalentUltimateMgr:RestoreAfterRespawn(playerPawn, playerState)
+    if playerPawn == nil or playerState == nil or playerState.bArchiveLoaded ~= true then
+        return false
+    end
+    if UGCGameSystem.IsServer ~= nil and not UGCGameSystem.IsServer() then
+        return false
+    end
+    if playerPawn.TalentUltimateRespawnRestoreCompleted == true then
+        return true
+    end
+
+    local success = self:RefreshEquippedUltimate(playerPawn, playerState)
+    if not success then
+        Log("respawn restore failed")
+        return false
+    end
+
+    if TalentEffectMgr.RefreshSkillCooldowns ~= nil then
+        TalentEffectMgr:RefreshSkillCooldowns(playerPawn, playerState)
+    end
+    playerPawn.TalentUltimateRespawnRestoreCompleted = true
+    Log("respawn restore completed")
+    return true
+end
+
 function TalentUltimateMgr:ClearEquippedUltimate(playerPawn)
     if playerPawn == nil then
         return false

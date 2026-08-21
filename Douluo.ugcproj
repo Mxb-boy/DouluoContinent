@@ -77,13 +77,13 @@ UGCReservedAction_07=
 UGCReservedAction_08=
 
 [JobOption]
-LastJobId=600114226
+LastJobId=-1
 LastWindowsJobId=-1
 LastAndroidJobId=-1
 LastIOSJobId=-1
-PakOnly=1
-LastSkipBake=True
-LastTargetPlatform=LinuxServer+Android_ETC2+IOS+OpenHarmony_ETC2
+PakOnly=0
+LastSkipBake=False
+LastTargetPlatform=LinuxServer
 
 [UGCUploadOption]
 PlatformIndex=0
