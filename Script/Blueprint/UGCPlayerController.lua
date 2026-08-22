@@ -3055,6 +3055,15 @@ function UGCPlayerController:Server_RequestLottery(LotteryType, SlotIndex)
         return
     end
 
+    local PlayerPawn = GetPlayerPawn(self)
+    if BackpackCapacityUtil ~= nil and BackpackCapacityUtil.IsFullIncludingEquipped ~= nil and
+        BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn) == true then
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_ShowToast", "背包已满")
+        -- 负数结果会让客户端撤销本次预扣的抽奖券显示，但不会推进抽奖状态。
+        UnrealNetwork.CallUnrealRPC(self, self, "Client_LotteryResult", LotteryType, -6, 0, 0, 0, {})
+        return
+    end
+
     local NextRound = (tonumber(LotteryState.Round) or 0) + 1
     local Cost = LotteryConfig.GetRoundCost(NextRound)
     if (tonumber(LotteryConfig.CostItemID) or 0) > 0 then

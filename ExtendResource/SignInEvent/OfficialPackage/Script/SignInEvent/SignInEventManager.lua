@@ -1,3 +1,5 @@
+local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil")
+
 SignInEventManager = SignInEventManager or 
 {
     LocalComponent = nil;
@@ -51,7 +53,26 @@ function SignInEventManager:ShowSupplementTip(Message)
     self:GetLocalComponent():ShowSupplementTip(Message);
 end
 
+function SignInEventManager:CheckBackpackBeforeSignIn()
+    local Component = self:GetLocalComponent()
+    local PlayerController = Component ~= nil and Component:GetOwner() or nil
+    local PlayerPawn = PlayerController and (PlayerController.Pawn or
+        (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)) or nil
+    if BackpackCapacityUtil == nil or BackpackCapacityUtil.IsFullIncludingEquipped == nil or
+        BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn) ~= true then
+        return true
+    end
+
+    if PlayerController ~= nil and PlayerController.Client_ShowToast ~= nil then
+        PlayerController:Client_ShowToast("背包已满")
+    end
+    return false
+end
+
 function SignInEventManager:GetDailySignInAward(EventID)
+    if self:CheckBackpackBeforeSignIn() ~= true then
+        return
+    end
     if not self.bBlockRequest then
         self.bBlockRequest = true
         self:GetLocalComponent():GetDailySignInAward(EventID)

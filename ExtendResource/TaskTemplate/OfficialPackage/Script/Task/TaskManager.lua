@@ -175,7 +175,18 @@ function TaskManager:CanSendClaimRequest()
     return true;
 end
 
+function TaskManager:CanClaimAwardWithBackpackCapacity()
+    local Component = self:GetTaskTemplateComponent();
+    if Component == nil or Component.CanClaimAwardWithBackpackCapacity == nil then
+        return false;
+    end
+    return Component:CanClaimAwardWithBackpackCapacity();
+end
+
 function TaskManager:ClaimLevelTaskAward(TaskLineName, LevelIndex, TaskIndex)
+    if not self:CanClaimAwardWithBackpackCapacity() then
+        return;
+    end
     if not self:CanSendClaimRequest() then
         return;
     end
@@ -183,6 +194,9 @@ function TaskManager:ClaimLevelTaskAward(TaskLineName, LevelIndex, TaskIndex)
 end
 
 function TaskManager:ClaimPercentTaskAward(TaskLineName, TaskIndex)
+    if not self:CanClaimAwardWithBackpackCapacity() then
+        return;
+    end
     if not self:CanSendClaimRequest() then
         return;
     end
@@ -202,6 +216,9 @@ function TaskManager:GetTaskLineAwardState(TaskLineName, Index)
 end
 
 function TaskManager:ClaimTaskLineAward(TaskLineName, Index)
+    if not self:CanClaimAwardWithBackpackCapacity() then
+        return;
+    end
     if not self:CanSendClaimRequest() then
         return;
     end
@@ -277,6 +294,9 @@ function TaskManager:ResetPercentTaskLine(TaskLineName)
 end
 
 function TaskManager:ClaimAllAward(TaskLineName)
+    if not self:CanClaimAwardWithBackpackCapacity() then
+        return;
+    end
     if not self:CanSendClaimRequest() then
         return;
     end

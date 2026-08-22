@@ -19,6 +19,7 @@
 
 UGCGameSystem.UGCRequire("ExtendResource.TaskTemplate.OfficialPackage." .. "Script.Task.TaskManager");
 UGCGameSystem.UGCRequire("ExtendResource.TaskTemplate.OfficialPackage." .. "Script.Common.Common");
+local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil");
 
 local TaskTemplateComponent = {
     RequestMark = "Task"
@@ -408,6 +409,25 @@ function TaskTemplateComponent:AddTaskAwardToBackpack(TaskID)
     self:AddAwardListToBackpack(self:GetTaskAwardList(TaskID));
 end
 
+function TaskTemplateComponent:CanClaimAwardWithBackpackCapacity()
+    local PlayerController = self:GetOwner();
+    local PlayerPawn = PlayerController and (PlayerController.Pawn or
+        (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)) or nil;
+    if BackpackCapacityUtil == nil or BackpackCapacityUtil.IsFullIncludingEquipped == nil or
+        BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn) ~= true then
+        return true;
+    end
+
+    if PlayerController ~= nil then
+        if PlayerController:HasAuthority() == true then
+            UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast", "背包已满");
+        elseif PlayerController.Client_ShowToast ~= nil then
+            PlayerController:Client_ShowToast("背包已满");
+        end
+    end
+    return false;
+end
+
 function TaskTemplateComponent:GetPercentTaskID(TaskLineName, TaskIndex)
     local TaskInfoList = self:GetPercentTaskInfoList(TaskLineName);
     local TaskInfo = TaskInfoList and TaskInfoList[TaskIndex];
@@ -567,6 +587,9 @@ end
 
 function TaskTemplateComponent:ClaimLevelTaskAward(TaskLineName, LevelIndex, TaskIndex)
     print(string.format("[TaskTemplateComponent:ClaimLevelTaskAward]"));
+    if not self:CanClaimAwardWithBackpackCapacity() then
+        return;
+    end
     if self:GetLevelTaskState(TaskLineName, LevelIndex, TaskIndex) == EUGCTaskState.NotClaimed then
         self:AddTaskAwardToBackpack(self:GetLevelTaskID(TaskLineName, LevelIndex, TaskIndex));
     end
@@ -577,6 +600,9 @@ end
 
 function TaskTemplateComponent:ClaimPercentTaskAward(TaskLineName, TaskIndex)
     print(string.format("[TaskTemplateComponent:ClaimPercentTaskAward]"));
+    if not self:CanClaimAwardWithBackpackCapacity() then
+        return;
+    end
     if self:GetPercentTaskState(TaskLineName, TaskIndex) == EUGCTaskState.NotClaimed then
         self:AddTaskAwardToBackpack(self:GetPercentTaskID(TaskLineName, TaskIndex));
     end
@@ -593,6 +619,9 @@ function TaskTemplateComponent:GetTaskLineAwardState(TaskLineName, Index)
 end
 
 function TaskTemplateComponent:ClaimTaskLineAward(TaskLineName, Index)
+    if not self:CanClaimAwardWithBackpackCapacity() then
+        return;
+    end
     if self:GetTaskLineAwardState(TaskLineName, Index) == EUGCTaskLineAwardState.NotClaimed then
         self:AddAwardListToBackpack(self:GetTaskLineAwardList(TaskLineName, Index));
     end
@@ -708,6 +737,9 @@ function TaskTemplateComponent:ResetPercentTaskLine(TaskLineName)
 end
 
 function TaskTemplateComponent:ClaimAllAward(TaskLineName)
+    if not self:CanClaimAwardWithBackpackCapacity() then
+        return;
+    end
     local AwardList = {};
     local TaskInfoList = self:GetPercentTaskInfoList(TaskLineName);
     if TaskInfoList then

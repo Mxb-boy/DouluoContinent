@@ -31,9 +31,17 @@ local function GetBuffClass(BuffKey, Config)
         return BuffClassCache[BuffKey]
     end
 
-    local BuffPath = type(Config) == "table" and Config.Path or nil
-    if type(BuffPath) ~= "string" or BuffPath == "" then
+    local RelativePath = type(Config) == "table" and Config.Path or nil
+    if type(RelativePath) ~= "string" or RelativePath == "" then
         return nil
+    end
+
+    local BuffPath = RelativePath
+    if UGCGameSystem.GetUGCResourcesFullPath ~= nil then
+        local Success, Result = pcall(UGCGameSystem.GetUGCResourcesFullPath, RelativePath)
+        if Success and type(Result) == "string" and Result ~= "" then
+            BuffPath = Result
+        end
     end
 
     if UGCObjectUtility ~= nil and UGCObjectUtility.LoadClass ~= nil then
@@ -60,7 +68,8 @@ local function TryAddBuff(TargetActor, BuffKey, Config)
 
     local BuffClass = GetBuffClass(BuffKey, Config)
     if BuffClass == nil then
-        ugcprint("[TalentPassive] buff class load failed: " .. tostring(BuffKey))
+        ugcprint("[TalentPassive] buff class load failed: key=" .. tostring(BuffKey) ..
+                     ", path=" .. tostring(Config.Path))
         return false
     end
 
@@ -68,6 +77,22 @@ local function TryAddBuff(TargetActor, BuffKey, Config)
     if not Success then
         ugcprint("[TalentPassive] add buff failed: " .. tostring(BuffKey) .. ", " .. tostring(Result))
         return false
+    end
+
+    local BuffCount = -1
+    if UGCPersistEffectSystem.GetBuffsByClass ~= nil then
+        local QuerySuccess, Buffs = pcall(UGCPersistEffectSystem.GetBuffsByClass, TargetActor, BuffClass)
+        if QuerySuccess and Buffs ~= nil then
+            local CountSuccess, Count = pcall(function()
+                return #Buffs
+            end)
+            if CountSuccess then
+                BuffCount = tonumber(Count) or -1
+            end
+        end
+    end
+    if Result == nil then
+        return BuffCount > 0
     end
     return true
 end

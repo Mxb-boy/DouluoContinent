@@ -33,22 +33,22 @@ TalentConfig.SkillCooldownTags = {
 TalentConfig.PassiveBuffs = {
     Attack = {
         Chance = 0.02,
-        Path = "/Douluo/Asset/Blueprint/Prefabs/Buffs/TalentPassiveAttack.TalentPassiveAttack_C",
+        Path = "Asset/Blueprint/Prefabs/Buffs/TalentPassiveAttack.TalentPassiveAttack_C",
         AttackPercent = 0.1
     },
     Heal = {
         Chance = 0.02,
-        Path = "/Douluo/Asset/Blueprint/Prefabs/Buffs/TalentPassiveHeal.TalentPassiveHeal_C",
+        Path = "Asset/Blueprint/Prefabs/Buffs/TalentPassiveHeal.TalentPassiveHeal_C",
         HealMaxHealthPercent = 0.1
     },
     CritRate = {
         Chance = 0.02,
-        Path = "/Douluo/Asset/Blueprint/Prefabs/Buffs/TalentPassiveCritRate.TalentPassiveCritRate_C",
+        Path = "Asset/Blueprint/Prefabs/Buffs/TalentPassiveCritRate.TalentPassiveCritRate_C",
         CritRate = 0.1
     },
     CritDamage = {
         Chance = 0.02,
-        Path = "/Douluo/Asset/Blueprint/Prefabs/Buffs/TalentPassiveCritDamage.TalentPassiveCritDamage_C",
+        Path = "Asset/Blueprint/Prefabs/Buffs/TalentPassiveCritDamage.TalentPassiveCritDamage_C",
         CritMultiplierFlat = 0.5
     }
 }

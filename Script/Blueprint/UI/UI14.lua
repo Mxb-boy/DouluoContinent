@@ -27,6 +27,7 @@
 --Edit Below--
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
 local LotteryConfig = UGCGameSystem.UGCRequire("Script.Common.LotteryConfig")
+local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil")
 
 local UI14 = { bInitDoOnce = false }
 
@@ -897,6 +898,15 @@ function UI14:RequestLottery(LotteryTypeValue)
         or GameplayStatics.GetPlayerController(self, 0)
     if PlayerController == nil then
         ugcprint("[UI14:RequestLottery] PlayerController is nil")
+        return
+    end
+    local PlayerPawn = PlayerController.Pawn or
+        (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)
+    if BackpackCapacityUtil ~= nil and BackpackCapacityUtil.IsFullIncludingEquipped ~= nil and
+        BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn) == true then
+        if PlayerController.Client_ShowToast ~= nil then
+            PlayerController:Client_ShowToast("背包已满")
+        end
         return
     end
     if not self:CanSummonLottery(LotteryTypeValue) then

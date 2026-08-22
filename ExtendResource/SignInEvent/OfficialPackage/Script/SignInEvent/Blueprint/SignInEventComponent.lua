@@ -13,6 +13,7 @@ local Delegate = UGCGameSystem.UGCRequire("common.Delegate");
 local TitleMgr = UGCGameSystem.UGCRequire("Script.Xiao.TitleMgr");
 local TalentConfig = UGCGameSystem.UGCRequire("Script.Xiao.TalentConfig");
 local TalentMgr = UGCGameSystem.UGCRequire("Script.Xiao.TalentMgr");
+local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil");
 local STExtraGMDelegatesMgr = KismetLibrary.New("/Script/ShadowTrackerExtra.STExtraGMDelegatesMgr");
 
 local AWARD_SOURCE_DAILY = "Daily"
@@ -602,6 +603,14 @@ function SignInEventComponent:Server_GetDailySignInAward(EventID, LocalEventData
     --校验当日是否已经进行签到
     if UGCGameSystem.GetServerTimeSec() < Data[EventID].NextDayTime then
         print("[SignInEventComponent] Daily award already claimed!")
+        return
+    end
+
+    local PlayerController = self:GetOwner()
+    local PlayerPawn = UGCGameSystem.GetPlayerPawnByPlayerController(PlayerController)
+    if BackpackCapacityUtil ~= nil and BackpackCapacityUtil.IsFullIncludingEquipped ~= nil and
+        BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn) == true then
+        UnrealNetwork.CallUnrealRPC(PlayerController, PlayerController, "Client_ShowToast", "背包已满")
         return
     end
 

@@ -4,6 +4,7 @@
 ---@field TowerID int32
 -- Edit Below--
 local BXCollition = {}
+local BackpackCapacityUtil = UGCGameSystem.UGCRequire("Script.Common.BackpackCapacityUtil")
 
 -- 公用气泡提示入口，其他系统统一调用这里。
 function BXCollition.ShowBubble(Text)
@@ -30,6 +31,12 @@ function BXCollition:Box_OnComponentBeginOverlap(OverlappedComponent, OtherActor
     --[[------------------------通知打开UI----------------------]] --
     local pc = OtherActor:GetPlayerControllerSafety()
     if pc then
+        local PlayerPawn = UGCGameSystem.GetPlayerPawnByPlayerController(pc) or OtherActor
+        if BackpackCapacityUtil ~= nil and BackpackCapacityUtil.IsFullIncludingEquipped ~= nil and
+            BackpackCapacityUtil.IsFullIncludingEquipped(PlayerPawn) == true then
+            UnrealNetwork.CallUnrealRPC(pc, pc, "Client_ShowToast", "背包已满")
+            return
+        end
         UnrealNetwork.CallUnrealRPC(pc, pc, "Client_OpenTowerTopUI")
     end
 end
