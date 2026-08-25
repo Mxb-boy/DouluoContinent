@@ -13,6 +13,8 @@ local UGCPlayerState = {
     LotteryState = {},
     WeaponLevels = {},
     WeaponRefineStats = {},
+    WeaponRefineDailyDay = 0,
+    WeaponRefineDailyCount = 0,
     OrbitWeaponSkinIndex = 1,
     SignInEvent = {},
     UnlockedTitles = {},
@@ -97,6 +99,14 @@ local ARCHIVE_KEYS = {{
     key = "WeaponRefineStats",
     field = "WeaponRefineStats",
     default = {}
+}, {
+    key = "WeaponRefineDailyDay",
+    field = "WeaponRefineDailyDay",
+    default = 0
+}, {
+    key = "WeaponRefineDailyCount",
+    field = "WeaponRefineDailyCount",
+    default = 0
 }, {
     key = "OrbitWeaponSkinIndex",
     field = "OrbitWeaponSkinIndex",
@@ -733,6 +743,61 @@ function UGCPlayerState:SetWeaponRefineStat(SkinIndex, WeaponIndex, Attack, Atta
     end
     self.WeaponRefineStats = OldStats
     return false
+end
+
+function UGCPlayerState:SetWeaponRefineDailyDay(Value)
+    self.WeaponRefineDailyDay = math.max(0, math.floor(tonumber(Value) or 0))
+    if self.bLoadingArchive then
+        return true
+    end
+    return self:SaveToArchive() == true
+end
+
+function UGCPlayerState:SetWeaponRefineDailyCount(Value)
+    self.WeaponRefineDailyCount = math.max(0, math.floor(tonumber(Value) or 0))
+    if self.bLoadingArchive then
+        return true
+    end
+    return self:SaveToArchive() == true
+end
+
+function UGCPlayerState:GetWeaponRefineRemainingUses(ServerDay, DailyLimit)
+    ServerDay = math.floor(tonumber(ServerDay) or 0)
+    DailyLimit = math.max(0, math.floor(tonumber(DailyLimit) or 0))
+    if ServerDay <= 0 then
+        return 0
+    end
+    local SavedDay = math.floor(tonumber(self.WeaponRefineDailyDay) or 0)
+    local UsedCount = SavedDay == ServerDay and
+        math.max(0, math.floor(tonumber(self.WeaponRefineDailyCount) or 0)) or 0
+    return math.max(0, DailyLimit - UsedCount)
+end
+
+-- The server calls this only after validating and deducting the refine materials.
+-- Persisting the counter before returning success prevents reconnecting from bypassing the limit.
+function UGCPlayerState:ConsumeWeaponRefineDailyUse(ServerDay, DailyLimit)
+    ServerDay = math.floor(tonumber(ServerDay) or 0)
+    DailyLimit = math.max(0, math.floor(tonumber(DailyLimit) or 0))
+    if ServerDay <= 0 or DailyLimit <= 0 or self.bArchiveLoaded ~= true then
+        return false, 0
+    end
+
+    local OldDay = math.max(0, math.floor(tonumber(self.WeaponRefineDailyDay) or 0))
+    local OldCount = math.max(0, math.floor(tonumber(self.WeaponRefineDailyCount) or 0))
+    local UsedCount = OldDay == ServerDay and OldCount or 0
+    if UsedCount >= DailyLimit then
+        return false, 0
+    end
+
+    self.WeaponRefineDailyDay = ServerDay
+    self.WeaponRefineDailyCount = UsedCount + 1
+    if self:SaveToArchive() == true then
+        return true, math.max(0, DailyLimit - self.WeaponRefineDailyCount)
+    end
+
+    self.WeaponRefineDailyDay = OldDay
+    self.WeaponRefineDailyCount = OldCount
+    return false, math.max(0, DailyLimit - UsedCount)
 end
 
 function UGCPlayerState:GetSignInEvent()

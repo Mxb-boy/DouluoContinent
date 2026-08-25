@@ -1870,6 +1870,33 @@ local function GetBackpackItemCount(Pawn, ItemID)
     return Success and math.max(0, math.floor(tonumber(Count) or 0)) or 0
 end
 
+local SERVER_TIMEZONE_OFFSET_SECONDS = 8 * 60 * 60
+
+-- Server-authoritative timestamp with a UTC+8 daily reset boundary.
+local function GetWeaponRefineServerDay()
+    if UGCGameSystem == nil or UGCGameSystem.GetServerTimeSec == nil then
+        return nil
+    end
+    local Success, ServerTime = pcall(UGCGameSystem.GetServerTimeSec)
+    ServerTime = Success and tonumber(ServerTime) or nil
+    if ServerTime == nil or ServerTime <= 0 then
+        return nil
+    end
+    return math.floor((ServerTime + SERVER_TIMEZONE_OFFSET_SECONDS) / 86400)
+end
+
+local function GetWeaponRefineRemainingUses(PlayerState, ServerDay)
+    if PlayerState == nil or PlayerState.GetWeaponRefineRemainingUses == nil then
+        return 0
+    end
+    ServerDay = ServerDay or GetWeaponRefineServerDay()
+    if ServerDay == nil then
+        return 0
+    end
+    return PlayerState:GetWeaponRefineRemainingUses(
+        ServerDay, WeaponRefineConfig.DAILY_REFINE_LIMIT)
+end
+
 function UGCPlayerController:Server_RequestWeaponRefineState()
     local PlayerState = self.PlayerState
     if PlayerState == nil or PlayerState.bArchiveLoaded ~= true then
@@ -1881,10 +1908,11 @@ function UGCPlayerController:Server_RequestWeaponRefineState()
     local WeaponIndex = Pending ~= nil and Pending.WeaponIndex or 0
     local Attack = Pending ~= nil and Pending.Attack or 0
     local AttackSpeed = Pending ~= nil and Pending.AttackSpeed or 0
+    local RemainingUses = GetWeaponRefineRemainingUses(PlayerState)
     UnrealNetwork.CallUnrealRPC(self, self, "Client_WeaponRefineResult", true,
         SkinIndex, WeaponIndex, Attack, AttackSpeed,
         GetBackpackItemCount(Pawn, WeaponRefineConfig.STARDUST_ITEM_ID),
-        BuildWeaponRefineSnapshot(PlayerState), "")
+        BuildWeaponRefineSnapshot(PlayerState), RemainingUses, "")
     return true
 end
 
@@ -1904,6 +1932,8 @@ function UGCPlayerController:Server_RefineOrbitWeapon(SkinIndex, WeaponIndex,
     local PlayerLevel = GetEffectivePlayerLevel(PlayerState)
     local Row = WeaponRefineConfig.GetRow(SkinIndex, WeaponIndex)
     local AttributeLockCost = (bLockAttack or bLockAttackSpeed) and 1 or 0
+    local ServerDay = GetWeaponRefineServerDay()
+    local RemainingUses = GetWeaponRefineRemainingUses(PlayerState, ServerDay)
     local bSuccess = false
     local Attack, AttackSpeed = 0, 0
     local Message = "洗练失败，请稍后重试"
@@ -1920,6 +1950,8 @@ function UGCPlayerController:Server_RefineOrbitWeapon(SkinIndex, WeaponIndex,
     EnsurePlayerStateArchiveUID(self)
     if PlayerState == nil or PlayerState.bArchiveLoaded ~= true then
         Message = "存档尚未加载，请稍后重试"
+    elseif ServerDay == nil then
+        Message = "服务器时间获取失败，请稍后重试"
     elseif SkinIndex < 1 or SkinIndex > WeaponRefineConfig.MAX_SKIN_COUNT or
         WeaponIndex < 1 or WeaponIndex > WeaponRefineConfig.MAX_WEAPON_COUNT then
         Message = "武器选择无效"
@@ -1931,11 +1963,13 @@ function UGCPlayerController:Server_RefineOrbitWeapon(SkinIndex, WeaponIndex,
         Message = "攻击和攻速不能同时锁定"
     elseif self.PendingWeaponRefine ~= nil then
         Message = "请先确认或放弃上一次洗练属性"
+    elseif RemainingUses <= 0 then
+        Message = "今日洗练次数已用完"
     elseif Row == nil then
         Message = "洗练配置读取失败"
     elseif Pawn == nil or UGCBackpackSystemV2 == nil or
         UGCBackpackSystemV2.GetItemCountV2 == nil or UGCBackpackSystemV2.RemoveItemV2 == nil or
-        AttributeLockCost > 0 and UGCBackpackSystemV2.AddItemV2 == nil then
+        UGCBackpackSystemV2.AddItemV2 == nil then
         Message = "背包暂不可用，请稍后重试"
     else
         local Cost = WeaponRefineConfig.REFINE_COST
@@ -1976,23 +2010,37 @@ function UGCPlayerController:Server_RefineOrbitWeapon(SkinIndex, WeaponIndex,
                     end
                     Message = "属性锁扣除失败，请稍后重试"
                 else
-                    Attack, AttackSpeed = WeaponRefineConfig.Roll(Row)
-                    local CurrentAttack, CurrentAttackSpeed =
-                        WeaponRefineConfig.GetCurrentStats(PlayerState, SkinIndex, WeaponIndex)
-                    if bLockAttack then
-                        Attack = CurrentAttack
+                    local CountSaved, NewRemainingUses =
+                        PlayerState:ConsumeWeaponRefineDailyUse(
+                            ServerDay, WeaponRefineConfig.DAILY_REFINE_LIMIT)
+                    if not CountSaved then
+                        pcall(UGCBackpackSystemV2.AddItemV2, Pawn,
+                            WeaponRefineConfig.STARDUST_ITEM_ID, Cost)
+                        if AttributeLockCost > 0 then
+                            pcall(UGCBackpackSystemV2.AddItemV2, Pawn,
+                                WeaponRefineConfig.ATTRIBUTE_LOCK_ITEM_ID, AttributeLockCost)
+                        end
+                        Message = "洗练次数保存失败，请稍后重试"
+                    else
+                        RemainingUses = NewRemainingUses
+                        Attack, AttackSpeed = WeaponRefineConfig.Roll(Row)
+                        local CurrentAttack, CurrentAttackSpeed =
+                            WeaponRefineConfig.GetCurrentStats(PlayerState, SkinIndex, WeaponIndex)
+                        if bLockAttack then
+                            Attack = CurrentAttack
+                        end
+                        if bLockAttackSpeed then
+                            AttackSpeed = CurrentAttackSpeed
+                        end
+                        self.PendingWeaponRefine = {
+                            SkinIndex = SkinIndex,
+                            WeaponIndex = WeaponIndex,
+                            Attack = Attack,
+                            AttackSpeed = AttackSpeed
+                        }
+                        bSuccess = true
+                        Message = "洗练完成，请确认是否更换属性"
                     end
-                    if bLockAttackSpeed then
-                        AttackSpeed = CurrentAttackSpeed
-                    end
-                    self.PendingWeaponRefine = {
-                        SkinIndex = SkinIndex,
-                        WeaponIndex = WeaponIndex,
-                        Attack = Attack,
-                        AttackSpeed = AttackSpeed
-                    }
-                    bSuccess = true
-                    Message = "洗练完成，请确认是否更换属性"
                 end
             end
         end
@@ -2005,7 +2053,7 @@ function UGCPlayerController:Server_RefineOrbitWeapon(SkinIndex, WeaponIndex,
         ' skin=' .. tostring(SkinIndex) .. ' weapon=' .. tostring(WeaponIndex) ..
         ' message=' .. tostring(Message))
     UnrealNetwork.CallUnrealRPC(self, self, "Client_WeaponRefineResult", bSuccess, SkinIndex,
-        WeaponIndex, Attack, AttackSpeed, StardustCount, Snapshot, Message)
+        WeaponIndex, Attack, AttackSpeed, StardustCount, Snapshot, RemainingUses, Message)
     return bSuccess
 end
 
@@ -2016,6 +2064,7 @@ function UGCPlayerController:Server_ResolveWeaponRefine(bAccept)
     local bSuccess = false
     local bAccepted = bAccept == true
     local Message = "没有待处理的洗练属性"
+    local RemainingUses = GetWeaponRefineRemainingUses(PlayerState)
 
     if Pending ~= nil then
         if not bAccepted then
@@ -2055,18 +2104,18 @@ function UGCPlayerController:Server_ResolveWeaponRefine(bAccept)
     UnrealNetwork.CallUnrealRPC(self, self, "Client_WeaponRefineDecisionResult",
         bSuccess, bAccepted,
         GetBackpackItemCount(Pawn, WeaponRefineConfig.STARDUST_ITEM_ID),
-        BuildWeaponRefineSnapshot(PlayerState), Message)
+        BuildWeaponRefineSnapshot(PlayerState), RemainingUses, Message)
     return bSuccess
 end
 
 function UGCPlayerController:Client_WeaponRefineResult(bSuccess, SkinIndex, WeaponIndex,
     Attack, AttackSpeed,
-    StardustCount, Snapshot, Message)
+    StardustCount, Snapshot, RemainingUses, Message)
     local MainUI = self.MainUIInstance
     local WeaponUI = MainUI and MainUI.UI017Instance or self.UI017Instance
     if WeaponUI ~= nil and WeaponUI.ApplyWeaponRefineResult ~= nil then
         WeaponUI:ApplyWeaponRefineResult(bSuccess, SkinIndex, WeaponIndex, Attack, AttackSpeed,
-            StardustCount, Snapshot)
+            StardustCount, Snapshot, RemainingUses)
     end
     if Message ~= nil and tostring(Message) ~= "" then
         L_Com.ShowToast(tostring(Message))
@@ -2074,11 +2123,12 @@ function UGCPlayerController:Client_WeaponRefineResult(bSuccess, SkinIndex, Weap
 end
 
 function UGCPlayerController:Client_WeaponRefineDecisionResult(bSuccess, bAccepted,
-    StardustCount, Snapshot, Message)
+    StardustCount, Snapshot, RemainingUses, Message)
     local MainUI = self.MainUIInstance
     local WeaponUI = MainUI and MainUI.UI017Instance or self.UI017Instance
     if WeaponUI ~= nil and WeaponUI.ApplyWeaponRefineDecisionResult ~= nil then
-        WeaponUI:ApplyWeaponRefineDecisionResult(bSuccess, bAccepted, StardustCount, Snapshot)
+        WeaponUI:ApplyWeaponRefineDecisionResult(
+            bSuccess, bAccepted, StardustCount, Snapshot, RemainingUses)
     end
     if Message ~= nil and tostring(Message) ~= "" then
         L_Com.ShowToast(tostring(Message))

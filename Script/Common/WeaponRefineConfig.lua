@@ -5,6 +5,7 @@ WeaponRefineConfig.STARDUST_ITEM_ID = 8310134
 WeaponRefineConfig.ATTRIBUTE_LOCK_ITEM_ID = 8310135
 WeaponRefineConfig.ATTRIBUTE_LOCK_SHOP_ITEM_ID = 1061
 WeaponRefineConfig.REFINE_COST = 100
+WeaponRefineConfig.DAILY_REFINE_LIMIT = 20
 WeaponRefineConfig.MAX_SKIN_COUNT = 12
 WeaponRefineConfig.MAX_WEAPON_COUNT = 8
 -- 兼容仍用旧名称表示“周围武器数量”的调用。
@@ -186,6 +187,11 @@ function WeaponRefineConfig.FormatNumber(Value)
     local Text = string.format("%.2f", tonumber(Value) or 0)
     Text = string.gsub(Text, "0+$", "")
     return string.gsub(Text, "%.$", "")
+end
+
+function WeaponRefineConfig.FormatRange(MinValue, MaxValue)
+    return WeaponRefineConfig.FormatNumber(MinValue) .. " - " ..
+        WeaponRefineConfig.FormatNumber(MaxValue)
 end
 
 return WeaponRefineConfig

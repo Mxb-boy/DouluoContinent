@@ -157,7 +157,10 @@
 ---@field TextBlock_12 UTextBlock
 ---@field TextBlock_14 UTextBlock
 ---@field TextBlock_16 UTextBlock
+---@field TextBlock_18 UTextBlock
+---@field TextBlock_20 UTextBlock
 ---@field TextBlock_43 UTextBlock
+---@field TextBlock_58 UTextBlock
 ---@field TextBlock_66 UTextBlock
 ---@field TextBlock_108 UTextBlock
 ---@field TextBlock_158 UTextBlock
@@ -453,7 +456,7 @@ function UI017:ApplySelectedSkinDamagePercents()
 end
 
 function UI017:RefreshSelectedXzwqStats(SlotIndex)
-    local Attack, AttackSpeed = self:GetCurrentWeaponStats(SlotIndex)
+    local Attack, AttackSpeed, Row = self:GetCurrentWeaponStats(SlotIndex)
     local AttackTextWidget = self:GetWidget("TextBlock_330")
     if AttackTextWidget ~= nil then
         AttackTextWidget:SetText(WeaponRefineConfig.FormatNumber(Attack))
@@ -462,7 +465,31 @@ function UI017:RefreshSelectedXzwqStats(SlotIndex)
     if AttackSpeedTextWidget ~= nil then
         AttackSpeedTextWidget:SetText(WeaponRefineConfig.FormatNumber(AttackSpeed))
     end
+    local AttackRangeTextWidget = self:GetWidget("TextBlock_18")
+    if AttackRangeTextWidget ~= nil then
+        AttackRangeTextWidget:SetText(Row ~= nil and
+            WeaponRefineConfig.FormatRange(Row.AttackMin, Row.AttackMax) or "-")
+    end
+    local AttackSpeedRangeTextWidget = self:GetWidget("TextBlock_20")
+    if AttackSpeedRangeTextWidget ~= nil then
+        AttackSpeedRangeTextWidget:SetText(Row ~= nil and
+            WeaponRefineConfig.FormatRange(Row.AttackSpeedMin, Row.AttackSpeedMax) or "-")
+    end
     return true
+end
+
+function UI017:RefreshWeaponRefineRemainingUses(RemainingUses, bWaitingForDecision)
+    RemainingUses = math.max(0, math.min(WeaponRefineConfig.DAILY_REFINE_LIMIT,
+        math.floor(tonumber(RemainingUses) or 0)))
+    self.WeaponRefineRemainingUses = RemainingUses
+    local RemainingText = self:GetWidget("TextBlock_58")
+    if RemainingText ~= nil then
+        RemainingText:SetText("可洗练次数：" .. tostring(RemainingUses))
+    end
+    local RefineButton = self:GetWidget("Button_127")
+    if RefineButton ~= nil and RefineButton.SetIsEnabled ~= nil then
+        RefineButton:SetIsEnabled(RemainingUses > 0 and bWaitingForDecision ~= true)
+    end
 end
 
 function UI017:ApplyWeaponRefineSnapshot(Snapshot)
@@ -486,19 +513,16 @@ function UI017:ApplyWeaponRefineSnapshot(Snapshot)
 end
 
 function UI017:ApplyWeaponRefineResult(bSuccess, SkinIndex, WeaponIndex, Attack, AttackSpeed,
-    StardustCount, Snapshot)
+    StardustCount, Snapshot, RemainingUses)
     self:ApplyWeaponRefineSnapshot(Snapshot)
     self:ApplySelectedSkinDamagePercents()
     local CountText = self:GetWidget("TextBlock_66")
     if CountText ~= nil then
         CountText:SetText(tostring(math.max(0, math.floor(tonumber(StardustCount) or 0))))
     end
-    local RefineButton = self:GetWidget("Button_127")
-    if RefineButton ~= nil and RefineButton.SetIsEnabled ~= nil then
-        local bWaitingForDecision = bSuccess == true and (tonumber(SkinIndex) or 0) >= 1 and
-            (tonumber(WeaponIndex) or 0) >= 1
-        RefineButton:SetIsEnabled(not bWaitingForDecision)
-    end
+    local bWaitingForDecision = bSuccess == true and (tonumber(SkinIndex) or 0) >= 1 and
+        (tonumber(WeaponIndex) or 0) >= 1
+    self:RefreshWeaponRefineRemainingUses(RemainingUses, bWaitingForDecision)
     if self.SelectedXzwqSlotIndex ~= nil then
         self:RefreshSelectedXzwqStats(self.SelectedXzwqSlotIndex)
     end
@@ -560,7 +584,8 @@ function UI017:ResolveWeaponRefine(bAccept)
     return true
 end
 
-function UI017:ApplyWeaponRefineDecisionResult(bSuccess, bAccepted, StardustCount, Snapshot)
+function UI017:ApplyWeaponRefineDecisionResult(bSuccess, bAccepted, StardustCount, Snapshot,
+    RemainingUses)
     self:ApplyWeaponRefineSnapshot(Snapshot)
     self:ApplySelectedSkinDamagePercents()
     local CountText = self:GetWidget("TextBlock_66")
@@ -571,10 +596,7 @@ function UI017:ApplyWeaponRefineDecisionResult(bSuccess, bAccepted, StardustCoun
         self:SetWeaponRefineResultPageVisible(false)
         self.PendingWeaponRefineSkinIndex = nil
         self.PendingWeaponRefineWeaponIndex = nil
-        local RefineButton = self:GetWidget("Button_127")
-        if RefineButton ~= nil and RefineButton.SetIsEnabled ~= nil then
-            RefineButton:SetIsEnabled(true)
-        end
+        self:RefreshWeaponRefineRemainingUses(RemainingUses, false)
         if self.SelectedXzwqSlotIndex ~= nil then
             self:RefreshSelectedXzwqStats(self.SelectedXzwqSlotIndex)
         end
@@ -596,6 +618,12 @@ function UI017:Button_127_OnClicked()
     local WeaponIndex = tonumber(self.SelectedXzwqSlotIndex)
     local PlayerController = self:GetLocalPlayerController()
     if PlayerController == nil or SkinIndex == nil or WeaponIndex == nil then
+        return
+    end
+    if self.WeaponRefineRemainingUses ~= nil and self.WeaponRefineRemainingUses <= 0 then
+        if PlayerController.Client_ShowToast ~= nil then
+            PlayerController:Client_ShowToast("今日洗练次数已用完")
+        end
         return
     end
     ugcprint('[WeaponRefine:UI] request skin=' .. tostring(SkinIndex) ..
@@ -1233,6 +1261,7 @@ function UI017:LuaInit()
         return
     end
     self.bInitDoOnce = true
+    self:RefreshWeaponRefineRemainingUses(WeaponRefineConfig.DAILY_REFINE_LIMIT, false)
     self:RefreshCurrentPlayerLevel()
     self:RefreshTextBlock66ItemCount()
     local CloseButton = self:GetWidget("Btn_Close")
