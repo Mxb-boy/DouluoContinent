@@ -21,9 +21,6 @@ local WING_ITEM_IDS = {
 }
 local LOGIN_WING_UNEQUIP_INTERVAL = 0.5
 local LOGIN_WING_UNEQUIP_MAX_RETRIES = 120
--- 统一使用编辑器默认角色，覆盖玩家从和平大厅带入的服装、翅膀等 Avatar 装扮。
-local FORCED_DEFAULT_AVATAR_RES_ID = 401991
-local FORCED_DEFAULT_AVATAR_DELAY = 2
 
 local function GetItemIDFromDefineID(ItemDefineID)
     if ItemDefineID == nil then
@@ -173,43 +170,6 @@ local function IsObjectAlive(Object)
         return Success and bValid == true
     end
     return true
-end
-
--- 和平 Avatar 会在 Pawn 创建后继续完成自身初始化；过早设置会被其原装扮流程覆盖。
--- 登录和每次复活后均延迟调用，保证游戏内自定义翅膀仍只显示项目装备的那一套。
-local function ScheduleForceDefaultAvatar(PlayerController, Reason)
-    if not IsObjectAlive(PlayerController) then
-        return
-    end
-
-    UGCTimerUtility.CreateLuaTimer(FORCED_DEFAULT_AVATAR_DELAY, function()
-        if not IsObjectAlive(PlayerController) then
-            return
-        end
-        local PlayerPawn = PlayerController.Pawn or
-            (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)
-        if not IsObjectAlive(PlayerPawn) or PlayerPawn.getAvatarComponent == nil then
-            ugcprint("[UGCGameMode] WARNING default avatar skipped: Pawn or AvatarComponent not ready, reason=" ..
-                         tostring(Reason))
-            return
-        end
-
-        local Success, Result = pcall(function()
-            local AvatarComponent = PlayerPawn:getAvatarComponent()
-            if AvatarComponent == nil then
-                return false
-            end
-            AvatarComponent:InitDefaultAvatarByResID(0, FORCED_DEFAULT_AVATAR_RES_ID, 0)
-            return true
-        end)
-        if Success and Result then
-            ugcprint("[UGCGameMode] Forced default avatar, player=" .. tostring(PlayerController.PlayerKey) ..
-                         ", reason=" .. tostring(Reason))
-        else
-            ugcprint("[UGCGameMode] WARNING force default avatar failed, player=" ..
-                         tostring(PlayerController.PlayerKey) .. ", reason=" .. tostring(Reason))
-        end
-    end, false)
 end
 
 local function ClearEquippedWingCache(PlayerController, PlayerPawn)
@@ -802,7 +762,6 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
         return
     end
     local PC = PlayerController
-    ScheduleForceDefaultAvatar(PC, "login")
     ScheduleUnequipWingOnLogin(PC)
     local RetryCount = 0
     local MaxRetries = 10
@@ -1330,8 +1289,6 @@ end
 function UGCGameMode:UGC_PlayerRespawnEvent(RespawnedController)
     local PC = RespawnedController
     local PlayerKey = PC.PlayerKey
-
-    ScheduleForceDefaultAvatar(PC, "respawn")
 
     if PC.Is_Tower_Death_Respawn == true then
         PC.Is_Tower_Death_Respawn = nil
