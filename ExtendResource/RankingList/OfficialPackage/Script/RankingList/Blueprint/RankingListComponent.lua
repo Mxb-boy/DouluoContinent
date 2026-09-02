@@ -943,4 +943,9 @@ function RankingListComponent:UpdateProfileData(RankID)
     end
 end
 
+local RankBonusPatch = UGCGameSystem.UGCRequire("Script.Xiao.RankBonusPatch");
+if RankBonusPatch ~= nil and RankBonusPatch.Apply ~= nil then
+    RankBonusPatch.Apply(RankingListComponent);
+end
+
 return RankingListComponent

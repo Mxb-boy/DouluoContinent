@@ -171,6 +171,12 @@ function GiftPackPurchaseService:FinalizeGiftRewardFrame()
         self:SetOfficialGetUIActive(true)
     end
     if Pending.bPurchaseSuccessHandled == true then
+        if Pending.bCompletionToastShown ~= true and
+            type(Pending.Config.CompletionToast) == "string" and
+            Pending.Config.CompletionToast ~= "" then
+            Pending.bCompletionToastShown = true
+            L_Com.ShowToast(Pending.Config.CompletionToast)
+        end
         self:Finish(true, "purchase and gift completed")
     else
         self:ScheduleTimeout(GiftPackConfig.ProcessTimeoutSeconds, "purchase result timeout")
@@ -308,6 +314,26 @@ function GiftPackPurchaseService:TryOpenPendingGift(RetryCount)
     end, false)
 end
 
+function GiftPackPurchaseService:ShowPendingGiftItemPopup()
+    local Pending = self.PendingPurchase
+    if Pending == nil or Pending.Config.ShowGiftItemPopup ~= true or
+        Pending.bGiftItemPopupShown == true then
+        return
+    end
+
+    local MainUI = ShopV2Manager ~= nil and ShopV2Manager.MainUI or nil
+    if MainUI == nil or MainUI.ItemGetUI == nil or ShopV2Manager.ShowItemGetPopup == nil then
+        ugcprint("[GiftPackService] gift item popup unavailable key=" .. tostring(Pending.PackKey))
+        return
+    end
+
+    local Succeeded = pcall(ShopV2Manager.ShowItemGetPopup, ShopV2Manager,
+        tonumber(Pending.Config.GiftItemID), 1)
+    if Succeeded then
+        Pending.bGiftItemPopupShown = true
+    end
+end
+
 function GiftPackPurchaseService:OnAddVirtualItem(Result)
     local Pending = self.PendingPurchase
     if Pending == nil or Result == nil or Result.bSucceeded ~= true or
@@ -323,6 +349,7 @@ function GiftPackPurchaseService:OnAddVirtualItem(Result)
     for ItemID, ItemNum in pairs(Result.ItemList or {}) do
         if tonumber(ItemID) == tonumber(Pending.Config.GiftItemID) and
             tonumber(ItemNum) ~= nil and tonumber(ItemNum) > 0 then
+            self:ShowPendingGiftItemPopup()
             self:TryOpenPendingGift(0)
             return
         end

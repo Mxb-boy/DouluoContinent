@@ -11,7 +11,11 @@ GiftPackConfig.Packs = {
         ProductID = 9000051,
         GiftPackID = 900051,
         GiftItemID = 1055,
+        -- Suppress the automatic reward-item popups. The gift pack itself is
+        -- shown once through ShopV2's single-item acquired popup instead.
         SuppressOfficialGetUI = true,
+        ShowGiftItemPopup = true,
+        CompletionToast = "奖励已发到背包",
     },
     TalentPoint = {
         ProductID = 9000058,
