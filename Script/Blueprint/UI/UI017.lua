@@ -479,6 +479,11 @@ function UI017:RefreshSelectedXzwqStats(SlotIndex)
 end
 
 function UI017:RefreshWeaponRefineRemainingUses(RemainingUses, bWaitingForDecision)
+    -- The server uses a negative value when its authoritative clock is not
+    -- ready. Keep the last known value instead of falsely rendering it as 0.
+    if tonumber(RemainingUses) ~= nil and tonumber(RemainingUses) < 0 then
+        return false
+    end
     RemainingUses = math.max(0, math.min(WeaponRefineConfig.DAILY_REFINE_LIMIT,
         math.floor(tonumber(RemainingUses) or 0)))
     self.WeaponRefineRemainingUses = RemainingUses
@@ -1261,7 +1266,17 @@ function UI017:LuaInit()
         return
     end
     self.bInitDoOnce = true
-    self:RefreshWeaponRefineRemainingUses(WeaponRefineConfig.DAILY_REFINE_LIMIT, false)
+    -- Do not optimistically display 20: the daily counter belongs to the server
+    -- and may still be loading. The authoritative RPC in Open() fills this in.
+    self.WeaponRefineRemainingUses = nil
+    local RemainingText = self:GetWidget("TextBlock_58")
+    if RemainingText ~= nil then
+        RemainingText:SetText("可洗练次数：同步中")
+    end
+    local RefineButton = self:GetWidget("Button_127")
+    if RefineButton ~= nil and RefineButton.SetIsEnabled ~= nil then
+        RefineButton:SetIsEnabled(false)
+    end
     self:RefreshCurrentPlayerLevel()
     self:RefreshTextBlock66ItemCount()
     local CloseButton = self:GetWidget("Btn_Close")
