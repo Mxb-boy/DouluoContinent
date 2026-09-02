@@ -1908,12 +1908,20 @@ function UGCPlayerController:Server_RequestWeaponRefineState()
     local WeaponIndex = Pending ~= nil and Pending.WeaponIndex or 0
     local Attack = Pending ~= nil and Pending.Attack or 0
     local AttackSpeed = Pending ~= nil and Pending.AttackSpeed or 0
-    local RemainingUses = GetWeaponRefineRemainingUses(PlayerState)
-    UnrealNetwork.CallUnrealRPC(self, self, "Client_WeaponRefineResult", true,
+    local ServerDay = GetWeaponRefineServerDay()
+    local RemainingUses = GetWeaponRefineRemainingUses(PlayerState, ServerDay)
+    local bTimeReady = ServerDay ~= nil
+    -- -1 is an explicit 'not ready' sentinel. Never send 0 for a failed clock
+    -- lookup, otherwise the client mistakes a transient error for an exhausted day.
+    if not bTimeReady then
+        RemainingUses = -1
+    end
+    UnrealNetwork.CallUnrealRPC(self, self, "Client_WeaponRefineResult", bTimeReady,
         SkinIndex, WeaponIndex, Attack, AttackSpeed,
         GetBackpackItemCount(Pawn, WeaponRefineConfig.STARDUST_ITEM_ID),
-        BuildWeaponRefineSnapshot(PlayerState), RemainingUses, "")
-    return true
+        BuildWeaponRefineSnapshot(PlayerState), RemainingUses,
+        bTimeReady and "" or "服务器时间未就绪，洗练次数同步失败")
+    return bTimeReady
 end
 
 function UGCPlayerController:Server_RefineOrbitWeapon(SkinIndex, WeaponIndex,
@@ -1938,19 +1946,11 @@ function UGCPlayerController:Server_RefineOrbitWeapon(SkinIndex, WeaponIndex,
     local Attack, AttackSpeed = 0, 0
     local Message = "洗练失败，请稍后重试"
 
-    local StoredLevel = PlayerState ~= nil and PlayerState.GetPlayerLevel ~= nil and
-        tonumber(PlayerState:GetPlayerLevel()) or 0
-    local PlayerExp = PlayerState ~= nil and PlayerState.GetPlayerExp ~= nil and
-        tonumber(PlayerState:GetPlayerExp()) or 0
-    ugcprint('[WeaponRefine:SERVER] request skin=' .. tostring(SkinIndex) ..
-        ' weapon=' .. tostring(WeaponIndex) .. ' storedLevel=' .. tostring(StoredLevel) ..
-        ' exp=' .. tostring(PlayerExp) .. ' effectiveLevel=' .. tostring(PlayerLevel) ..
-        ' row=' .. tostring(Row ~= nil))
-
     EnsurePlayerStateArchiveUID(self)
     if PlayerState == nil or PlayerState.bArchiveLoaded ~= true then
         Message = "存档尚未加载，请稍后重试"
     elseif ServerDay == nil then
+        RemainingUses = -1
         Message = "服务器时间获取失败，请稍后重试"
     elseif SkinIndex < 1 or SkinIndex > WeaponRefineConfig.MAX_SKIN_COUNT or
         WeaponIndex < 1 or WeaponIndex > WeaponRefineConfig.MAX_WEAPON_COUNT then
