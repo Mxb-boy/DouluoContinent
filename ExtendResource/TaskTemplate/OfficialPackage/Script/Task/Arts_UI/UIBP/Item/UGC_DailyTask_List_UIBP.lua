@@ -7,6 +7,7 @@
 ---@field Button_Unfinished UNewButton
 ---@field DailyTask_ListAward_01 UGC_DailyTask_Award_UIBP_C
 ---@field DailyTask_ListAward_02 UGC_DailyTask_Award_UIBP_C
+---@field DailyTask_ListAward_03 UGC_DailyTask_Award_UIBP_C
 ---@field FX_SweepLight UImage
 ---@field TextBlock_DailyTaskDetails UTextBlock
 ---@field TextBlock_NotUnlocked UTextBlock
@@ -19,7 +20,8 @@ local UGC_DailyTask_List_UIBP = { bInitDoOnce = false }
 function UGC_DailyTask_List_UIBP:Construct()
     self.TaskAwardItemList = {
         [1] = self.DailyTask_ListAward_01,
-        [2] = self.DailyTask_ListAward_02
+        [2] = self.DailyTask_ListAward_02,
+        [3] = self.DailyTask_ListAward_03
     }
     self.Button_Daily_Get.OnClicked:Add(self.CliamTaskAward, self);
     self.Button_Daily_Go.OnClicked:Add(self.GotoTask, self);
@@ -90,6 +92,12 @@ function UGC_DailyTask_List_UIBP:InitUI(TaskID, Index, TaskLineName)
         self.TaskAwardItemList[2]:SetVisibility(ESlateVisibility.Visible);
         self.TaskAwardItemList[1]:InitUI(AwardList[1].ItemID, AwardList[1].ItemNum);
         self.TaskAwardItemList[2]:InitUI(AwardList[2].ItemID, AwardList[2].ItemNum);
+    end
+    if AwardListNum >= 3 then
+        self.TaskAwardItemList[3]:SetVisibility(ESlateVisibility.Visible);
+        self.TaskAwardItemList[3]:InitUI(AwardList[3].ItemID, AwardList[3].ItemNum);
+    else
+        self.TaskAwardItemList[3]:SetVisibility(ESlateVisibility.Collapsed);
     end
 
     local Progress = TaskManager:GetPercentTaskProgress(TaskLineName, Index);
