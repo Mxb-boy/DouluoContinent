@@ -38,6 +38,7 @@ local UI12 = {}
 
 local TeleportConfig = UGCGameSystem.UGCRequire("Script.TeleportConfig")
 local UIEffectUtil = UGCGameSystem.UGCRequire("Script.Common.UIEffectUtil")
+local UILookInputGuard = UGCGameSystem.UGCRequire("Script.Xiao.UILookInputGuard")
 
 -- 显式加载子控件模块，确保 UnLua 绑定生效
 UGCGameSystem.UGCRequire("Script.NewUGCWidgetBlueprint2")
@@ -92,9 +93,15 @@ function UI12:Construct()
     self:RefreshList()
 end
 
+function UI12:Open()
+    self:SetVisibility(ESlateVisibility.Visible)
+    UILookInputGuard.Enter(self, self)
+end
+
 function UI12:OnCloseClicked()
     -- 隐藏而非移除，配合 UI02 的实例复用逻辑（再次打开时 SetVisibility Visible）
     self:SetVisibility(ESlateVisibility.Collapsed)
+    UILookInputGuard.Leave(self, self)
 end
 
 function UI12:RefreshList()
@@ -157,6 +164,10 @@ function UI12:RefreshList()
         end
     end
     ugcprint("[UI12] RefreshList done")
+end
+
+function UI12:Destruct()
+    UILookInputGuard.Leave(self, self)
 end
 
 return UI12

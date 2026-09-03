@@ -1125,7 +1125,11 @@ function UI02:Button_155_OnClicked()
         if self.TeleportUIInstance.RefreshList then
             self.TeleportUIInstance:RefreshList()
         end
-        self.TeleportUIInstance:SetVisibility(ESlateVisibility.Visible)
+        if self.TeleportUIInstance.Open then
+            self.TeleportUIInstance:Open()
+        else
+            self.TeleportUIInstance:SetVisibility(ESlateVisibility.Visible)
+        end
         return
     end
 
@@ -1148,6 +1152,9 @@ function UI02:Button_155_OnClicked()
     end
 
     self.TeleportUIInstance:AddToViewport(11000)
+    if self.TeleportUIInstance.Open then
+        self.TeleportUIInstance:Open()
+    end
 end
 
 function UI02:TeleportToHome()
