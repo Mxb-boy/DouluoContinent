@@ -21,9 +21,6 @@ local WING_ITEM_IDS = {
 }
 local LOGIN_WING_UNEQUIP_INTERVAL = 0.5
 local LOGIN_WING_UNEQUIP_MAX_RETRIES = 120
-local MALE_PLAYER_MESH_PATH = "/Game/UGC/Arts/Mesh/SK_NewWorld_TianTan_NPC_M.SK_NewWorld_TianTan_NPC_M"
-local FEMALE_PLAYER_MESH_PATH = "/Game/Actor_Timeliness/CG035/CG035_Version_DunHuang/CG035_DunhuangDance/Arts_Players/Mesh/SK_Dunhuang_Apsaras.SK_Dunhuang_Apsaras"
-local PLAYER_MESH_CHANGE_DELAY = 2
 
 local function GetItemIDFromDefineID(ItemDefineID)
     if ItemDefineID == nil then
@@ -173,54 +170,6 @@ local function IsObjectAlive(Object)
         return Success and bValid == true
     end
     return true
-end
-
--- 角色自身 Avatar 初始化会覆盖过早的换模；登录和复活后延迟在服务端替换。
-local function GetPlayerGender(PlayerController)
-    local PlayerState = PlayerController ~= nil and PlayerController.PlayerState or nil
-    local SuccessState, PlatformGender = pcall(function()
-        return PlayerState ~= nil and PlayerState.PlatformGender or nil
-    end)
-    local Gender = SuccessState and tonumber(PlatformGender) or nil
-
-    if Gender == nil and UGCPlayerStateSystem ~= nil and UGCPlayerStateSystem.GetPlayerAccountInfo ~= nil and
-        PlayerController ~= nil and PlayerController.PlayerKey ~= nil then
-        local SuccessInfo, AccountInfo = pcall(UGCPlayerStateSystem.GetPlayerAccountInfo,
-            PlayerController.PlayerKey)
-        if SuccessInfo and AccountInfo ~= nil then
-            local SuccessGender, AccountGender = pcall(function()
-                return AccountInfo.Gender or AccountInfo.PlatformGender
-            end)
-            Gender = SuccessGender and tonumber(AccountGender) or nil
-        end
-    end
-    return Gender
-end
-
-local function SchedulePlayerMeshChange(PlayerController, Reason)
-    if not IsObjectAlive(PlayerController) then
-        return
-    end
-
-    UGCTimerUtility.CreateLuaTimer(PLAYER_MESH_CHANGE_DELAY, function()
-        if not IsObjectAlive(PlayerController) then
-            return
-        end
-        local PlayerPawn = PlayerController.Pawn or
-            (PlayerController.K2_GetPawn ~= nil and PlayerController:K2_GetPawn() or nil)
-        if not IsObjectAlive(PlayerPawn) or UGCPlayerPawnSystem == nil or
-            UGCPlayerPawnSystem.ChangeAvatarMesh == nil then
-            ugcprint("[UGCGameMode] WARNING player mesh change skipped, reason=" .. tostring(Reason))
-            return
-        end
-        local Gender = GetPlayerGender(PlayerController)
-        local MeshPath = Gender == 2 and FEMALE_PLAYER_MESH_PATH or MALE_PLAYER_MESH_PATH
-        local Success, Error = pcall(UGCPlayerPawnSystem.ChangeAvatarMesh, PlayerPawn, MeshPath)
-        if not Success then
-            ugcprint("[UGCGameMode] WARNING player mesh change failed, reason=" .. tostring(Reason) ..
-                         ", error=" .. tostring(Error))
-        end
-    end, false)
 end
 
 local function ClearEquippedWingCache(PlayerController, PlayerPawn)
@@ -813,7 +762,6 @@ function UGCGameMode:UGC_PlayerLoginEvent(PlayerController)
         return
     end
     local PC = PlayerController
-    SchedulePlayerMeshChange(PC, "login")
     ScheduleUnequipWingOnLogin(PC)
     local RetryCount = 0
     local MaxRetries = 10
@@ -1341,8 +1289,6 @@ end
 function UGCGameMode:UGC_PlayerRespawnEvent(RespawnedController)
     local PC = RespawnedController
     local PlayerKey = PC.PlayerKey
-
-    SchedulePlayerMeshChange(PC, "respawn")
 
     if PC.Is_Tower_Death_Respawn == true then
         PC.Is_Tower_Death_Respawn = nil
